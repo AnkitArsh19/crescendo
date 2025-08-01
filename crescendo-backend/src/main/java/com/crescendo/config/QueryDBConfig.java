@@ -26,8 +26,14 @@ import javax.sql.DataSource;
 @Configuration
 @EnableJpaRepositories(
         basePackages = {
-                "com.crescendo.user_query",
-                "com.crescendo.workflow_query"
+                "com.crescendo.user.user_query",
+                "com.crescendo.workflow.workflow_query",
+                "com.crescendo.steps.steps_query",
+                "com.crescendo.connections.connections_query",
+                "com.crescendo.emailservice.apikey.key_query",
+                "com.crescendo.emailservice.emailtemplate.template_query",
+                "com.crescendo.emailservice.email_log",
+                "com.crescendo.app"
         },
         entityManagerFactoryRef = "queryEntityManagerFactory",
         transactionManagerRef = "transactionManagerFactory"
@@ -71,8 +77,14 @@ public class QueryDBConfig {
                 return builder
                         .dataSource(queryDataSource())
                         .packages(
-                                "com.crescendo.user_query",
-                                "com.crescendo.workflow_query"
+                                "com.crescendo.user.user_query",
+                                "com.crescendo.workflow.workflow_query",
+                                "com.crescendo.steps.steps_query",
+                                "com.crescendo.connections.connections_query",
+                                "com.crescendo.emailservice.apikey.key_query",
+                                "com.crescendo.emailservice.emailtemplate.template_query",
+                                "com.crescendo.emailservice.email_log",
+                                "com.crescendo.app"
                         )
                         .build();
         }

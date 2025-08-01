@@ -41,6 +41,16 @@ public class Workflow_command {
     public Workflow_command() {
     }
 
+    public Workflow_command(UUID id, String name, String description, UUID userId, boolean isActive, Instant createdAt, Instant updatedAt) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.userId = userId;
+        this.isActive = isActive;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
     public UUID getId() {
         return id;
     }

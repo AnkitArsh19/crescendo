@@ -24,13 +24,21 @@ import javax.sql.DataSource;
 @Configuration
 @EnableJpaRepositories(
         basePackages = {
-                "com.crescendo.user_command",
-                "com.crescendo.workflow_command"
+                "com.crescendo.user.user_command",
+                "com.crescendo.workflow.workflow_command",
+                "com.crescendo.steps.steps_command",
+                "com.crescendo.connections.connections_command",
+                "com.crescendo.logbook.StepRun",
+                "com.crescendo.logbook.WorkflowRun",
+                "com.crescendo.emailservice.apikey.key_command",
+                "com.crescendo.emailservice.email_log",
+                "com.crescendo.emailservice.emailtemplate.template_command",
+                "com.crescendo.webhook"
+
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "transactionManagerFactory"
 )
-
 public class CommandDBConfig {
 
         /**
@@ -69,8 +77,16 @@ public class CommandDBConfig {
                 return builder
                         .dataSource(commandDataSource())
                         .packages(
-                                "com.crescendo.user_command",
-                                "com.crescendo.workflow_command"
+                                "com.crescendo.user.user_command",
+                                "com.crescendo.workflow.workflow_command",
+                                "com.crescendo.steps.steps_command",
+                                "com.crescendo.connections.connections_command",
+                                "com.crescendo.logbook.StepRun",
+                                "com.crescendo.logbook.WorkflowRun",
+                                "com.crescendo.emailservice.apikey.key_command",
+                                "com.crescendo.emailservice.email_log",
+                                "com.crescendo.emailservice.emailtemplate.template_command",
+                                "com.crescendo.webhook"
                         )
                         .build();
         }
