@@ -1,6 +1,5 @@
-package com.crescendo.connections.connections_query;
+package com.crescendo.emailservice.emailtemplate.template_query;
 
-import com.crescendo.enums.ConnectionStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -9,8 +8,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "connections_query")
-public class Connections_query {
+@Table(name = "email_template_query")
+public class EmailTemplate_query {
 
     @Id
     @Column(name = "id", nullable = false)
@@ -19,15 +18,19 @@ public class Connections_query {
     @Column(name = "userId", nullable = false)
     private UUID userId;
 
-    @Column(name = "appKey", nullable = false)
-    private String appKey;
-
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private ConnectionStatus status;
+    @Column(name = "subject", nullable = false)
+    private String subject;
+
+    @Lob
+    @Column(name = "HTMLBody", nullable = false)
+    private String HTMLBody;
+
+    @Lob
+    @Column(name = "textBody")
+    private String textBody;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -37,17 +40,18 @@ public class Connections_query {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
-    public Connections_query() {
+    public EmailTemplate_query() {
     }
 
-    public Connections_query(UUID id, UUID userId, String appKey, String name, ConnectionStatus status, Instant updatedAt, Instant createdAt) {
+    public EmailTemplate_query(UUID id, UUID userId, String name, String subject, String HTMLBody, String textBody, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.userId = userId;
-        this.appKey = appKey;
         this.name = name;
-        this.status = status;
-        this.updatedAt = updatedAt;
+        this.subject = subject;
+        this.HTMLBody = HTMLBody;
+        this.textBody = textBody;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public UUID getId() {
@@ -58,23 +62,27 @@ public class Connections_query {
         return userId;
     }
 
-    public String getAppKey() {
-        return appKey;
-    }
-
     public String getName() {
         return name;
     }
 
-    public ConnectionStatus getStatus() {
-        return status;
+    public String getSubject() {
+        return subject;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public String getHTMLBody() {
+        return HTMLBody;
+    }
+
+    public String getTextBody() {
+        return textBody;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

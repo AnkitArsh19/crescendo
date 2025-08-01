@@ -1,10 +1,7 @@
-package com.crescendo.steps.steps_workflow;
+package com.crescendo.steps.steps_command;
 
 import com.crescendo.enums.StepType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -28,6 +25,7 @@ public class Steps_command {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "stepType", nullable = false)
     private StepType type;
 

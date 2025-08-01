@@ -1,19 +1,15 @@
-package com.crescendo.connections.connections_command;
+package com.crescendo.emailservice.emailtemplate.template_command;
 
-import com.crescendo.enums.ConnectionStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "connections_command")
-public class Connections_command {
+@Table(name = "email_template_command")
+public class EmailTemplate_command {
 
     @Id
     @Column(name = "id", nullable = false)
@@ -22,19 +18,19 @@ public class Connections_command {
     @Column(name = "userId", nullable = false)
     private UUID userId;
 
-    @Column(name = "appKey", nullable = false)
-    private String appKey;
-
     @Column(name = "name", nullable = false)
     private String name;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "credentials", columnDefinition = "jsonb", nullable = false)
-    private Map<String, Object> credentials;
+    @Column(name = "subject", nullable = false)
+    private String subject;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private ConnectionStatus status;
+    @Lob
+    @Column(name = "HTMLBody", nullable = false)
+    private String HTMLBody;
+
+    @Lob
+    @Column(name = "textBody")
+    private String textBody;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -44,18 +40,26 @@ public class Connections_command {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
-    public Connections_command() {
+    public EmailTemplate_command() {
     }
 
-    public Connections_command(UUID id, UUID userId, String appKey, String name, Map<String, Object> credentials, ConnectionStatus status, Instant createdAt, Instant updatedAt) {
+    public EmailTemplate_command(UUID id, UUID userId, String name, String subject, String HTMLBody, String textBody, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.userId = userId;
-        this.appKey = appKey;
         this.name = name;
-        this.credentials = credentials;
-        this.status = status;
+        this.subject = subject;
+        this.HTMLBody = HTMLBody;
+        this.textBody = textBody;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    public String getTextBody() {
+        return textBody;
+    }
+
+    public void setTextBody(String textBody) {
+        this.textBody = textBody;
     }
 
     public UUID getId() {
@@ -74,14 +78,6 @@ public class Connections_command {
         this.userId = userId;
     }
 
-    public String getAppKey() {
-        return appKey;
-    }
-
-    public void setAppKey(String appKey) {
-        this.appKey = appKey;
-    }
-
     public String getName() {
         return name;
     }
@@ -90,20 +86,20 @@ public class Connections_command {
         this.name = name;
     }
 
-    public Map<String, Object> getCredentials() {
-        return credentials;
+    public String getSubject() {
+        return subject;
     }
 
-    public void setCredentials(Map<String, Object> credentials) {
-        this.credentials = credentials;
+    public void setSubject(String subject) {
+        this.subject = subject;
     }
 
-    public ConnectionStatus getStatus() {
-        return status;
+    public String getHTMLBody() {
+        return HTMLBody;
     }
 
-    public void setStatus(ConnectionStatus status) {
-        this.status = status;
+    public void setHTMLBody(String HTMLBody) {
+        this.HTMLBody = HTMLBody;
     }
 
     public Instant getCreatedAt() {
