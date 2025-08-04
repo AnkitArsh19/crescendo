@@ -1,0 +1,13 @@
+# Main Application Properties Example
+# Copy this file to application.properties and modify as needed
+
+spring.application.name=crescendo
+
+# Default active profile (can be overridden)
+spring.profiles.active=local
+
+# Common JPA Configuration (shared across profiles)
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true

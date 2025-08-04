@@ -1,0 +1,19 @@
+# Local Development Profile Example
+# Copy this file to application-local.properties and modify as needed
+# This profile is used when running the app locally
+
+# Command Database (Write Side) - Local
+spring.datasource.command.url=jdbc:postgresql://localhost:5432/crescendo_command
+spring.datasource.command.username=your_username
+spring.datasource.command.password=your_password
+spring.datasource.command.driver-class-name=org.postgresql.Driver
+
+# Query Database (Read Side) - Local
+spring.datasource.query.url=jdbc:postgresql://localhost:5432/crescendo_query
+spring.datasource.query.username=your_username
+spring.datasource.query.password=your_password
+spring.datasource.query.driver-class-name=org.postgresql.Driver
+
+# Local Development Settings
+spring.jpa.show-sql=false
+logging.level.org.springframework.web=DEBUG
