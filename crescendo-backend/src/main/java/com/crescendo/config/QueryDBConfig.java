@@ -6,7 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -32,11 +31,10 @@ import javax.sql.DataSource;
                 "com.crescendo.connections.connections_query",
                 "com.crescendo.emailservice.apikey.key_query",
                 "com.crescendo.emailservice.emailtemplate.template_query",
-                "com.crescendo.emailservice.email_log",
                 "com.crescendo.app"
         },
         entityManagerFactoryRef = "queryEntityManagerFactory",
-        transactionManagerRef = "transactionManagerFactory"
+        transactionManagerRef = "queryTransactionManager"
 )
 
 public class QueryDBConfig {
@@ -45,7 +43,6 @@ public class QueryDBConfig {
          * Binds properties prefixed with "spring.datasource.query" in the application properties
          * @return a new Datasource property
          */
-        @Primary
         @Bean(name = "queryDatasourceProperties")
         @ConfigurationProperties("spring.datasource.query")
         public DataSourceProperties queryDatasourceProperties(){
@@ -56,7 +53,6 @@ public class QueryDBConfig {
          * Builds an actual datasource(JDBC connection pool) using the datasource properties.
          * It will be used by the Entity Manager Factory
          */
-        @Primary
         @Bean(name = "queryDataSource")
         public DataSource queryDataSource(){
                 return queryDatasourceProperties()
@@ -69,7 +65,6 @@ public class QueryDBConfig {
          * It tells JPA to only scan given packages for entity classes to associate with the given datasource
          * Required to isolate entity management for the multi-DB setup
          */
-        @Primary
         @Bean(name = "queryEntityManagerFactory")
         public LocalContainerEntityManagerFactoryBean queryEntityManagerFactory(
                 EntityManagerFactoryBuilder builder
@@ -86,6 +81,7 @@ public class QueryDBConfig {
                                 "com.crescendo.emailservice.email_log",
                                 "com.crescendo.app"
                         )
+                        .persistenceUnit("query")
                         .build();
         }
 
@@ -94,7 +90,6 @@ public class QueryDBConfig {
          * This allows for transaction boundaries (@Transactional) to be handled correctly
          * "@Qualifier" ensures that the correct bean is injected.
          */
-        @Primary
         @Bean(name = "queryTransactionManager")
         public PlatformTransactionManager queryTransactionManager(
                 @Qualifier("queryEntityManagerFactory")

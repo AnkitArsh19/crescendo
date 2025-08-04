@@ -37,7 +37,7 @@ import javax.sql.DataSource;
 
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
-        transactionManagerRef = "transactionManagerFactory"
+        transactionManagerRef = "commandTransactionManager"
 )
 public class CommandDBConfig {
 

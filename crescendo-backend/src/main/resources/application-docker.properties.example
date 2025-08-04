@@ -1,0 +1,19 @@
+# Docker Profile Example
+# Copy this file to application-docker.properties and modify as needed
+# This profile is used when running the app inside Docker containers
+
+# Command Database (Write Side) - Docker
+spring.datasource.command.url=jdbc:postgresql://postgres:5432/crescendo_command
+spring.datasource.command.username=your_username
+spring.datasource.command.password=your_password
+spring.datasource.command.driver-class-name=org.postgresql.Driver
+
+# Query Database (Read Side) - Docker
+spring.datasource.query.url=jdbc:postgresql://postgres:5432/crescendo_query
+spring.datasource.query.username=your_username
+spring.datasource.query.password=your_password
+spring.datasource.query.driver-class-name=org.postgresql.Driver
+
+# Docker Environment Settings
+spring.jpa.show-sql=true
+logging.level.org.springframework.web=INFO

@@ -1,0 +1,49 @@
+# Docker Compose Example for Development
+# Copy this file to docker-compose.yml and modify as needed
+# Use: docker-compose up --build
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: crescendo-postgres
+    environment:
+      POSTGRES_USER: your_username
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_docker:/var/lib/postgresql/data
+      - ./crescendo-backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - crescendo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U your_username -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  crescendo-backend:
+    build:
+      context: .
+      dockerfile: crescendo-backend/Dockerfile
+    container_name: crescendo-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    networks:
+      - crescendo-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data_docker:
+
+networks:
+  crescendo-network:
+    driver: bridge

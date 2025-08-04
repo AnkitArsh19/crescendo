@@ -1,0 +1,3 @@
+FROM eclipse-temurin:latest
+ADD crescendo-backend/target/crescendo-backend.jar crescendo-backend.jar
+ENTRYPOINT ["java", "-jar", "/crescendo-backend.jar"]

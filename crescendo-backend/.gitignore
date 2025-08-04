@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Docker files for development ###
+Dockerfile
+
+### Application Properties with sensitive data ###
+application-docker.properties
+application-local.properties
+application.properties

@@ -29,7 +29,7 @@ public class Steps_command {
     @Column(name = "stepType", nullable = false)
     private StepType type;
 
-    @Column(name = "order", nullable = false)
+    @Column(name = "step_order", nullable = false)
     private Integer order;
 
     @Column(name = "actionKey", nullable = false)

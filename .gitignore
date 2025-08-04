@@ -1,1 +1,6 @@
 .idea
+docker-compose.yml
+
+### Application Properties with sensitive data ###
+**/application-docker.properties
+**/application-local.properties
