@@ -1,26 +1,34 @@
 package com.crescendo.steps.steps_command;
 
 import com.crescendo.enums.StepType;
+import com.crescendo.workflow.workflow_command.Workflow_command;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "steps_command")
+@Table(name = "steps_command",
+    indexes = {
+        @Index(name = "idx_steps_workflow", columnList = "workflowId"),
+        @Index(name = "idx_steps_order", columnList = "workflowId, step_order"),
+        @Index(name = "idx_steps_deleted", columnList = "deletedAt")
+    })
 public class Steps_command {
 
     @Id
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "workflowId", nullable = false)
-    private UUID workflowId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "workflowId", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_step_workflow"))
+    private Workflow_command workflow;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -29,10 +37,13 @@ public class Steps_command {
     @Column(name = "stepType", nullable = false)
     private StepType type;
 
-    @Column(name = "step_order", nullable = false)
-    private Integer order;
+    @Column(name = "step_order", nullable = false, precision = 18, scale = 6)
+    private BigDecimal order;
 
-    @Column(name = "actionKey", nullable = false)
+    @Column(name = "deletedAt")
+    private Instant deletedAt;
+
+    @Column(name = "actionKey", nullable = false, length = 120)
     private String actionKey;
 
     @CreationTimestamp
@@ -53,9 +64,9 @@ public class Steps_command {
     public Steps_command() {
     }
 
-    public Steps_command(UUID id, UUID workflowId, String name, StepType type, Integer order, String actionKey, Instant createdAt, Instant updatedAt, String appKey, Map<String, Object> configuration) {
+    public Steps_command(UUID id, Workflow_command workflow, String name, StepType type, BigDecimal order, String actionKey, Instant createdAt, Instant updatedAt, String appKey, Map<String, Object> configuration, Instant deletedAt) {
         this.id = id;
-        this.workflowId = workflowId;
+        this.workflow = workflow;
         this.name = name;
         this.type = type;
         this.order = order;
@@ -64,6 +75,7 @@ public class Steps_command {
         this.updatedAt = updatedAt;
         this.appKey = appKey;
         this.configuration = configuration;
+        this.deletedAt = deletedAt;
     }
 
     public UUID getId() {
@@ -74,12 +86,25 @@ public class Steps_command {
         this.id = id;
     }
 
-    public UUID getWorkflowId() {
-        return workflowId;
+    public Workflow_command getWorkflow() {
+        return workflow;
+    }
+    public void setWorkflow(Workflow_command workflow) {
+        this.workflow = workflow;
     }
 
-    public void setWorkflowId(UUID workflowId) {
-        this.workflowId = workflowId;
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public BigDecimal getOrder() {
+        return order;
+    }
+    public void setOrder(BigDecimal order) {
+        this.order = order;
     }
 
     public String getName() {
@@ -98,13 +123,6 @@ public class Steps_command {
         this.type = type;
     }
 
-    public Integer getOrder() {
-        return order;
-    }
-
-    public void setOrder(Integer order) {
-        this.order = order;
-    }
 
     public String getActionKey() {
         return actionKey;

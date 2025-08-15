@@ -4,6 +4,7 @@ import com.crescendo.enums.StepType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -15,7 +16,14 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "steps_query")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "steps_query",
+    indexes = {
+        @Index(name = "idx_steps_query_workflow", columnList = "workflowId"),
+        @Index(name = "idx_steps_query_order", columnList = "workflowId, step_order")
+    })
 public class Steps_query {
 
     @Id

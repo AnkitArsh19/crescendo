@@ -2,6 +2,7 @@ package com.crescendo.connections.connections_command;
 
 import com.crescendo.enums.ConnectionStatus;
 import jakarta.persistence.*;
+import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +13,14 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "connections_command")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "connections_command",
+    indexes = {
+        @Index(name = "idx_connection_user", columnList = "userId"),
+        @Index(name = "idx_connection_status", columnList = "status")
+    })
 public class Connections_command {
 
     @Id

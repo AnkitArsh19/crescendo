@@ -25,7 +25,7 @@ public class Workflow_query {
     @Column(name = "userId", nullable = false)
     private UUID userId;
 
-    @Column(name = "isActive", nullable = false)
+    @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
     @Enumerated(EnumType.STRING)
@@ -33,14 +33,14 @@ public class Workflow_query {
     private WorkflowStatus status;
 
     @CreationTimestamp
-    @Column(name = "createdAt", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(name = "lastRunAt", nullable = false)
+    @Column(name = "last_run_at", nullable = false)
     private Instant lastRunAt;
 
     @UpdateTimestamp
-    @Column(name = "updatedAt", nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @Column(name = "step_count")

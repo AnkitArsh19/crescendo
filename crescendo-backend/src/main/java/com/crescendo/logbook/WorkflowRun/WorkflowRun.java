@@ -2,6 +2,7 @@ package com.crescendo.logbook.WorkflowRun;
 
 import com.crescendo.enums.WorkflowRunStatus;
 import jakarta.persistence.*;
+import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,7 +13,15 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "workflow_run")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "workflow_run",
+    indexes = {
+        @Index(name = "idx_workflow_run_workflow", columnList = "workflowId"),
+        @Index(name = "idx_workflow_run_user", columnList = "userId"),
+        @Index(name = "idx_workflow_run_status", columnList = "workflow_run_status")
+    })
 public class WorkflowRun {
 
     @Id
@@ -38,7 +47,7 @@ public class WorkflowRun {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "completedAt", nullable = false)
+    @Column(name = "completedAt")
     private Instant completedAt;
 
     public WorkflowRun() {
