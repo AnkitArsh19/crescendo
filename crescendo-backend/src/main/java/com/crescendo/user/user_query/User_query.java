@@ -3,9 +3,12 @@ package com.crescendo.user.user_query;
 import com.crescendo.enums.UserRole;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -16,12 +19,22 @@ public class User_query {
     @Column(name = "id", nullable = false)
     private UUID id;
 
+    @Column(name = "email_id", nullable = false)
+    private String emailId;
+
     @Column(name = "username", nullable = false)
     private String userName;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private UserRole role;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "providers", columnDefinition = "json", nullable = false)
+    private List<String> providers;
+
+    @Column(name = "has_local_credential", nullable = false)
+    private boolean hasLocalCredential;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -34,10 +47,12 @@ public class User_query {
     public User_query() {
     }
 
-    public User_query(UUID id, String userName, UserRole role, Instant createdAt, Instant updatedAt) {
+    public User_query(UUID id, String userName, UserRole role, List<String> providers, boolean hasLocalCredential, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.userName = userName;
         this.role = role;
+        this.providers = providers;
+        this.hasLocalCredential = hasLocalCredential;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -61,4 +76,8 @@ public class User_query {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public List<String> getProviders() { return providers; }
+
+    public boolean isHasLocalCredential() { return hasLocalCredential; }
 }

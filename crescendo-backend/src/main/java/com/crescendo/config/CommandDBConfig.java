@@ -24,6 +24,9 @@ import javax.sql.DataSource;
 @Configuration
 @EnableJpaRepositories(
         basePackages = {
+                "com.crescendo.auth.token.email",
+                "com.crescendo.auth.token.password",
+                "com.crescendo.emailservice.domain",
                 "com.crescendo.user.user_command",
                 "com.crescendo.workflow.workflow_command",
                 "com.crescendo.steps.steps_command",

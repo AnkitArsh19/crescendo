@@ -9,7 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 @Entity
-@Table(name = "app")
+@Table(name = "app",
+    indexes = {
+        @Index(name = "idx_app_name", columnList = "name")
+    })
 public class App {
 
     @Id

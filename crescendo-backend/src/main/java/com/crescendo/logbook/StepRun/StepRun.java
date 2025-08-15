@@ -12,7 +12,15 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "step_run")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "step_run",
+    indexes = {
+        @Index(name = "idx_step_run_workflow_run", columnList = "workflow_run_id"),
+        @Index(name = "idx_step_run_step", columnList = "step_id"),
+        @Index(name = "idx_step_run_status", columnList = "step_run_status")
+    })
 public class StepRun {
 
     @Id
@@ -22,8 +30,8 @@ public class StepRun {
     @Column(name = "workflow_run_id", nullable = false)
     private UUID workflowRunId;
 
-    @Column(name = "step_run_id", nullable = false)
-    private UUID stepRunId;
+    @Column(name = "step_id", nullable = false)
+    private UUID stepId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "input_data", columnDefinition = "jsonb", nullable = false)
@@ -42,16 +50,16 @@ public class StepRun {
     private Instant createdAt;
 
     @UpdateTimestamp
-    @Column(name = "completedAt", nullable = false)
+    @Column(name = "completedAt")
     private Instant completedAt;
 
     public StepRun() {
     }
 
-    public StepRun(UUID id, UUID workflowRunId, UUID stepRunId, Map<String, Object> inputData, Map<String, Object> outputData, StepRunStatus status, Instant createdAt, Instant completedAt) {
+    public StepRun(UUID id, UUID workflowRunId, UUID stepId, Map<String, Object> inputData, Map<String, Object> outputData, StepRunStatus status, Instant createdAt, Instant completedAt) {
         this.id = id;
         this.workflowRunId = workflowRunId;
-        this.stepRunId = stepRunId;
+        this.stepId = stepId;
         this.inputData = inputData;
         this.outputData = outputData;
         this.status = status;
@@ -75,12 +83,12 @@ public class StepRun {
         this.workflowRunId = workflowRunId;
     }
 
-    public UUID getStepRunId() {
-        return stepRunId;
+    public UUID getStepId() {
+        return stepId;
     }
 
-    public void setStepRunId(UUID stepRunId) {
-        this.stepRunId = stepRunId;
+    public void setStepId(UUID stepId) {
+        this.stepId = stepId;
     }
 
     public Map<String, Object> getInputData() {

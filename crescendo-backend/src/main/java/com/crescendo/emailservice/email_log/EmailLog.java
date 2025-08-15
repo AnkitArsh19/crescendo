@@ -2,12 +2,21 @@ package com.crescendo.emailservice.email_log;
 
 import com.crescendo.enums.EmailStatus;
 import jakarta.persistence.*;
+import jakarta.persistence.Index;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "email_log")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "email_log",
+    indexes = {
+        @Index(name = "idx_email_log_user", columnList = "userId"),
+        @Index(name = "idx_email_log_status", columnList = "status"),
+        @Index(name = "idx_email_log_sent_at", columnList = "sentAt")
+    })
 public class EmailLog {
 
     @Id

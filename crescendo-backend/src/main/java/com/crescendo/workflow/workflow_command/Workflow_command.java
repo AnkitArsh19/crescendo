@@ -1,9 +1,7 @@
 package com.crescendo.workflow.workflow_command;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.crescendo.user.user_command.User_command;
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -11,7 +9,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "workflow_command")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "workflow_command",
+    indexes = {
+        @Index(name = "idx_workflow_user", columnList = "userId"),
+        @Index(name = "idx_workflow_active", columnList = "isActive")
+    })
 public class Workflow_command {
 
     @Id
@@ -24,8 +29,18 @@ public class Workflow_command {
     @Column(name = "description", length = 500)
     private String description;
 
-    @Column(name = "userId", nullable = false)
-    private UUID userId;
+    /// ManyToOne is used to map many entities to one entity
+    /// FetchType.LAZY means that the referenced entity will not be loaded from the database until we actually access it
+    /// optional=false means that the relationship is mandatory
+    /// JoinColumn tells how relationship is mapped.
+    /// Referenced column name is the name of the column of the foreign table.
+    /// Foreign Key is used to explicitly name the foreign key constraint
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "userId", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_workflow_user"))
+    private User_command user;
+
+    @Column(name = "deletedAt")
+    private Instant deletedAt;
 
     @Column(name = "isActive", nullable = false)
     private boolean isActive;
@@ -41,14 +56,15 @@ public class Workflow_command {
     public Workflow_command() {
     }
 
-    public Workflow_command(UUID id, String name, String description, UUID userId, boolean isActive, Instant createdAt, Instant updatedAt) {
+    public Workflow_command(UUID id, String name, String description, User_command user, boolean isActive, Instant createdAt, Instant updatedAt, Instant deletedAt) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.userId = userId;
+        this.user = user;
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
     }
 
     public UUID getId() {
@@ -75,12 +91,18 @@ public class Workflow_command {
         this.description = description;
     }
 
-    public UUID getUserId() {
-        return userId;
+    public User_command getUser() {
+        return user;
+    }
+    public void setUser(User_command user) {
+        this.user = user;
     }
 
-    public void setUserId(UUID userId) {
-        this.userId = userId;
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public boolean isActive() {

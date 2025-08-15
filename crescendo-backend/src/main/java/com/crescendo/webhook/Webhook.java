@@ -1,16 +1,21 @@
 package com.crescendo.webhook;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "webhook")
+/// Indexes tell that when creating table create indexes for the given columns.
+/// Here the selection process improves.
+/// The index column is the name given, and it creates index from the column list given
+@Table(name = "webhook",
+    indexes = {
+        @Index(name = "idx_webhook_step", columnList = "stepId"),
+        @Index(name = "idx_webhook_active", columnList = "isActive")
+    })
 public class Webhook {
 
     @Id
