@@ -10,12 +10,9 @@ import java.util.UUID;
 
 /**
  * Stores credentials only for users that have a local (password-based) login.
- * Users that authenticate exclusively via OAuth will have no row here.
+ * Users that authenticate exclusively via OAuth will have no data here.
  */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "user_credential",
 		uniqueConstraints = {
 				@UniqueConstraint(name = "uk_user_credential_user_id", columnNames = {"user_id"})
@@ -30,12 +27,6 @@ public class UserCredential {
 	@Column(name = "id", nullable = false)
 	private UUID id;
 
-    /// OneToOne is used to map one entity to one entity
-    /// FetchType.LAZY means that the referenced entity will not be loaded from the database until we actually access it
-    /// optional=false means that the relationship is mandatory
-    /// JoinColumn tells how relationship is mapped.
-    /// Referenced column name is the name of the column of the foreign table.
-    /// Foreign Key is used to explicitly name the foreign key constraint
 	@OneToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_user_credential_user"))
 	private User_command user;

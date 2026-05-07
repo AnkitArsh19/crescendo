@@ -3,19 +3,23 @@ package com.crescendo.emailservice.email_log;
 import com.crescendo.enums.EmailStatus;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Definitive record of every email processed through the system.
+ * Tracks the full lifecycle: PENDING → SENT → DELIVERED (or FAILED/BOUNCED).
+ * Shared across command and query databases for write + read access.
+ */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "email_log",
     indexes = {
         @Index(name = "idx_email_log_user", columnList = "userId"),
         @Index(name = "idx_email_log_status", columnList = "status"),
-        @Index(name = "idx_email_log_sent_at", columnList = "sentAt")
+        @Index(name = "idx_email_log_sent_at", columnList = "sentAt"),
+        @Index(name = "idx_email_log_apikey", columnList = "appKeyId")
     })
 public class EmailLog {
 
@@ -29,32 +33,51 @@ public class EmailLog {
     @Column(name = "appKeyId", nullable = false)
     private UUID appKeyId;
 
-    @Column(name = "toAddress", nullable = false)
+    @Column(name = "toAddress", nullable = false, length = 320)
     private String toAddress;
 
-    @Column(name = "fromAddress", nullable = false)
+    @Column(name = "fromAddress", nullable = false, length = 320)
     private String fromAddress;
 
-    @Column(name = "subject", nullable = false)
+    @Column(name = "subject", nullable = false, length = 1000)
     private String subject;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private EmailStatus status;
 
-    @Column(name = "providerMessageId", nullable = false)
+    @Column(name = "providerMessageId", length = 255)
     private String providerMessageId;
 
-    @Column(name = "error")
+    @Column(name = "error", length = 2000)
     private String error;
 
-    @Column(name = "sentAt", nullable = false)
+    @Column(name = "templateId")
+    private UUID templateId;
+
+    @Column(name = "provider", length = 50)
+    private String provider;
+
+    @Column(name = "openedAt")
+    private Instant openedAt;
+
+    @Column(name = "openCount", nullable = false)
+    private int openCount = 0;
+
+    @Column(name = "clickCount", nullable = false)
+    private int clickCount = 0;
+
+    @CreationTimestamp
+    @Column(name = "createdAt", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "sentAt")
     private Instant sentAt;
 
     public EmailLog() {
     }
 
-    public EmailLog(UUID id, UUID userId, UUID appKeyId, String fromAddress, String toAddress, String subject, EmailStatus status, String providerMessageId, String error, Instant sentAt) {
+    public EmailLog(UUID id, UUID userId, UUID appKeyId, String fromAddress, String toAddress, String subject, EmailStatus status) {
         this.id = id;
         this.userId = userId;
         this.appKeyId = appKeyId;
@@ -62,9 +85,6 @@ public class EmailLog {
         this.toAddress = toAddress;
         this.subject = subject;
         this.status = status;
-        this.providerMessageId = providerMessageId;
-        this.error = error;
-        this.sentAt = sentAt;
     }
 
     public UUID getId() {
@@ -146,4 +166,37 @@ public class EmailLog {
     public void setSentAt(Instant sentAt) {
         this.sentAt = sentAt;
     }
+
+    public UUID getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(UUID templateId) {
+        this.templateId = templateId;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getOpenedAt() { return openedAt; }
+    public void setOpenedAt(Instant openedAt) { this.openedAt = openedAt; }
+
+    public int getOpenCount() { return openCount; }
+    public void setOpenCount(int openCount) { this.openCount = openCount; }
+
+    public int getClickCount() { return clickCount; }
+    public void setClickCount(int clickCount) { this.clickCount = clickCount; }
 }

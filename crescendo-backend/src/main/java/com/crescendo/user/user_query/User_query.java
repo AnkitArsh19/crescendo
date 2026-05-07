@@ -11,22 +11,33 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * User query table for read operations
+ */
 @Entity
-@Table(name = "user_query")
+@Table(name = "user_query",
+    indexes = {
+        @Index(name = "idx_user_query_email", columnList = "email_id"),
+        @Index(name = "idx_user_query_username", columnList = "username")
+    })
 public class User_query {
 
+    /**
+     * UUID for generating random ID's without interacting with the database.
+     * This keeps the system secure and hard to scrape data.
+     */
     @Id
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "email_id", nullable = false)
+    @Column(name = "email_id", nullable = false, length = 320)
     private String emailId;
 
-    @Column(name = "username", nullable = false)
+    @Column(name = "username", nullable = false, length = 100)
     private String userName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
+    @Column(name = "role", nullable = false, length = 20)
     private UserRole role;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -35,6 +46,11 @@ public class User_query {
 
     @Column(name = "has_local_credential", nullable = false)
     private boolean hasLocalCredential;
+
+    /// Mirrors the email_verified flag from the command side.
+    /// Used for read-side access tier resolution without hitting the command DB.
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -47,14 +63,14 @@ public class User_query {
     public User_query() {
     }
 
-    public User_query(UUID id, String userName, UserRole role, List<String> providers, boolean hasLocalCredential, Instant createdAt, Instant updatedAt) {
+    public User_query(UUID id, String emailId, String userName, UserRole role, List<String> providers, boolean hasLocalCredential, boolean emailVerified) {
         this.id = id;
+        this.emailId = emailId;
         this.userName = userName;
         this.role = role;
         this.providers = providers;
         this.hasLocalCredential = hasLocalCredential;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.emailVerified = emailVerified;
     }
 
     public UUID getId() {
@@ -80,4 +96,18 @@ public class User_query {
     public List<String> getProviders() { return providers; }
 
     public boolean isHasLocalCredential() { return hasLocalCredential; }
+
+    public boolean isEmailVerified() { return emailVerified; }
+
+    public String getEmailId() { return emailId; }
+
+    public void setUserName(String userName) { this.userName = userName; }
+
+    public void setRole(UserRole role) { this.role = role; }
+
+    public void setProviders(List<String> providers) { this.providers = providers; }
+
+    public void setHasLocalCredential(boolean hasLocalCredential) { this.hasLocalCredential = hasLocalCredential; }
+
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
 }

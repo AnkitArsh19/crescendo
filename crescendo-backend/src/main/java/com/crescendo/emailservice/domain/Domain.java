@@ -1,6 +1,8 @@
 package com.crescendo.emailservice.domain;
 
 import com.crescendo.enums.DomainStatus;
+import com.crescendo.shared.domain.valueobject.DomainName;
+import com.crescendo.user.user_command.User_command;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -10,26 +12,36 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Entity to store the domain for the email service.
+ * The user provides the custom domain. Uses DomainName value object for validation.
+ */
 @Entity
-@Table(name = "domain")
+@Table(name = "domain",
+    indexes = {
+        @Index(name = "idx_domain_user", columnList = "user_id"),
+        @Index(name = "idx_domain_status", columnList = "status")
+    })
 public class Domain {
 
     @Id
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_domain_user"))
+    private User_command user;
 
-    @Column(name = "domain_name", nullable = false)
-    private String domainName;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "domain_name", nullable = false, length = 255))
+    private DomainName domainName;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "verification_tokens", columnDefinition = "jsonb", nullable = false)
     private List<String> verificationTokens;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private DomainStatus status;
 
     @CreationTimestamp
@@ -42,14 +54,19 @@ public class Domain {
     public Domain() {
     }
 
-    public Domain(UUID id, UUID userId, String domainName, List<String> verificationTokens, DomainStatus status, Instant createdAt, Instant verifiedAt) {
+    public Domain(UUID id, User_command user, DomainName domainName, List<String> verificationTokens, DomainStatus status) {
         this.id = id;
-        this.userId = userId;
+        this.user = user;
         this.domainName = domainName;
         this.verificationTokens = verificationTokens;
         this.status = status;
-        this.createdAt = createdAt;
-        this.verifiedAt = verifiedAt;
+    }
+
+    /**
+     * Convenience constructor accepting raw string for domainName.
+     */
+    public Domain(UUID id, User_command user, String domainName, List<String> verificationTokens, DomainStatus status) {
+        this(id, user, DomainName.of(domainName), verificationTokens, status);
     }
 
     public UUID getId() {
@@ -60,20 +77,31 @@ public class Domain {
         this.id = id;
     }
 
-    public UUID getUserId() {
-        return userId;
+    public User_command getUser() {
+        return user;
     }
 
-    public void setUserId(UUID userId) {
-        this.userId = userId;
+    public void setUser(User_command user) {
+        this.user = user;
     }
 
-    public String getDomainName() {
+    public DomainName getDomainNameVO() {
         return domainName;
     }
 
-    public void setDomainName(String domainName) {
+    /**
+     * Returns raw domain name string for compatibility.
+     */
+    public String getDomainName() {
+        return domainName != null ? domainName.value() : null;
+    }
+
+    public void setDomainName(DomainName domainName) {
         this.domainName = domainName;
+    }
+
+    public void setDomainName(String domainName) {
+        this.domainName = DomainName.of(domainName);
     }
 
     public List<String> getVerificationTokens() {

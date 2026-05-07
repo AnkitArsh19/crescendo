@@ -39,7 +39,7 @@ public class PasswordResetToken {
 	/**
 	 * Secure hash of the raw token sent to the user (never store raw token).
 	 */
-	@Column(name = "token_hash", nullable = false)
+	@Column(name = "token_hash", nullable = false, length = 100)
 	private String tokenHash;
 
 	@Column(name = "expires_at", nullable = false)

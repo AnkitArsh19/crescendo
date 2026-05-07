@@ -9,17 +9,41 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Tracks issued refresh tokens (hashed) and session metadata.
+ * Tracks issued refresh tokens (hashed) and the surrounding session metadata.
+ *
+ * WHY WE CAPTURE THESE DETAILS
+ * ────────────────────────────────
+ * Each row represents a single live refresh-token "session".  By persisting the
+ * session record (not just the token) we can:
+ *
+ *  • Revoke individual sessions — the user can "sign out" a lost laptop without
+ *    invalidating their phone session.
+ *
+ *  • Detect token reuse — if a refresh token is presented after the row has
+ *    already been rotated or revoked, we know the token was leaked and can
+ *    revoke the entire family.
+ *
+ *  • Audit login history — timestamps + IP + user-agent give the user (and
+ *    support staff) a clear picture of who logged in, from where, and when.
+ *
+ *  • Enforce session limits — we can cap concurrent sessions per user and
+ *    evict the oldest one when a new login occurs.
+ *
+ *  • Device management — the deviceId + deviceLabel pair lets users see human-
+ *    readable session names ("Chrome on Windows") and revoke by device.
+ *
+ * SECURITY NOTE: only the SHA-256 hash of the refresh token is stored.  The raw
+ * token is returned to the client once and never persisted, so a database leak
+ * does not expose usable credentials.
  */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "user_session",
-        indexes = {
-                @Index(name = "idx_user_session_user_id", columnList = "user_id"),
-                @Index(name = "idx_user_session_expires_at", columnList = "expires_at")
-        }
+    indexes = {
+        @Index(name = "idx_user_session_user_id", columnList = "user_id"),
+        @Index(name = "idx_user_session_expires_at", columnList = "expires_at"),
+        @Index(name = "idx_user_session_refresh_hash", columnList = "refresh_token_hash"),
+        @Index(name = "idx_user_session_device_id", columnList = "device_id")
+    }
 )
 public class UserSession {
 
@@ -27,30 +51,69 @@ public class UserSession {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    /// ManyToOne is used to map many entities to one entity
-    /// FetchType.LAZY means that the referenced entity will not be loaded from the database until we actually access it
-    /// optional=false means that the relationship is mandatory
-    /// JoinColumn tells how relationship is mapped.
-    /// Referenced column name is the name of the column of the foreign table.
-    /// Foreign Key is used to explicitly name the foreign key constraint
+    /// Links this session to the account that owns it.
+    /// Cascade is intentionally absent — deleting a user should go through a dedicated
+    /// service that revokes sessions first, not through an orphan-removal cascade.
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_user_session_user"))
     private User_command user;
 
+    /// SHA-256 hash of the raw refresh token.  We never store the raw token so that a
+    /// database breach does not immediately grant attackers valid refresh tokens.
+    /// The raw value is returned to the client once (in the login response / cookie)
+    /// and verified by hashing the incoming token and comparing against this column.
     @Column(name = "refresh_token_hash", nullable = false, length = 100)
     private String refreshTokenHash;
 
+    /// Absolute point in time when this refresh token becomes invalid.  Matches the
+    /// TTL configured in jwt.refresh.expiration so the DB row and the token itself
+    /// expire at approximately the same moment.
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /// Set when the user (or a background job) explicitly revokes this session.
+    /// A non-null value means the token is dead even if expiresAt has not passed yet.
+    /// Useful for "sign out everywhere" and per-device sign-out features.
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    /// Updated every time the refresh token is used to obtain a new access token.
+    /// Lets the UI show "last active 5 minutes ago" in the session management page
+    /// and helps identify stale sessions that can be cleaned up.
     @Column(name = "last_used_at")
     private Instant lastUsedAt;
 
+    /// Raw User-Agent header captured at login time.
+    /// Stored for auditing and so the backend can populate a human-readable device label.
+    /// Not used for security decisions because user-agents are trivially spoofable.
     @Column(name = "user_agent")
     private String userAgent;
+
+    // ── Session fingerprinting / device metadata ──────────────────────────────
+
+    /// IP address of the client when the session was first created.
+    /// Stored for audit logging and anomaly detection (e.g. session created from
+    /// one country, refreshed from another may trigger a re-auth).
+    /// IPv4 = max 15 chars, IPv6 = max 45 chars.
+    @Column(name = "client_ip", length = 45)
+    private String clientIp;
+
+    /// Most-recently-seen IP address, updated on every token refresh.
+    /// Comparing this with clientIp can surface suspicious session migration.
+    @Column(name = "last_ip", length = 45)
+    private String lastIp;
+
+    /// A stable, opaque identifier generated by the client and persisted across
+    /// sessions (e.g. a UUID stored in localStorage).  Enables grouping sessions
+    /// by physical device even if IPs or browsers change.
+    @Column(name = "device_id", length = 64)
+    private String deviceId;
+
+    /// Human-friendly label for the device presented in session-management UIs.
+    /// Typically derived from the User-Agent ("Chrome on Windows") or explicitly
+    /// set by the client ("My work laptop").
+    @Column(name = "device_label", length = 100)
+    private String deviceLabel;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -68,6 +131,14 @@ public class UserSession {
         this.user = user;
         this.refreshTokenHash = refreshTokenHash;
         this.expiresAt = expiresAt;
+    }
+
+    public void applyFingerprint(String userAgent, String clientIp, String deviceId, String deviceLabel) {
+        this.userAgent = userAgent;
+        this.clientIp = clientIp;
+        this.lastIp = clientIp;
+        this.deviceId = deviceId;
+        this.deviceLabel = deviceLabel;
     }
 
     public UUID getId() {
@@ -124,6 +195,38 @@ public class UserSession {
 
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
+    }
+
+    public String getClientIp() {
+        return clientIp;
+    }
+
+    public void setClientIp(String clientIp) {
+        this.clientIp = clientIp;
+    }
+
+    public String getLastIp() {
+        return lastIp;
+    }
+
+    public void setLastIp(String lastIp) {
+        this.lastIp = lastIp;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public String getDeviceLabel() {
+        return deviceLabel;
+    }
+
+    public void setDeviceLabel(String deviceLabel) {
+        this.deviceLabel = deviceLabel;
     }
 
     public Instant getCreatedAt() {

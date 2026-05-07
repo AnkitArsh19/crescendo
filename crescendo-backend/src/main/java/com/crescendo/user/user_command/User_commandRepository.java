@@ -5,14 +5,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface User_commandRepository extends JpaRepository<User_command, UUID> {
 
-	java.util.Optional<User_command> findByEmailIdIgnoreCase(String emailId);
-	java.util.Optional<User_command> findByUserNameIgnoreCase(String userName);
-
-	@Query("select u from User_command u where lower(u.emailId) = lower(:identifier) or lower(u.userName) = lower(:identifier)")
-	java.util.Optional<User_command> findByEmailOrUsername(@Param("identifier") String identifier);
+	/// email is an @Embedded Email value object whose single field is "value".
+	/// Spring Data cannot derive the path from the method name, so we use explicit JPQL.
+	@Query("SELECT u FROM User_command u WHERE UPPER(u.email.value) = UPPER(:email)")
+	Optional<User_command> findByEmailIgnoreCase(@Param("email") String email);
 }

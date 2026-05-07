@@ -11,14 +11,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "steps_query",
     indexes = {
         @Index(name = "idx_steps_query_workflow", columnList = "workflowId"),
@@ -33,14 +31,14 @@ public class Steps_query {
     @Column(name = "workflowId", nullable = false)
     private UUID workflowId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "stepType", nullable = false)
+    @Column(name = "stepType", nullable = false, length = 20)
     private StepType type;
 
-    @Column(name = "step_order", nullable = false)
-    private Integer order;
+    @Column(name = "step_order", nullable = false, precision = 18, scale = 6)
+    private BigDecimal order;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -50,8 +48,14 @@ public class Steps_query {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "appKey", nullable = false)
+    @Column(name = "appKey", nullable = false, length = 100)
     private String appKey;
+
+    @Column(name = "actionKey", nullable = false, length = 100)
+    private String actionKey;
+
+    @Column(name = "connectionId")
+    private UUID connectionId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "configuration", columnDefinition = "jsonb")
@@ -60,16 +64,16 @@ public class Steps_query {
     public Steps_query() {
     }
 
-    public Steps_query(UUID id, UUID workflowId, String name, StepType type, Integer order, Instant createdAt, Instant updatedAt, Map<String, Object> configuration, String appKey) {
+    public Steps_query(UUID id, UUID workflowId, String name, StepType type, BigDecimal order, String appKey, String actionKey, UUID connectionId, Map<String, Object> configuration) {
         this.id = id;
         this.workflowId = workflowId;
         this.name = name;
         this.type = type;
         this.order = order;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.configuration = configuration;
         this.appKey = appKey;
+        this.actionKey = actionKey;
+        this.connectionId = connectionId;
+        this.configuration = configuration;
     }
 
     public UUID getId() {
@@ -88,7 +92,7 @@ public class Steps_query {
         return type;
     }
 
-    public Integer getOrder() {
+    public BigDecimal getOrder() {
         return order;
     }
 
@@ -100,11 +104,47 @@ public class Steps_query {
         return appKey;
     }
 
+    public String getActionKey() {
+        return actionKey;
+    }
+
     public Map<String, Object> getConfiguration() {
         return configuration;
     }
 
+    public UUID getConnectionId() {
+        return connectionId;
+    }
+
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setType(StepType type) {
+        this.type = type;
+    }
+
+    public void setOrder(BigDecimal order) {
+        this.order = order;
+    }
+
+    public void setAppKey(String appKey) {
+        this.appKey = appKey;
+    }
+
+    public void setActionKey(String actionKey) {
+        this.actionKey = actionKey;
+    }
+
+    public void setConnectionId(UUID connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    public void setConfiguration(Map<String, Object> configuration) {
+        this.configuration = configuration;
     }
 }

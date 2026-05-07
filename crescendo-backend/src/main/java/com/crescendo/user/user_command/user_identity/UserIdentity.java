@@ -10,11 +10,9 @@ import java.util.UUID;
 
 /**
  * Links an external identity provider account (Google, GitHub, etc.) to a local user.
+ * A single user can have multiple providers.
  */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "user_identity",
 		uniqueConstraints = {
 				@UniqueConstraint(name = "uk_user_identity_provider_uid", columnNames = {"provider", "provider_user_id"})
@@ -30,12 +28,6 @@ public class UserIdentity {
 	@Column(name = "id", nullable = false)
 	private UUID id;
 
-    /// ManyToOne is used to map many entities to one entity
-    /// FetchType.LAZY means that the referenced entity will not be loaded from the database until we actually access it
-    /// optional=false means that the relationship is mandatory
-    /// JoinColumn tells how relationship is mapped.
-    /// Referenced column name is the name of the column of the foreign table.
-    /// Foreign Key is used to explicitly name the foreign key constraint
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_user_identity_user"))
 	private User_command user;
@@ -44,6 +36,9 @@ public class UserIdentity {
 	@Column(name = "provider", nullable = false)
 	private AuthProvider provider;
 
+    /**
+     * The userId provided by the OAuth provider
+     */
 	@Column(name = "provider_user_id", nullable = false)
 	private String providerUserId;
 

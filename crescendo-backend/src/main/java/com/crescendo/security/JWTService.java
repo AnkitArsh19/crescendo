@@ -42,13 +42,34 @@ public class JWTService {
         this.userSessionRepository = userSessionRepository;
     }
 
+    /// Issue a fresh access + refresh token pair for first-time login (no device fingerprint known).
     public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent) {
+        return issueTokenPair(user, principal, userAgent, false);
+    }
+
+    public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent, boolean rememberMe) {
         Instant now = Instant.now();
-        String access = buildAccessToken(principal, now);
-        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, now);
+        // 30 days for remember-me sessions, default otherwise
+        Long ttl = rememberMe ? 2_592_000_000L : null;
+        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, null, null, null, null, now, ttl);
+        String access = buildAccessToken(principal, refreshIssue.sessionId(), now);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
 
+    /// Overload that also records full device fingerprint (IP, device ID, human-readable label).
+    /// Used when the client sends device metadata alongside the login request.
+    public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent,
+                                    String clientIp, String deviceId, String deviceLabel) {
+        Instant now = Instant.now();
+        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now);
+        String access = buildAccessToken(principal, refreshIssue.sessionId(), now);
+        return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
+    }
+
+    /// Validates a presented refresh token and issues a new token pair.
+    /// If rotateOnRefresh=true (default), the old session is revoked and a brand-new session is created.
+    /// Also implements refresh token reuse detection — if a previously revoked (but not yet expired)
+    /// token is presented again, ALL sessions for that user are revoked immediately (breach response).
     @Transactional
     public Optional<TokenPair> refresh(String presentedRefreshToken, String userAgent) {
         String hash = hashRefresh(presentedRefreshToken);
@@ -58,21 +79,24 @@ public class JWTService {
             User_command user = session.getUser();
             AppUserDetails principal = AppUserDetails.from(user, Optional.empty());
 
-            String newAccess = buildAccessToken(principal, now);
+            String newAccess = buildAccessToken(principal, session.getId().toString(), now);
             Instant refreshExpires = session.getExpiresAt();
             String outRefresh = presentedRefreshToken;
 
             if (rotateOnRefresh) {
                 session.setRevokedAt(now);
-                RefreshIssue ri = createRefreshSession(user, userAgent, now);
+                RefreshIssue ri = createRefreshSession(user, userAgent, session.getLastIp(), session.getDeviceId(), session.getDeviceLabel(), session.getClientIp(), now);
                 outRefresh = ri.plainToken();
                 refreshExpires = ri.expiresAt();
+                newAccess = buildAccessToken(principal, ri.sessionId(), now);
             }
             return new TokenPair(newAccess, outRefresh, now.plusMillis(accessExpirationMs), refreshExpires);
         });
         if (active.isPresent()) return active;
 
-        // Rotation reuse detection: if token already revoked but still within original lifetime => possible replay
+        // Rotation reuse detection: a valid-but-revoked token being presented again is a strong
+        // signal that a previously issued token was stolen. We nuke all active sessions
+        // for that user as a precaution — they will need to log in again.
         userSessionRepository.findByRefreshTokenHash(hash).ifPresent(reused -> {
             if (reused.getRevokedAt() != null && reused.getExpiresAt().isAfter(now)) {
                 revokeAllForUser(reused.getUser().getId());
@@ -110,6 +134,10 @@ public class JWTService {
     public String extractUserName(String token) { return extractClaim(token, Claims::getSubject); }
     public Instant extractExpiryInstant(String token) { return extractClaim(token, c -> c.getExpiration().toInstant()); }
 
+    /// Extracts the session ID (sid claim) from an access token.
+    /// Returns null if the claim is absent (should not happen for tokens issued by us).
+    public String extractSessionId(String token) { return extractClaim(token, c -> c.get("sid", String.class)); }
+
     public boolean isExpired(String token) { return extractExpiryInstant(token).isBefore(Instant.now()); }
 
     private <T> T extractClaim(String token, Function<Claims,T> resolver) {
@@ -120,11 +148,20 @@ public class JWTService {
         return Jwts.parser().verifyWith(signingKey()).build().parseSignedClaims(token).getPayload();
     }
 
-    private String buildAccessToken(AppUserDetails principal, Instant now) {
+    /// Builds a signed JWT access token.
+    /// Custom claims:
+    ///   uid  = user's UUID (avoids a DB lookup to get user ID from subject/email)
+    ///   role = user's role for quick authorization checks in filters
+    ///   jti  = unique token ID (allows individual token revocation if needed)
+    ///   sid  = session ID linking this access token to its parent refresh session
+    private String buildAccessToken(AppUserDetails principal, String sessionId, Instant now) {
         Map<String,Object> claims = new HashMap<>();
         claims.put("uid", principal.getId().toString());
         claims.put("role", principal.getRole().name());
         claims.put("jti", UUID.randomUUID().toString());
+        if (sessionId != null) {
+            claims.put("sid", sessionId);
+        }
         Instant exp = now.plusMillis(accessExpirationMs);
         return Jwts.builder()
                 .claims(claims)
@@ -135,22 +172,39 @@ public class JWTService {
                 .compact();
     }
 
-    private RefreshIssue createRefreshSession(User_command user, String userAgent, Instant now) {
-        String raw = randomToken();
-        String hash = hashRefresh(raw);
-        Instant expires = now.plusMillis(refreshExpirationMs);
-        UserSession session = new UserSession(UUID.randomUUID(), user, hash, expires);
-        session.setUserAgent(userAgent);
-        userSessionRepository.save(session);
-        return new RefreshIssue(raw, expires);
+    private RefreshIssue createRefreshSession(User_command user, String userAgent,
+                                              String clientIp, String deviceId, String deviceLabel, String originalClientIp,
+                                              Instant now) {
+        return createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, originalClientIp, now, null);
     }
 
+    private RefreshIssue createRefreshSession(User_command user, String userAgent,
+                                              String clientIp, String deviceId, String deviceLabel, String originalClientIp,
+                                              Instant now, Long customTtlMs) {
+        String raw = randomToken();
+        String hash = hashRefresh(raw);
+        Instant expires = now.plusMillis(customTtlMs != null ? customTtlMs : refreshExpirationMs);
+        UUID sessionId = UUID.randomUUID();
+        UserSession session = new UserSession(sessionId, user, hash, expires);
+        session.applyFingerprint(userAgent, clientIp, deviceId, deviceLabel);
+        if (originalClientIp != null) {
+            session.setClientIp(originalClientIp);
+        }
+        userSessionRepository.save(session);
+        return new RefreshIssue(sessionId.toString(), raw, expires);
+    }
+
+    /// Generates a cryptographically random 48-byte token, URL-safe Base64 encoded.
+    /// 48 bytes = 384 bits of entropy — far beyond brute-force reach.
     private String randomToken() {
         byte[] buf = new byte[48];
         secureRandom.nextBytes(buf);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
 
+    /// One-way SHA-256 hash of the raw refresh token for safe DB storage.
+    /// Only the hash is persisted — the raw token lives only in the client's cookie.
+    /// If the DB is compromised, hashes cannot be replayed against the auth endpoint.
     private String hashRefresh(String raw) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -160,6 +214,9 @@ public class JWTService {
         }
     }
 
+    /// Derives the HMAC-SHA signing key from the configured secret.
+    /// Accepts either a raw UTF-8 string or a Base64-encoded secret (auto-detected).
+    /// Base64 encoding is preferred in production to allow arbitrary byte sequences.
     private SecretKey signingKey() {
         byte[] keyBytes;
         if (looksBase64(jwtSecret)) {
@@ -170,10 +227,13 @@ public class JWTService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
+    /// Attempts a Base64 decode — if it succeeds the secret is treated as Base64, else as plain UTF-8.
     private boolean looksBase64(String s) {
         try { Decoders.BASE64.decode(s); return true; } catch (IllegalArgumentException e) { return false; }
     }
 
-    private record RefreshIssue(String plainToken, Instant expiresAt) {}
+    /// Internal result carrier for the refresh session creation helper —
+    /// bundles the new session ID, the raw (unhashed) token, and its expiry together.
+    private record RefreshIssue(String sessionId, String plainToken, Instant expiresAt) {}
 }
 

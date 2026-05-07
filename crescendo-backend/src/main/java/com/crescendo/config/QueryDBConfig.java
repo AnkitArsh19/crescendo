@@ -1,9 +1,10 @@
 package com.crescendo.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.boot.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -12,6 +13,7 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 
 
 /**
@@ -38,6 +40,21 @@ import javax.sql.DataSource;
 )
 
 public class QueryDBConfig {
+
+        /// These JPA/Hibernate properties are read from application.properties and applied
+        /// explicitly because Spring Boot's auto-configuration is bypassed in a multi-datasource
+        /// setup — global spring.jpa.* properties do NOT reach custom EntityManagerFactory beans.
+        @Value("${spring.jpa.hibernate.ddl-auto:none}")
+        private String ddlAuto;
+
+        @Value("${spring.jpa.show-sql:false}")
+        private boolean showSql;
+
+        @Value("${spring.jpa.properties.hibernate.format_sql:false}")
+        private boolean formatSql;
+
+        @Value("${spring.jpa.properties.hibernate.jdbc.time_zone:UTC}")
+        private String timeZone;
 
         /**
          * Binds properties prefixed with "spring.datasource.query" in the application properties
@@ -69,6 +86,14 @@ public class QueryDBConfig {
         public LocalContainerEntityManagerFactoryBean queryEntityManagerFactory(
                 EntityManagerFactoryBuilder builder
         ){
+                /// Hibernate properties must be passed manually — spring.jpa.* is ignored
+                /// by custom EntityManagerFactory beans in a multi-datasource setup.
+                HashMap<String, Object> props = new HashMap<>();
+                props.put("hibernate.hbm2ddl.auto", ddlAuto);
+                props.put("hibernate.show_sql", showSql);
+                props.put("hibernate.format_sql", formatSql);
+                props.put("hibernate.jdbc.time_zone", timeZone);
+
                 return builder
                         .dataSource(queryDataSource())
                         .packages(
@@ -82,6 +107,7 @@ public class QueryDBConfig {
                                 "com.crescendo.app"
                         )
                         .persistenceUnit("query")
+                        .properties(props)
                         .build();
         }
 

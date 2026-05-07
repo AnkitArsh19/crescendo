@@ -1,0 +1,32 @@
+package com.crescendo.emailservice.email_send;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+import java.util.Map;
+import java.util.UUID;
+
+public final class EmailSendDto {
+
+    private EmailSendDto() {}
+
+    /// Request body for the public POST /api/v1/emails endpoint.
+    /// Mirrors Resend's API design for familiarity.
+    public record SendEmailRequest(
+            @NotBlank @Email String from,
+            @NotBlank @Email String to,
+            @NotBlank String subject,
+            String htmlBody,
+            String textBody,
+            UUID templateId,
+            Map<String, Object> templateData
+    ) {}
+
+    public record SendEmailResponse(
+            UUID id,
+            String to,
+            String from,
+            String subject,
+            String status
+    ) {}
+}

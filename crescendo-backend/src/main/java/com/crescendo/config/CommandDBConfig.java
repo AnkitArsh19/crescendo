@@ -1,9 +1,10 @@
 package com.crescendo.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.boot.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -13,6 +14,7 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.util.HashMap;
 
 /**
  * Enables JPA repository for base packages that are defined under it.
@@ -30,19 +32,39 @@ import javax.sql.DataSource;
                 "com.crescendo.user.user_command",
                 "com.crescendo.workflow.workflow_command",
                 "com.crescendo.steps.steps_command",
+                "com.crescendo.steps.step_condition",
                 "com.crescendo.connections.connections_command",
-                "com.crescendo.logbook.StepRun",
-                "com.crescendo.logbook.WorkflowRun",
+                "com.crescendo.logbook.step_run",
+                "com.crescendo.logbook.workflow_run",
                 "com.crescendo.emailservice.apikey.key_command",
                 "com.crescendo.emailservice.email_log",
                 "com.crescendo.emailservice.emailtemplate.template_command",
-                "com.crescendo.webhook"
-
+                "com.crescendo.emailservice.audience",
+                "com.crescendo.emailservice.broadcast",
+                "com.crescendo.emailservice.suppression",
+                "com.crescendo.webhook",
+                "com.crescendo.security.mfa",
+                "com.crescendo.admin"
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "commandTransactionManager"
 )
 public class CommandDBConfig {
+
+        /// These JPA/Hibernate properties are read from application.properties and applied
+        /// explicitly because Spring Boot's auto-configuration is bypassed in a multi-datasource
+        /// setup — global spring.jpa.* properties do NOT reach custom EntityManagerFactory beans.
+        @Value("${spring.jpa.hibernate.ddl-auto:none}")
+        private String ddlAuto;
+
+        @Value("${spring.jpa.show-sql:false}")
+        private boolean showSql;
+
+        @Value("${spring.jpa.properties.hibernate.format_sql:false}")
+        private boolean formatSql;
+
+        @Value("${spring.jpa.properties.hibernate.jdbc.time_zone:UTC}")
+        private String timeZone;
 
         /**
          * Binds properties prefixed with "spring.datasource.command" in the application properties
@@ -77,20 +99,38 @@ public class CommandDBConfig {
         public LocalContainerEntityManagerFactoryBean commandEntityManagerFactory(
                 EntityManagerFactoryBuilder builder
         ){
+                /// Hibernate properties must be passed manually — spring.jpa.* is ignored
+                /// by custom EntityManagerFactory beans in a multi-datasource setup.
+                HashMap<String, Object> props = new HashMap<>();
+                props.put("hibernate.hbm2ddl.auto", ddlAuto);
+                props.put("hibernate.show_sql", showSql);
+                props.put("hibernate.format_sql", formatSql);
+                props.put("hibernate.jdbc.time_zone", timeZone);
+
                 return builder
                         .dataSource(commandDataSource())
                         .packages(
                                 "com.crescendo.user.user_command",
                                 "com.crescendo.workflow.workflow_command",
                                 "com.crescendo.steps.steps_command",
+                                "com.crescendo.steps.step_condition",
                                 "com.crescendo.connections.connections_command",
-                                "com.crescendo.logbook.StepRun",
-                                "com.crescendo.logbook.WorkflowRun",
+                                "com.crescendo.logbook.step_run",
+                                "com.crescendo.logbook.workflow_run",
                                 "com.crescendo.emailservice.apikey.key_command",
                                 "com.crescendo.emailservice.email_log",
                                 "com.crescendo.emailservice.emailtemplate.template_command",
-                                "com.crescendo.webhook"
+                                "com.crescendo.emailservice.audience",
+                                "com.crescendo.emailservice.broadcast",
+                                "com.crescendo.emailservice.suppression",
+                                "com.crescendo.webhook",
+                                "com.crescendo.security.mfa",
+                                "com.crescendo.auth.token.email",
+                                "com.crescendo.auth.token.password",
+                                "com.crescendo.emailservice.domain",
+                                "com.crescendo.admin"
                         )
+                        .properties(props)
                         .build();
         }
 

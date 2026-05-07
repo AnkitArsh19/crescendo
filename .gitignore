@@ -1,6 +1,15 @@
-.idea
-docker-compose.yml
+.idea/
+.vscode/
+.DS_Store
+crescendo-frontend/
 
-### Application Properties with sensitive data ###
-**/application-docker.properties
-**/application-local.properties
+### Application Properties ###
+**/application*.properties
+!**/application*.properties.example
+
+### Docker ###
+**/docker-compose.yml
+**/Dockerfile
+!**/*.example
+
+integration-tests/.env

@@ -1,5 +1,6 @@
 package com.crescendo.workflow.workflow_command;
 
+import com.crescendo.shared.domain.valueobject.GuestSessionId;
 import com.crescendo.user.user_command.User_command;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -23,7 +24,7 @@ public class Workflow_command {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
     @Column(name = "description", length = 500)
@@ -35,9 +36,17 @@ public class Workflow_command {
     /// JoinColumn tells how relationship is mapped.
     /// Referenced column name is the name of the column of the foreign table.
     /// Foreign Key is used to explicitly name the foreign key constraint
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "userId", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_workflow_user"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "userId", referencedColumnName = "id", nullable = true, foreignKey = @ForeignKey(name = "fk_workflow_user"))
     private User_command user;
+
+    /**
+     * For guest users who don't have an account yet.
+     * Allows trying the app without login.
+     */
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "guestSessionId", length = 100))
+    private GuestSessionId guestSessionId;
 
     @Column(name = "deletedAt")
     private Instant deletedAt;
@@ -56,15 +65,34 @@ public class Workflow_command {
     public Workflow_command() {
     }
 
-    public Workflow_command(UUID id, String name, String description, User_command user, boolean isActive, Instant createdAt, Instant updatedAt, Instant deletedAt) {
+    public Workflow_command(UUID id, String name, String description, User_command user, boolean isActive) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.user = user;
         this.isActive = isActive;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.deletedAt = deletedAt;
+    }
+
+    public Workflow_command(UUID id, String name, String description, GuestSessionId guestSessionId, boolean isActive) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.guestSessionId = guestSessionId;
+        this.isActive = isActive;
+    }
+
+    /**
+     * Convenience constructor for guest workflow with raw string session ID.
+     */
+    public Workflow_command(UUID id, String name, String description, String guestSessionIdStr, boolean isActive) {
+        this(id, name, description, GuestSessionId.of(guestSessionIdStr), isActive);
+    }
+
+    /**
+     * Check if this is a guest workflow (no registered user).
+     */
+    public boolean isGuestWorkflow() {
+        return user == null && guestSessionId != null;
     }
 
     public UUID getId() {
@@ -96,6 +124,23 @@ public class Workflow_command {
     }
     public void setUser(User_command user) {
         this.user = user;
+    }
+
+    public GuestSessionId getGuestSessionIdVO() {
+        return guestSessionId;
+    }
+
+    /**
+     * Returns raw guest session ID string for compatibility.
+     */
+    public String getGuestSessionId() {
+        return guestSessionId != null ? guestSessionId.value() : null;
+    }
+    public void setGuestSessionId(GuestSessionId guestSessionId) {
+        this.guestSessionId = guestSessionId;
+    }
+    public void setGuestSessionId(String guestSessionId) {
+        this.guestSessionId = guestSessionId != null ? GuestSessionId.of(guestSessionId) : null;
     }
 
     public Instant getDeletedAt() {

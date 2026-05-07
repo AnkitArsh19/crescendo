@@ -1,5 +1,6 @@
 package com.crescendo.webhook;
 
+import com.crescendo.shared.domain.valueobject.WebhookKey;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
@@ -8,13 +9,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "webhook",
     indexes = {
         @Index(name = "idx_webhook_step", columnList = "stepId"),
-        @Index(name = "idx_webhook_active", columnList = "isActive")
+        @Index(name = "idx_webhook_active", columnList = "isActive"),
+        @Index(name = "idx_webhook_key", columnList = "webhookKey")
     })
 public class Webhook {
 
@@ -22,8 +21,9 @@ public class Webhook {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "webhookKey", unique = true, nullable = false)
-    private String webhookKey;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "webhookKey", unique = true, nullable = false, length = 100))
+    private WebhookKey webhookKey;
 
     @Column(name = "stepId", nullable = false)
     private UUID stepId;
@@ -38,12 +38,25 @@ public class Webhook {
     public Webhook() {
     }
 
-    public Webhook(UUID id, String webhookKey, UUID stepId, boolean isActive, Instant createdAt) {
+    public Webhook(UUID id, WebhookKey webhookKey, UUID stepId, boolean isActive) {
         this.id = id;
         this.webhookKey = webhookKey;
         this.stepId = stepId;
         this.isActive = isActive;
-        this.createdAt = createdAt;
+    }
+
+    /**
+     * Convenience constructor accepting raw string for webhookKey.
+     */
+    public Webhook(UUID id, String webhookKey, UUID stepId, boolean isActive) {
+        this(id, WebhookKey.of(webhookKey), stepId, isActive);
+    }
+
+    /**
+     * Factory method to create a new webhook with auto-generated key.
+     */
+    public static Webhook create(UUID id, UUID stepId) {
+        return new Webhook(id, WebhookKey.generate(), stepId, true);
     }
 
     public UUID getId() {
@@ -54,12 +67,23 @@ public class Webhook {
         this.id = id;
     }
 
-    public String getWebhookKey() {
+    public WebhookKey getWebhookKeyVO() {
         return webhookKey;
     }
 
-    public void setWebhookKey(String webhookKey) {
+    /**
+     * Returns raw webhook key string for compatibility.
+     */
+    public String getWebhookKey() {
+        return webhookKey != null ? webhookKey.value() : null;
+    }
+
+    public void setWebhookKey(WebhookKey webhookKey) {
         this.webhookKey = webhookKey;
+    }
+
+    public void setWebhookKey(String webhookKey) {
+        this.webhookKey = WebhookKey.of(webhookKey);
     }
 
     public UUID getStepId() {

@@ -9,7 +9,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "connections_query")
+@Table(name = "connections_query",
+    indexes = {
+        @Index(name = "idx_connections_query_user", columnList = "userId"),
+        @Index(name = "idx_connections_query_status", columnList = "status")
+    })
 public class Connections_query {
 
     @Id
@@ -19,14 +23,14 @@ public class Connections_query {
     @Column(name = "userId", nullable = false)
     private UUID userId;
 
-    @Column(name = "appKey", nullable = false)
+    @Column(name = "appKey", nullable = false, length = 100)
     private String appKey;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private ConnectionStatus status;
 
     @CreationTimestamp
@@ -40,14 +44,12 @@ public class Connections_query {
     public Connections_query() {
     }
 
-    public Connections_query(UUID id, UUID userId, String appKey, String name, ConnectionStatus status, Instant updatedAt, Instant createdAt) {
+    public Connections_query(UUID id, UUID userId, String appKey, String name, ConnectionStatus status) {
         this.id = id;
         this.userId = userId;
         this.appKey = appKey;
         this.name = name;
         this.status = status;
-        this.updatedAt = updatedAt;
-        this.createdAt = createdAt;
     }
 
     public UUID getId() {
@@ -66,8 +68,16 @@ public class Connections_query {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public ConnectionStatus getStatus() {
         return status;
+    }
+
+    public void setStatus(ConnectionStatus status) {
+        this.status = status;
     }
 
     public Instant getCreatedAt() {
