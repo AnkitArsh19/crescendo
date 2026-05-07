@@ -1,6 +1,8 @@
 package com.crescendo.user.user_command;
 
 import com.crescendo.enums.UserRole;
+import com.crescendo.shared.domain.valueobject.Email;
+import com.crescendo.shared.domain.valueobject.Username;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -8,10 +10,11 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Entity to store user details and command operations.
+ * Uses value objects for Email and Username for validation and type safety.
+ */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "user_command",
     indexes = {
         @Index(name = "idx_user_email", columnList = "email_id", unique = true),
@@ -23,15 +26,23 @@ public class User_command {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "email_id", nullable = false)
-    private String emailId;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "email_id", nullable = false, length = 320))
+    private Email email;
 
-    @Column(name = "username", nullable = false)
-    private String userName;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "username", nullable = false, length = 100))
+    private Username userName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
+    @Column(name = "role", nullable = false, length = 20)
     private UserRole role;
+
+    /// Tracks whether the user has confirmed ownership of their email address.
+    /// Defaults to false at registration; set to true when the verification link is consumed.
+    /// OAuth-registered users may bypass this if the provider has already verified the email.
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -44,13 +55,18 @@ public class User_command {
     public User_command() {
     }
 
-    public User_command(UUID id, String userName, String emailId, UserRole role, Instant createdAt, Instant updatedAt) {
+    public User_command(UUID id, Username userName, Email email, UserRole role) {
         this.id = id;
         this.userName = userName;
-        this.emailId = emailId;
+        this.email = email;
         this.role = role;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Convenience constructor accepting raw strings (validates internally).
+     */
+    public User_command(UUID id, String userName, String email, UserRole role) {
+        this(id, Username.of(userName), Email.of(email), role);
     }
 
     public UUID getId() {
@@ -61,20 +77,42 @@ public class User_command {
         this.id = id;
     }
 
+    public Email getEmail() {
+        return email;
+    }
+
+    /**
+     * Returns raw email string for compatibility.
+     */
     public String getEmailId() {
-        return emailId;
+        return email != null ? email.value() : null;
+    }
+
+    public void setEmail(Email email) {
+        this.email = email;
     }
 
     public void setEmailId(String emailId) {
-        this.emailId = emailId;
+        this.email = Email.of(emailId);
     }
 
-    public String getUserName() {
+    public Username getUserNameVO() {
         return userName;
     }
 
-    public void setUserName(String userName) {
+    /**
+     * Returns raw username string for compatibility.
+     */
+    public String getUserName() {
+        return userName != null ? userName.value() : null;
+    }
+
+    public void setUserName(Username userName) {
         this.userName = userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = Username.of(userName);
     }
 
     public UserRole getRole() {
@@ -99,5 +137,13 @@ public class User_command {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 }

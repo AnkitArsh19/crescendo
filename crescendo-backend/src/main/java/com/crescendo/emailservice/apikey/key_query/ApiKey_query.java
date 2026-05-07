@@ -3,24 +3,35 @@ package com.crescendo.emailservice.apikey.key_query;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Read-side projection for API keys.
+ * No hashed key — only metadata visible on the query side.
+ */
 @Entity
-@Table(name = "apikey_query")
+@Table(name = "apikey_query",
+    indexes = {
+        @Index(name = "idx_apikey_query_user", columnList = "user_id")
+    })
 public class ApiKey_query {
 
     @Id
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "prefix", nullable = false)
+    @Column(name = "prefix", nullable = false, length = 20)
     private String prefix;
 
     @CreationTimestamp
@@ -36,17 +47,19 @@ public class ApiKey_query {
     public ApiKey_query() {
     }
 
-    public ApiKey_query(UUID id, String name, String prefix, Instant revokedAt, Instant createdAt, Instant lastUsedAt) {
+    public ApiKey_query(UUID id, UUID userId, String name, String prefix) {
         this.id = id;
+        this.userId = userId;
         this.name = name;
         this.prefix = prefix;
-        this.revokedAt = revokedAt;
-        this.createdAt = createdAt;
-        this.lastUsedAt = lastUsedAt;
     }
 
     public UUID getId() {
         return id;
+    }
+
+    public UUID getUserId() {
+        return userId;
     }
 
     public String getName() {
@@ -65,8 +78,20 @@ public class ApiKey_query {
         return revokedAt;
     }
 
+    public void setRevokedAt(Instant revokedAt) {
+        this.revokedAt = revokedAt;
+    }
+
     public Instant getLastUsedAt() {
         return lastUsedAt;
+    }
+
+    public void setLastUsedAt(Instant lastUsedAt) {
+        this.lastUsedAt = lastUsedAt;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }
 

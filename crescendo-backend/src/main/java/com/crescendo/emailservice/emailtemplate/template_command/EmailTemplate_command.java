@@ -8,7 +8,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "email_template_command")
+@Table(name = "email_template_command",
+    indexes = {
+        @Index(name = "idx_email_template_user", columnList = "userId")
+    })
 public class EmailTemplate_command {
 
     @Id
@@ -18,10 +21,10 @@ public class EmailTemplate_command {
     @Column(name = "userId", nullable = false)
     private UUID userId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "subject", nullable = false)
+    @Column(name = "subject", nullable = false, length = 1000)
     private String subject;
 
     @Lob
@@ -43,15 +46,13 @@ public class EmailTemplate_command {
     public EmailTemplate_command() {
     }
 
-    public EmailTemplate_command(UUID id, UUID userId, String name, String subject, String HTMLBody, String textBody, Instant createdAt, Instant updatedAt) {
+    public EmailTemplate_command(UUID id, UUID userId, String name, String subject, String HTMLBody, String textBody) {
         this.id = id;
         this.userId = userId;
         this.name = name;
         this.subject = subject;
         this.HTMLBody = HTMLBody;
         this.textBody = textBody;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     public String getTextBody() {

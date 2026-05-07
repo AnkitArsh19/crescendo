@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,14 +39,15 @@ public class JWTFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip if already authenticated
+        // Skip if already authenticated — another filter earlier in the chain may have set this.
+        // Avoids redundant DB calls on the same request.
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String token = resolveToken(request);
-        if (token != null) {
+    if (token != null) {
             try {
                 String username = jwtService.extractUserName(token);
                 if (username != null) {
@@ -58,15 +60,24 @@ public class JWTFilter extends OncePerRequestFilter {
                     }
                 }
             } catch (ExpiredJwtException ex) {
-                // Access token expired; let request proceed (client should call refresh endpoint)
+                // Access token expired — do NOT return 401 here.
+                // Let the request fall through unauthenticated; SecurityConfig will deny it if the
+                // endpoint requires auth. The client should detect 401 and call /auth/refresh.
             } catch (Exception ex) {
-                // Malformed/invalid token: optional early exit with 401, but better to proceed and let controller decide
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Invalid or malformed token\"}");
+        return;
             }
         }
 
         filterChain.doFilter(request, response);
     }
 
+    /// Extracts the raw JWT from the request.
+    /// Primary source: Authorization header ("Bearer <token>") — standard for REST APIs.
+    /// Fallback: access_token query parameter — used for WebSocket connections and browser-initiated
+    /// file downloads where setting a custom header is not possible.
     private String resolveToken(HttpServletRequest request) {
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader != null && authHeader.startsWith("Bearer ")) {

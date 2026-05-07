@@ -1,7 +1,12 @@
 package com.crescendo.enums;
 
+/**
+ * Status of a workflow run execution.
+ */
 public enum WorkflowRunStatus {
-    RUNNING,
-    SUCCESS,
-    FAILED
+    PENDING,    // Queued for execution
+    RUNNING,    // Currently executing steps
+    SUCCESS,    // All steps completed successfully
+    FAILED,     // One or more steps failed
+    CANCELLED   // Cancelled by user
 }

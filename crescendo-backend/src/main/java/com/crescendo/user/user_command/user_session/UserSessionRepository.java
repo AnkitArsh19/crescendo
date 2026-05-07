@@ -29,4 +29,10 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
 		List<UserSession> findAllActiveByUserId(UUID userId, Instant now);
 
 		Optional<UserSession> findByRefreshTokenHash(String refreshTokenHash);
+
+	/**
+	 * Deletes all sessions (active, revoked, and expired) for a given user.
+	 * Used during account deletion to avoid loading all sessions into memory.
+	 */
+	void deleteAllByUser_Id(UUID userId);
 }

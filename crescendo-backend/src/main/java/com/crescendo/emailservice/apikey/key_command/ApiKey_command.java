@@ -10,10 +10,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Table to store the secret API key generated for the email service for users to use in their software
+ * This key authenticates requests coming from other servers
+ * This for machine to machine communication
+ */
 @Entity
-/// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
 @Table(name = "apikey_command",
     indexes = {
         @Index(name = "idx_apikey_user", columnList = "user_id"),
@@ -21,20 +23,33 @@ import java.util.UUID;
     })
 public class ApiKey_command {
 
+    /**
+     * UUID for generating random ID's without interacting with the database.
+     * This keeps the system secure and hard to scrape data.
+     */
     @Id
     @Column(name = "id", nullable = false)
     private UUID id;
 
+    /**
+     * Matches the user id with the api key
+     */
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "hashedKey", nullable = false)
+    /**
+     * Stores the hashed value of API key and not the raw key
+     */
+    @Column(name = "hashedKey", nullable = false, length = 100)
     private String hashedKey;
 
-    @Column(name = "prefix", nullable = false)
+    /**
+     * A short prefix for every API key to store it with the key for fast lookups
+     */
+    @Column(name = "prefix", nullable = false, length = 20)
     private String prefix;
 
     @CreationTimestamp
@@ -50,15 +65,12 @@ public class ApiKey_command {
     public ApiKey_command() {
     }
 
-    public ApiKey_command(UUID userId, UUID id, String name, String hashedKey, String prefix, Instant createdAt, Instant revokedAt, Instant lastUsedAt) {
-        this.userId = userId;
+    public ApiKey_command(UUID id, UUID userId, String name, String hashedKey, String prefix) {
         this.id = id;
+        this.userId = userId;
         this.name = name;
         this.hashedKey = hashedKey;
         this.prefix = prefix;
-        this.createdAt = createdAt;
-        this.revokedAt = revokedAt;
-        this.lastUsedAt = lastUsedAt;
     }
 
     public UUID getId() {

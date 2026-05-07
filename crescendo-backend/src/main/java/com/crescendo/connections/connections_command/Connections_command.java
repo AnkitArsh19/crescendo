@@ -1,6 +1,8 @@
 package com.crescendo.connections.connections_command;
 
 import com.crescendo.enums.ConnectionStatus;
+import com.crescendo.shared.domain.valueobject.AppKey;
+import com.crescendo.user.user_command.User_command;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
@@ -27,13 +29,15 @@ public class Connections_command {
     @Column(name = "id", nullable = false)
     private UUID id;
 
-    @Column(name = "userId", nullable = false)
-    private UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "userId", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_connection_user"))
+    private User_command user;
 
-    @Column(name = "appKey", nullable = false)
-    private String appKey;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "appKey", nullable = false, length = 100))
+    private AppKey appKey;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -41,7 +45,7 @@ public class Connections_command {
     private Map<String, Object> credentials;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private ConnectionStatus status;
 
     @CreationTimestamp
@@ -55,15 +59,20 @@ public class Connections_command {
     public Connections_command() {
     }
 
-    public Connections_command(UUID id, UUID userId, String appKey, String name, Map<String, Object> credentials, ConnectionStatus status, Instant createdAt, Instant updatedAt) {
+    public Connections_command(UUID id, User_command user, AppKey appKey, String name, Map<String, Object> credentials, ConnectionStatus status) {
         this.id = id;
-        this.userId = userId;
+        this.user = user;
         this.appKey = appKey;
         this.name = name;
         this.credentials = credentials;
         this.status = status;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Convenience constructor accepting raw string for appKey.
+     */
+    public Connections_command(UUID id, User_command user, String appKey, String name, Map<String, Object> credentials, ConnectionStatus status) {
+        this(id, user, AppKey.of(appKey), name, credentials, status);
     }
 
     public UUID getId() {
@@ -74,20 +83,31 @@ public class Connections_command {
         this.id = id;
     }
 
-    public UUID getUserId() {
-        return userId;
+    public User_command getUser() {
+        return user;
     }
 
-    public void setUserId(UUID userId) {
-        this.userId = userId;
+    public void setUser(User_command user) {
+        this.user = user;
     }
 
-    public String getAppKey() {
+    public AppKey getAppKeyVO() {
         return appKey;
     }
 
-    public void setAppKey(String appKey) {
+    /**
+     * Returns raw app key string for compatibility.
+     */
+    public String getAppKey() {
+        return appKey != null ? appKey.value() : null;
+    }
+
+    public void setAppKey(AppKey appKey) {
         this.appKey = appKey;
+    }
+
+    public void setAppKey(String appKey) {
+        this.appKey = AppKey.of(appKey);
     }
 
     public String getName() {

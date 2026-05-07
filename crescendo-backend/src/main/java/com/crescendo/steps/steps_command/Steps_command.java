@@ -1,6 +1,9 @@
 package com.crescendo.steps.steps_command;
 
 import com.crescendo.enums.StepType;
+import com.crescendo.shared.domain.valueobject.ActionKey;
+import com.crescendo.shared.domain.valueobject.AppKey;
+import com.crescendo.shared.domain.valueobject.StepOrder;
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -30,21 +33,23 @@ public class Steps_command {
     @JoinColumn(name = "workflowId", referencedColumnName = "id", nullable = false, foreignKey = @ForeignKey(name = "fk_step_workflow"))
     private Workflow_command workflow;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 255)
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "stepType", nullable = false)
+    @Column(name = "stepType", nullable = false, length = 20)
     private StepType type;
 
-    @Column(name = "step_order", nullable = false, precision = 18, scale = 6)
-    private BigDecimal order;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "step_order", nullable = false, precision = 18, scale = 6))
+    private StepOrder order;
 
     @Column(name = "deletedAt")
     private Instant deletedAt;
 
-    @Column(name = "actionKey", nullable = false, length = 120)
-    private String actionKey;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "actionKey", nullable = false, length = 120))
+    private ActionKey actionKey;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -54,8 +59,16 @@ public class Steps_command {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "appKey", nullable = false)
-    private String appKey;
+    @Embedded
+    @AttributeOverride(name = "value", column = @Column(name = "appKey", nullable = false, length = 100))
+    private AppKey appKey;
+
+    /**
+     * Optional reference to user's connection for OAuth-based apps.
+     * Can be null for apps that don't require authentication (e.g., webhooks).
+     */
+    @Column(name = "connectionId")
+    private UUID connectionId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "configuration", columnDefinition = "jsonb")
@@ -64,18 +77,25 @@ public class Steps_command {
     public Steps_command() {
     }
 
-    public Steps_command(UUID id, Workflow_command workflow, String name, StepType type, BigDecimal order, String actionKey, Instant createdAt, Instant updatedAt, String appKey, Map<String, Object> configuration, Instant deletedAt) {
+    public Steps_command(UUID id, Workflow_command workflow, String name, StepType type, StepOrder order, 
+                         ActionKey actionKey, AppKey appKey, UUID connectionId, Map<String, Object> configuration) {
         this.id = id;
         this.workflow = workflow;
         this.name = name;
         this.type = type;
         this.order = order;
         this.actionKey = actionKey;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
         this.appKey = appKey;
+        this.connectionId = connectionId;
         this.configuration = configuration;
-        this.deletedAt = deletedAt;
+    }
+
+    /**
+     * Convenience constructor accepting raw strings (validates internally).
+     */
+    public Steps_command(UUID id, Workflow_command workflow, String name, StepType type, BigDecimal order, 
+                         String actionKey, String appKey, UUID connectionId, Map<String, Object> configuration) {
+        this(id, workflow, name, type, StepOrder.of(order), ActionKey.of(actionKey), AppKey.of(appKey), connectionId, configuration);
     }
 
     public UUID getId() {
@@ -100,11 +120,21 @@ public class Steps_command {
         this.deletedAt = deletedAt;
     }
 
-    public BigDecimal getOrder() {
+    public StepOrder getOrderVO() {
         return order;
     }
-    public void setOrder(BigDecimal order) {
+    
+    /**
+     * Returns raw order as BigDecimal for compatibility.
+     */
+    public BigDecimal getOrder() {
+        return order != null ? order.value() : null;
+    }
+    public void setOrder(StepOrder order) {
         this.order = order;
+    }
+    public void setOrder(BigDecimal order) {
+        this.order = StepOrder.of(order);
     }
 
     public String getName() {
@@ -123,13 +153,23 @@ public class Steps_command {
         this.type = type;
     }
 
-
-    public String getActionKey() {
+    public ActionKey getActionKeyVO() {
         return actionKey;
     }
 
-    public void setActionKey(String actionKey) {
+    /**
+     * Returns raw action key string for compatibility.
+     */
+    public String getActionKey() {
+        return actionKey != null ? actionKey.value() : null;
+    }
+
+    public void setActionKey(ActionKey actionKey) {
         this.actionKey = actionKey;
+    }
+
+    public void setActionKey(String actionKey) {
+        this.actionKey = ActionKey.of(actionKey);
     }
 
     public Instant getCreatedAt() {
@@ -148,12 +188,23 @@ public class Steps_command {
         this.updatedAt = updatedAt;
     }
 
-    public String getAppKey() {
+    public AppKey getAppKeyVO() {
         return appKey;
     }
 
-    public void setAppKey(String appKey) {
+    /**
+     * Returns raw app key string for compatibility.
+     */
+    public String getAppKey() {
+        return appKey != null ? appKey.value() : null;
+    }
+
+    public void setAppKey(AppKey appKey) {
         this.appKey = appKey;
+    }
+
+    public void setAppKey(String appKey) {
+        this.appKey = AppKey.of(appKey);
     }
 
     public Map<String, Object> getConfiguration() {
@@ -162,5 +213,13 @@ public class Steps_command {
 
     public void setConfiguration(Map<String, Object> configuration) {
         this.configuration = configuration;
+    }
+
+    public UUID getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(UUID connectionId) {
+        this.connectionId = connectionId;
     }
 }

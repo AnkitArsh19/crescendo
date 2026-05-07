@@ -17,3 +17,36 @@ spring.datasource.query.driver-class-name=org.postgresql.Driver
 # Local Development Settings
 spring.jpa.show-sql=false
 logging.level.org.springframework.web=DEBUG
+
+# Required for encrypting connection credentials at rest (AES-256 Base64 key)
+credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
+
+# OAuth2 client registrations (for direct OAuth login/connect flows)
+# The Google client is reused for Google Sheets, Drive, Calendar, and Forms if those scopes are enabled.
+spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
+spring.security.oauth2.client.registration.google.client-secret=REPLACE_ME
+spring.security.oauth2.client.registration.github.client-id=REPLACE_ME
+spring.security.oauth2.client.registration.github.client-secret=REPLACE_ME
+
+# Integration OAuth providers use the provider-key structure below:
+# crescendo.integrations.oauth.providers.{provider-key}.client-id=...
+# crescendo.integrations.oauth.providers.{provider-key}.client-secret=...
+# crescendo.integrations.oauth.providers.{provider-key}.authorize-url=...
+# crescendo.integrations.oauth.providers.{provider-key}.token-url=...
+# crescendo.integrations.oauth.providers.{provider-key}.scopes=...
+#
+# Use application.properties.example as the canonical source for the full provider matrix,
+# including Gmail, Google Sheets, Google Drive, Google Calendar, Google Forms,
+# Google Tasks, Google Slides, Google Docs, Microsoft Excel, Microsoft Outlook,
+# Microsoft Teams, GitHub, Discord, Notion, Linear, Airtable,
+# X, Reddit, Spotify, Twitch, Strava, Figma, LinkedIn, GitLab, and Shopify.
+
+# SMTP relay for crescendo-email action
+crescendo.email.smtp.host=REPLACE_ME
+crescendo.email.smtp.port=587
+crescendo.email.smtp.username=REPLACE_ME
+crescendo.email.smtp.password=REPLACE_ME
+
+# Optional provider keys for controlled internal connections
+gemini.api.key=REPLACE_ME_IF_USED
+sarvam.api.key=REPLACE_ME_IF_USED
