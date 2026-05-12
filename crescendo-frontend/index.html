@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo-black.svg" />
+  <link rel="icon" type="image/png" href="/logo-black.png" />
+  <meta name="theme-color" content="#09090b" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+    content="Crescendo is a workflow automation platform that helps you build, orchestrate, and monitor complex workflows with an intuitive visual builder. Connect Google Sheets, Gmail, Discord, Slack, and more." />
+  <title>Crescendo — Workflow Automation Platform</title>
+</head>
+
+<body>
+  <!-- React app mounts here -->
+  <div id="root"></div>
+
+  <!--
+    Static content for Google OAuth verification crawlers.
+    This lives OUTSIDE #root so React does not replace it.
+    It is visually hidden but remains in the DOM for bots.
+  -->
+  <div id="seo-fallback" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;">
+    <h1>Crescendo — Workflow Automation Platform</h1>
+    <p>
+      Crescendo is a workflow automation platform that helps you build, orchestrate,
+      and monitor complex workflows with an intuitive visual builder. Connect your
+      services, schedule tasks, and let Crescendo handle the rest.
+    </p>
+    <h2>Key Features</h2>
+    <ul>
+      <li>Visual Workflow Builder — Design workflows with a drag-and-drop interface</li>
+      <li>App Integrations — Connect Google Sheets, Gmail, Discord, Slack, and more</li>
+      <li>Execution History — Monitor and debug workflow runs in real time</li>
+      <li>Email Service — Send transactional emails with built-in analytics</li>
+      <li>Secure OAuth — Connect your accounts securely via OAuth 2.0</li>
+    </ul>
+    <h2>Why Crescendo Requests Access to Your Google Account</h2>
+    <p>
+      Crescendo requests access to your Google account data (such as Google Sheets,
+      Gmail, Google Drive, and Google Calendar) solely to execute the workflow
+      automations you configure. For example, if you create a workflow that reads
+      data from a Google Sheet and sends an email via Gmail, Crescendo needs
+      authorized access to those specific Google services to perform those actions
+      on your behalf. We do not use your Google data for advertising, analytics,
+      or any purpose other than providing the workflow automation services you request.
+    </p>
+    <p>
+      <a href="https://app.crescendo.run/privacy/">Privacy Policy</a> |
+      <a href="https://app.crescendo.run/terms/">Terms of Service</a>
+    </p>
+    <p>&copy; 2026 Crescendo. All rights reserved.</p>
+  </div>
+
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

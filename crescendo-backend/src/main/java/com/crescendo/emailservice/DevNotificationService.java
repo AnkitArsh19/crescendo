@@ -2,6 +2,7 @@ package com.crescendo.emailservice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,7 +19,8 @@ import org.springframework.stereotype.Component;
  * and delete (or disable) this file.
  */
 @Component
-public class DevNotificationService {
+@Profile("local")
+public class DevNotificationService implements NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(DevNotificationService.class);
 

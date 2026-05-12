@@ -18,6 +18,10 @@ public class GoogleCalendarApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select which calendar to use");
 
+        var eventIdField = Map.of("key", "eventId", "label", "Event ID",
+                "type", "text", "required", true,
+                "helpText", "The ID of the event (from a trigger or search)");
+
         return new App("google-calendar", "Google Calendar", "Create, update, and watch calendar events",
                 "/icons/google-calendar.svg", AuthType.OAUTH2,
 
@@ -27,12 +31,36 @@ public class GoogleCalendarApp implements AppDefinition {
                         "triggerKey", "event-created",
                         "name", "Event Created",
                         "description", "Triggers when a new calendar event is created",
-                        "configSchema", List.of(calendarField)
+                        "configSchema", List.of(
+                            calendarField,
+                            Map.of("key", "searchQuery", "label", "Search Text",
+                                   "type", "text", "required", false,
+                                   "placeholder", "Standup",
+                                   "helpText", "Optionally filter by event title/description")
+                        )
                     ),
                     Map.of(
                         "triggerKey", "event-updated",
                         "name", "Event Updated",
                         "description", "Triggers when a calendar event is updated",
+                        "configSchema", List.of(calendarField)
+                    ),
+                    Map.of(
+                        "triggerKey", "event-start",
+                        "name", "Event Starting",
+                        "description", "Triggers when a calendar event is about to start",
+                        "configSchema", List.of(
+                            calendarField,
+                            Map.of("key", "minutesBefore", "label", "Minutes Before",
+                                   "type", "text", "required", false,
+                                   "placeholder", "15",
+                                   "helpText", "Trigger this many minutes before the event starts (default: 0)")
+                        )
+                    ),
+                    Map.of(
+                        "triggerKey", "event-ended",
+                        "name", "Event Ended",
+                        "description", "Triggers when a calendar event has concluded",
                         "configSchema", List.of(calendarField)
                     ),
                     Map.of(
@@ -66,6 +94,10 @@ public class GoogleCalendarApp implements AppDefinition {
                             Map.of("key", "description", "label", "Description",
                                    "type", "textarea", "required", false,
                                    "helpText", "Optional event description"),
+                            Map.of("key", "location", "label", "Location",
+                                   "type", "text", "required", false,
+                                   "placeholder", "Conference Room A",
+                                   "helpText", "Event location"),
                             Map.of("key", "attendees", "label", "Attendees",
                                    "type", "text", "required", false,
                                    "placeholder", "alice@example.com, bob@example.com",
@@ -74,6 +106,29 @@ public class GoogleCalendarApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "placeholder", "Asia/Kolkata",
                                    "helpText", "IANA timezone (default: UTC)")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "update-event",
+                        "name", "Update Event",
+                        "description", "Modify an existing calendar event",
+                        "configSchema", List.of(
+                            calendarField, eventIdField,
+                            Map.of("key", "summary", "label", "Event Title",
+                                   "type", "text", "required", false,
+                                   "helpText", "New event title (leave blank to keep current)"),
+                            Map.of("key", "start", "label", "Start Date/Time",
+                                   "type", "text", "required", false,
+                                   "helpText", "New start datetime in ISO 8601 format"),
+                            Map.of("key", "end", "label", "End Date/Time",
+                                   "type", "text", "required", false,
+                                   "helpText", "New end datetime in ISO 8601 format"),
+                            Map.of("key", "description", "label", "Description",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "Updated event description"),
+                            Map.of("key", "location", "label", "Location",
+                                   "type", "text", "required", false,
+                                   "helpText", "Updated event location")
                         )
                     ),
                     Map.of(
@@ -97,6 +152,24 @@ public class GoogleCalendarApp implements AppDefinition {
                         )
                     ),
                     Map.of(
+                        "actionKey", "delete-event",
+                        "name", "Delete Event",
+                        "description", "Delete a calendar event by its ID",
+                        "configSchema", List.of(calendarField, eventIdField)
+                    ),
+                    Map.of(
+                        "actionKey", "add-attendee",
+                        "name", "Add Attendees to Event",
+                        "description", "Invite people to an existing calendar event",
+                        "configSchema", List.of(
+                            calendarField, eventIdField,
+                            Map.of("key", "attendees", "label", "Attendee Emails",
+                                   "type", "text", "required", true,
+                                   "placeholder", "alice@example.com, bob@example.com",
+                                   "helpText", "Comma-separated email addresses to invite")
+                        )
+                    ),
+                    Map.of(
                         "actionKey", "list-events",
                         "name", "List Events",
                         "description", "List upcoming calendar events",
@@ -106,17 +179,6 @@ public class GoogleCalendarApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "placeholder", "10",
                                    "helpText", "Maximum number of events to return")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "delete-event",
-                        "name", "Delete Event",
-                        "description", "Delete a calendar event by its ID",
-                        "configSchema", List.of(
-                            calendarField,
-                            Map.of("key", "eventId", "label", "Event ID",
-                                   "type", "text", "required", true,
-                                   "helpText", "The ID of the event to delete (from a trigger or find)")
                         )
                     )
                 )

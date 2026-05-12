@@ -9,7 +9,8 @@ import com.crescendo.workflow.workflow_query.Workflow_query;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -36,9 +37,12 @@ public class LogbookEventListener {
     private static final Logger logger = LoggerFactory.getLogger(LogbookEventListener.class);
 
     private final Workflow_queryRepository workflowQueryRepo;
+    private final CacheManager cacheManager;
 
-    public LogbookEventListener(Workflow_queryRepository workflowQueryRepo) {
+    public LogbookEventListener(Workflow_queryRepository workflowQueryRepo,
+                                CacheManager cacheManager) {
         this.workflowQueryRepo = workflowQueryRepo;
+        this.cacheManager = cacheManager;
     }
 
     /**
@@ -46,7 +50,6 @@ public class LogbookEventListener {
      */
     @Transactional
     @TransactionalEventListener
-    @CacheEvict(value = "workflows", allEntries = true)
     public void onWorkflowRunStarted(WorkflowRunStartedEvent event) {
         logger.info("Workflow run started: runId={}, workflowId={}, userId={}",
                 event.aggregateId(), event.getWorkflowId(), event.getUserId());
@@ -55,6 +58,7 @@ public class LogbookEventListener {
         if (query != null) {
             query.setStatus(WorkflowStatus.RUNNING);
             workflowQueryRepo.save(query);
+            evictWorkflowCaches(query);
         }
     }
 
@@ -64,7 +68,6 @@ public class LogbookEventListener {
      */
     @Transactional
     @TransactionalEventListener
-    @CacheEvict(value = "workflows", allEntries = true)
     public void onWorkflowRunCompleted(WorkflowRunCompletedEvent event) {
         logger.info("Workflow run completed: runId={}, workflowId={}, status={}",
                 event.aggregateId(), event.getWorkflowId(), event.getStatus());
@@ -74,6 +77,7 @@ public class LogbookEventListener {
             query.setLastRunAt(Instant.now());
             query.setStatus(mapRunStatusToWorkflowStatus(event.getStatus()));
             workflowQueryRepo.save(query);
+            evictWorkflowCaches(query);
         }
     }
 
@@ -81,10 +85,23 @@ public class LogbookEventListener {
      * Log step run completions for observability.
      */
     @TransactionalEventListener
-    @CacheEvict(value = "workflowRuns", allEntries = true)
     public void onStepRunCompleted(StepRunCompletedEvent event) {
         logger.info("Step run completed: stepRunId={}, workflowRunId={}, stepId={}, status={}",
                 event.aggregateId(), event.getWorkflowRunId(), event.getStepId(), event.getStatus());
+    }
+
+    private void evictWorkflowCaches(Workflow_query workflow) {
+        Cache cache = cacheManager.getCache("workflows");
+        if (cache == null) {
+            return;
+        }
+
+        if (workflow.getUserId() != null) {
+            cache.evict("detail:v2:" + workflow.getUserId() + ":" + workflow.getId());
+        }
+        if (workflow.getGuestSessionId() != null) {
+            cache.evict("guest-detail:v2:" + workflow.getGuestSessionId() + ":" + workflow.getId());
+        }
     }
 
     private WorkflowStatus mapRunStatusToWorkflowStatus(WorkflowRunStatus runStatus) {

@@ -17,4 +17,6 @@ public interface StepRunRepository extends JpaRepository<StepRun, UUID> {
     long countByWorkflowRunId(UUID workflowRunId);
 
     long countByWorkflowRunIdAndStatus(UUID workflowRunId, StepRunStatus status);
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM StepRun s WHERE s.status = 'RUNNING' AND s.updatedAt < :threshold")
+    List<StepRun> findOrphanTasks(@org.springframework.data.repository.query.Param("threshold") java.time.Instant threshold);
 }

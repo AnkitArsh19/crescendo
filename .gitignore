@@ -1,7 +1,6 @@
 .idea/
 .vscode/
 .DS_Store
-crescendo-frontend/
 
 ### Application Properties ###
 **/application*.properties
@@ -12,4 +11,6 @@ crescendo-frontend/
 **/Dockerfile
 !**/*.example
 
-integration-tests/.env
+# Documentation archive (excluded from version control)
+docs_archive/
+**/docs_archive/

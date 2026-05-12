@@ -38,6 +38,7 @@ public class DeadLetterStreamConsumer implements StreamListener<String, MapRecor
         String eventType = unquote(raw.get("eventType") != null ? raw.get("eventType").toString() : null);
         String aggregateId = unquote(raw.get("aggregateId") != null ? raw.get("aggregateId").toString() : null);
         int retryCount = parseRetryCount(raw.get("retryCount") != null ? raw.get("retryCount").toString() : null);
+        long timestamp = raw.get("timestamp") != null ? Long.parseLong(unquote(raw.get("timestamp").toString())) : System.currentTimeMillis();
 
         logger.info("[dlq] Processing dead-letter event: type={}, aggregateId={}, retryCount={}/{}",
                 eventType, aggregateId, retryCount, MAX_RETRIES);
@@ -51,6 +52,18 @@ public class DeadLetterStreamConsumer implements StreamListener<String, MapRecor
         if (originalStream == null) {
             logger.warn("[dlq] Dead-letter event missing originalStream, cannot retry: {}", raw);
             return;
+        }
+
+        long backoffMs = (long) Math.pow(2, retryCount) * 5000L; // Exponential backoff: 5s, 10s, 20s
+        long elapsed = System.currentTimeMillis() - timestamp;
+        if (elapsed < backoffMs) {
+            try {
+                // Sleep for the remaining backoff time to prevent immediate looping
+                Thread.sleep(backoffMs - elapsed);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
         }
 
         // Re-publish to original stream with incremented retry count

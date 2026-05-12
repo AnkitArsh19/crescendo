@@ -4,8 +4,10 @@ import com.crescendo.enums.WorkflowRunStatus;
 import com.crescendo.logbook.LogbookDto;
 import com.crescendo.logbook.domain_event.WorkflowRunCompletedEvent;
 import com.crescendo.logbook.domain_event.WorkflowRunStartedEvent;
+import com.crescendo.logbook.outbox.OutboxEvent;
+import com.crescendo.logbook.outbox.OutboxEventRepository;
+import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
-import com.crescendo.shared.infrastructure.event.RedisDomainEventPublisher;
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
 import jakarta.transaction.Transactional;
@@ -14,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 
 /**
@@ -24,7 +26,7 @@ import java.util.UUID;
  *   1. Validates ownership of the parent workflow
  *   2. Writes to the workflow_run table
  *   3. Publishes a domain event
- *   4. Enqueues execution to Redis for async processing
+ *   4. Persists an outbox row for async processing by the Redis publisher
  */
 @Service
 @Transactional
@@ -33,16 +35,16 @@ public class WorkflowRunService {
     private final WorkflowRunRepository runRepo;
     private final Workflow_commandRepository workflowRepo;
     private final DomainEventPublisher eventPublisher;
-    private final RedisDomainEventPublisher redisEventPublisher;
+        private final OutboxEventRepository outboxEventRepository;
 
     public WorkflowRunService(WorkflowRunRepository runRepo,
                                Workflow_commandRepository workflowRepo,
                                DomainEventPublisher eventPublisher,
-                               RedisDomainEventPublisher redisEventPublisher) {
+                                                           OutboxEventRepository outboxEventRepository) {
         this.runRepo = runRepo;
         this.workflowRepo = workflowRepo;
         this.eventPublisher = eventPublisher;
-        this.redisEventPublisher = redisEventPublisher;
+                this.outboxEventRepository = outboxEventRepository;
     }
 
     /**
@@ -66,14 +68,22 @@ public class WorkflowRunService {
         eventPublisher.publish(
                 new WorkflowRunStartedEvent(runId, workflowId, userId, req.triggerData()));
 
-        // Enqueue for async execution by ExecutionQueueConsumer
-        redisEventPublisher.enqueueExecution(Map.of(
-                "workflowRunId", runId.toString(),
-                "workflowId", workflowId.toString(),
-                "userId", userId.toString()
-        ));
+        OutboxEvent outboxEvent = new OutboxEvent(
+                UUID.randomUUID(),
+                RedisStreamConfig.STREAM_EXECUTION_QUEUE,
+                buildExecutionPayload(runId, workflowId, userId)
+        );
+        outboxEventRepository.save(outboxEvent);
 
         return toSummary(run, 0, 0, 0);
+    }
+
+    private HashMap<String, Object> buildExecutionPayload(UUID runId, UUID workflowId, UUID userId) {
+        HashMap<String, Object> payload = new HashMap<>();
+        payload.put("workflowRunId", runId.toString());
+        payload.put("workflowId", workflowId.toString());
+        payload.put("userId", userId.toString());
+        return payload;
     }
 
     /**

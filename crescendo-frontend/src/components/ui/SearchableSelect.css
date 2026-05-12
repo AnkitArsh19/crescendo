@@ -1,0 +1,251 @@
+/* ═══════════════════════════════════════════
+   SearchableSelect — Portal-Based Dropdown
+   ═══════════════════════════════════════════ */
+
+.ss-container {
+    position: relative;
+    width: 100%;
+}
+
+/* ── Trigger button ── */
+.ss-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    font-family: var(--font-sans);
+    color: var(--text-accent);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    text-align: left;
+    gap: 8px;
+    min-height: 40px;
+}
+
+.ss-trigger:hover {
+    border-color: var(--border-hover);
+}
+
+.ss-trigger:focus,
+.ss-trigger.open {
+    border-color: var(--border-hover);
+    box-shadow: 0 0 0 2px rgba(128, 128, 128, 0.1);
+}
+
+.ss-trigger.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.ss-trigger-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ss-trigger-text.placeholder {
+    color: var(--text-tertiary);
+}
+
+.ss-trigger-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.ss-trigger-refresh {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.ss-trigger-refresh:hover {
+    color: var(--text-accent);
+    background: var(--bg-card-hover);
+}
+
+.ss-trigger-chevron {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    transition: transform var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.ss-trigger-chevron.open {
+    transform: rotate(180deg);
+}
+
+/* ── Portal Dropdown ── */
+.ss-dropdown--portal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    max-height: 320px;
+    display: flex;
+    flex-direction: column;
+    animation: ss-dropdown-in 0.15s ease-out;
+}
+
+.ss-dropdown--portal.ss-dropdown--up {
+    animation: ss-dropdown-in-up 0.15s ease-out;
+}
+
+@keyframes ss-dropdown-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-dropdown-in-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Search ── */
+.ss-search-wrap {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+}
+
+.ss-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    font-family: var(--font-sans);
+    color: var(--text-accent);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.ss-search-input:focus {
+    border-color: var(--border-hover);
+}
+
+.ss-search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* ── Options list ── */
+.ss-options {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.ss-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+    text-align: left;
+}
+
+.ss-option:hover,
+.ss-option.focused {
+    background: var(--bg-elevated);
+}
+
+.ss-option.selected {
+    background: rgba(128, 128, 128, 0.12);
+}
+
+.ss-option-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.ss-option-label {
+    font-weight: 500;
+    color: var(--text-accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ss-option-desc {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ss-option-check {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* ── States ── */
+.ss-loading,
+.ss-empty,
+.ss-error {
+    padding: 20px 12px;
+    text-align: center;
+    font-size: 0.78rem;
+}
+
+.ss-loading {
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ss-loading-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text-tertiary);
+    border-radius: 50%;
+    animation: ss-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.ss-loading-dot:nth-child(2) { animation-delay: 0.15s; }
+.ss-loading-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes ss-dot-pulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+.ss-empty {
+    color: var(--text-tertiary);
+}
+
+.ss-error {
+    color: #ef4444;
+}

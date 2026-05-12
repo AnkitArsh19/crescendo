@@ -207,17 +207,12 @@ public class OAuthTokenRefreshService {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-        // Notion and Reddit require Basic auth for token exchange
+        // Notion requires Basic auth for token exchange
         if (isBasicAuthProvider(providerKey)) {
             String basic = Base64.getEncoder().encodeToString(
                     (config.getClientId() + ":" + config.getClientSecret()).getBytes(StandardCharsets.UTF_8)
             );
             headers.set(HttpHeaders.AUTHORIZATION, "Basic " + basic);
-        }
-
-        // Reddit requires a custom User-Agent
-        if ("reddit".equals(providerKey)) {
-            headers.set("User-Agent", "crescendo:v1.0 (by /u/crescendo-app)");
         }
 
         // Most providers use form-urlencoded
@@ -254,9 +249,11 @@ public class OAuthTokenRefreshService {
     private boolean isTokenExpired(Map<String, Object> credentials) {
         Object expiresAtObj = credentials.get("tokenExpiresAt");
         if (expiresAtObj == null) {
-            // Legacy connections without tokenExpiresAt — assume expired if older than 1 hour
-            // This forces a refresh which will then store tokenExpiresAt going forward
-            return true;
+            // No tokenExpiresAt stored — this happens with legacy connections or
+            // when the token exchange didn't return expires_in. We cannot determine
+            // expiry, so assume the token is still valid and let the API call
+            // surface a 401 naturally, rather than forcing a refresh that may fail.
+            return false;
         }
 
         try {
@@ -264,12 +261,12 @@ public class OAuthTokenRefreshService {
             return Instant.now().isAfter(expiresAt.minusSeconds(EXPIRY_BUFFER_SECONDS));
         } catch (Exception e) {
             logger.warn("[token-refresh] Could not parse tokenExpiresAt: {}", expiresAtObj);
-            return true;
+            return false;
         }
     }
 
     private boolean isBasicAuthProvider(String providerKey) {
-        return "notion".equals(providerKey) || "reddit".equals(providerKey);
+        return "notion".equals(providerKey);
     }
 
     /**

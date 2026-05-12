@@ -66,17 +66,24 @@ public class RedisDomainEventPublisher {
      */
     public void enqueueExecution(Map<String, String> executionData) {
         try {
-            RecordId recordId = redisTemplate.opsForStream()
-                    .add(StreamRecords.newRecord()
-                            .ofMap(executionData)
-                            .withStreamKey(RedisStreamConfig.STREAM_EXECUTION_QUEUE));
-
+            RecordId recordId = enqueueToStreamOrThrow(RedisStreamConfig.STREAM_EXECUTION_QUEUE, executionData);
             logger.debug("Enqueued execution to {} with ID {}",
                     RedisStreamConfig.STREAM_EXECUTION_QUEUE, recordId);
         } catch (Exception e) {
             logger.error("Failed to enqueue execution: {}", e.getMessage());
             sendToDeadLetter(executionData, RedisStreamConfig.STREAM_EXECUTION_QUEUE, e.getMessage());
         }
+    }
+
+    /**
+     * Publish a request to a specific Redis stream.
+     * Throws on failure so callers can decide whether to retry.
+     */
+    public RecordId enqueueToStreamOrThrow(String streamKey, Map<String, String> data) {
+        return redisTemplate.opsForStream()
+                .add(StreamRecords.newRecord()
+                        .ofMap(data)
+                        .withStreamKey(streamKey));
     }
 
     /**
@@ -106,6 +113,7 @@ public class RedisDomainEventPublisher {
             dlqData.put("originalStream", originalStream);
             dlqData.put("error", error);
             dlqData.put("retryCount", eventData.getOrDefault("retryCount", "0"));
+            dlqData.put("timestamp", String.valueOf(System.currentTimeMillis()));
 
             redisTemplate.opsForStream()
                     .add(StreamRecords.newRecord()

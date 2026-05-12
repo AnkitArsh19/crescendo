@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+
 import java.net.URI;
 import java.util.Map;
 
@@ -39,13 +40,14 @@ public class IntegrationOAuthController {
     @GetMapping("/{provider}/authorize")
     public ResponseEntity<Map<String, String>> authorize(
             @PathVariable String provider,
+            @RequestParam(value = "connectionId", required = false) String connectionId,
             @AuthenticationPrincipal AppUserDetails principal) {
 
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
 
-        String authUrl = oauthService.buildAuthorizationUrl(provider, principal.getId());
+        String authUrl = oauthService.buildAuthorizationUrl(provider, principal.getId(), connectionId);
         return ResponseEntity.ok(Map.of("authorizationUrl", authUrl));
     }
 

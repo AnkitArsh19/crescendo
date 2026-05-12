@@ -31,6 +31,12 @@ public class Webhook {
     @Column(name = "isActive", nullable = false)
     private boolean isActive;
 
+    @Column(name = "secretKey", nullable = false, length = 128)
+    private String secretKey;
+
+    @Column(name = "providerSignatureHeader", nullable = false, length = 64)
+    private String providerSignatureHeader = "X-Hub-Signature-256";
+
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
@@ -43,6 +49,7 @@ public class Webhook {
         this.webhookKey = webhookKey;
         this.stepId = stepId;
         this.isActive = isActive;
+        this.secretKey = UUID.randomUUID().toString().replace("-", "");
     }
 
     /**
@@ -100,6 +107,22 @@ public class Webhook {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public String getSecretKey() {
+        return secretKey;
+    }
+
+    public void setSecretKey(String secretKey) {
+        this.secretKey = secretKey;
+    }
+
+    public String getProviderSignatureHeader() {
+        return providerSignatureHeader;
+    }
+
+    public void setProviderSignatureHeader(String providerSignatureHeader) {
+        this.providerSignatureHeader = providerSignatureHeader;
     }
 
     public Instant getCreatedAt() {

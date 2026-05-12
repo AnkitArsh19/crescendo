@@ -32,13 +32,19 @@ public class AirtableApp implements AppDefinition {
                     Map.of(
                         "triggerKey", "new-record",
                         "name", "New Record",
-                        "description", "Triggers when a new record is added",
+                        "description", "Triggers when a new record is added to a table",
                         "configSchema", List.of(baseField, tableField)
                     ),
                     Map.of(
                         "triggerKey", "updated-record",
                         "name", "Updated Record",
-                        "description", "Triggers when a record is updated",
+                        "description", "Triggers when an existing record is modified",
+                        "configSchema", List.of(baseField, tableField)
+                    ),
+                    Map.of(
+                        "triggerKey", "new-or-updated-record",
+                        "name", "New or Updated Record",
+                        "description", "Triggers on record creation or modification",
                         "configSchema", List.of(baseField, tableField)
                     )
                 ),

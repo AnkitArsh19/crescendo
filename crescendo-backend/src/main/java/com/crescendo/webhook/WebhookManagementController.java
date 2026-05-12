@@ -143,6 +143,8 @@ public class WebhookManagementController {
         return new WebhookDto.WebhookResponse(
                 w.getId(),
                 w.getWebhookKey(),
+            w.getSecretKey(),
+            w.getProviderSignatureHeader(),
                 w.getStepId(),
                 w.isActive(),
                 url,

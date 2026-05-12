@@ -1,0 +1,43 @@
+.ui-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ui-toggle-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: var(--border-secondary);
+    transition: background var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.ui-toggle-track.active {
+    background: var(--text-secondary);
+}
+
+.ui-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bg-primary);
+    transition: transform var(--transition-fast);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.ui-toggle-track.active .ui-toggle-thumb {
+    transform: translateX(20px);
+}
+
+.ui-toggle-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}

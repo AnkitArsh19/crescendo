@@ -37,8 +37,20 @@ public class GoogleSheetsApp implements AppDefinition {
                 List.of(
                     Map.of(
                         "triggerKey", "new-row",
+                        "name", "New Spreadsheet Row",
+                        "description", "Triggers when a new row is added to a spreadsheet",
+                        "configSchema", List.of(spreadsheetField, worksheetField)
+                    ),
+                    Map.of(
+                        "triggerKey", "updated-row",
+                        "name", "Updated Spreadsheet Row",
+                        "description", "Triggers when a row is modified in a spreadsheet",
+                        "configSchema", List.of(spreadsheetField, worksheetField, columnField)
+                    ),
+                    Map.of(
+                        "triggerKey", "new-or-updated-row",
                         "name", "New or Updated Row",
-                        "description", "Triggers when a new row is added or an existing row is updated",
+                        "description", "Triggers when a row is added or an existing row is updated",
                         "configSchema", List.of(spreadsheetField, worksheetField, columnField)
                     ),
                     Map.of(
@@ -46,6 +58,12 @@ public class GoogleSheetsApp implements AppDefinition {
                         "name", "New Worksheet",
                         "description", "Triggers when a new worksheet is added to a spreadsheet",
                         "configSchema", List.of(spreadsheetField)
+                    ),
+                    Map.of(
+                        "triggerKey", "new-spreadsheet",
+                        "name", "New Spreadsheet",
+                        "description", "Triggers when a new spreadsheet is created in Google Drive",
+                        "configSchema", List.of()
                     )
                 ),
 
@@ -53,7 +71,7 @@ public class GoogleSheetsApp implements AppDefinition {
                 List.of(
                     Map.of(
                         "actionKey", "append-row",
-                        "name", "Append Row",
+                        "name", "Create Spreadsheet Row",
                         "description", "Add a new row to the end of a spreadsheet",
                         "configSchema", List.of(
                             spreadsheetField, worksheetField,
@@ -64,7 +82,7 @@ public class GoogleSheetsApp implements AppDefinition {
                     ),
                     Map.of(
                         "actionKey", "update-row",
-                        "name", "Update Row",
+                        "name", "Update Spreadsheet Row",
                         "description", "Update an existing row by row number",
                         "configSchema", List.of(
                             spreadsheetField, worksheetField,
@@ -91,7 +109,7 @@ public class GoogleSheetsApp implements AppDefinition {
                     ),
                     Map.of(
                         "actionKey", "find-row",
-                        "name", "Find Row",
+                        "name", "Find Spreadsheet Row",
                         "description", "Search for a row by column value",
                         "configSchema", List.of(
                             spreadsheetField, worksheetField,
@@ -108,7 +126,7 @@ public class GoogleSheetsApp implements AppDefinition {
                     ),
                     Map.of(
                         "actionKey", "delete-row",
-                        "name", "Delete Row",
+                        "name", "Delete Spreadsheet Row",
                         "description", "Delete a row from a worksheet by row number",
                         "configSchema", List.of(
                             spreadsheetField, worksheetField,
@@ -116,6 +134,18 @@ public class GoogleSheetsApp implements AppDefinition {
                                    "type", "text", "required", true,
                                    "placeholder", "5",
                                    "helpText", "The row number to delete (1-based)")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "clear-cells",
+                        "name", "Clear Spreadsheet Cells",
+                        "description", "Clear cell contents in a range without deleting rows",
+                        "configSchema", List.of(
+                            spreadsheetField, worksheetField,
+                            Map.of("key", "range", "label", "Range",
+                                   "type", "text", "required", true,
+                                   "placeholder", "A2:C5",
+                                   "helpText", "Cell range to clear (e.g. A2:C5)")
                         )
                     ),
                     Map.of(
