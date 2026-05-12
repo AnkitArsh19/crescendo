@@ -102,6 +102,32 @@ public class GoogleTasksApp implements AppDefinition {
                                    "placeholder", "20",
                                    "helpText", "Maximum tasks to return")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "update-task",
+                        "name", "Update Task",
+                        "description", "Modify a task's title, notes, due date, or status",
+                        "configSchema", List.of(
+                            taskListField,
+                            Map.<String, Object>of("key", "taskId", "label", "Task",
+                                   "type", "dynamic_dropdown", "resourceType", "tasks",
+                                   "dependsOn", List.of("taskListId"),
+                                   "required", true,
+                                   "helpText", "Select the task to update"),
+                            Map.of("key", "title", "label", "Title",
+                                   "type", "text", "required", false,
+                                   "helpText", "Updated task title"),
+                            Map.of("key", "notes", "label", "Notes",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "Updated task notes"),
+                            Map.of("key", "status", "label", "Status",
+                                   "type", "select", "required", false,
+                                   "options", List.of(
+                                       Map.of("value", "needsAction", "label", "Needs Action"),
+                                       Map.of("value", "completed", "label", "Completed")
+                                   ),
+                                   "helpText", "New status")
+                        )
                     )
                 ))
                 .credentialSchema(List.of())

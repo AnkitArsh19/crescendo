@@ -16,7 +16,6 @@ import com.crescendo.workflow.domain_event.WorkflowUpdatedEvent;
 import com.crescendo.workflow.workflow_query.Workflow_query;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -155,7 +154,6 @@ public class Workflow_commandService {
      * Activates a workflow so it can be triggered.
      * Requires STANDARD or ADMIN tier — GUEST and UNVERIFIED cannot activate.
      */
-    @CacheEvict(value = "workflows", allEntries = true)
     public void activateWorkflow(UUID userId, UUID workflowId) {
         accessControl.requireCanActivateWorkflow();
         Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
@@ -173,7 +171,6 @@ public class Workflow_commandService {
     /**
      * Deactivates a workflow so it stops triggering.
      */
-    @CacheEvict(value = "workflows", allEntries = true)
     public void deactivateWorkflow(UUID userId, UUID workflowId) {
         Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
 

@@ -75,4 +75,16 @@ public class ConnectionsController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * POST /connections/{connectionId}/test — lightweight credential validation.
+     * Makes a minimal API call per provider to verify the token/key is valid.
+     */
+    @PostMapping("/{connectionId}/test")
+    public ResponseEntity<java.util.Map<String, Object>> testConnection(
+            @PathVariable UUID connectionId,
+            Authentication auth) {
+        var result = commandService.testConnection(userId(auth), connectionId);
+        return ResponseEntity.ok(result);
+    }
+
 }

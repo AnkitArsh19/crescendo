@@ -13,6 +13,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -82,6 +86,16 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
             return;
         }
 
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        ScheduledFuture<?> heartbeat = scheduler.scheduleAtFixedRate(() -> {
+            try {
+                lockService.extend(lockKey, lockToken.get(), 300_000); // Extend by 5 min
+                logger.debug("[execution] Extended lock heartbeat for workflow {}", workflowId);
+            } catch (Exception e) {
+                logger.error("[execution] Failed to extend lock for workflow {}: {}", workflowId, e.getMessage());
+            }
+        }, 3, 3, TimeUnit.MINUTES);
+
         try {
             processExecution(workflowRunId, workflowId, userId);
             acknowledge(message); // ACK only after successful processing
@@ -90,6 +104,8 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
                     workflowRunId, e.getMessage());
             // Do NOT acknowledge — message will be redelivered for retry
         } finally {
+            heartbeat.cancel(true);
+            scheduler.shutdownNow();
             lockService.unlock(lockKey, lockToken.get());
         }
     }

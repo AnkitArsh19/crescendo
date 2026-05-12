@@ -1,0 +1,330 @@
+.sw-page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+}
+
+/* Loading / Error / Done states */
+.sw-loading,
+.sw-error-state,
+.sw-done-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 100px 20px;
+    text-align: center;
+}
+
+.sw-loading p,
+.sw-error-state h3,
+.sw-done-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.sw-error-state h3 {
+    color: #ef4444;
+}
+
+.sw-done-state p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sw-back-btn {
+    margin-top: 8px;
+    padding: 10px 24px;
+    background: var(--text-accent);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.sw-back-btn:hover {
+    opacity: 0.88;
+}
+
+/* Progress bar */
+.sw-progress {
+    margin-bottom: 28px;
+}
+
+.sw-progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sw-progress-bar {
+    height: 4px;
+    background: var(--bg-card);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.sw-progress-fill {
+    height: 100%;
+    background: var(--text-accent);
+    border-radius: 4px;
+}
+
+/* Workflow card */
+.sw-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+}
+
+.sw-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.sw-card-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-accent);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.sw-card-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-accent);
+    margin: 0 0 4px;
+    line-height: 1.3;
+}
+
+.sw-card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Steps section */
+.sw-steps-section {
+    margin-bottom: 20px;
+}
+
+.sw-steps-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-tertiary);
+    margin: 0 0 12px;
+}
+
+.sw-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sw-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    transition: border-color 0.15s;
+}
+
+.sw-step:hover {
+    border-color: var(--border-secondary);
+}
+
+.sw-step-number {
+    width: 26px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sw-step-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sw-step-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sw-step-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.sw-step-type {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sw-step-app,
+.sw-step-action {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.sw-step-icon {
+    color: var(--text-tertiary);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.sw-no-steps {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Notice */
+.sw-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(234, 179, 8, 0.06);
+    border: 1px solid rgba(234, 179, 8, 0.15);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #eab308;
+    line-height: 1.5;
+}
+
+/* Actions */
+.sw-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.sw-skip-btn {
+    padding: 11px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.sw-skip-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+}
+
+.sw-skip-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sw-import-btn {
+    padding: 11px 28px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--bg-primary);
+    background: var(--text-accent);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.sw-import-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.sw-import-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Imported count */
+.sw-imported-count {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #22c55e;
+}
+
+@media (max-width: 640px) {
+    .sw-page {
+        padding: 24px 16px 60px;
+    }
+
+    .sw-card {
+        padding: 20px;
+    }
+
+    .sw-card-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .sw-actions {
+        flex-direction: column;
+    }
+
+    .sw-skip-btn,
+    .sw-import-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

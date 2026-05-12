@@ -88,6 +88,22 @@ public class TelegramApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "helpText", "Optional document caption")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "send-location",
+                        "name", "Send Location",
+                        "description", "Send a GPS location to a Telegram chat",
+                        "configSchema", List.of(
+                            chatField,
+                            Map.of("key", "latitude", "label", "Latitude",
+                                   "type", "text", "required", true,
+                                   "placeholder", "28.6139",
+                                   "helpText", "GPS latitude coordinate"),
+                            Map.of("key", "longitude", "label", "Longitude",
+                                   "type", "text", "required", true,
+                                   "placeholder", "77.2090",
+                                   "helpText", "GPS longitude coordinate")
+                        )
                     )
                 )
         )

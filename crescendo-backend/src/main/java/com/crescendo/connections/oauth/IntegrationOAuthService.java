@@ -56,8 +56,11 @@ import java.util.*;
  * (e.g. Airtable, Twitter/X). The code_verifier is stored in-memory keyed by
  * the OAuth state parameter and consumed during callback.
  *
- * <p><strong>Security:</strong> The OAuth state parameter is signed with HMAC-SHA256
- * using the server's crypto key. This prevents state forgery attacks where an attacker
+ * <p>
+ * <strong>Security:</strong> The OAuth state parameter is signed with
+ * HMAC-SHA256
+ * using the server's crypto key. This prevents state forgery attacks where an
+ * attacker
  * could craft a state with a victim's userId to hijack the OAuth callback.
  */
 @Service
@@ -92,8 +95,7 @@ public class IntegrationOAuthService {
                 protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
                     return size() > MAX_PKCE_ENTRIES;
                 }
-            }
-    );
+            });
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -122,19 +124,30 @@ public class IntegrationOAuthService {
 
     /**
      * Builds the OAuth authorization URL for the given provider.
-     * The state parameter encodes the userId for use in the callback.
+     * The state parameter encodes the userId (and optional connectionId for
+     * reconnection).
      * If the provider requires PKCE, generates code_verifier/code_challenge.
+     *
+     * @param connectionId if non-null, this is a reconnection — the callback will
+     *                     update
+     *                     this connection instead of creating a new one.
      */
-    public String buildAuthorizationUrl(String providerKey, UUID userId) {
+    public String buildAuthorizationUrl(String providerKey, UUID userId, String connectionId) {
         IntegrationOAuthConfig.ProviderConfig config = getProviderConfig(providerKey);
 
         String redirectUri = backendUrl + "/connections/oauth/" + providerKey + "/callback";
 
-        // State = userId:nonce:hmac(userId:nonce, serverSecret)
-        // HMAC prevents state forgery — an attacker cannot craft a valid state
-        // for another user's userId without knowing the server secret.
+        // State format:
+        // New: userId:nonce:hmac
+        // Reconnect: userId:nonce:connectionId:hmac
+        // HMAC prevents state forgery.
         String nonce = UUID.randomUUID().toString();
-        String payload = userId.toString() + ":" + nonce;
+        String payload;
+        if (connectionId != null && !connectionId.isBlank()) {
+            payload = userId.toString() + ":" + nonce + ":" + connectionId;
+        } else {
+            payload = userId.toString() + ":" + nonce;
+        }
         String signature = computeHmac(payload);
         String state = payload + ":" + signature;
 
@@ -178,8 +191,9 @@ public class IntegrationOAuthService {
     public String handleCallback(String providerKey, String code, String state) {
         IntegrationOAuthConfig.ProviderConfig config = getProviderConfig(providerKey);
 
-        // Parse userId from state
+        // Parse userId (and optional connectionId) from state
         UUID userId = parseUserIdFromState(state);
+        UUID reconnectConnectionId = parseConnectionIdFromState(state); // null if new connection
         String redirectUri = backendUrl + "/connections/oauth/" + providerKey + "/callback";
 
         // Retrieve PKCE code_verifier if applicable
@@ -226,13 +240,13 @@ public class IntegrationOAuthService {
 
         // Build connection name: "Gmail · john@gmail.com" instead of generic "Gmail
         // Connection"
-        String connectionName = app.getName();
+        final String connectionName;
         if (accountEmail != null && !accountEmail.isBlank()) {
-            connectionName += " · " + accountEmail;
+            connectionName = app.getName() + " · " + accountEmail;
         } else if (accountDisplayName != null && !accountDisplayName.isBlank()) {
-            connectionName += " · " + accountDisplayName;
+            connectionName = app.getName() + " · " + accountDisplayName;
         } else {
-            connectionName += " Connection";
+            connectionName = app.getName() + " Connection";
         }
 
         // Store identity in credentials for display purposes
@@ -241,29 +255,51 @@ public class IntegrationOAuthService {
         if (accountDisplayName != null)
             credentials.put("accountDisplayName", accountDisplayName);
 
-        // Create connection (CQRS: command → query → event)
-        UUID connectionId = UUID.randomUUID();
+        UUID connectionId;
         var encryptedCredentials = cryptoService.seal(credentials);
 
-        Connections_command connection = new Connections_command(
-                connectionId, user, AppKey.of(appKey),
-                connectionName,
-                encryptedCredentials, ConnectionStatus.ACTIVE);
-        connectionRepo.save(connection);
+        if (reconnectConnectionId != null) {
+            // ── RECONNECTION: update existing connection ──
+            Connections_command existing = connectionRepo.findByIdAndUser_Id(reconnectConnectionId, userId)
+                    .orElse(null);
+            if (existing != null) {
+                existing.setCredentials(encryptedCredentials);
+                existing.setName(connectionName);
+                existing.setStatus(ConnectionStatus.ACTIVE);
+                connectionRepo.save(existing);
 
-        // Project to query side
-        Connections_query queryProjection = new Connections_query(
-                connectionId, userId, appKey,
-                connectionName, ConnectionStatus.ACTIVE);
-        connectionQueryRepo.save(queryProjection);
+                // Update query side
+                connectionQueryRepo.findById(reconnectConnectionId).ifPresent(q -> {
+                    q.setName(connectionName);
+                    q.setStatus(ConnectionStatus.ACTIVE);
+                });
 
-        // Publish domain event
-        eventPublisher.publish(new ConnectionCreatedEvent(connectionId, userId, appKey));
+                connectionId = reconnectConnectionId;
+                logger.info("OAuth connection RECONNECTED for user {} via provider {} ({})",
+                        userId, providerKey, accountEmail != null ? accountEmail : "no-email");
+            } else {
+                // Connection was deleted — fall through to create new
+                connectionId = createNewConnection(user, appKey, connectionName, encryptedCredentials, userId,
+                        providerKey, accountEmail);
+            }
+        } else {
+            // ── NEW CONNECTION ──
+            connectionId = createNewConnection(user, appKey, connectionName, encryptedCredentials, userId, providerKey,
+                    accountEmail);
+        }
 
-        logger.info("OAuth connection created for user {} via provider {} ({})",
-                userId, providerKey, accountEmail != null ? accountEmail : "no-email");
+        // Return JSON for the popup postMessage
+        String safeConnectionName = connectionName.replace("\\", "\\\\").replace("\"", "\\\"");
+        String resultJson = "{\"type\":\"oauth-connected\",\"connectionId\":\"" + connectionId
+                + "\",\"appKey\":\"" + appKey
+                + "\",\"connectionName\":\"" + safeConnectionName
+                + "\",\"reconnect\":" + (reconnectConnectionId != null) + "}";
 
-        return frontendUrl + "/dashboard/connections?connected=" + appKey;
+        // Encode result and redirect to frontend /oauth-complete route
+        // so window.close() runs on the same origin as the opener
+        String encodedResult = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(resultJson.getBytes(StandardCharsets.UTF_8));
+        return frontendUrl + "/oauth-complete#" + encodedResult;
     }
 
     // ─── Token Exchange ────────────────────────────────────────────
@@ -279,7 +315,6 @@ public class IntegrationOAuthService {
 
         // Providers that require HTTP Basic auth for token exchange
         boolean useBasicAuth = "notion".equals(providerKey)
-                || "reddit".equals(providerKey)
                 || "airtable".equals(providerKey)
                 || "twitter".equals(providerKey);
 
@@ -288,11 +323,6 @@ public class IntegrationOAuthService {
                     (config.getClientId() + ":" + config.getClientSecret())
                             .getBytes(java.nio.charset.StandardCharsets.UTF_8));
             headers.set(HttpHeaders.AUTHORIZATION, "Basic " + basic);
-        }
-
-        // Reddit requires a custom User-Agent
-        if ("reddit".equals(providerKey)) {
-            headers.set("User-Agent", "crescendo:v1.0 (by /u/crescendo-app)");
         }
 
         // Notion uses JSON body; everyone else uses form-urlencoded
@@ -429,14 +459,6 @@ public class IntegrationOAuthService {
             identity.put("displayName", asStr(credentials.get("workspace_name")));
             identity.put("email", null);
 
-        } else if ("reddit".equals(providerKey)) {
-            HttpHeaders h = new HttpHeaders();
-            h.set("User-Agent", "crescendo:v1.0 (by /u/crescendo-app)");
-            Map<String, Object> info = callUserInfoApi(
-                    "https://oauth.reddit.com/api/v1/me", accessToken, h);
-            identity.put("displayName", asStr(info.get("name")));
-            identity.put("email", null);
-
         } else if ("spotify".equals(providerKey)) {
             Map<String, Object> info = callUserInfoApi(
                     "https://api.spotify.com/v1/me", accessToken, null);
@@ -542,22 +564,23 @@ public class IntegrationOAuthService {
      *
      * @param state the state parameter from the OAuth callback
      * @return the verified userId
-     * @throws ResponseStatusException 400 if state is missing, malformed, or HMAC invalid
+     * @throws ResponseStatusException 400 if state is missing, malformed, or HMAC
+     *                                 invalid
      */
     private UUID parseUserIdFromState(String state) {
         if (state == null || !state.contains(":")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OAuth state");
         }
 
-        // Split into: [userId, nonce, hmac]
-        String[] parts = state.split(":", 3);
-        if (parts.length != 3) {
-            logger.warn("[oauth] Rejected state with wrong part count: {}", parts.length);
+        // State format: userId:nonce:hmac OR userId:nonce:connectionId:hmac
+        // The HMAC is always the last segment; the payload is everything before it.
+        int lastColon = state.lastIndexOf(':');
+        if (lastColon <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OAuth state format");
         }
 
-        String payload = parts[0] + ":" + parts[1];
-        String receivedHmac = parts[2];
+        String payload = state.substring(0, lastColon);
+        String receivedHmac = state.substring(lastColon + 1);
         String expectedHmac = computeHmac(payload);
 
         // Constant-time comparison to prevent timing attacks
@@ -568,11 +591,62 @@ public class IntegrationOAuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OAuth state signature");
         }
 
+        // payload is either "userId:nonce" or "userId:nonce:connectionId"
+        String[] payloadParts = payload.split(":");
+        if (payloadParts.length < 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OAuth state format");
+        }
+
         try {
-            return UUID.fromString(parts[0]);
+            return UUID.fromString(payloadParts[0]);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid userId in OAuth state");
         }
+    }
+
+    /**
+     * Extracts the optional connectionId from a 4-part reconnection state.
+     * Returns null for new connections (3-part state).
+     */
+    private UUID parseConnectionIdFromState(String state) {
+        int lastColon = state.lastIndexOf(':');
+        String payload = state.substring(0, lastColon);
+        String[] payloadParts = payload.split(":");
+        // 3 parts = reconnect (userId:nonce:connectionId), 2 parts = new (userId:nonce)
+        if (payloadParts.length >= 3) {
+            try {
+                return UUID.fromString(payloadParts[2]);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Creates a new connection (used for both new and fallback-from-deleted
+     * reconnection).
+     */
+    private UUID createNewConnection(User_command user, String appKey, String connectionName,
+            Map<String, Object> encryptedCredentials, UUID userId,
+            String providerKey, String accountEmail) {
+        UUID connectionId = UUID.randomUUID();
+        Connections_command connection = new Connections_command(
+                connectionId, user, AppKey.of(appKey),
+                connectionName,
+                encryptedCredentials, ConnectionStatus.ACTIVE);
+        connectionRepo.save(connection);
+
+        Connections_query queryProjection = new Connections_query(
+                connectionId, userId, appKey,
+                connectionName, ConnectionStatus.ACTIVE);
+        connectionQueryRepo.save(queryProjection);
+
+        eventPublisher.publish(new ConnectionCreatedEvent(connectionId, userId, appKey));
+
+        logger.info("OAuth connection created for user {} via provider {} ({})",
+                userId, providerKey, accountEmail != null ? accountEmail : "no-email");
+        return connectionId;
     }
 
     /**

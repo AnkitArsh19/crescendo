@@ -18,6 +18,11 @@ public class GoogleDriveApp implements AppDefinition {
                 "required", false,
                 "helpText", "Select a folder (leave empty for all / root)");
 
+        var fileField = Map.of("key", "fileId", "label", "File",
+                "type", "dynamic_dropdown", "resourceType", "files",
+                "required", true,
+                "helpText", "Select a file");
+
         return new App("google-drive", "Google Drive", "Upload files, manage folders, and watch for changes in Google Drive",
                 "/icons/google-drive.svg", AuthType.OAUTH2,
 
@@ -58,9 +63,13 @@ public class GoogleDriveApp implements AppDefinition {
                                    "type", "text", "required", true,
                                    "placeholder", "report.txt",
                                    "helpText", "Name for the uploaded file"),
-                            Map.of("key", "content", "label", "File Content",
-                                   "type", "textarea", "required", true,
-                                   "helpText", "The file content or a URL to fetch")
+                            Map.of("key", "file", "label", "Upload File",
+                                   "type", "file", "required", false,
+                                   "accept", "*/*", "maxSizeMB", 25,
+                                   "helpText", "Select a file to upload (or use text content below)"),
+                            Map.of("key", "content", "label", "Text Content (Alternative)",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "Paste text content or a URL — used when no file is uploaded")
                         )
                     ),
                     Map.of(
@@ -95,15 +104,34 @@ public class GoogleDriveApp implements AppDefinition {
                         "name", "Move File",
                         "description", "Move a file to a different folder",
                         "configSchema", List.of(
-                            Map.of("key", "fileId", "label", "File",
-                                   "type", "dynamic_dropdown", "resourceType", "files",
-                                   "required", true,
-                                   "helpText", "Select the file to move"),
+                            fileField,
                             Map.of("key", "destinationFolderId", "label", "Destination Folder",
                                    "type", "dynamic_dropdown", "resourceType", "folders",
                                    "required", true,
                                    "helpText", "Select the folder to move the file to")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "copy-file",
+                        "name", "Copy File",
+                        "description", "Create a copy of a file",
+                        "configSchema", List.of(
+                            fileField,
+                            Map.of("key", "newName", "label", "New Name",
+                                   "type", "text", "required", false,
+                                   "placeholder", "Copy of report.txt",
+                                   "helpText", "Name for the copy (leave blank to keep original name)"),
+                            Map.of("key", "destinationFolderId", "label", "Destination Folder",
+                                   "type", "dynamic_dropdown", "resourceType", "folders",
+                                   "required", false,
+                                   "helpText", "Optionally place the copy in a different folder")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "delete-file",
+                        "name", "Delete File",
+                        "description", "Permanently delete a file from Google Drive",
+                        "configSchema", List.of(fileField)
                     )
                 )
         )

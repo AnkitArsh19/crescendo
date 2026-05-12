@@ -56,6 +56,16 @@ public class GoogleFormsApp implements AppDefinition {
                                    "placeholder", "20",
                                    "helpText", "Maximum responses to return")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "get-form",
+                        "name", "Get Form",
+                        "description", "Get form metadata and questions",
+                        "configSchema", List.of(
+                            Map.of("key", "formId", "label", "Form",
+                                   "type", "dynamic_dropdown", "resourceType", "forms",
+                                   "required", true,
+                                   "helpText", "Select the form to retrieve"))
                     )
                 )
         )

@@ -14,6 +14,8 @@ public class WebhookDto {
     public record WebhookResponse(
             UUID id,
             String webhookKey,
+            String secretKey,
+            String providerSignatureHeader,
             UUID stepId,
             boolean isActive,
             String webhookUrl,

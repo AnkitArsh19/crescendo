@@ -4,7 +4,7 @@ import com.crescendo.auth.domain_event.OAuthProviderLinkedEvent;
 import com.crescendo.auth.domain_event.UserLoggedInEvent;
 import com.crescendo.auth.domain_event.UserPasswordChangedEvent;
 import com.crescendo.auth.domain_event.UserPasswordResetEvent;
-import com.crescendo.emailservice.DevNotificationService;
+import com.crescendo.emailservice.NotificationService;
 import com.crescendo.auth.dto.AuthDto;
 import com.crescendo.auth.token.email.EmailVerificationToken;
 import com.crescendo.auth.token.email.EmailVerificationTokenRepository;
@@ -60,7 +60,7 @@ public class AuthenticationService {
     private final EmailVerificationTokenRepository emailVerificationRepo;
     private final JWTService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final DevNotificationService devNotifier;
+    private final NotificationService notificationService;
     private final DomainEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -72,7 +72,7 @@ public class AuthenticationService {
             EmailVerificationTokenRepository emailVerificationRepo,
             JWTService jwtService,
             BCryptPasswordEncoder passwordEncoder,
-            DevNotificationService devNotifier,
+            NotificationService notificationService,
             DomainEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.credentialRepo = credentialRepo;
@@ -81,7 +81,7 @@ public class AuthenticationService {
         this.emailVerificationRepo = emailVerificationRepo;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
-        this.devNotifier = devNotifier;
+        this.notificationService = notificationService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -245,7 +245,7 @@ public class AuthenticationService {
         passwordResetRepo.save(new PasswordResetToken(UUID.randomUUID(), user, tokenHash, expiresAt));
 
         // Dev mode: print the raw token to the terminal so it can be used without a real email domain.
-        devNotifier.sendPasswordResetToken(user.getEmailId(), plainToken);
+        notificationService.sendPasswordResetToken(user.getEmailId(), plainToken);
     }
 
     /**
@@ -304,7 +304,7 @@ public class AuthenticationService {
         emailVerificationRepo.save(new EmailVerificationToken(UUID.randomUUID(), user, tokenHash, expiresAt));
 
         // Dev mode: print the raw token to the terminal so it can be used without a real email domain.
-        devNotifier.sendEmailVerificationToken(user.getEmailId(), plainToken);
+        notificationService.sendEmailVerificationToken(user.getEmailId(), plainToken);
     }
 
     /**

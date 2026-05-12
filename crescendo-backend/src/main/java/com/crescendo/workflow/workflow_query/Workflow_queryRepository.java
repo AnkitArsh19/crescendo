@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,11 +37,13 @@ public interface Workflow_queryRepository extends JpaRepository<Workflow_query, 
 
     /// Direct update of step_count — avoids cross-transaction issues in CQRS.
     @Modifying
-    @Query("UPDATE Workflow_query w SET w.step_count = :count WHERE w.id = :id")
+    @Transactional(transactionManager = "queryTransactionManager")
+    @Query("UPDATE Workflow_query w SET w.step_count = :count, w.updatedAt = CURRENT_TIMESTAMP WHERE w.id = :id")
     void updateStepCount(@Param("id") UUID id, @Param("count") int count);
 
     /// Direct update of isActive — avoids cross-transaction issues in CQRS.
     @Modifying
-    @Query("UPDATE Workflow_query w SET w.isActive = :active WHERE w.id = :id")
+    @Transactional(transactionManager = "queryTransactionManager")
+    @Query("UPDATE Workflow_query w SET w.isActive = :active, w.updatedAt = CURRENT_TIMESTAMP WHERE w.id = :id")
     void updateIsActive(@Param("id") UUID id, @Param("active") boolean active);
 }

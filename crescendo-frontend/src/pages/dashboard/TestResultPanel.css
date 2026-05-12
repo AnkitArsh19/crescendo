@@ -1,0 +1,217 @@
+/* ═══════════════════════════════════════════
+   TestResultPanel — Structured Test Results
+   ═══════════════════════════════════════════ */
+
+.trp-container {
+    margin-top: 4px;
+}
+
+/* ── Test button ── */
+.trp-test-btn {
+    width: 100%;
+    padding: 11px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--border-secondary);
+    background: var(--bg-elevated);
+    color: var(--text-accent);
+}
+
+.trp-test-btn:hover:not(:disabled) {
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.trp-test-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.trp-test-btn.testing {
+    border-color: var(--border-hover);
+}
+
+.trp-test-btn-icon {
+    font-size: 0.9rem;
+}
+
+/* ── Loading animation ── */
+.trp-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 24px;
+}
+
+.trp-loading-bar {
+    width: 4px;
+    height: 20px;
+    background: var(--text-tertiary);
+    border-radius: 2px;
+    animation: trp-bar-pulse 1s ease-in-out infinite;
+}
+
+.trp-loading-bar:nth-child(2) { animation-delay: 0.1s; }
+.trp-loading-bar:nth-child(3) { animation-delay: 0.2s; }
+.trp-loading-bar:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes trp-bar-pulse {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
+    50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ── Result container ── */
+.trp-result {
+    margin-top: 12px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-primary);
+}
+
+/* ── Result header ── */
+.trp-result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.trp-result-header.success {
+    background: rgba(34, 197, 94, 0.08);
+    color: #22c55e;
+    border-bottom: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+.trp-result-header.error {
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    border-bottom: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.trp-result-icon {
+    font-size: 0.95rem;
+}
+
+/* ── Data rows ── */
+.trp-data {
+    padding: 8px 0;
+    background: var(--bg-elevated);
+}
+
+.trp-data-row {
+    display: flex;
+    padding: 5px 14px;
+    font-size: 0.75rem;
+    gap: 8px;
+    transition: background var(--transition-fast);
+}
+
+.trp-data-row:hover {
+    background: var(--bg-card-hover);
+}
+
+.trp-data-key {
+    flex-shrink: 0;
+    width: 100px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trp-data-value {
+    flex: 1;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+/* ── Raw JSON fallback ── */
+.trp-raw {
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+}
+
+/* ── Error message ── */
+.trp-error-body {
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    font-size: 0.78rem;
+    color: #ef4444;
+    line-height: 1.5;
+}
+
+/* ── Action buttons row ── */
+.trp-actions {
+    display: flex;
+    border-top: 1px solid var(--border-primary);
+}
+
+.trp-retry,
+.trp-download-btn,
+.trp-copy-btn {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.trp-retry:hover,
+.trp-download-btn:hover,
+.trp-copy-btn:hover {
+    color: var(--text-accent);
+    background: var(--bg-card-hover);
+}
+
+.trp-download-btn {
+    border-left: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.trp-download-btn:hover {
+    color: var(--text-accent);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.trp-copy-btn {
+    border-left: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.trp-copy-btn:hover {
+    color: var(--text-accent);
+    background: rgba(255, 255, 255, 0.06);
+}
+

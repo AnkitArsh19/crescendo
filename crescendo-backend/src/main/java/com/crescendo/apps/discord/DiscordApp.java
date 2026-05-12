@@ -24,6 +24,18 @@ public class DiscordApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select the text channel");
 
+        var roleField = Map.<String, Object>of("key", "roleId", "label", "Role",
+                "type", "dynamic_dropdown", "resourceType", "roles",
+                "dependsOn", List.of("guildId"),
+                "required", true,
+                "helpText", "Select the role");
+
+        var userField = Map.<String, Object>of("key", "userId", "label", "User",
+                "type", "dynamic_dropdown", "resourceType", "members",
+                "dependsOn", List.of("guildId"),
+                "required", true,
+                "helpText", "Select the user");
+
         return new App("discord", "Discord",
                 "Send messages, watch channels, and manage servers in Discord",
                 "/icons/discord.svg", AuthType.APIKEY,
@@ -41,6 +53,24 @@ public class DiscordApp implements AppDefinition {
                         "name", "New Member Joined",
                         "description", "Triggers when a new member joins the server",
                         "configSchema", List.of(guildField)
+                    ),
+                    Map.of(
+                        "triggerKey", "new-reaction",
+                        "name", "New Reaction Added",
+                        "description", "Triggers when a reaction is added to a message",
+                        "configSchema", List.of(
+                            guildField, channelField,
+                            Map.of("key", "emojiFilter", "label", "Emoji Filter",
+                                   "type", "text", "required", false,
+                                   "placeholder", "👍",
+                                   "helpText", "Optionally filter by specific emoji")
+                        )
+                    ),
+                    Map.of(
+                        "triggerKey", "member-role-changed",
+                        "name", "Member Role Changed",
+                        "description", "Triggers when a member's roles are updated",
+                        "configSchema", List.of(guildField)
                     )
                 ),
 
@@ -48,7 +78,7 @@ public class DiscordApp implements AppDefinition {
                 List.of(
                     Map.of(
                         "actionKey", "send-message",
-                        "name", "Send Message",
+                        "name", "Send Channel Message",
                         "description", "Post a message to a Discord channel",
                         "configSchema", List.of(
                             guildField, channelField,
@@ -77,6 +107,18 @@ public class DiscordApp implements AppDefinition {
                         )
                     ),
                     Map.of(
+                        "actionKey", "send-dm",
+                        "name", "Send Direct Message",
+                        "description", "Send a private message to a user",
+                        "configSchema", List.of(
+                            guildField, userField,
+                            Map.of("key", "content", "label", "Message",
+                                   "type", "textarea", "required", true,
+                                   "placeholder", "Hello!",
+                                   "helpText", "The message to send privately")
+                        )
+                    ),
+                    Map.of(
                         "actionKey", "create-channel",
                         "name", "Create Channel",
                         "description", "Create a new text channel in a server",
@@ -90,6 +132,18 @@ public class DiscordApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "helpText", "Optional channel topic")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "add-role",
+                        "name", "Add Role to Member",
+                        "description", "Assign a role to a server member",
+                        "configSchema", List.of(guildField, userField, roleField)
+                    ),
+                    Map.of(
+                        "actionKey", "remove-role",
+                        "name", "Remove Role from Member",
+                        "description", "Remove a role from a server member",
+                        "configSchema", List.of(guildField, userField, roleField)
                     )
                 )
         )
@@ -98,11 +152,11 @@ public class DiscordApp implements AppDefinition {
             Map.of("key", "botToken", "label", "Bot Token",
                     "type", "password", "required", true,
                     "placeholder", "MTIzNDU2Nzg5MDEy...",
-                    "helpText", "Create a bot in the Discord Developer Portal and copy its token. Use this for server bots that send messages to channels.",
+                    "helpText", "Create a bot in the Discord Developer Portal and copy its token.",
                     "authOption", "APIKEY"),
             Map.of("key", "accessToken", "label", "OAuth Access Token",
                     "type", "oauth", "required", true,
-                    "helpText", "Sign in with Discord to authorize user-level actions like reading messages and managing servers.",
+                    "helpText", "Sign in with Discord to authorize user-level actions.",
                     "authOption", "OAUTH2")
         ))
         .category("communication")

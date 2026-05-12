@@ -216,12 +216,7 @@ public class WorkflowExecutionEngine {
             } catch (Exception e) {
                 logger.error("[engine] Failed to load credentials for connection {}: {}",
                         connectionId, e.getMessage());
-                // Fall back to raw decryption
-                Map<String, Object> fallback = connectionsRepo.findById(connectionId)
-                        .map(Connections_command::getCredentials)
-                        .map(credentialsCryptoService::open)
-                        .orElse(null);
-                if (fallback != null && !fallback.isEmpty()) return fallback;
+                throw e;
             }
         }
 

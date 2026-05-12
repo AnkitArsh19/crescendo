@@ -25,16 +25,27 @@ public class NotionApp implements AppDefinition {
             // ═══ TRIGGERS ═══
             List.of(
                 Map.of(
-                    "triggerKey", "page-updated",
-                    "name", "Page Updated",
-                    "description", "Triggers when a Notion page is updated in a database",
-                    "configSchema", List.of(databaseField)
-                ),
-                Map.of(
                     "triggerKey", "new-database-item",
                     "name", "New Database Item",
                     "description", "Triggers when a new page is added to a database",
                     "configSchema", List.of(databaseField)
+                ),
+                Map.of(
+                    "triggerKey", "page-updated",
+                    "name", "Database Item Updated",
+                    "description", "Triggers when a page is modified in a database",
+                    "configSchema", List.of(databaseField)
+                ),
+                Map.of(
+                    "triggerKey", "new-page-comment",
+                    "name", "New Page Comment",
+                    "description", "Triggers when a comment is added to a page",
+                    "configSchema", List.of(
+                        Map.of("key", "pageId", "label", "Page",
+                               "type", "dynamic_dropdown", "resourceType", "pages",
+                               "required", true,
+                               "helpText", "Select the page to watch for comments")
+                    )
                 )
             ),
 
@@ -136,6 +147,18 @@ public class NotionApp implements AppDefinition {
                                "type", "json", "required", false,
                                "placeholder", "{\"Name\": {\"title\": {}}, \"Status\": {\"select\": {}}}",
                                "helpText", "JSON schema for database properties")
+                    )
+                ),
+                Map.of(
+                    "actionKey", "archive-page",
+                    "name", "Archive Page",
+                    "description", "Archive (soft-delete) a Notion page",
+                    "configSchema", List.of(
+                        Map.<String, Object>of("key", "pageId", "label", "Page",
+                               "type", "dynamic_dropdown", "resourceType", "pages",
+                               "dependsOn", List.of("databaseId"),
+                               "required", true,
+                               "helpText", "Select the page to archive")
                     )
                 )
             )

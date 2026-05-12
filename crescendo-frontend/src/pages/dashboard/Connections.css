@@ -1,0 +1,971 @@
+/* ─── Connections Page ────────────────────────────────────────────────────── */
+
+.connections-page {
+    padding: 0;
+}
+
+.connections-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.connections-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-accent);
+    margin-bottom: 4px;
+}
+
+.connections-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+/* ─── Search ─────────────────────────────────────────────────────────────── */
+
+.connections-search-bar {
+    position: relative;
+    margin-bottom: 24px;
+    max-width: 360px;
+}
+
+.conn-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+.conn-search-input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.conn-search-input:focus {
+    border-color: var(--border-hover);
+}
+
+.conn-search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* ─── Cards Grid ─────────────────────────────────────────────────────────── */
+
+.connections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.conn-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.conn-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 20px -6px rgba(0,0,0,0.4);
+}
+
+.conn-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.conn-card-app-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-accent);
+    flex-shrink: 0;
+}
+
+.conn-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.conn-card-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conn-card-app {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ─── Status Badge ───────────────────────────────────────────────────────── */
+
+.conn-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.conn-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-active {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7);
+}
+.status-active .conn-status-dot { background: rgba(255,255,255,0.5); }
+
+.status-error {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.status-error .conn-status-dot { background: rgba(255,255,255,0.35); }
+
+.status-reauth {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.45);
+    border: 1px dashed rgba(255,255,255,0.1);
+}
+.status-reauth .conn-status-dot { background: rgba(255,255,255,0.4); }
+
+/* ─── Card Meta ──────────────────────────────────────────────────────────── */
+
+.conn-card-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+}
+
+.conn-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.conn-action-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    transition: all var(--transition-fast);
+}
+
+.conn-action-btn:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-hover);
+    color: var(--text-accent);
+}
+
+.conn-action-danger:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+/* ─── Empty State ────────────────────────────────────────────────────────── */
+
+.conn-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    text-align: center;
+}
+
+.conn-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-tertiary);
+    margin-bottom: 20px;
+}
+
+.conn-empty h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-bottom: 8px;
+}
+
+.conn-empty p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    max-width: 360px;
+}
+
+.conn-empty-search {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+/* ─── Error Banner ───────────────────────────────────────────────────────── */
+
+.conn-error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.conn-retry-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-accent);
+    padding: 5px 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all var(--transition-fast);
+}
+
+.conn-retry-btn:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────────────────── */
+
+.conn-skeleton {
+    pointer-events: none;
+}
+
+.skel-line {
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+.skel-title { height: 16px; width: 60%; margin-bottom: 10px; }
+.skel-sub   { height: 12px; width: 40%; margin-bottom: 14px; }
+.skel-badge { height: 20px; width: 70px; border-radius: 100px; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 0.8; }
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+
+.conn-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.conn-btn-primary:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.25);
+}
+
+.conn-btn-primary:active {
+    transform: scale(0.97);
+}
+
+.conn-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.conn-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.conn-btn-secondary:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-hover);
+    color: var(--text-accent);
+}
+
+.conn-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.conn-btn-danger:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.conn-btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ─── OAuth Button ───────────────────────────────────────────────────────── */
+
+.conn-btn-oauth {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 28px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.2px;
+}
+
+.conn-btn-oauth:hover {
+    background: rgba(255,255,255,0.18);
+    border-color: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px -4px rgba(255,255,255,0.1);
+}
+
+.conn-btn-oauth:active {
+    transform: translateY(0px) scale(0.98);
+}
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+
+.conn-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 24px;
+}
+
+.conn-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 520px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px -12px rgba(0,0,0,0.8);
+}
+
+.conn-modal-lg {
+    max-width: 580px;
+}
+
+.conn-modal-sm {
+    max-width: 420px;
+}
+
+.conn-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.conn-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.conn-modal-back {
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    padding: 5px 8px;
+    cursor: pointer;
+    display: flex;
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+}
+
+.conn-modal-back:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-accent);
+    border-color: var(--border-hover);
+}
+
+.conn-modal-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+.conn-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    transition: color var(--transition-fast);
+}
+
+.conn-modal-close:hover {
+    color: var(--text-accent);
+}
+
+.conn-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.conn-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 20px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.conn-modal-error {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.6);
+}
+
+.conn-modal-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+/* ─── Modal Search ───────────────────────────────────────────────────────── */
+
+.conn-modal-search {
+    position: relative;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+}
+
+.conn-modal-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-accent);
+    font-size: 0.88rem;
+    outline: none;
+}
+
+.conn-modal-search input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* ─── Category Chips ─────────────────────────────────────────────────────── */
+
+.conn-category-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.conn-chip {
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: 100px;
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    letter-spacing: 0.2px;
+}
+
+.conn-chip:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-hover);
+    color: var(--text-accent);
+}
+
+.conn-chip.active {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+/* ─── App Category Groups ────────────────────────────────────────────────── */
+
+.conn-app-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.conn-category-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+    padding-left: 4px;
+}
+
+/* ─── App Picker Grid ────────────────────────────────────────────────────── */
+
+.conn-app-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.conn-app-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all var(--transition-fast);
+}
+
+.conn-app-item:hover {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border-primary);
+}
+
+.conn-app-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-accent);
+    flex-shrink: 0;
+}
+
+.conn-app-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.conn-app-name {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+.conn-app-desc {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conn-app-auth {
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+}
+
+/* ─── Auth Method Choice (Step 2) ────────────────────────────────────────── */
+
+.conn-auth-intro {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.conn-auth-intro strong {
+    color: var(--text-accent);
+}
+
+.conn-auth-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.conn-auth-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    transition: all 0.2s ease;
+}
+
+.conn-auth-option:hover {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px -4px rgba(0,0,0,0.3);
+}
+
+.conn-auth-option-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--text-accent);
+    flex-shrink: 0;
+}
+
+.conn-auth-option-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.conn-auth-option-title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-bottom: 4px;
+}
+
+.conn-auth-option-desc {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+.conn-auth-badge {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+/* ─── OAuth Section (Step 3) ─────────────────────────────────────────────── */
+
+.conn-oauth-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.conn-oauth-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+}
+
+.conn-oauth-icon {
+    font-size: 2rem;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.conn-oauth-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin-bottom: 10px;
+}
+
+.conn-oauth-card p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 360px;
+    margin-bottom: 24px;
+}
+
+/* ─── Security Note ──────────────────────────────────────────────────────── */
+
+.conn-security-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-md);
+    font-size: 0.76rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    margin-top: 16px;
+}
+
+.conn-security-note svg {
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    opacity: 0.6;
+}
+
+/* ─── Form Elements ──────────────────────────────────────────────────────── */
+
+.conn-form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.conn-required {
+    color: rgba(255,255,255,0.35);
+    margin-left: 2px;
+}
+
+.conn-form-input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.conn-form-input:focus {
+    border-color: var(--border-hover);
+}
+
+.conn-form-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* ─── Password Toggle ───────────────────────────────────────────────────── */
+
+.conn-password-wrap {
+    position: relative;
+}
+
+.conn-password-wrap .conn-form-input {
+    padding-right: 40px;
+}
+
+.conn-eye-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    font-size: 1rem;
+    transition: color var(--transition-fast);
+}
+
+.conn-eye-toggle:hover {
+    color: var(--text-accent);
+}
+
+/* ─── Field Help Text ────────────────────────────────────────────────────── */
+
+.conn-field-help {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+}
+
+/* ─── Help Link ──────────────────────────────────────────────────────────── */
+
+.conn-help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-bottom: 12px;
+    transition: color var(--transition-fast);
+}
+
+.conn-help-link:hover {
+    color: var(--text-accent);
+}
+
+/* ─── No Auth Note ───────────────────────────────────────────────────────── */
+
+.conn-no-auth-note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 16px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+/* ─── Old Form Elements (kept for compatibility) ─────────────────────────── */
+
+.conn-form-textarea {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-accent);
+    font-size: 0.82rem;
+    font-family: var(--font-mono, monospace);
+    outline: none;
+    resize: vertical;
+    transition: border-color var(--transition-fast);
+}
+
+.conn-form-textarea:focus {
+    border-color: var(--border-hover);
+}
+
+.conn-form-textarea::placeholder {
+    color: var(--text-tertiary);
+}

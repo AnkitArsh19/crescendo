@@ -1,0 +1,107 @@
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 24px;
+}
+
+.modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 1.1rem;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.modal-close:hover {
+    background: var(--bg-elevated);
+    color: var(--text-accent);
+}
+
+.modal-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-accent);
+    margin-bottom: 8px;
+}
+
+.modal-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 10px 22px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    border: none;
+}
+
+.modal-btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.modal-btn-secondary:hover {
+    border-color: var(--border-hover);
+    color: var(--text-accent);
+}
+
+.modal-btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.modal-btn-danger:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+}
+
+.modal-btn-primary {
+    background: var(--text-accent);
+    color: var(--bg-primary);
+}
+
+.modal-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}

@@ -3,6 +3,7 @@ package com.crescendo.logbook.step_run;
 import com.crescendo.enums.StepRunStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -56,6 +57,13 @@ public class StepRun {
 
     @Column(name = "completedAt")
     private Instant completedAt;
+
+    @UpdateTimestamp
+    @Column(name = "updatedAt")
+    private Instant updatedAt;
+
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public StepRun() {
     }

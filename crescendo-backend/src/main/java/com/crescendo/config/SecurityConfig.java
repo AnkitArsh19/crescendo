@@ -46,7 +46,7 @@ public class SecurityConfig {
     private final CookieOAuth2AuthorizationRequestRepository cookieAuthzRequestRepo;
     private final GitHubEmailOAuth2UserService gitHubEmailOAuth2UserService;
 
-    @Value("${app.security.cors.allowed-origins:*}")
+    @Value("${app.security.cors.allowed-origins:}")
     private List<String> allowedOrigins;
 
     public SecurityConfig(JWTFilter jwtFilter,
@@ -172,10 +172,9 @@ public class SecurityConfig {
         /// Always use allowedOriginPatterns — setAllowedOrigins("*") is incompatible
         /// with allowCredentials=true and throws at runtime.
         if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-            cfg.setAllowedOriginPatterns(List.of("*"));
-        } else {
-            cfg.setAllowedOriginPatterns(allowedOrigins);
+            throw new IllegalStateException("CORS allowed origins must be configured");
         }
+        cfg.setAllowedOriginPatterns(allowedOrigins);
         cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Guest-Session"));
         cfg.setExposedHeaders(List.of("Location"));
