@@ -18,32 +18,19 @@ public class QuotesOfTheDayHandler implements ActionHandler {
     @SuppressWarnings("unchecked")
     public ActionResult execute(ActionContext context) {
         try {
-            // quotable API — random quote as "quote of the day" proxy
-            Map<String, Object> resp = restClient.get()
-                    .uri("https://api.quotable.io/quotes/random?limit=1")
-                    .retrieve().body(Map.class);
+            // ZenQuotes API — dedicated quote of the day endpoint
+            String resp = restClient.get()
+                    .uri("https://zenquotes.io/api/today")
+                    .retrieve().body(String.class);
 
             Map<String, Object> out = new HashMap<>();
             out.put("provider", "quotes");
             out.put("action", "get-quote-of-day");
-            if (resp != null) {
-                out.put("quote", resp);
-            }
+            out.put("response", resp);
             return ActionResult.success(out);
         } catch (Exception e) {
-            // Fallback to zenquotes API
-            try {
-                String resp = restClient.get()
-                        .uri("https://zenquotes.io/api/today")
-                        .retrieve().body(String.class);
-                Map<String, Object> out = new HashMap<>();
-                out.put("provider", "quotes");
-                out.put("action", "get-quote-of-day");
-                out.put("raw", resp);
-                return ActionResult.success(out);
-            } catch (Exception e2) {
-                return ActionResult.failure("Quotes failed: " + e2.getMessage());
-            }
+            logger.error("[quotes] Quote of the day failed", e);
+            return ActionResult.failure("Quotes failed: " + e.getMessage());
         }
     }
 }

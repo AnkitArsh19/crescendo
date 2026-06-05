@@ -13,11 +13,33 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Creates a text post on LinkedIn using the Posts API.
+ *
+ * <p>Uses the current {@code /rest/posts} endpoint — the legacy {@code /v2/ugcPosts}
+ * endpoint was deprecated by LinkedIn and replaced by the Community Management API's
+ * Posts API.
+ *
+ * <p>Connection credentials: {@code accessToken}, {@code personUrn}
+ * <p>Config: {@code text}, {@code visibility}
+ *
+ * @see <a href="https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api">LinkedIn Posts API</a>
+ */
 @ActionMapping(appKey = "linkedin", actionKey = "share-post")
 public class LinkedInSharePostHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(LinkedInSharePostHandler.class);
-    private static final String LINKEDIN_API = "https://api.linkedin.com/v2";
+
+    /**
+     * New Posts API endpoint — replaces the deprecated /v2/ugcPosts.
+     */
+    private static final String POSTS_API = "https://api.linkedin.com/rest/posts";
+
+    /**
+     * LinkedIn API version in YYYYMM format.
+     * Required header for the versioned /rest/ endpoints.
+     */
+    private static final String LINKEDIN_VERSION = "202401";
 
     @Override
     public ActionResult execute(ActionContext context) {
@@ -36,24 +58,21 @@ public class LinkedInSharePostHandler implements ActionHandler {
         String visibility = config.getOrDefault("visibility", "PUBLIC").toString();
 
         try {
-            Map<String, Object> body = Map.of(
-                    "author", personUrn,
-                    "lifecycleState", "PUBLISHED",
-                    "specificContent", Map.of(
-                            "com.linkedin.ugc.ShareContent", Map.of(
-                                    "shareCommentary", Map.of("text", text),
-                                    "shareMediaCategory", "NONE"
-                            )
-                    ),
-                    "visibility", Map.of(
-                            "com.linkedin.ugc.MemberNetworkVisibility", visibility
-                    )
-            );
+            // Posts API payload format (replaces ugcPosts format)
+            Map<String, Object> body = new HashMap<>();
+            body.put("author", personUrn);
+            body.put("commentary", text);
+            body.put("visibility", visibility);
+            body.put("distribution", Map.of(
+                    "feedDistribution", "MAIN_FEED"
+            ));
+            body.put("lifecycleState", "PUBLISHED");
 
             String response = RestClient.create()
                     .post()
-                    .uri(LINKEDIN_API + "/ugcPosts")
+                    .uri(POSTS_API)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .header("LinkedIn-Version", LINKEDIN_VERSION)
                     .header("X-Restli-Protocol-Version", "2.0.0")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
@@ -62,7 +81,7 @@ public class LinkedInSharePostHandler implements ActionHandler {
 
             Map<String, Object> output = new HashMap<>();
             output.put("response", response);
-            logger.info("[linkedin] Post shared successfully");
+            logger.info("[linkedin] Post shared successfully via Posts API");
             return ActionResult.success(output);
         } catch (Exception e) {
             logger.error("[linkedin] Share post failed", e);

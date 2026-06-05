@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 
-@ActionMapping(appKey = "gitlab", actionKey = "create-note")
+@ActionMapping(appKey = "gitlab", actionKey = "add-comment")
 public class GitLabCreateNoteHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GitLabCreateNoteHandler.class);

@@ -9,11 +9,19 @@ import org.springframework.web.client.RestClient;
 import java.util.*;
 
 /**
- * Shares a post with a link attachment on LinkedIn via Community Management API.
+ * Shares a post with a link attachment on LinkedIn via the Posts API.
+ *
+ * <p>Uses the current {@code /rest/posts} endpoint — the legacy {@code /v2/ugcPosts}
+ * endpoint was deprecated by LinkedIn. For link shares, the {@code content} field
+ * with {@code article} type replaces the old {@code specificContent.media} pattern.
+ *
+ * @see <a href="https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api">LinkedIn Posts API</a>
  */
 @ActionMapping(appKey = "linkedin", actionKey = "share-link")
 public class LinkedInShareLinkHandler implements ActionHandler {
     private static final Logger logger = LoggerFactory.getLogger(LinkedInShareLinkHandler.class);
+    private static final String POSTS_API = "https://api.linkedin.com/rest/posts";
+    private static final String LINKEDIN_VERSION = "202401";
     private final RestClient restClient = RestClient.create();
 
     @Override
@@ -29,7 +37,7 @@ public class LinkedInShareLinkHandler implements ActionHandler {
         if (text == null) return ActionResult.failure("'text' is required");
         if (linkUrl == null) return ActionResult.failure("'linkUrl' is required");
 
-        // Get user URN first
+        // Get user URN via OIDC userinfo endpoint
         try {
             Map<String, Object> profile = restClient.get()
                     .uri("https://api.linkedin.com/v2/userinfo")
@@ -38,22 +46,26 @@ public class LinkedInShareLinkHandler implements ActionHandler {
             String sub = profile != null ? (String) profile.get("sub") : null;
             if (sub == null) return ActionResult.failure("Could not retrieve LinkedIn user ID");
 
+            // Posts API payload with article content (replaces ugcPosts media format)
             Map<String, Object> body = new HashMap<>();
             body.put("author", "urn:li:person:" + sub);
+            body.put("commentary", text);
+            body.put("visibility", "PUBLIC");
+            body.put("distribution", Map.of(
+                    "feedDistribution", "MAIN_FEED"
+            ));
+            body.put("content", Map.of(
+                    "article", Map.of(
+                            "source", linkUrl
+                    )
+            ));
             body.put("lifecycleState", "PUBLISHED");
-            body.put("specificContent", Map.of("com.linkedin.ugc.ShareContent", Map.of(
-                "shareCommentary", Map.of("text", text),
-                "shareMediaCategory", "ARTICLE",
-                "media", List.of(Map.of(
-                    "status", "READY",
-                    "originalUrl", linkUrl
-                ))
-            )));
-            body.put("visibility", Map.of("com.linkedin.ugc.MemberNetworkVisibility", "PUBLIC"));
 
             String resp = restClient.post()
-                    .uri("https://api.linkedin.com/v2/ugcPosts")
+                    .uri(POSTS_API)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .header("LinkedIn-Version", LINKEDIN_VERSION)
+                    .header("X-Restli-Protocol-Version", "2.0.0")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body).retrieve().body(String.class);
 
@@ -61,8 +73,10 @@ public class LinkedInShareLinkHandler implements ActionHandler {
             out.put("provider", "linkedin");
             out.put("action", "share-link");
             out.put("response", resp);
+            logger.info("[linkedin] Link shared successfully via Posts API");
             return ActionResult.success(out);
         } catch (Exception e) {
+            logger.error("[linkedin] Share-link failed", e);
             return ActionResult.failure("LinkedIn share-link failed: " + e.getMessage());
         }
     }

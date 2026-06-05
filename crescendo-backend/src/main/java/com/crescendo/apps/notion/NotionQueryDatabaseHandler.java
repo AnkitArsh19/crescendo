@@ -13,7 +13,7 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 
-@ActionMapping(appKey = "notion", actionKey = "query-database")
+@ActionMapping(appKey = "notion", actionKey = "find-page")
 public class NotionQueryDatabaseHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(NotionQueryDatabaseHandler.class);

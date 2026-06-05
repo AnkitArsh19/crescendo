@@ -20,8 +20,9 @@ const useAuthStore = create((set, get) => ({
     });
   },
 
-  // Called on app mount to restore session from the token (if stored or fetched)
-  // Usually the refresh token is in an HttpOnly cookie.
+  // Called on app mount to restore session from the token (if stored or fetched).
+  // Proactively refreshes the access token before hitting /users/me to avoid
+  // a 401 console error on every page load.
   checkAuth: async () => {
     // Guest mode: no session to restore, just stop loading
     if (get().isGuest) {
@@ -29,13 +30,29 @@ const useAuthStore = create((set, get) => ({
       return;
     }
     try {
-      // Trying to fetch the user profile. If we have no access token, the interceptor will fail.
-      // But we can try to hit /auth/refresh first proactively, or let the interceptor handle it.
-      // Easiest is to just hit /users/me. If it works (or refreshes successfully), we're good.
+      // If we don't have an access token, try refreshing first (HttpOnly cookie).
+      // This avoids the 401 console error from hitting /users/me with no token.
+      if (!get().accessToken) {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.crescendo.run';
+        const refreshResp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        if (!refreshResp.ok) {
+          // No valid refresh token — user is not logged in
+          set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null });
+          return;
+        }
+        const tokens = await refreshResp.json();
+        set({ accessToken: tokens.accessToken, accessExpiresAt: tokens.accessExpiresAt });
+      }
+      // Now we have a token — fetch user profile
       const response = await api.get('/users/me');
       set({ user: response.data, isAuthenticated: true, isLoading: false });
     } catch {
-      // 401 means no valid session
+      // Any failure means no valid session
       set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null });
     }
   },

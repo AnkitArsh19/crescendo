@@ -44,10 +44,24 @@ public class MicrosoftTeamsSendChatMessageHandler implements ActionHandler {
         logger.info("[teams] Sending chat message to user '{}'", userId);
 
         try {
-            // Step 1: Create or get existing 1:1 chat
+            // Step 0: Get the calling user's ID (required — Graph needs both members)
+            Map<String, Object> meResponse = restClient.get()
+                    .uri(GRAPH_API + "/me?$select=id")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(Map.class);
+            String myUserId = meResponse != null ? (String) meResponse.get("id") : null;
+            if (myUserId == null) return ActionResult.failure("Failed to retrieve caller user ID from /me");
+
+            // Step 1: Create or get existing 1:1 chat (must include BOTH members)
             Map<String, Object> chatBody = Map.of(
                 "chatType", "oneOnOne",
                 "members", List.of(
+                    Map.of(
+                        "@odata.type", "#microsoft.graph.aadUserConversationMember",
+                        "roles", List.of("owner"),
+                        "user@odata.bind", "https://graph.microsoft.com/v1.0/users('" + myUserId + "')"
+                    ),
                     Map.of(
                         "@odata.type", "#microsoft.graph.aadUserConversationMember",
                         "roles", List.of("owner"),
