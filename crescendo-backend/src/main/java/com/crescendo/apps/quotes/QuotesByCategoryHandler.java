@@ -15,7 +15,7 @@ import java.util.Map;
 public class QuotesByCategoryHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(QuotesByCategoryHandler.class);
-    private static final String QUOTES_API = "https://api.quotable.io";
+    private static final String QUOTES_API = "https://zenquotes.io/api";
 
     @Override
     public ActionResult execute(ActionContext context) {

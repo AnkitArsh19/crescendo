@@ -15,7 +15,7 @@ import java.util.Map;
 public class QuotesRandomHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(QuotesRandomHandler.class);
-    private static final String QUOTES_API = "https://api.quotable.io";
+    private static final String QUOTES_API = "https://zenquotes.io/api";
 
     @Override
     public ActionResult execute(ActionContext context) {

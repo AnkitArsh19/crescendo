@@ -19,7 +19,7 @@ import java.util.Map;
  * <p>Connection credentials: {@code accessToken}
  * <p>Config: {@code owner}, {@code repo}, {@code issueNumber}, {@code body}
  */
-@ActionMapping(appKey = "github", actionKey = "create-comment")
+@ActionMapping(appKey = "github", actionKey = "add-comment")
 public class GitHubCreateCommentHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubCreateCommentHandler.class);

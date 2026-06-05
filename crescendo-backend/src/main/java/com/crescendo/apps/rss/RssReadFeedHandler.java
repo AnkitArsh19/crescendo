@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 
-@ActionMapping(appKey = "rss", actionKey = "read-feed")
+@ActionMapping(appKey = "rss", actionKey = "parse-feed")
 public class RssReadFeedHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(RssReadFeedHandler.class);

@@ -19,7 +19,7 @@ import java.util.Map;
  * <p>Connection credentials: {@code botToken} (xoxb-...)
  * <p>Config: {@code userId}, {@code text}
  */
-@ActionMapping(appKey = "slack", actionKey = "send-direct-message")
+@ActionMapping(appKey = "slack", actionKey = "send-dm")
 public class SlackDirectMessageHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(SlackDirectMessageHandler.class);
@@ -48,21 +48,35 @@ public class SlackDirectMessageHandler implements ActionHandler {
         if (text == null) return ActionResult.failure("'text' is required");
 
         try {
-            // Open DM conversation
-            restClient.post()
+            // Step 1: Open DM conversation and extract the channel ID
+            @SuppressWarnings("unchecked")
+            Map<String, Object> openResponse = restClient.post()
                     .uri(CONVERSATIONS_OPEN)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + botToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("users", userId))
                     .retrieve()
-                    .body(String.class);
+                    .body(Map.class);
 
-            // Send message
+            // Extract channel ID from conversations.open response
+            String dmChannelId = null;
+            if (openResponse != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> channel = (Map<String, Object>) openResponse.get("channel");
+                if (channel != null) {
+                    dmChannelId = (String) channel.get("id");
+                }
+            }
+            if (dmChannelId == null) {
+                return ActionResult.failure("Failed to open DM channel with user " + userId);
+            }
+
+            // Step 2: Send message using the DM channel ID
             String postResponse = restClient.post()
                     .uri(CHAT_POST)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + botToken)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("channel", userId, "text", text))
+                    .body(Map.of("channel", dmChannelId, "text", text))
                     .retrieve()
                     .body(String.class);
 

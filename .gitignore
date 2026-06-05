@@ -1,6 +1,9 @@
 .idea/
 .vscode/
 .DS_Store
+.agent/
+.ui-ux-pro-max-skill/
+graphify-out/
 
 ### Application Properties ###
 **/application*.properties
@@ -11,6 +14,4 @@
 **/Dockerfile
 !**/*.example
 
-# Documentation archive (excluded from version control)
 docs_archive/
-**/docs_archive/

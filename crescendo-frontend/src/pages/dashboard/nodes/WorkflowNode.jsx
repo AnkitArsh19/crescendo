@@ -1,11 +1,19 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { HiOutlineLightningBolt, HiOutlineCog, HiCheck } from 'react-icons/hi';
 
 /**
  * WorkflowNode — unified node for both triggers and actions.
- * Renders identically except for the type badge and accent color.
- * Like Zapier, every node has: step number, app icon, type badge, operation name.
+ *
+ * Connection UX:
+ *   - Step 1 (first node) has ONLY an OUT handle (it's the entry point).
+ *   - All other nodes have both IN and OUT handles.
+ *   - Multiple edges can connect TO the IN point, and multiple can leave FROM OUT.
+ *   - Horizontal layout: IN = left, OUT = right.
+ *   - Vertical layout:   IN = top,  OUT = bottom.
+ *   - Handles use fixed IDs ("in" / "out") so edges always resolve correctly.
+ *   - Large invisible hit areas make it easy to grab the handle to start dragging.
+ *   - Double-clicking a handle does NOT propagate to the node (no config panel).
  */
 function WorkflowNode({ data, selected, type }) {
     const isTrigger = type === 'trigger';
@@ -13,6 +21,19 @@ function WorkflowNode({ data, selected, type }) {
     const appName = data.appName || data.appKey || null;
     const operationName = data.triggerName || data.actionName || null;
     const stepNumber = data.stepIndex != null ? data.stepIndex : null;
+    const vertical = data._vertical || false;
+
+    // Only step 1 hides the IN handle — all other nodes get IN + OUT
+    const isFirstNode = data.stepIndex === 1;
+
+    // Handle positions based on orientation
+    const inPos = vertical ? Position.Top : Position.Left;
+    const outPos = vertical ? Position.Bottom : Position.Right;
+
+    // Stop double-click and click on handles from bubbling to the node
+    const stopPropagation = useCallback((e) => {
+        e.stopPropagation();
+    }, []);
 
     return (
         <div className={`wf-node ${isTrigger ? 'wf-node--trigger' : 'wf-node--action'} ${selected ? 'wf-node--selected' : ''} ${isConfigured ? 'wf-node--configured' : ''}`}>
@@ -57,20 +78,29 @@ function WorkflowNode({ data, selected, type }) {
                 )}
             </div>
 
-            {/* Handles */}
-            {isTrigger ? (
-                <>
-                    <Handle type="source" position={Position.Right} style={{ right: -5 }} />
-                    <Handle type="source" position={Position.Bottom} id="bottom" style={{ bottom: -5 }} />
-                </>
-            ) : (
-                <>
-                    <Handle type="target" position={Position.Left} style={{ left: -5 }} />
-                    <Handle type="target" position={Position.Top} id="top" style={{ top: -5 }} />
-                    <Handle type="source" position={Position.Right} style={{ right: -5 }} />
-                    <Handle type="source" position={Position.Bottom} id="bottom" style={{ bottom: -5 }} />
-                </>
+            {/* IN handle — only hidden for the first node (entry point) */}
+            {!isFirstNode && (
+                <Handle
+                    type="target"
+                    position={inPos}
+                    id="in"
+                    className="wf-handle wf-handle--in"
+                    isConnectable={true}
+                    onDoubleClick={stopPropagation}
+                    onClick={stopPropagation}
+                />
             )}
+
+            {/* OUT handle — always present */}
+            <Handle
+                type="source"
+                position={outPos}
+                id="out"
+                className="wf-handle wf-handle--out"
+                isConnectable={true}
+                onDoubleClick={stopPropagation}
+                onClick={stopPropagation}
+            />
         </div>
     );
 }

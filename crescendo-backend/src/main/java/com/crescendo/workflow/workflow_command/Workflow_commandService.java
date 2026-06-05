@@ -1,9 +1,12 @@
 package com.crescendo.workflow.workflow_command;
 
+import com.crescendo.enums.StepType;
 import com.crescendo.enums.WorkflowStatus;
 import com.crescendo.security.access.AccessControlService;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
 import com.crescendo.shared.domain.valueobject.GuestSessionId;
+import com.crescendo.steps.steps_command.Steps_command;
+import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.steps.steps_command.Steps_commandService;
 import com.crescendo.user.user_command.User_command;
 import com.crescendo.user.user_command.User_commandRepository;
@@ -44,19 +47,22 @@ public class Workflow_commandService {
     private final AccessControlService accessControl;
     private final DomainEventPublisher eventPublisher;
     private final Steps_commandService stepsCommandService;
+    private final Steps_commandRepository stepsRepo;
 
     public Workflow_commandService(Workflow_commandRepository workflowRepo,
                                    Workflow_queryRepository workflowQueryRepo,
                                    User_commandRepository userRepo,
                                    AccessControlService accessControl,
                                    DomainEventPublisher eventPublisher,
-                                   Steps_commandService stepsCommandService) {
+                                   Steps_commandService stepsCommandService,
+                                   Steps_commandRepository stepsRepo) {
         this.workflowRepo = workflowRepo;
         this.workflowQueryRepo = workflowQueryRepo;
         this.userRepo = userRepo;
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
         this.stepsCommandService = stepsCommandService;
+        this.stepsRepo = stepsRepo;
     }
 
     // WORKFLOW CRUD
@@ -159,6 +165,26 @@ public class Workflow_commandService {
         Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
 
         if (workflow.isActive()) return; // Idempotent
+
+        // Validate workflow structure before activation
+        List<Steps_command> steps = stepsRepo.findActiveByWorkflowIdOrdered(workflowId);
+        if (steps.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot activate a workflow with no steps. Add at least a trigger and one action.");
+        }
+        if (steps.getFirst().getType() != StepType.TRIGGER) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The first step must be a trigger.");
+        }
+        long triggerCount = steps.stream().filter(s -> s.getType() == StepType.TRIGGER).count();
+        if (triggerCount > 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A workflow can only have one trigger. Remove extra triggers before activating.");
+        }
+        if (steps.size() < 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A workflow needs at least a trigger and one action step.");
+        }
 
         workflow.setActive(true);
 

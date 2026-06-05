@@ -5,6 +5,7 @@ import { workflowApi, stepApi, resourceApi, stepTestApi } from '../../api/workfl
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import useWorkflowStore from '../../store/workflowStore';
+import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
 import {
@@ -45,25 +46,29 @@ const makeDefaultNodes = (vertical) => [
         id: '1',
         type: 'trigger',
         position: { x: vertical ? 250 : 120, y: vertical ? 60 : 200 },
-        data: { label: 'Select Trigger', stepIndex: 1 },
+        data: { label: 'Select Trigger', stepIndex: 1, _vertical: vertical },
     },
     {
         id: '2',
         type: 'action',
         position: { x: vertical ? 250 : 450, y: vertical ? 280 : 200 },
-        data: { label: 'Select Action', stepIndex: 2 },
+        data: { label: 'Select Action', stepIndex: 2, _vertical: vertical },
     },
 ];
 
-const makeDefaultEdge = (vertical) => ({
-    id: 'e1-2',
-    source: '1',
-    target: '2',
+const makeEdge = (sourceId, targetId, vertical) => ({
+    id: `e${sourceId}-${targetId}`,
+    source: sourceId,
+    target: targetId,
+    sourceHandle: 'out',
+    targetHandle: 'in',
     type: vertical ? 'straight' : 'default',
     animated: true,
     style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
 });
+
+const makeDefaultEdge = (vertical) => makeEdge('1', '2', vertical);
 
 /* Hardcoded app/trigger/action lists removed — all data comes from appCatalogApi and appDetailsByKey */
 
@@ -296,7 +301,9 @@ export default function WorkflowCanvas() {
                     const loaded = sortedSteps.map((s, idx) => ({
                         id: s.id,
                         type: s.type === 'TRIGGER' ? 'trigger' : 'action',
-                        position: { x: 120 + idx * 330, y: 200 },
+                        position: vertical
+                            ? { x: 250, y: 60 + idx * 220 }
+                            : { x: 120 + idx * 330, y: 200 },
                         data: {
                             stepIndex: idx + 1,
                             label: s.name,
@@ -312,6 +319,7 @@ export default function WorkflowCanvas() {
                             connectionId: s.connectionId || null,
                             configuration: s.configuration,
                             _backendId: s.id,
+                            _vertical: vertical,
                         },
                     }));
                     setNodes(loaded);
@@ -324,15 +332,9 @@ export default function WorkflowCanvas() {
                     uniqueAppKeys.forEach((appKey) => ensureAppDetail(appKey));
 
                     if (loaded.length > 1) {
-                        const loadedEdges = loaded.slice(0, -1).map((n, idx) => ({
-                            id: `e${n.id}-${loaded[idx + 1].id}`,
-                            source: n.id,
-                            target: loaded[idx + 1].id,
-                            type: vertical ? 'straight' : 'default',
-                            animated: true,
-                            style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
-                            markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
-                        }));
+                        const loadedEdges = loaded.slice(0, -1).map((n, idx) =>
+                            makeEdge(n.id, loaded[idx + 1].id, vertical)
+                        );
                         setEdges(loadedEdges);
                     }
                 }
@@ -395,7 +397,9 @@ export default function WorkflowCanvas() {
 
             if (mode === 'strict') {
                 if (nodes.length === 0) {
-                    setSaveError('Add at least one trigger and one action.');
+                    const msg = 'Add at least one trigger and one action.';
+                    setSaveError(msg);
+                    useToastStore.getState().addToast(msg, 'error');
                     return null;
                 }
 
@@ -403,11 +407,15 @@ export default function WorkflowCanvas() {
                 for (let idx = 0; idx < nodes.length; idx++) {
                     const node = nodes[idx];
                     if (idx === 0 && node.type !== 'trigger') {
-                        setSaveError('The first step must be a trigger.');
+                        const msg = 'The first step must be a trigger.';
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
-                    if (idx > 0 && node.type !== 'action') {
-                        setSaveError('Only the first step can be a trigger.');
+                    if (idx > 0 && node.type === 'trigger') {
+                        const msg = 'Only the first step can be a trigger. Remove duplicate triggers before saving.';
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
                 }
@@ -423,7 +431,9 @@ export default function WorkflowCanvas() {
                         setAppDetailsByKey((prev) => ({ ...prev, [node.data.appKey]: detail }));
                     } catch {
                         if (mode === 'strict') {
-                            setSaveError(`Failed to load app metadata for ${node.data.appKey}`);
+                            const msg = `Failed to load app metadata for ${node.data.appKey}`;
+                            setSaveError(msg);
+                            useToastStore.getState().addToast(msg, 'error');
                             return null;
                         }
                     }
@@ -459,7 +469,9 @@ export default function WorkflowCanvas() {
 
                 if (!node.data?.appKey) {
                     if (mode === 'strict') {
-                        setSaveError(`Step ${idx + 1}: select an app.`);
+                        const msg = `Step ${idx + 1}: select an app.`;
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
                     continue;
@@ -469,7 +481,9 @@ export default function WorkflowCanvas() {
                 const needsAuth = appInfo?.authType !== 'NONE';
                 if (needsAuth && !node.data?.connectionId) {
                     if (mode === 'strict') {
-                        setSaveError(`Step ${idx + 1}: select a connected account.`);
+                        const msg = `Step ${idx + 1}: select a connected account.`;
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
                     continue;
@@ -484,7 +498,9 @@ export default function WorkflowCanvas() {
 
                 if (!opKey) {
                     if (mode === 'strict') {
-                        setSaveError(`Step ${idx + 1}: select a ${stepType === 'TRIGGER' ? 'trigger event' : 'action'}.`);
+                        const msg = `Step ${idx + 1}: select a ${stepType === 'TRIGGER' ? 'trigger event' : 'action'}.`;
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
                     continue;
@@ -499,7 +515,9 @@ export default function WorkflowCanvas() {
                     const value = currentConfig[field.key];
                     if (value == null || String(value).trim() === '') {
                         if (mode === 'strict') {
-                            setSaveError(`Step ${idx + 1}: '${field.key}' is required.`);
+                            const msg = `Step ${idx + 1}: '${field.key}' is required.`;
+                            setSaveError(msg);
+                            useToastStore.getState().addToast(msg, 'error');
                             return null;
                         }
                         missingRequired = true;
@@ -536,11 +554,18 @@ export default function WorkflowCanvas() {
                         ? existingSteps.filter((step) => !currentStepIds.has(step.id))
                         : [];
                     for (const staleStep of staleSteps) {
-                        await stepApi.delete(id, staleStep.id);
+                        try {
+                            await stepApi.delete(id, staleStep.id);
+                        } catch (delErr) {
+                            // Gracefully handle 404 — step may have been deleted by a concurrent save
+                            if (delErr.response?.status !== 404) throw delErr;
+                        }
                     }
                 } catch (cleanupErr) {
                     if (mode === 'strict') {
-                        setSaveError(cleanupErr.response?.data?.message || 'Failed to reconcile workflow steps');
+                        const msg = cleanupErr.response?.data?.message || 'Failed to reconcile workflow steps';
+                        setSaveError(msg);
+                        useToastStore.getState().addToast(msg, 'error');
                         return null;
                     }
                 }
@@ -550,7 +575,9 @@ export default function WorkflowCanvas() {
             return id;
         } catch (err) {
             if (mode === 'strict') {
-                setSaveError(err.response?.data?.message || 'Save failed');
+                const msg = err.response?.data?.message || 'Save failed';
+                setSaveError(msg);
+                useToastStore.getState().addToast(msg, 'error');
             }
             return null;
         } finally {
@@ -575,6 +602,30 @@ export default function WorkflowCanvas() {
         if (isRunning) return;
         setIsRunning(true);
         setSaveError(null);
+
+        // Pre-validate: check trigger-first model before even trying to save
+        if (nodes.length === 0) {
+            useToastStore.getState().addToast('Add at least one trigger and one action before running.', 'error');
+            setIsRunning(false);
+            return;
+        }
+        if (nodes[0].type !== 'trigger') {
+            useToastStore.getState().addToast('The first step must be a trigger.', 'error');
+            setIsRunning(false);
+            return;
+        }
+        const triggerCount = nodes.filter(n => n.type === 'trigger').length;
+        if (triggerCount > 1) {
+            useToastStore.getState().addToast('Only one trigger is allowed per workflow. Remove duplicate triggers.', 'error');
+            setIsRunning(false);
+            return;
+        }
+        if (nodes.length < 2) {
+            useToastStore.getState().addToast('Add at least one action step after the trigger.', 'error');
+            setIsRunning(false);
+            return;
+        }
+
         try {
             const id = await handleSave({ mode: 'strict', reason: 'run' });
             if (!id) return;
@@ -582,13 +633,16 @@ export default function WorkflowCanvas() {
             // Use the Zustand store method so in-memory state stays in sync
             // when the user navigates back to the Workflows list page.
             await storeActivateWorkflow(id);
+            useToastStore.getState().addToast('Workflow activated successfully!', 'success');
             setSavedAt(Date.now());
         } catch (err) {
-            setSaveError(err.response?.data?.message || 'Activation failed');
+            const msg = err.response?.data?.message || 'Activation failed';
+            setSaveError(msg);
+            useToastStore.getState().addToast(msg, 'error');
         } finally {
             setIsRunning(false);
         }
-    }, [isRunning, handleSave, storeActivateWorkflow]);
+    }, [isRunning, handleSave, storeActivateWorkflow, nodes]);
 
     const autosaveSnapshot = useMemo(() => {
         const prefixCount = getConfiguredPrefixCount(nodes);
@@ -642,6 +696,8 @@ export default function WorkflowCanvas() {
                 addEdge(
                     {
                         ...params,
+                        sourceHandle: params.sourceHandle || 'out',
+                        targetHandle: params.targetHandle || 'in',
                         type: vertical ? 'straight' : 'default',
                         animated: true,
                         style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
@@ -669,7 +725,7 @@ export default function WorkflowCanvas() {
                         x: lastNode ? lastNode.position.x + (vertical ? 0 : 330) : 250,
                         y: lastNode ? lastNode.position.y + (vertical ? 220 : 0) : 200,
                     },
-                    data: { label: 'New Action', stepIndex: nds.length + 1 },
+                    data: { label: 'New Action', stepIndex: nds.length + 1, _vertical: vertical },
                 };
                 return [...nds, newNode];
             });
@@ -677,15 +733,7 @@ export default function WorkflowCanvas() {
             if (!position && lastNodeId) {
                 setEdges((eds) => [
                     ...eds,
-                    {
-                        id: `e${lastNodeId}-${id}`,
-                        source: lastNodeId,
-                        target: id,
-                        type: vertical ? 'straight' : 'default',
-                        animated: true,
-                        style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
-                    },
+                    makeEdge(lastNodeId, id, vertical),
                 ]);
             }
             return id;
@@ -704,15 +752,7 @@ export default function WorkflowCanvas() {
             });
             setEdges((eds) => [
                 ...eds,
-                {
-                    id: `e${sourceId}-${newId}`,
-                    source: sourceId,
-                    target: newId,
-                    type: vertical ? 'straight' : 'default',
-                    animated: true,
-                    style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
-                    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
-                },
+                makeEdge(sourceId, newId, vertical),
             ]);
         },
         [nodes, addActionNode, setEdges, vertical]
@@ -727,27 +767,67 @@ export default function WorkflowCanvas() {
                     // No nodes left — return fresh defaults
                     return makeDefaultNodes(vertical);
                 }
-                // Ensure the first node is always type trigger
+                // Re-index step numbers but DON'T force-convert the first remaining node
+                // to trigger type — only the user should decide what type each node is.
+                // If the deleted node was the trigger (first node), the remaining nodes
+                // keep their types. The save validation will catch the missing trigger.
                 return remaining.map((n, idx) => ({
                     ...n,
-                    type: idx === 0 ? 'trigger' : n.type,
-                    data: { ...n.data, stepIndex: idx + 1 },
+                    data: { ...n.data, stepIndex: idx + 1, _vertical: vertical },
                 }));
             });
             setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
             if (configNode?.id === id) setConfigNode(null);
             setContextMenu(null);
+
+            // Show a toast if the deleted node was a trigger
+            const deletedNode = nodes.find(n => n.id === id);
+            if (deletedNode?.type === 'trigger') {
+                useToastStore.getState().addToast('Trigger removed. Add a new trigger as the first step.', 'info');
+            }
         },
-        [setNodes, setEdges, configNode, vertical]
+        [setNodes, setEdges, configNode, vertical, nodes]
     );
 
-    // Node click → open config panel
+    // Node click → open config panel (but NOT if clicking a handle)
     const onNodeClick = useCallback(
-        (_, node) => {
+        (event, node) => {
+            // Don't open config panel if clicking on a handle
+            const target = event.target;
+            if (target.closest('.react-flow__handle')) return;
             setConfigNode(node);
             setContextMenu(null);
         },
         []
+    );
+
+    // Double-click on node → also open config panel (same behavior)
+    const onNodeDoubleClick = useCallback(
+        (event, node) => {
+            const target = event.target;
+            if (target.closest('.react-flow__handle')) return;
+            setConfigNode(node);
+            setContextMenu(null);
+        },
+        []
+    );
+
+    // Edge click → select the edge (allows deletion with backspace/delete)
+    const onEdgeClick = useCallback(
+        (event, edge) => {
+            event.stopPropagation();
+            setContextMenu(null);
+        },
+        []
+    );
+
+    // Edge double-click → delete the edge
+    const onEdgeDoubleClick = useCallback(
+        (event, edge) => {
+            event.stopPropagation();
+            setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+        },
+        [setEdges]
     );
 
     // Right-click on node
@@ -773,7 +853,7 @@ export default function WorkflowCanvas() {
     const toggleOrientation = useCallback(() => {
         const nextVertical = !vertical;
         setVertical(nextVertical);
-        // Rearrange existing nodes
+        // Rearrange existing nodes and update _vertical in data
         setNodes((nds) =>
             nds.map((n, i) => ({
                 ...n,
@@ -781,13 +861,16 @@ export default function WorkflowCanvas() {
                     x: nextVertical ? 250 : 120 + i * 330,
                     y: nextVertical ? 60 + i * 220 : 200,
                 },
+                data: { ...n.data, _vertical: nextVertical },
             }))
         );
-        // Update Edge types
+        // Update Edge types and ensure handle IDs
         setEdges((eds) =>
             eds.map((e) => ({
                 ...e,
                 type: nextVertical ? 'straight' : 'default',
+                sourceHandle: 'out',
+                targetHandle: 'in',
             }))
         );
     }, [vertical, setNodes, setEdges]);
@@ -982,7 +1065,10 @@ export default function WorkflowCanvas() {
                     onConnect={onConnect}
                     onInit={setReactFlowInstance}
                     onNodeClick={onNodeClick}
+                    onNodeDoubleClick={onNodeDoubleClick}
                     onNodeContextMenu={onNodeContextMenu}
+                    onEdgeClick={onEdgeClick}
+                    onEdgeDoubleClick={onEdgeDoubleClick}
                     onPaneClick={onPaneClick}
                     onDragOver={onDragOver}
                     onDrop={onDrop}
@@ -992,6 +1078,10 @@ export default function WorkflowCanvas() {
                     snapGrid={[16, 16]}
                     proOptions={{ hideAttribution: true }}
                     defaultEdgeOptions={{ animated: true }}
+                    connectionMode="loose"
+                    connectionRadius={30}
+                    deleteKeyCode={['Backspace', 'Delete']}
+                    edgesReconnectable
                 >
                     <Background variant={BackgroundVariant.Dots} gap={18} size={1.6} color="var(--dot-color-bright)" />
                     <Controls showInteractive={false} position="bottom-left" />

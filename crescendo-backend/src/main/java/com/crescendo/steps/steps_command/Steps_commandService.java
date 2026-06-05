@@ -230,6 +230,27 @@ public class Steps_commandService {
         int currentStepCount = (int) stepRepo.countByWorkflow_IdAndDeletedAtIsNull(workflowId);
         accessControl.enforceStepLimit(currentStepCount);
 
+        // Enforce single-trigger rule: only one TRIGGER step per workflow, and it must be the first step.
+        if (req.type() == StepType.TRIGGER) {
+            List<Steps_command> existing = stepRepo.findActiveByWorkflowIdOrdered(workflowId);
+            boolean triggerExists = existing.stream().anyMatch(s -> s.getType() == StepType.TRIGGER);
+            if (triggerExists) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "A workflow can only have one trigger. Remove the existing trigger before adding a new one.");
+            }
+            // Trigger must be the first step — reject if other steps already exist
+            if (!existing.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "The trigger must be the first step in the workflow.");
+            }
+        } else {
+            // ACTION steps cannot be the very first step — there must be a trigger first
+            if (currentStepCount == 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "The first step must be a trigger. Add a trigger before adding actions.");
+            }
+        }
+
         StepOrder order = calculateNextOrder(workflowId);
 
         UUID stepId = UUID.randomUUID();
@@ -267,7 +288,13 @@ public class Steps_commandService {
     }
 
     private void performStepDeletion(UUID stepId, UUID workflowId) {
-        Steps_command step = findActiveStep(stepId, workflowId);
+        // Idempotent: if the step is already soft-deleted or doesn't exist, silently return.
+        // This prevents 404 errors during frontend save reconciliation race conditions.
+        Steps_command step = stepRepo.findByIdAndDeletedAtIsNull(stepId).orElse(null);
+        if (step == null) return;
+        if (!step.getWorkflow().getId().equals(workflowId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found in this workflow");
+        }
         conditionRepo.deleteByStepId(stepId);
         step.setDeletedAt(Instant.now());
         stepQueryRepo.deleteById(stepId);

@@ -6,6 +6,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 
@@ -78,7 +81,10 @@ public class GmailTriggerPoller implements TriggerPoller {
         }
 
         // Build full URL with labelIds if present
-        String url = GMAIL_MESSAGES_URL + "?q=" + query + "&maxResults=10";
+        // URL-encode the query to handle special characters in subject/from filters
+        String encodedQuery = URLEncoder.encode(query.toString(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        String url = GMAIL_MESSAGES_URL + "?q=" + encodedQuery + "&maxResults=10";
         if (labelIds != null) {
             url += "&labelIds=" + labelIds;
         }
@@ -87,8 +93,9 @@ public class GmailTriggerPoller implements TriggerPoller {
                 url, epochSeconds, Instant.ofEpochSecond(epochSeconds));
 
         try {
+            // Use URI.create() to prevent Spring RestClient from re-encoding
             Map<String, Object> response = restClient.get()
-                    .uri(url)
+                    .uri(URI.create(url))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(Map.class);

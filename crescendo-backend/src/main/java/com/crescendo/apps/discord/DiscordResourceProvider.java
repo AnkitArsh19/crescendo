@@ -36,7 +36,7 @@ public class DiscordResourceProvider implements ResourceProvider {
 
     @Override
     public Set<String> supportedResourceTypes() {
-        return Set.of("guilds", "channels");
+        return Set.of("guilds", "channels", "roles", "members");
     }
 
     @Override
@@ -49,6 +49,8 @@ public class DiscordResourceProvider implements ResourceProvider {
         return switch (resourceType) {
             case "guilds" -> listGuilds(authHeader);
             case "channels" -> listChannels(authHeader, requireParam(params, "guildId"));
+            case "roles" -> listRoles(authHeader, requireParam(params, "guildId"));
+            case "members" -> listMembers(authHeader, requireParam(params, "guildId"));
             default -> List.of();
         };
     }
@@ -106,6 +108,62 @@ public class DiscordResourceProvider implements ResourceProvider {
 
         } catch (Exception e) {
             logger.error("[discord] Failed to list channels for guild {}: {}", guildId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ResourceOption> listRoles(String authHeader, String guildId) {
+        try {
+            List<Map<String, Object>> roles = restClient.get()
+                    .uri(DISCORD_API + "/guilds/" + guildId + "/roles")
+                    .header(HttpHeaders.AUTHORIZATION, authHeader)
+                    .retrieve()
+                    .body(List.class);
+
+            if (roles == null) return List.of();
+
+            return roles.stream()
+                    // Filter out @everyone role and managed/integration roles
+                    .filter(r -> !String.valueOf(r.get("name")).equals("@everyone")
+                                 && !Boolean.TRUE.equals(r.get("managed")))
+                    .map(r -> new ResourceOption(
+                            String.valueOf(r.get("id")),
+                            String.valueOf(r.get("name")),
+                            "Position: " + r.get("position")))
+                    .toList();
+
+        } catch (Exception e) {
+            logger.error("[discord] Failed to list roles for guild {}: {}", guildId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ResourceOption> listMembers(String authHeader, String guildId) {
+        try {
+            List<Map<String, Object>> members = restClient.get()
+                    .uri(DISCORD_API + "/guilds/" + guildId + "/members?limit=100")
+                    .header(HttpHeaders.AUTHORIZATION, authHeader)
+                    .retrieve()
+                    .body(List.class);
+
+            if (members == null) return List.of();
+
+            return members.stream()
+                    .filter(m -> m.get("user") != null)
+                    .map(m -> {
+                        Map<String, Object> user = (Map<String, Object>) m.get("user");
+                        String id = String.valueOf(user.get("id"));
+                        String username = String.valueOf(user.get("username"));
+                        String nick = m.get("nick") != null ? String.valueOf(m.get("nick")) : null;
+                        String displayName = nick != null ? nick + " (" + username + ")" : username;
+                        return new ResourceOption(id, displayName, "ID: " + id);
+                    })
+                    .toList();
+
+        } catch (Exception e) {
+            logger.error("[discord] Failed to list members for guild {}: {}", guildId, e.getMessage());
             return List.of();
         }
     }

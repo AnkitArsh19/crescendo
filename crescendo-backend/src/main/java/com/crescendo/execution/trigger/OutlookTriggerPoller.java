@@ -6,6 +6,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -75,15 +78,23 @@ public class OutlookTriggerPoller implements TriggerPoller {
             }
         }
 
-        String url = baseUrl + "?$filter=" + filter
-                + "&$top=10&$orderby=receivedDateTime desc"
+        // URL-encode the filter to avoid OData syntax issues, but use URI.create()
+        // so Spring does NOT double-encode the already-encoded query string.
+        String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8)
+                .replace("+", "%20"); // OData requires %20 not +
+        String url = baseUrl
+                + "?$filter=" + encodedFilter
+                + "&$top=10"
+                + "&$orderby=receivedDateTime%20desc"
                 + "&$select=id,subject,from,receivedDateTime,bodyPreview";
 
         logger.info("[outlook-poller] Polling Outlook: url='{}', since='{}'", url, isoTime);
 
         try {
+            // Use URI.create() to prevent Spring RestClient from re-encoding
+            // the OData query parameters ($ signs, spaces, etc.)
             Map<String, Object> response = restClient.get()
-                    .uri(url)
+                    .uri(URI.create(url))
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
                     .body(Map.class);
