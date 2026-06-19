@@ -15,6 +15,7 @@ import java.util.*;
  * Uses the integration token from the user's connection.
  */
 @Component
+@SuppressWarnings("unchecked")
 public class NotionResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(NotionResourceProvider.class);
@@ -37,10 +38,9 @@ public class NotionResourceProvider implements ResourceProvider {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<ResourceOption> listResources(Map<String, Object> credentials,
-                                               String resourceType,
-                                               Map<String, String> params) {
+            String resourceType,
+            Map<String, String> params) {
         String token = extractToken(credentials);
 
         return switch (resourceType) {
@@ -50,13 +50,11 @@ public class NotionResourceProvider implements ResourceProvider {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listDatabases(String token) {
         try {
             Map<String, Object> body = Map.of(
-                "filter", Map.of("value", "database", "property", "object"),
-                "page_size", 50
-            );
+                    "filter", Map.of("value", "database", "property", "object"),
+                    "page_size", 50);
 
             Map<String, Object> response = restClient.post()
                     .uri(NOTION_API + "/search")
@@ -67,7 +65,8 @@ public class NotionResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("results")) return List.of();
+            if (response == null || !response.containsKey("results"))
+                return List.of();
 
             List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
 
@@ -86,20 +85,20 @@ public class NotionResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private String extractTitle(Map<String, Object> db) {
         try {
             List<Map<String, Object>> titleArr = (List<Map<String, Object>>) db.get("title");
             if (titleArr != null && !titleArr.isEmpty()) {
                 return String.valueOf(titleArr.get(0).get("plain_text"));
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "Untitled Database";
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listPages(String token, String databaseId) {
-        if (databaseId == null || databaseId.isBlank()) return List.of();
+        if (databaseId == null || databaseId.isBlank())
+            return List.of();
         try {
             Map<String, Object> body = Map.of("page_size", 50);
 
@@ -112,14 +111,16 @@ public class NotionResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("results")) return List.of();
+            if (response == null || !response.containsKey("results"))
+                return List.of();
 
             List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
             return results.stream()
                     .map(page -> {
                         String id = String.valueOf(page.get("id"));
                         String title = extractPageTitle(page);
-                        return new ResourceOption(id, title, "ID: " + id.substring(0, Math.min(8, id.length())) + "...");
+                        return new ResourceOption(id, title,
+                                "ID: " + id.substring(0, Math.min(8, id.length())) + "...");
                     })
                     .toList();
         } catch (Exception e) {
@@ -128,11 +129,11 @@ public class NotionResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private String extractPageTitle(Map<String, Object> page) {
         try {
             Map<String, Object> properties = (Map<String, Object>) page.get("properties");
-            if (properties == null) return "Untitled";
+            if (properties == null)
+                return "Untitled";
             // Find the title property (any key with type 'title')
             for (Map.Entry<String, Object> entry : properties.entrySet()) {
                 Map<String, Object> prop = (Map<String, Object>) entry.getValue();
@@ -143,13 +144,15 @@ public class NotionResourceProvider implements ResourceProvider {
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return "Untitled";
     }
 
     private String extractToken(Map<String, Object> credentials) {
         Object token = credentials.get("accessToken");
-        if (token == null) token = credentials.get("access_token");
+        if (token == null)
+            token = credentials.get("access_token");
         if (token == null || token.toString().isBlank()) {
             throw new IllegalArgumentException("Notion connection is missing an access token");
         }

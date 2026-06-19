@@ -18,6 +18,7 @@ import java.util.*;
  * ({@code Bearer <token>}) auth styles.
  */
 @Component
+@SuppressWarnings("unchecked")
 public class DiscordResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(DiscordResourceProvider.class);
@@ -40,10 +41,9 @@ public class DiscordResourceProvider implements ResourceProvider {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<ResourceOption> listResources(Map<String, Object> credentials,
-                                               String resourceType,
-                                               Map<String, String> params) {
+            String resourceType,
+            Map<String, String> params) {
         String authHeader = buildAuthHeader(credentials);
 
         return switch (resourceType) {
@@ -55,7 +55,6 @@ public class DiscordResourceProvider implements ResourceProvider {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listGuilds(String authHeader) {
         try {
             // For bot tokens: GET /users/@me/guilds returns shared guilds
@@ -65,7 +64,8 @@ public class DiscordResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(List.class);
 
-            if (guilds == null) return List.of();
+            if (guilds == null)
+                return List.of();
 
             return guilds.stream()
                     .map(g -> new ResourceOption(
@@ -80,7 +80,6 @@ public class DiscordResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listChannels(String authHeader, String guildId) {
         try {
             List<Map<String, Object>> channels = restClient.get()
@@ -89,7 +88,8 @@ public class DiscordResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(List.class);
 
-            if (channels == null) return List.of();
+            if (channels == null)
+                return List.of();
 
             // Filter to text channels only (type 0) and announcement channels (type 5)
             return channels.stream()
@@ -112,7 +112,6 @@ public class DiscordResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listRoles(String authHeader, String guildId) {
         try {
             List<Map<String, Object>> roles = restClient.get()
@@ -121,12 +120,13 @@ public class DiscordResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(List.class);
 
-            if (roles == null) return List.of();
+            if (roles == null)
+                return List.of();
 
             return roles.stream()
                     // Filter out @everyone role and managed/integration roles
                     .filter(r -> !String.valueOf(r.get("name")).equals("@everyone")
-                                 && !Boolean.TRUE.equals(r.get("managed")))
+                            && !Boolean.TRUE.equals(r.get("managed")))
                     .map(r -> new ResourceOption(
                             String.valueOf(r.get("id")),
                             String.valueOf(r.get("name")),
@@ -139,7 +139,6 @@ public class DiscordResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listMembers(String authHeader, String guildId) {
         try {
             List<Map<String, Object>> members = restClient.get()
@@ -148,7 +147,8 @@ public class DiscordResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(List.class);
 
-            if (members == null) return List.of();
+            if (members == null)
+                return List.of();
 
             return members.stream()
                     .filter(m -> m.get("user") != null)

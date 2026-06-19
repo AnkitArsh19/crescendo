@@ -34,8 +34,8 @@ public class LinearResourceProvider implements ResourceProvider {
 
     @Override
     public List<ResourceOption> listResources(Map<String, Object> credentials,
-                                               String resourceType,
-                                               Map<String, String> params) {
+            String resourceType,
+            Map<String, String> params) {
         String accessToken = credentials.get("accessToken").toString();
 
         return switch (resourceType) {
@@ -61,8 +61,7 @@ public class LinearResourceProvider implements ResourceProvider {
                     .map(t -> new ResourceOption(
                             t.get("id").toString(),
                             t.get("name").toString(),
-                            t.get("key") != null ? t.get("key").toString() : null
-                    ))
+                            t.get("key") != null ? t.get("key").toString() : null))
                     .toList();
         } catch (Exception e) {
             logger.error("[linear] Failed to list teams: {}", e.getMessage());
@@ -85,8 +84,7 @@ public class LinearResourceProvider implements ResourceProvider {
                     .map(p -> new ResourceOption(
                             p.get("id").toString(),
                             p.get("name").toString(),
-                            p.get("state") != null ? p.get("state").toString() : null
-                    ))
+                            p.get("state") != null ? p.get("state").toString() : null))
                     .toList();
         } catch (Exception e) {
             logger.error("[linear] Failed to list projects: {}", e.getMessage());
@@ -96,7 +94,8 @@ public class LinearResourceProvider implements ResourceProvider {
 
     @SuppressWarnings("unchecked")
     private List<ResourceOption> listStates(String accessToken, String teamId) {
-        if (teamId == null || teamId.isBlank()) return List.of();
+        if (teamId == null || teamId.isBlank())
+            return List.of();
         try {
             String query = String.format("""
                     { "query": "{ team(id: \\"%s\\") { states { nodes { id name type } } } }" }
@@ -111,8 +110,7 @@ public class LinearResourceProvider implements ResourceProvider {
                     .map(s -> new ResourceOption(
                             s.get("id").toString(),
                             s.get("name").toString(),
-                            s.get("type") != null ? s.get("type").toString() : null
-                    ))
+                            s.get("type") != null ? s.get("type").toString() : null))
                     .toList();
         } catch (Exception e) {
             logger.error("[linear] Failed to list states for team {}: {}", teamId, e.getMessage());
@@ -120,7 +118,6 @@ public class LinearResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> graphQL(String accessToken, String body) {
         return RestClient.builder()
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -130,6 +127,7 @@ public class LinearResourceProvider implements ResourceProvider {
                 .uri(LINEAR_API)
                 .body(body)
                 .retrieve()
-                .body(new ParameterizedTypeReference<>() {});
+                .body(new ParameterizedTypeReference<>() {
+                });
     }
 }

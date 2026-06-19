@@ -23,7 +23,7 @@ public class WeatherGetHandler implements ActionHandler {
     private String platformApiKey;
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
@@ -32,7 +32,8 @@ public ActionResult execute(ActionContext context) {
                 ? platformApiKey
                 : (creds != null ? (String) creds.get("apiKey") : null);
         if (apiKey == null || apiKey.isBlank()) {
-            return ActionResult.failure("Weather requires an API key (configure in application.properties or provide in connection)");
+            return ActionResult.failure(
+                    "Weather requires an API key (configure in application.properties or provide in connection)");
         }
 
         String city = config.get("city") != null ? config.get("city").toString() : null;
@@ -40,7 +41,8 @@ public ActionResult execute(ActionContext context) {
             // Also check "location" for backward compat
             city = config.get("location") != null ? config.get("location").toString() : null;
         }
-        if (city == null || city.isBlank()) return ActionResult.failure("'city' is required");
+        if (city == null || city.isBlank())
+            return ActionResult.failure("'city' is required");
 
         String units = config.getOrDefault("units", "metric").toString();
 

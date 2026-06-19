@@ -1,8 +1,6 @@
 package com.crescendo.apps.catfacts;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
 import java.util.*;
 
@@ -11,7 +9,6 @@ import java.util.*;
  */
 @ActionMapping(appKey = "cat-facts", actionKey = "get-multiple-facts")
 public class CatFactsGetMultipleHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(CatFactsGetMultipleHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override

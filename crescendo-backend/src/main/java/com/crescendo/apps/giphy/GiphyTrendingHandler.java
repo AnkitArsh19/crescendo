@@ -1,8 +1,6 @@
 package com.crescendo.apps.giphy;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
 import java.util.*;
 
@@ -11,7 +9,6 @@ import java.util.*;
  */
 @ActionMapping(appKey = "giphy", actionKey = "trending-gifs")
 public class GiphyTrendingHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(GiphyTrendingHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
@@ -21,7 +18,8 @@ public class GiphyTrendingHandler implements ActionHandler {
         Map<String, Object> creds = context.credentials();
         // Giphy uses a public beta key by default or user-provided API key
         String apiKey = creds != null && creds.get("apiKey") != null
-                ? creds.get("apiKey").toString() : "dc6zaTOxFJmzC";
+                ? creds.get("apiKey").toString()
+                : "dc6zaTOxFJmzC";
 
         String limit = config.getOrDefault("limit", "10").toString();
         String rating = config.getOrDefault("rating", "g").toString();

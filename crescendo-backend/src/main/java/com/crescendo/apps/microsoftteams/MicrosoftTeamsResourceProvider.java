@@ -11,10 +11,12 @@ import org.springframework.web.client.RestClient;
 import java.util.*;
 
 /**
- * Fetches Microsoft Teams resources (teams, channels) via the Microsoft Graph API.
+ * Fetches Microsoft Teams resources (teams, channels) via the Microsoft Graph
+ * API.
  * Cascade: teams → channels.
  */
 @Component
+@SuppressWarnings("unchecked")
 public class MicrosoftTeamsResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(MicrosoftTeamsResourceProvider.class);
@@ -37,10 +39,9 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<ResourceOption> listResources(Map<String, Object> credentials,
-                                               String resourceType,
-                                               Map<String, String> params) {
+            String resourceType,
+            Map<String, String> params) {
         String token = extractToken(credentials);
 
         return switch (resourceType) {
@@ -51,7 +52,6 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listTeams(String token) {
         try {
             Map<String, Object> response = restClient.get()
@@ -60,7 +60,8 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("value")) return List.of();
+            if (response == null || !response.containsKey("value"))
+                return List.of();
 
             List<Map<String, Object>> teams = (List<Map<String, Object>>) response.get("value");
             return teams.stream()
@@ -76,7 +77,6 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listChannels(String token, String teamId) {
         try {
             Map<String, Object> response = restClient.get()
@@ -85,7 +85,8 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("value")) return List.of();
+            if (response == null || !response.containsKey("value"))
+                return List.of();
 
             List<Map<String, Object>> channels = (List<Map<String, Object>>) response.get("value");
             return channels.stream()
@@ -101,7 +102,6 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listMembers(String token) {
         try {
             Map<String, Object> response = restClient.get()
@@ -110,7 +110,8 @@ public class MicrosoftTeamsResourceProvider implements ResourceProvider {
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || !response.containsKey("value")) return List.of();
+            if (response == null || !response.containsKey("value"))
+                return List.of();
 
             List<Map<String, Object>> users = (List<Map<String, Object>>) response.get("value");
             return users.stream()

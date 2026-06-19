@@ -32,15 +32,24 @@ public class LeverProvider implements JobSearchProvider {
             "moengage", "MoEngage",
             "gojek", "GoJek",
             "tokopedia", "Tokopedia",
-            "grab", "Grab"
-    );
-
-    @Override public String sourceName() { return "Lever"; }
-    @Override public boolean requiresApiKey() { return false; }
-    @Override public boolean isEnabled(Map<String, Object> config) { return true; }
+            "grab", "Grab");
 
     @Override
-    @SuppressWarnings("unchecked")
+    public String sourceName() {
+        return "Lever";
+    }
+
+    @Override
+    public boolean requiresApiKey() {
+        return false;
+    }
+
+    @Override
+    public boolean isEnabled(Map<String, Object> config) {
+        return true;
+    }
+
+    @Override
     public List<JobSearchResult> search(String query, String location, Map<String, Object> config) {
         int limit = parseLimit(config, 10);
         String queryLower = query.toLowerCase();
@@ -50,14 +59,16 @@ public class LeverProvider implements JobSearchProvider {
         if (custom != null && !custom.isBlank()) {
             for (String slug : custom.split(",")) {
                 String s = slug.trim();
-                if (!s.isBlank()) boards.put(s, s);
+                if (!s.isBlank())
+                    boards.put(s, s);
             }
         }
 
         List<JobSearchResult> allResults = new ArrayList<>();
 
         for (Map.Entry<String, String> entry : boards.entrySet()) {
-            if (allResults.size() >= limit) break;
+            if (allResults.size() >= limit)
+                break;
 
             String slug = entry.getKey();
             String companyName = entry.getValue();
@@ -67,9 +78,11 @@ public class LeverProvider implements JobSearchProvider {
                         .get()
                         .uri(API_BASE, slug)
                         .retrieve()
-                        .body(new ParameterizedTypeReference<>() {});
+                        .body(new ParameterizedTypeReference<>() {
+                        });
 
-                if (jobs == null) continue;
+                if (jobs == null)
+                    continue;
 
                 List<JobSearchResult> matches = jobs.stream()
                         .filter(job -> {
@@ -87,8 +100,10 @@ public class LeverProvider implements JobSearchProvider {
 
                             List<String> tags = new ArrayList<>();
                             if (job.get("categories") instanceof Map<?, ?> cats) {
-                                if (cats.get("team") != null) tags.add(cats.get("team").toString());
-                                if (cats.get("commitment") != null) tags.add(cats.get("commitment").toString());
+                                if (cats.get("team") != null)
+                                    tags.add(cats.get("team").toString());
+                                if (cats.get("commitment") != null)
+                                    tags.add(cats.get("commitment").toString());
                             }
                             tags.add("Lever");
 
@@ -102,8 +117,7 @@ public class LeverProvider implements JobSearchProvider {
                                     asStr(job.get("createdAt")),
                                     sourceName(),
                                     tags,
-                                    null
-                            );
+                                    null);
                         })
                         .toList();
 
@@ -117,10 +131,19 @@ public class LeverProvider implements JobSearchProvider {
         return allResults;
     }
 
-    private String asStr(Object v) { return v != null ? v.toString() : null; }
-    private String truncate(String s, int max) { return s != null && s.length() > max ? s.substring(0, max) + "…" : s; }
+    private String asStr(Object v) {
+        return v != null ? v.toString() : null;
+    }
+
+    private String truncate(String s, int max) {
+        return s != null && s.length() > max ? s.substring(0, max) + "…" : s;
+    }
+
     private int parseLimit(Map<String, Object> config, int def) {
-        try { return Integer.parseInt(config.getOrDefault("maxResults", def).toString()); }
-        catch (Exception e) { return def; }
+        try {
+            return Integer.parseInt(config.getOrDefault("maxResults", def).toString());
+        } catch (Exception e) {
+            return def;
+        }
     }
 }

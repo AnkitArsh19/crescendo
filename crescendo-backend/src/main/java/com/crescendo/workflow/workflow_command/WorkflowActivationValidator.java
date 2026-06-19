@@ -89,9 +89,9 @@ public class WorkflowActivationValidator {
         validateConfiguration(step.getConfiguration(), schemaObj, index);
     }
 
-    @SuppressWarnings("unchecked")
     private void validateConfiguration(Map<String, Object> config, Object schemaObj, int index) {
-        if (schemaObj == null) return;
+        if (schemaObj == null)
+            return;
         Map<String, Object> safeConfig = config != null ? config : Map.of();
 
         if (schemaObj instanceof List<?> list) {
@@ -102,7 +102,8 @@ public class WorkflowActivationValidator {
                     if (Boolean.TRUE.equals(required)) {
                         String key = (String) field.get("key");
                         String label = (String) field.get("label");
-                        if (label == null) label = key;
+                        if (label == null)
+                            label = key;
 
                         Object value = safeConfig.get(key);
                         if (value == null || value.toString().trim().isEmpty()) {

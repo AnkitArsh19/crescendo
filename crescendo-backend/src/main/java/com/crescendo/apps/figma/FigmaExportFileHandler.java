@@ -1,8 +1,6 @@
 package com.crescendo.apps.figma;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
 import java.util.*;
@@ -12,7 +10,6 @@ import java.util.*;
  */
 @ActionMapping(appKey = "figma", actionKey = "export-file")
 public class FigmaExportFileHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(FigmaExportFileHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
@@ -21,17 +18,22 @@ public class FigmaExportFileHandler implements ActionHandler {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Figma requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Figma requires an OAuth2 accessToken");
 
         String fileKey = config.get("fileKey") != null ? config.get("fileKey").toString() : null;
-        if (fileKey == null) return ActionResult.failure("'fileKey' is required");
+        if (fileKey == null)
+            return ActionResult.failure("'fileKey' is required");
 
         // Extract key from URL if full URL provided
         if (fileKey.contains("figma.com")) {
             String[] parts = fileKey.split("/");
             for (int i = 0; i < parts.length; i++) {
                 if ("design".equals(parts[i]) || "file".equals(parts[i])) {
-                    if (i + 1 < parts.length) { fileKey = parts[i + 1]; break; }
+                    if (i + 1 < parts.length) {
+                        fileKey = parts[i + 1];
+                        break;
+                    }
                 }
             }
         }
@@ -41,8 +43,10 @@ public class FigmaExportFileHandler implements ActionHandler {
         String scale = config.getOrDefault("scale", "1").toString();
 
         try {
-            StringBuilder url = new StringBuilder("https://api.figma.com/v1/images/" + fileKey + "?format=" + format + "&scale=" + scale);
-            if (nodeIds != null && !nodeIds.isBlank()) url.append("&ids=").append(nodeIds);
+            StringBuilder url = new StringBuilder(
+                    "https://api.figma.com/v1/images/" + fileKey + "?format=" + format + "&scale=" + scale);
+            if (nodeIds != null && !nodeIds.isBlank())
+                url.append("&ids=").append(nodeIds);
 
             Map<String, Object> resp = restClient.get()
                     .uri(url.toString())

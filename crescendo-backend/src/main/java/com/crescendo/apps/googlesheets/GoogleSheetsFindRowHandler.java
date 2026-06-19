@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +43,16 @@ public class GoogleSheetsFindRowHandler implements ActionHandler {
         String sheetName = str(config, "sheetName");
         String searchColumn = str(config, "searchColumn");
         String searchValue = str(config, "searchValue");
-        if (spreadsheetId == null) return ActionResult.failure("'spreadsheetId' is required");
-        if (searchColumn == null) return ActionResult.failure("'searchColumn' is required");
-        if (searchValue == null) return ActionResult.failure("'searchValue' is required");
+        if (spreadsheetId == null)
+            return ActionResult.failure("'spreadsheetId' is required");
+        if (searchColumn == null)
+            return ActionResult.failure("'searchColumn' is required");
+        if (searchValue == null)
+            return ActionResult.failure("'searchValue' is required");
 
         String range = (sheetName != null ? sheetName : "Sheet1");
-        logger.info("[google-sheets] Finding row: column='{}', value='{}' in '{}'", searchColumn, searchValue, spreadsheetId);
+        logger.info("[google-sheets] Finding row: column='{}', value='{}' in '{}'", searchColumn, searchValue,
+                spreadsheetId);
 
         try {
             // Read all rows

@@ -23,17 +23,20 @@ public class SlackFindMessageHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = resolveToken(creds);
-        if (token == null) return ActionResult.failure("Slack requires a bot token");
+        if (token == null)
+            return ActionResult.failure("Slack requires a bot token");
 
         String query = str(config, "query");
-        if (query == null) return ActionResult.failure("'query' is required");
+        if (query == null)
+            return ActionResult.failure("'query' is required");
 
         String count = str(config, "maxResults");
-        if (count == null) count = "5";
+        if (count == null)
+            count = "5";
 
         logger.info("[slack] Searching messages: query='{}'", query);
 
@@ -67,13 +70,16 @@ public ActionResult execute(ActionContext context) {
     }
 
     private String resolveToken(Map<String, Object> creds) {
-        if (creds == null) return null;
+        if (creds == null)
+            return null;
         String t = (String) creds.get("botToken");
-        if (t == null || t.isBlank()) t = (String) creds.get("accessToken");
+        if (t == null || t.isBlank())
+            t = (String) creds.get("accessToken");
         return (t != null && !t.isBlank()) ? t : null;
     }
 
     private String str(Map<String, Object> m, String k) {
-        Object v = m.get(k); return v != null ? v.toString() : null;
+        Object v = m.get(k);
+        return v != null ? v.toString() : null;
     }
 }

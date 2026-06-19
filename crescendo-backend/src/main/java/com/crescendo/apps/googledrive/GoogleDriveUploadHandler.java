@@ -18,7 +18,6 @@ import java.util.Map;
 public class GoogleDriveUploadHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleDriveUploadHandler.class);
-    private static final String DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
 
     @Override
     public ActionResult execute(ActionContext context) {
@@ -34,9 +33,12 @@ public class GoogleDriveUploadHandler implements ActionHandler {
         String mimeType = config.get("mimeType") != null ? config.get("mimeType").toString() : null;
         String content = config.get("content") != null ? config.get("content").toString() : null;
 
-        if (fileName == null || fileName.isBlank()) return ActionResult.failure("'fileName' is required");
-        if (mimeType == null || mimeType.isBlank()) return ActionResult.failure("'mimeType' is required");
-        if (content == null) return ActionResult.failure("'content' is required");
+        if (fileName == null || fileName.isBlank())
+            return ActionResult.failure("'fileName' is required");
+        if (mimeType == null || mimeType.isBlank())
+            return ActionResult.failure("'mimeType' is required");
+        if (content == null)
+            return ActionResult.failure("'content' is required");
 
         try {
             Map<String, Object> metadata = new HashMap<>();

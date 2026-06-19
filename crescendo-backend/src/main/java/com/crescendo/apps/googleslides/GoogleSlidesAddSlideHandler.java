@@ -15,23 +15,23 @@ public class GoogleSlidesAddSlideHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Google Slides requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Google Slides requires an OAuth2 accessToken");
 
         String presentationId = config.get("presentationId") != null ? config.get("presentationId").toString() : null;
-        if (presentationId == null) return ActionResult.failure("'presentationId' is required");
+        if (presentationId == null)
+            return ActionResult.failure("'presentationId' is required");
 
         String layout = config.getOrDefault("layout", "BLANK").toString();
 
         try {
             Map<String, Object> createSlideReq = Map.of(
-                "createSlide", Map.of(
-                    "slideLayoutReference", Map.of("predefinedLayout", layout)
-                )
-            );
+                    "createSlide", Map.of(
+                            "slideLayoutReference", Map.of("predefinedLayout", layout)));
             Map<String, Object> body = Map.of("requests", List.of(createSlideReq));
 
             Map<String, Object> resp = restClient.post()
@@ -48,7 +48,7 @@ public ActionResult execute(ActionContext context) {
             if (resp != null && resp.containsKey("replies")) {
                 var replies = (List<Map<String, Object>>) resp.get("replies");
                 if (!replies.isEmpty() && replies.get(0).containsKey("createSlide")) {
-                    out.put("slideId", ((Map<?,?>)replies.get(0).get("createSlide")).get("objectId"));
+                    out.put("slideId", ((Map<?, ?>) replies.get(0).get("createSlide")).get("objectId"));
                 }
             }
             return ActionResult.success(out);
