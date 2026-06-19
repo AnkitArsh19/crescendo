@@ -15,14 +15,16 @@ public class SpotifyCreatePlaylistHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Spotify requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Spotify requires an OAuth2 accessToken");
 
         String name = config.get("name") != null ? config.get("name").toString() : null;
-        if (name == null) return ActionResult.failure("'name' is required");
+        if (name == null)
+            return ActionResult.failure("'name' is required");
         String description = config.get("description") != null ? config.get("description").toString() : "";
         boolean isPublic = !"false".equalsIgnoreCase(config.getOrDefault("isPublic", "true").toString());
 
@@ -33,7 +35,8 @@ public ActionResult execute(ActionContext context) {
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .retrieve().body(Map.class);
             String userId = me != null ? (String) me.get("id") : null;
-            if (userId == null) return ActionResult.failure("Could not get Spotify user ID");
+            if (userId == null)
+                return ActionResult.failure("Could not get Spotify user ID");
 
             Map<String, Object> body = Map.of("name", name, "description", description, "public", isPublic);
             Map<String, Object> resp = restClient.post()
@@ -46,7 +49,7 @@ public ActionResult execute(ActionContext context) {
             out.put("provider", "spotify");
             out.put("action", "create-playlist");
             out.put("playlistId", resp != null ? resp.get("id") : null);
-            out.put("externalUrl", resp != null ? ((Map<?,?>)resp.get("external_urls")).get("spotify") : null);
+            out.put("externalUrl", resp != null ? ((Map<?, ?>) resp.get("external_urls")).get("spotify") : null);
             return ActionResult.success(out);
         } catch (Exception e) {
             return ActionResult.failure("Spotify create-playlist failed: " + e.getMessage());

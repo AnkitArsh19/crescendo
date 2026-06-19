@@ -24,7 +24,6 @@ public class NotionArchivePageHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
@@ -35,12 +34,13 @@ public class NotionArchivePageHandler implements ActionHandler {
         }
 
         String pageId = str(config, "pageId");
-        if (pageId == null) return ActionResult.failure("'pageId' is required");
+        if (pageId == null)
+            return ActionResult.failure("'pageId' is required");
 
         logger.info("[notion] Archiving page '{}'", pageId);
 
         try {
-            Map<String, Object> response = restClient.patch()
+            restClient.patch()
                     .uri(NOTION_API + pageId)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .header("Notion-Version", "2022-06-28")
@@ -63,6 +63,7 @@ public class NotionArchivePageHandler implements ActionHandler {
     }
 
     private String str(Map<String, Object> m, String k) {
-        Object v = m.get(k); return v != null ? v.toString() : null;
+        Object v = m.get(k);
+        return v != null ? v.toString() : null;
     }
 }

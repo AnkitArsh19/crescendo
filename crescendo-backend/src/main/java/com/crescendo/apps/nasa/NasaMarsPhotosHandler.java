@@ -13,7 +13,7 @@ public class NasaMarsPhotosHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String rover = config.getOrDefault("rover", "curiosity").toString().toLowerCase();
         String sol = config.getOrDefault("sol", "1000").toString();
@@ -33,7 +33,7 @@ public ActionResult execute(ActionContext context) {
                 out.put("photoCount", photos.size());
                 if (!photos.isEmpty()) {
                     out.put("firstPhotoUrl", photos.get(0).get("img_src"));
-                    out.put("camera", ((Map<?,?>)photos.get(0).get("camera")).get("full_name"));
+                    out.put("camera", ((Map<?, ?>) photos.get(0).get("camera")).get("full_name"));
                 }
             }
             return ActionResult.success(out);

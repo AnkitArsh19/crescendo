@@ -38,9 +38,12 @@ public class MicrosoftExcelUpdateRowHandler implements ActionHandler {
         String rowIndexStr = asString(config.get("rowIndex"));
         Object valuesObj = config.get("values");
 
-        if (driveItemId == null || driveItemId.isBlank()) return ActionResult.failure("'driveItemId' is required");
-        if (worksheetId == null || worksheetId.isBlank()) return ActionResult.failure("'worksheetId' is required");
-        if (rowIndexStr == null || rowIndexStr.isBlank()) return ActionResult.failure("'rowIndex' is required");
+        if (driveItemId == null || driveItemId.isBlank())
+            return ActionResult.failure("'driveItemId' is required");
+        if (worksheetId == null || worksheetId.isBlank())
+            return ActionResult.failure("'worksheetId' is required");
+        if (rowIndexStr == null || rowIndexStr.isBlank())
+            return ActionResult.failure("'rowIndex' is required");
 
         int rowIndex;
         try {
@@ -54,7 +57,8 @@ public class MicrosoftExcelUpdateRowHandler implements ActionHandler {
         }
 
         try {
-            // Graph API: PATCH /me/drive/items/{id}/workbook/worksheets/{sheet}/range(address='A{row}:Z{row}')
+            // Graph API: PATCH
+            // /me/drive/items/{id}/workbook/worksheets/{sheet}/range(address='A{row}:Z{row}')
             String range = "A" + rowIndex + ":Z" + rowIndex;
             String uri = GRAPH_API + "/me/drive/items/" + driveItemId
                     + "/workbook/worksheets/" + worksheetId

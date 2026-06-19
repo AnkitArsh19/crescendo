@@ -13,7 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Creates a merge request in GitLab via POST /api/v4/projects/{id}/merge_requests.
+ * Creates a merge request in GitLab via POST
+ * /api/v4/projects/{id}/merge_requests.
  */
 @ActionMapping(appKey = "gitlab", actionKey = "create-mr")
 @SuppressWarnings("unchecked")
@@ -24,21 +25,26 @@ public class GitLabCreateMrHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
         String token = resolveToken(creds);
-        if (token == null) return ActionResult.failure("GitLab requires an access token");
+        if (token == null)
+            return ActionResult.failure("GitLab requires an access token");
 
         String projectId = str(config, "projectId");
         String title = str(config, "title");
         String sourceBranch = str(config, "sourceBranch");
         String targetBranch = str(config, "targetBranch");
-        if (projectId == null) return ActionResult.failure("'projectId' is required");
-        if (title == null) return ActionResult.failure("'title' is required");
-        if (sourceBranch == null) return ActionResult.failure("'sourceBranch' is required");
-        if (targetBranch == null) return ActionResult.failure("'targetBranch' is required");
+        if (projectId == null)
+            return ActionResult.failure("'projectId' is required");
+        if (title == null)
+            return ActionResult.failure("'title' is required");
+        if (sourceBranch == null)
+            return ActionResult.failure("'sourceBranch' is required");
+        if (targetBranch == null)
+            return ActionResult.failure("'targetBranch' is required");
 
         String description = str(config, "description");
 
@@ -49,7 +55,8 @@ public ActionResult execute(ActionContext context) {
             body.put("title", title);
             body.put("source_branch", sourceBranch);
             body.put("target_branch", targetBranch);
-            if (description != null) body.put("description", description);
+            if (description != null)
+                body.put("description", description);
 
             String url = GITLAB_API + "/projects/" + java.net.URLEncoder.encode(projectId, "UTF-8") + "/merge_requests";
             Map<String, Object> response = restClient.post()
@@ -75,13 +82,16 @@ public ActionResult execute(ActionContext context) {
     }
 
     private String resolveToken(Map<String, Object> creds) {
-        if (creds == null) return null;
+        if (creds == null)
+            return null;
         String t = (String) creds.get("accessToken");
-        if (t == null) t = (String) creds.get("apiKey");
+        if (t == null)
+            t = (String) creds.get("apiKey");
         return (t != null && !t.isBlank()) ? t : null;
     }
 
     private String str(Map<String, Object> m, String k) {
-        Object v = m.get(k); return v != null ? v.toString() : null;
+        Object v = m.get(k);
+        return v != null ? v.toString() : null;
     }
 }

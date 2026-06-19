@@ -14,7 +14,8 @@ public final class TemplateInterpolator {
 
     private static final Pattern TEMPLATE_VAR = Pattern.compile("\\{\\{\\s*(\\w+(?:\\.\\w+)*)\\s*}}");
 
-    private TemplateInterpolator() {}
+    private TemplateInterpolator() {
+    }
 
     /**
      * Replaces {@code {{variable}}} placeholders with values from the data map.
@@ -22,7 +23,8 @@ public final class TemplateInterpolator {
      * Unresolved placeholders are replaced with an empty string.
      */
     public static String interpolate(String template, Map<String, Object> data) {
-        if (template == null || data == null || data.isEmpty()) return template;
+        if (template == null || data == null || data.isEmpty())
+            return template;
 
         Matcher matcher = TEMPLATE_VAR.matcher(template);
         StringBuilder sb = new StringBuilder();
@@ -36,7 +38,6 @@ public final class TemplateInterpolator {
         return sb.toString();
     }
 
-    @SuppressWarnings("unchecked")
     private static Object resolvePath(String path, Map<String, Object> data) {
         String[] parts = path.split("\\.");
         Object current = data;

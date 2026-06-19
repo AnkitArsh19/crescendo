@@ -12,14 +12,16 @@ public class OpenAIGenerateEmbeddingsHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String apiKey = creds != null ? (String) creds.get("apiKey") : null;
-        if (apiKey == null) return ActionResult.failure("OpenAI requires 'apiKey'");
+        if (apiKey == null)
+            return ActionResult.failure("OpenAI requires 'apiKey'");
 
         String input = config.get("input") != null ? config.get("input").toString() : null;
-        if (input == null) return ActionResult.failure("'input' is required");
+        if (input == null)
+            return ActionResult.failure("'input' is required");
         String model = config.getOrDefault("model", "text-embedding-3-small").toString();
 
         try {
@@ -35,7 +37,8 @@ public ActionResult execute(ActionContext context) {
             out.put("action", "generate-embeddings");
             if (resp != null && resp.containsKey("data")) {
                 var data = (List<Map<String, Object>>) resp.get("data");
-                if (!data.isEmpty()) out.put("embedding", data.get(0).get("embedding"));
+                if (!data.isEmpty())
+                    out.put("embedding", data.get(0).get("embedding"));
             }
             return ActionResult.success(out);
         } catch (Exception e) {

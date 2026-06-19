@@ -14,14 +14,16 @@ public class GoogleFormsGetFormHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Google Forms requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Google Forms requires an OAuth2 accessToken");
 
         String formId = config.get("formId") != null ? config.get("formId").toString() : null;
-        if (formId == null) return ActionResult.failure("'formId' is required");
+        if (formId == null)
+            return ActionResult.failure("'formId' is required");
 
         try {
             Map<String, Object> resp = restClient.get()

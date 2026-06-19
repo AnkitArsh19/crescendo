@@ -15,7 +15,6 @@ public class QuotesOfTheDayHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
     public ActionResult execute(ActionContext context) {
         try {
             // ZenQuotes API — dedicated quote of the day endpoint

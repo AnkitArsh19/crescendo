@@ -35,13 +35,15 @@ public class MicrosoftOutlookReplyHandler implements ActionHandler {
 
         String messageId = str(config, "messageId");
         String comment = str(config, "comment");
-        if (messageId == null) return ActionResult.failure("'messageId' is required");
-        if (comment == null) return ActionResult.failure("'comment' is required");
+        if (messageId == null)
+            return ActionResult.failure("'messageId' is required");
+        if (comment == null)
+            return ActionResult.failure("'comment' is required");
 
         logger.info("[outlook] Replying to message '{}'", messageId);
 
         try {
-            String response = restClient.post()
+            restClient.post()
                     .uri(GRAPH_API + messageId + "/reply")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -63,6 +65,7 @@ public class MicrosoftOutlookReplyHandler implements ActionHandler {
     }
 
     private String str(Map<String, Object> m, String k) {
-        Object v = m.get(k); return v != null ? v.toString() : null;
+        Object v = m.get(k);
+        return v != null ? v.toString() : null;
     }
 }

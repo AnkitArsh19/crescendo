@@ -39,8 +39,10 @@ public class GoogleCalendarDeleteEventHandler implements ActionHandler {
 
         String calendarId = str(config, "calendarId");
         String eventId = str(config, "eventId");
-        if (calendarId == null) calendarId = "primary";
-        if (eventId == null) return ActionResult.failure("'eventId' is required");
+        if (calendarId == null)
+            calendarId = "primary";
+        if (eventId == null)
+            return ActionResult.failure("'eventId' is required");
 
         logger.info("[google-calendar] Deleting event '{}' from calendar '{}'", eventId, calendarId);
 

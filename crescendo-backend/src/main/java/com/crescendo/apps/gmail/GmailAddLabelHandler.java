@@ -40,8 +40,10 @@ public class GmailAddLabelHandler implements ActionHandler {
 
         String messageId = str(config, "messageId");
         String labelId = str(config, "labelId");
-        if (messageId == null) return ActionResult.failure("'messageId' is required");
-        if (labelId == null) return ActionResult.failure("'labelId' is required");
+        if (messageId == null)
+            return ActionResult.failure("'messageId' is required");
+        if (labelId == null)
+            return ActionResult.failure("'labelId' is required");
 
         logger.info("[gmail] Adding label '{}' to message '{}'", labelId, messageId);
 

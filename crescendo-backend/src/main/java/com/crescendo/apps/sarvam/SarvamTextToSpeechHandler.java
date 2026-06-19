@@ -14,25 +14,27 @@ public class SarvamTextToSpeechHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String apiKey = creds != null ? (String) creds.get("apiKey") : null;
-        if (apiKey == null) return ActionResult.failure("Sarvam requires an 'apiKey'");
+        if (apiKey == null)
+            return ActionResult.failure("Sarvam requires an 'apiKey'");
 
         String text = config.get("text") != null ? config.get("text").toString() : null;
         String lang = config.get("lang") != null ? config.get("lang").toString() : null;
-        if (text == null) return ActionResult.failure("'text' is required");
-        if (lang == null) return ActionResult.failure("'lang' is required");
+        if (text == null)
+            return ActionResult.failure("'text' is required");
+        if (lang == null)
+            return ActionResult.failure("'lang' is required");
 
         String speaker = config.getOrDefault("speaker", "meera").toString();
 
         try {
             Map<String, Object> body = Map.of(
-                "inputs", List.of(text),
-                "target_language_code", lang,
-                "speaker", speaker
-            );
+                    "inputs", List.of(text),
+                    "target_language_code", lang,
+                    "speaker", speaker);
             Map<String, Object> resp = restClient.post()
                     .uri("https://api.sarvam.ai/text-to-speech")
                     .header("api-subscription-key", apiKey)

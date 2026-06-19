@@ -11,10 +11,11 @@ import java.util.*;
 public class PomodoroLogWorkTimeHandler implements ActionHandler {
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String duration = config.get("durationMinutes") != null ? config.get("durationMinutes").toString() : null;
-        if (duration == null) return ActionResult.failure("'durationMinutes' is required");
+        if (duration == null)
+            return ActionResult.failure("'durationMinutes' is required");
 
         String task = config.get("task") != null ? config.get("task").toString() : "Unnamed session";
 

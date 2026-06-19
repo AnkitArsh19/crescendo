@@ -15,20 +15,25 @@ public class StravaCreateActivityHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Strava requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Strava requires an OAuth2 accessToken");
 
         String name = config.get("name") != null ? config.get("name").toString() : null;
         String type = config.get("type") != null ? config.get("type").toString() : null;
         String startDate = config.get("startDate") != null ? config.get("startDate").toString() : null;
         String duration = config.get("duration") != null ? config.get("duration").toString() : null;
-        if (name == null) return ActionResult.failure("'name' is required");
-        if (type == null) return ActionResult.failure("'type' is required");
-        if (startDate == null) return ActionResult.failure("'startDate' is required");
-        if (duration == null) return ActionResult.failure("'duration' is required");
+        if (name == null)
+            return ActionResult.failure("'name' is required");
+        if (type == null)
+            return ActionResult.failure("'type' is required");
+        if (startDate == null)
+            return ActionResult.failure("'startDate' is required");
+        if (duration == null)
+            return ActionResult.failure("'duration' is required");
 
         try {
             Map<String, Object> body = new HashMap<>();
@@ -36,8 +41,10 @@ public ActionResult execute(ActionContext context) {
             body.put("type", type);
             body.put("start_date_local", startDate);
             body.put("elapsed_time", Integer.parseInt(duration));
-            if (config.containsKey("distance")) body.put("distance", Float.parseFloat(config.get("distance").toString()));
-            if (config.containsKey("description")) body.put("description", config.get("description"));
+            if (config.containsKey("distance"))
+                body.put("distance", Float.parseFloat(config.get("distance").toString()));
+            if (config.containsKey("description"))
+                body.put("description", config.get("description"));
 
             Map<String, Object> resp = restClient.post()
                     .uri("https://www.strava.com/api/v3/activities")

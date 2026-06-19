@@ -15,9 +15,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Moves a file to a different folder in Google Drive via files.update (addParents/removeParents).
+ * Moves a file to a different folder in Google Drive via files.update
+ * (addParents/removeParents).
  */
 @ActionMapping(appKey = "google-drive", actionKey = "move-file")
+@SuppressWarnings("unchecked")
 public class GoogleDriveMoveFileHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleDriveMoveFileHandler.class);
@@ -30,7 +32,6 @@ public class GoogleDriveMoveFileHandler implements ActionHandler {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
@@ -42,8 +43,10 @@ public class GoogleDriveMoveFileHandler implements ActionHandler {
 
         String fileId = str(config, "fileId");
         String destinationFolderId = str(config, "destinationFolderId");
-        if (fileId == null) return ActionResult.failure("'fileId' is required");
-        if (destinationFolderId == null) return ActionResult.failure("'destinationFolderId' is required");
+        if (fileId == null)
+            return ActionResult.failure("'fileId' is required");
+        if (destinationFolderId == null)
+            return ActionResult.failure("'destinationFolderId' is required");
 
         logger.info("[google-drive] Moving file '{}' to folder '{}'", fileId, destinationFolderId);
 
@@ -62,7 +65,7 @@ public class GoogleDriveMoveFileHandler implements ActionHandler {
             String url = DRIVE_API + fileId + "?addParents=" + destinationFolderId
                     + "&removeParents=" + removeParents + "&fields=id,parents";
 
-            Map<String, Object> response = restClient.patch()
+            restClient.patch()
                     .uri(url)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)

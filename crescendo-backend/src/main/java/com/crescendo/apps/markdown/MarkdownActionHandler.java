@@ -16,21 +16,21 @@ import java.util.Map;
 public class MarkdownActionHandler implements ActionHandler {
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
-        
+
         if (config == null || !config.containsKey("text")) {
             return ActionResult.failure("Markdown to HTML action requires 'text' in configuration");
         }
-        
+
         String markdown = String.valueOf(config.get("text"));
-        
+
         try {
             Parser parser = Parser.builder().build();
             Node document = parser.parse(markdown);
             HtmlRenderer renderer = HtmlRenderer.builder().build();
             String html = renderer.render(document);
-            
+
             return ActionResult.success(Map.of("html", html));
         } catch (Exception e) {
             return ActionResult.failure("Failed to render markdown to HTML: " + e.getMessage());

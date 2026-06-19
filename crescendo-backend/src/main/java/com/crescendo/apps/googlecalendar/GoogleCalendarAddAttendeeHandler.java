@@ -29,7 +29,7 @@ public class GoogleCalendarAddAttendeeHandler implements ActionHandler {
     }
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
@@ -41,9 +41,12 @@ public ActionResult execute(ActionContext context) {
         String calendarId = str(config, "calendarId");
         String eventId = str(config, "eventId");
         String attendees = str(config, "attendees");
-        if (calendarId == null) calendarId = "primary";
-        if (eventId == null) return ActionResult.failure("'eventId' is required");
-        if (attendees == null || attendees.isBlank()) return ActionResult.failure("'attendees' is required");
+        if (calendarId == null)
+            calendarId = "primary";
+        if (eventId == null)
+            return ActionResult.failure("'eventId' is required");
+        if (attendees == null || attendees.isBlank())
+            return ActionResult.failure("'attendees' is required");
 
         logger.info("[google-calendar] Adding attendees to event '{}': {}", eventId, attendees);
 

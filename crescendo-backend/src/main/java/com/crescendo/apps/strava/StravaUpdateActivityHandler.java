@@ -15,20 +15,25 @@ public class StravaUpdateActivityHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Strava requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Strava requires an OAuth2 accessToken");
 
         String activityId = config.get("activityId") != null ? config.get("activityId").toString() : null;
-        if (activityId == null) return ActionResult.failure("'activityId' is required");
+        if (activityId == null)
+            return ActionResult.failure("'activityId' is required");
 
         try {
             Map<String, Object> body = new HashMap<>();
-            if (config.containsKey("name")) body.put("name", config.get("name"));
-            if (config.containsKey("description")) body.put("description", config.get("description"));
-            if (config.containsKey("type")) body.put("type", config.get("type"));
+            if (config.containsKey("name"))
+                body.put("name", config.get("name"));
+            if (config.containsKey("description"))
+                body.put("description", config.get("description"));
+            if (config.containsKey("type"))
+                body.put("type", config.get("type"));
 
             Map<String, Object> resp = restClient.put()
                     .uri("https://www.strava.com/api/v3/activities/" + activityId)

@@ -19,10 +19,11 @@ public class MarketstackLatestEodHandler implements ActionHandler {
     }
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         try {
             String symbols = value(context.configuration(), "symbols", "");
-            if (symbols.isBlank()) return ActionResult.failure("Marketstack symbols are required");
+            if (symbols.isBlank())
+                return ActionResult.failure("Marketstack symbols are required");
             int limit = intValue(context.configuration().get("limit"), 10);
             String response = RestClient.create("https://api.marketstack.com/v1")
                     .get()
@@ -30,7 +31,8 @@ public ActionResult execute(ActionContext context) {
                             value(context.credentials(), "accessKey", ""), symbols, Math.max(1, limit))
                     .retrieve()
                     .body(String.class);
-            return ActionResult.success(Map.of("data", objectMapper.readValue(response, Object.class), "raw", response));
+            return ActionResult
+                    .success(Map.of("data", objectMapper.readValue(response, Object.class), "raw", response));
         } catch (Exception e) {
             return ActionResult.failure("Marketstack latest EOD failed: " + e.getMessage());
         }

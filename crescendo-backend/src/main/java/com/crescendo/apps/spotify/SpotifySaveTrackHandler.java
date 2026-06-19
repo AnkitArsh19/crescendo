@@ -14,18 +14,22 @@ public class SpotifySaveTrackHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;
-        if (token == null) return ActionResult.failure("Spotify requires an OAuth2 accessToken");
+        if (token == null)
+            return ActionResult.failure("Spotify requires an OAuth2 accessToken");
 
         String trackId = config.get("trackId") != null ? config.get("trackId").toString() : null;
-        if (trackId == null) return ActionResult.failure("'trackId' is required");
+        if (trackId == null)
+            return ActionResult.failure("'trackId' is required");
 
         // Strip URI prefix if provided
-        if (trackId.startsWith("spotify:track:")) trackId = trackId.substring(14);
-        if (trackId.contains("/")) trackId = trackId.substring(trackId.lastIndexOf("/") + 1);
+        if (trackId.startsWith("spotify:track:"))
+            trackId = trackId.substring(14);
+        if (trackId.contains("/"))
+            trackId = trackId.substring(trackId.lastIndexOf("/") + 1);
 
         try {
             restClient.put()

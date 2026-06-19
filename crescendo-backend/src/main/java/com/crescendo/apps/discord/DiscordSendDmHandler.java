@@ -11,7 +11,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,8 +35,10 @@ public class DiscordSendDmHandler implements ActionHandler {
 
         String userId = str(config, "userId");
         String content = str(config, "content");
-        if (userId == null) return ActionResult.failure("'userId' is required");
-        if (content == null) return ActionResult.failure("'content' is required");
+        if (userId == null)
+            return ActionResult.failure("'userId' is required");
+        if (content == null)
+            return ActionResult.failure("'content' is required");
 
         logger.info("[discord] Sending DM to user '{}'", userId);
 
@@ -77,6 +78,7 @@ public class DiscordSendDmHandler implements ActionHandler {
     }
 
     private String str(Map<String, Object> m, String k) {
-        Object v = m.get(k); return v != null ? v.toString() : null;
+        Object v = m.get(k);
+        return v != null ? v.toString() : null;
     }
 }

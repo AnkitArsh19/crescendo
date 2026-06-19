@@ -13,10 +13,11 @@ public class WebhookPostHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String url = config.get("url") != null ? config.get("url").toString() : null;
-        if (url == null) return ActionResult.failure("'url' is required");
+        if (url == null)
+            return ActionResult.failure("'url' is required");
 
         String payload = config.get("payload") != null ? config.get("payload").toString() : "{}";
 

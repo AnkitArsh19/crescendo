@@ -42,8 +42,10 @@ public class GoogleSheetsUpdateRowHandler implements ActionHandler {
         String spreadsheetId = str(config, "spreadsheetId");
         String sheetName = str(config, "sheetName");
         String rowIndex = str(config, "rowIndex");
-        if (spreadsheetId == null) return ActionResult.failure("'spreadsheetId' is required");
-        if (rowIndex == null) return ActionResult.failure("'rowIndex' is required");
+        if (spreadsheetId == null)
+            return ActionResult.failure("'spreadsheetId' is required");
+        if (rowIndex == null)
+            return ActionResult.failure("'rowIndex' is required");
 
         Object valuesObj = config.get("values");
         if (!(valuesObj instanceof List<?> values) || values.isEmpty()) {
