@@ -1,8 +1,6 @@
 package com.crescendo.apps.sarvam;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import java.util.*;
@@ -11,13 +9,12 @@ import java.util.*;
  * Translates text between Indian languages using Sarvam AI translate API.
  */
 @ActionMapping(appKey = "sarvam", actionKey = "translate")
+@SuppressWarnings("unchecked")
 public class SarvamTranslateHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(SarvamTranslateHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String apiKey = creds != null ? (String) creds.get("apiKey") : null;

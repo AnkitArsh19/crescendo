@@ -19,6 +19,8 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
 
     Optional<WorkflowRun> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<WorkflowRun> findByResumeTokenAndStatus(String resumeToken, WorkflowRunStatus status);
+
     List<WorkflowRun> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
 
     Page<WorkflowRun> findAllByUserId(UUID userId, Pageable pageable);
@@ -34,4 +36,7 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
     List<WorkflowRun> findByStatusAndCreatedAtBefore(
             @org.springframework.data.repository.query.Param("status") WorkflowRunStatus status,
             @org.springframework.data.repository.query.Param("threshold") java.time.Instant threshold);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM WorkflowRun r WHERE r.status = 'SUSPENDED' AND r.resumeAt <= :now")
+    List<WorkflowRun> findReadyToResumeWorkflows(@org.springframework.data.repository.query.Param("now") java.time.Instant now);
 }

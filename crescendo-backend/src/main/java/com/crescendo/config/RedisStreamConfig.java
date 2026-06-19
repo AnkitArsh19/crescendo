@@ -57,13 +57,13 @@ public class RedisStreamConfig {
      * Uses MapRecord since events are published as hash maps.
      */
     @Bean
+    @SuppressWarnings("unchecked")
     public StreamMessageListenerContainer<String, MapRecord<String, Object, Object>> streamListenerContainer(
             RedisConnectionFactory connectionFactory) {
 
-        @SuppressWarnings("unchecked")
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, Object, Object>> options =
                 StreamMessageListenerContainer
-                .StreamMessageListenerContainerOptions.<String, MapRecord<String, Object, Object>>builder()
+                .StreamMessageListenerContainerOptions.builder()
                 .pollTimeout(Duration.ofMillis(500))
                 .keySerializer((RedisSerializer<String>) (RedisSerializer<?>) new StringRedisSerializer())
                 .hashKeySerializer((RedisSerializer<Object>) (RedisSerializer<?>) new StringRedisSerializer())

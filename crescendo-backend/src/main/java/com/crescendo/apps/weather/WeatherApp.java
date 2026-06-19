@@ -11,8 +11,8 @@ import java.util.Map;
 public class WeatherApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("weather", "Weather", "Get current weather and forecasts for any location",
-                "/icons/weather.svg", AuthType.NONE,
+        return new App("weather", "Weather", "Get current weather, forecast, air quality, hourly, and daily data",
+                "/icons/weather.svg", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "get-weather", "name", "Get Current Weather",
@@ -37,8 +37,22 @@ public class WeatherApp implements AppDefinition {
                                        Map.of("value", "imperial", "label", "Fahrenheit")
                                    ), "helpText", "Temperature units"),
                             Map.of("key", "days", "label", "Days", "type", "text", "required", false,
-                                   "placeholder", "5", "helpText", "Number of days (1-5)")))
+                                   "placeholder", "5", "helpText", "Number of days (1-5)"))),
+                    Map.of("actionKey", "get-air-quality", "name", "Get Air Quality",
+                        "description", "Get air quality by latitude and longitude",
+                        "configSchema", List.of(
+                            Map.of("key", "lat", "label", "Latitude", "type", "text", "required", true),
+                            Map.of("key", "lon", "label", "Longitude", "type", "text", "required", true))),
+                    Map.of("actionKey", "get-onecall", "name", "Get Hourly / Daily Forecast",
+                        "description", "Get OpenWeather One Call data; this endpoint may require One Call access on the user's OpenWeather account",
+                        "configSchema", List.of(
+                            Map.of("key", "lat", "label", "Latitude", "type", "text", "required", true),
+                            Map.of("key", "lon", "label", "Longitude", "type", "text", "required", true),
+                            Map.of("key", "units", "label", "Units", "type", "text", "required", false, "placeholder", "metric")))
                 )
-        ).credentialSchema(List.of()).category("productivity").helpUrl("https://openweathermap.org/appid");
+        ).credentialSchema(List.of(Map.of("key", "apiKey", "label", "OpenWeather API Key", "type", "password", "required", false,
+                "helpText", "Optional when an admin platform key is configured")))
+                .category("productivity")
+                .helpUrl("https://openweathermap.org/appid");
     }
 }

@@ -58,13 +58,14 @@ public class ConnectionCredentialsCryptoService {
         return out;
     }
 
-    @SuppressWarnings("unchecked")
     private Object transformValue(Object value, boolean encrypt) {
         if (value == null) return null;
 
         if (encrypt) {
             if (value instanceof Map<?, ?> mapValue) {
-                return transformMap((Map<String, Object>) mapValue, true);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> castMap = (Map<String, Object>) mapValue;
+                return transformMap(castMap, true);
             }
             if (value instanceof List<?> listValue) {
                 List<Object> out = new ArrayList<>(listValue.size());
@@ -79,7 +80,9 @@ public class ConnectionCredentialsCryptoService {
             if (marker instanceof String markerStr && markerStr.startsWith(ENVELOPE_PREFIX)) {
                 return decryptAny(markerStr);
             }
-            return transformMap((Map<String, Object>) mapValue, false);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> castMap = (Map<String, Object>) mapValue;
+            return transformMap(castMap, false);
         }
 
         if (value instanceof List<?> listValue) {

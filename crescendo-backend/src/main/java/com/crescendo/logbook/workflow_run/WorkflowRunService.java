@@ -102,6 +102,41 @@ public class WorkflowRunService {
     }
 
     /**
+     * Suspends a workflow run until a given time or event.
+     */
+    public void suspendRun(UUID userId, UUID runId, Instant resumeAt, UUID resumeStepId,
+                           String resumeToken, java.util.Map<String, Object> executionState) {
+        WorkflowRun run = findOwnedRun(userId, runId);
+
+        if (run.getStatus() != WorkflowRunStatus.RUNNING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Run must be RUNNING to be suspended, currently " + run.getStatus());
+        }
+
+        run.setStatus(WorkflowRunStatus.SUSPENDED);
+        run.setResumeAt(resumeAt);
+        run.setResumeStepId(resumeStepId);
+        run.setResumeToken(resumeToken);
+        run.setExecutionState(executionState);
+    }
+
+    /**
+     * Persists accumulated step outputs so completed runs can be inspected later
+     * and synchronous webhook responses can read the workflow-built response.
+     */
+    public void saveExecutionState(UUID userId, UUID runId, java.util.Map<String, Object> executionState) {
+        WorkflowRun run = findOwnedRun(userId, runId);
+
+        if (run.getStatus() != WorkflowRunStatus.RUNNING
+                && run.getStatus() != WorkflowRunStatus.SUSPENDED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Run must be active to update execution state, currently " + run.getStatus());
+        }
+
+        run.setExecutionState(executionState);
+    }
+
+    /**
      * Marks a workflow run as successfully completed.
      * Called by the execution engine after all steps succeed.
      */

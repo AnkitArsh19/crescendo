@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import jakarta.transaction.Transactional;
 
@@ -111,6 +110,7 @@ public class LogbookEventListener {
             case CANCELLED -> WorkflowStatus.FAILED;
             case RUNNING -> WorkflowStatus.RUNNING;
             case PENDING -> WorkflowStatus.RUNNING;
+            case SUSPENDED -> WorkflowStatus.RUNNING;
         };
     }
 }

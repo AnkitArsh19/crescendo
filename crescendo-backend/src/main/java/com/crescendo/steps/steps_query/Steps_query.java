@@ -20,7 +20,8 @@ import java.util.UUID;
 @Table(name = "steps_query",
     indexes = {
         @Index(name = "idx_steps_query_workflow", columnList = "workflowId"),
-        @Index(name = "idx_steps_query_order", columnList = "workflowId, step_order")
+        @Index(name = "idx_steps_query_order", columnList = "workflowId, step_order"),
+        @Index(name = "idx_steps_query_parent_branch", columnList = "workflowId, parentStepId, branchKey")
     })
 public class Steps_query {
 
@@ -57,6 +58,12 @@ public class Steps_query {
     @Column(name = "connectionId")
     private UUID connectionId;
 
+    @Column(name = "parentStepId")
+    private UUID parentStepId;
+
+    @Column(name = "branchKey", length = 120)
+    private String branchKey;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "configuration", columnDefinition = "jsonb")
     private Map<String, Object> configuration;
@@ -74,6 +81,12 @@ public class Steps_query {
         this.actionKey = actionKey;
         this.connectionId = connectionId;
         this.configuration = configuration;
+    }
+
+    public Steps_query(UUID id, UUID workflowId, String name, StepType type, BigDecimal order, String appKey, String actionKey, UUID connectionId, UUID parentStepId, String branchKey, Map<String, Object> configuration) {
+        this(id, workflowId, name, type, order, appKey, actionKey, connectionId, configuration);
+        this.parentStepId = parentStepId;
+        this.branchKey = branchKey;
     }
 
     public UUID getId() {
@@ -116,6 +129,14 @@ public class Steps_query {
         return connectionId;
     }
 
+    public UUID getParentStepId() {
+        return parentStepId;
+    }
+
+    public String getBranchKey() {
+        return branchKey;
+    }
+
     public Instant getUpdatedAt() {
         return updatedAt;
     }
@@ -142,6 +163,14 @@ public class Steps_query {
 
     public void setConnectionId(UUID connectionId) {
         this.connectionId = connectionId;
+    }
+
+    public void setParentStepId(UUID parentStepId) {
+        this.parentStepId = parentStepId;
+    }
+
+    public void setBranchKey(String branchKey) {
+        this.branchKey = branchKey;
     }
 
     public void setConfiguration(Map<String, Object> configuration) {

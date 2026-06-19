@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +43,7 @@ import java.util.regex.Pattern;
  * </ol>
  */
 @Service
+@SuppressWarnings("unchecked")
 public class WorkflowExecutionEngine {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowExecutionEngine.class);
@@ -84,30 +86,22 @@ public class WorkflowExecutionEngine {
      * @param userId        owner of the workflow (for service-level ownership checks)
      * @param triggerData   the initial trigger payload (webhook body, manual input, etc.)
      */
-    public void execute(UUID workflowRunId, UUID workflowId, UUID userId,
-                        Map<String, Object> triggerData) {
+    public void execute(com.crescendo.logbook.workflow_run.WorkflowRun run) {
+        UUID workflowRunId = run.getId();
+        UUID workflowId = run.getWorkflowId();
+        UUID userId = run.getUserId();
+        Map<String, Object> triggerData = run.getTriggerData();
 
         List<Steps_command> steps = stepsRepo.findActiveByWorkflowIdOrdered(workflowId);
         List<Steps_command> executableSteps = steps.stream()
             .filter(step -> step.getType() != StepType.TRIGGER)
             .toList();
 
-        if (executableSteps.isEmpty()) {
-            logger.warn("[engine] Workflow {} has no executable action steps — completing run {} immediately",
-                    workflowId, workflowRunId);
-            workflowRunService.completeRun(userId, workflowRunId);
-            return;
-        }
-
-        logger.info("[engine] Starting execution of {} action step(s) for run {}",
-            executableSteps.size(), workflowRunId);
-
         // Accumulate outputs from all previous steps for variable replacement.
         // stepOrder (1-based index) -> output data map
         Map<Integer, Map<String, Object>> allStepOutputs = new java.util.HashMap<>();
-        
-        // Seed trigger payload at the trigger step order so templates like
-        // {{steps.1.field}} can resolve against the trigger output.
+
+        // Seed trigger payload at the trigger step order
         if (triggerData != null) {
             Steps_command triggerStep = steps.stream()
                     .filter(step -> step.getType() == StepType.TRIGGER)
@@ -120,25 +114,220 @@ public class WorkflowExecutionEngine {
             }
         }
 
-        // The input to the *next* step directly (legacy, but we still pass it for ActionContext)
+        // If resuming, load execution state
+        if (run.getExecutionState() != null) {
+            Map<String, Object> stateMap = (Map<String, Object>) (Object) run.getExecutionState();
+            for (Map.Entry<String, Object> entry : stateMap.entrySet()) {
+                Map<String, Object> valMap = (Map<String, Object>) entry.getValue();
+                allStepOutputs.put(Integer.parseInt(entry.getKey()), valMap);
+            }
+        }
+
+        if (executableSteps.isEmpty()) {
+            logger.warn("[engine] Workflow {} has no executable action steps — completing run {} immediately",
+                    workflowId, workflowRunId);
+            persistExecutionState(userId, workflowRunId, allStepOutputs);
+            workflowRunService.completeRun(userId, workflowRunId);
+            return;
+        }
+
+        logger.info("[engine] Starting execution of {} action step(s) for run {}",
+            executableSteps.size(), workflowRunId);
+
+        // The input to the *next* step directly
         Map<String, Object> previousOutput = triggerData != null ? triggerData : Map.of();
 
-        for (Steps_command step : executableSteps) {
+        if (run.getResumeStepId() != null) {
+            executeFlatResume(run, executableSteps, previousOutput, allStepOutputs);
+            return;
+        }
+
+        SequenceExecutionResult sequenceResult = executeSequence(
+                executableSteps, null, null, workflowRunId, userId, previousOutput, allStepOutputs);
+
+        if (!sequenceResult.success) {
+            workflowRunService.failRun(userId, workflowRunId,
+                    "Step '" + sequenceResult.failedStep.getName() + "' failed");
+            return;
+        }
+
+        if (sequenceResult.suspended) {
+            if (sequenceResult.resumeStep == null && sequenceResult.resumeToken == null) {
+                persistExecutionState(userId, workflowRunId, allStepOutputs);
+                workflowRunService.completeRun(userId, workflowRunId);
+                return;
+            }
+
+            workflowRunService.suspendRun(userId, workflowRunId, sequenceResult.resumeAt,
+                    sequenceResult.resumeStep != null ? sequenceResult.resumeStep.getId() : null,
+                    sequenceResult.resumeToken, stringifiedOutputs(allStepOutputs));
+            logger.info("[engine] Run {} suspended until {} to resume at step {}",
+                    workflowRunId, sequenceResult.resumeAt,
+                    sequenceResult.resumeStep != null ? sequenceResult.resumeStep.getName() : "<external completion>");
+            return;
+        }
+
+        persistExecutionState(userId, workflowRunId, allStepOutputs);
+        workflowRunService.completeRun(userId, workflowRunId);
+        logger.info("[engine] Run {} completed successfully", workflowRunId);
+    }
+
+    private record StepExecutionResult(boolean success, boolean suspended, java.time.Instant resumeAt,
+                                       String resumeToken, Map<String, Object> outputData) {}
+
+    private void executeFlatResume(com.crescendo.logbook.workflow_run.WorkflowRun run,
+                                   List<Steps_command> executableSteps,
+                                   Map<String, Object> previousOutput,
+                                   Map<Integer, Map<String, Object>> allStepOutputs) {
+        UUID workflowRunId = run.getId();
+        UUID userId = run.getUserId();
+        int startIndex = 0;
+        for (int i = 0; i < executableSteps.size(); i++) {
+            if (executableSteps.get(i).getId().equals(run.getResumeStepId())) {
+                startIndex = i;
+                break;
+            }
+        }
+        if (startIndex > 0) {
+            Steps_command prevStep = executableSteps.get(startIndex - 1);
+            if (allStepOutputs.containsKey(prevStep.getOrder().intValue())) {
+                previousOutput = allStepOutputs.get(prevStep.getOrder().intValue());
+            }
+        }
+
+        for (int i = startIndex; i < executableSteps.size(); i++) {
+            Steps_command step = executableSteps.get(i);
             StepExecutionResult result = executeStep(step, workflowRunId, userId, previousOutput, allStepOutputs);
+
             if (!result.success) {
                 workflowRunService.failRun(userId, workflowRunId,
                         "Step '" + step.getName() + "' failed");
                 return;
             }
+
             previousOutput = result.outputData;
             allStepOutputs.put(step.getOrder().intValue(), result.outputData);
+
+            if (result.suspended) {
+                if (i == executableSteps.size() - 1) {
+                    if (result.resumeToken == null) {
+                        break;
+                    }
+
+                    workflowRunService.suspendRun(userId, workflowRunId, result.resumeAt, null,
+                            result.resumeToken, stringifiedOutputs(allStepOutputs));
+                    logger.info("[engine] Run {} suspended until {} for external completion",
+                            workflowRunId, result.resumeAt);
+                    return;
+                }
+
+                Steps_command nextStep = executableSteps.get(i + 1);
+                workflowRunService.suspendRun(userId, workflowRunId, result.resumeAt, nextStep.getId(),
+                        result.resumeToken, stringifiedOutputs(allStepOutputs));
+                logger.info("[engine] Run {} suspended until {} to resume at step {}",
+                        workflowRunId, result.resumeAt, nextStep.getName());
+                return;
+            }
         }
 
+        persistExecutionState(userId, workflowRunId, allStepOutputs);
         workflowRunService.completeRun(userId, workflowRunId);
         logger.info("[engine] Run {} completed successfully", workflowRunId);
     }
 
-    private record StepExecutionResult(boolean success, Map<String, Object> outputData) {}
+    private record SequenceExecutionResult(boolean success, boolean suspended, java.time.Instant resumeAt,
+                                           String resumeToken,
+                                           Steps_command resumeStep, Steps_command failedStep,
+                                           Map<String, Object> outputData) {
+        static SequenceExecutionResult success(Map<String, Object> outputData) {
+            return new SequenceExecutionResult(true, false, null, null, null, null, outputData);
+        }
+
+        static SequenceExecutionResult failure(Steps_command step) {
+            return new SequenceExecutionResult(false, false, null, null, null, step, Map.of());
+        }
+
+        static SequenceExecutionResult suspended(java.time.Instant resumeAt, String resumeToken, Steps_command resumeStep, Map<String, Object> outputData) {
+            return new SequenceExecutionResult(true, true, resumeAt, resumeToken, resumeStep, null, outputData);
+        }
+    }
+
+    private SequenceExecutionResult executeSequence(List<Steps_command> allSteps, UUID parentStepId, String branchKey,
+                                                    UUID workflowRunId, UUID userId,
+                                                    Map<String, Object> inputData,
+                                                    Map<Integer, Map<String, Object>> allStepOutputs) {
+        List<Steps_command> sequenceSteps = allSteps.stream()
+                .filter(step -> Objects.equals(step.getParentStepId(), parentStepId))
+                .filter(step -> Objects.equals(normalizeBranchKey(step.getBranchKey()), normalizeBranchKey(branchKey)))
+                .toList();
+
+        Map<String, Object> previousOutput = inputData != null ? inputData : Map.of();
+
+        for (int i = 0; i < sequenceSteps.size(); i++) {
+            Steps_command step = sequenceSteps.get(i);
+            StepExecutionResult result = executeStep(step, workflowRunId, userId, previousOutput, allStepOutputs);
+
+            if (!result.success) {
+                return SequenceExecutionResult.failure(step);
+            }
+
+            previousOutput = result.outputData;
+            allStepOutputs.put(step.getOrder().intValue(), result.outputData);
+
+            if (result.suspended) {
+                Steps_command nextStep = i < sequenceSteps.size() - 1 ? sequenceSteps.get(i + 1) : null;
+                return SequenceExecutionResult.suspended(result.resumeAt, result.resumeToken, nextStep, previousOutput);
+            }
+
+            String selectedBranch = selectedBranch(result.outputData);
+            if (selectedBranch != null) {
+                SequenceExecutionResult branchResult = executeSequence(
+                        allSteps, step.getId(), selectedBranch, workflowRunId, userId, previousOutput, allStepOutputs);
+
+                if (!branchResult.success) {
+                    return branchResult;
+                }
+                previousOutput = branchResult.outputData;
+
+                if (branchResult.suspended) {
+                    Steps_command resumeStep = branchResult.resumeStep != null
+                            ? branchResult.resumeStep
+                            : (i < sequenceSteps.size() - 1 ? sequenceSteps.get(i + 1) : null);
+                    return SequenceExecutionResult.suspended(branchResult.resumeAt, branchResult.resumeToken, resumeStep, previousOutput);
+                }
+            }
+        }
+
+        return SequenceExecutionResult.success(previousOutput);
+    }
+
+    private String selectedBranch(Map<String, Object> outputData) {
+        if (outputData == null) return null;
+        for (String key : List.of("_branchKey", "branchKey", "selectedBranch", "route", "path")) {
+            Object value = outputData.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return String.valueOf(value).trim();
+            }
+        }
+        return null;
+    }
+
+    private String normalizeBranchKey(String branchKey) {
+        return branchKey == null || branchKey.isBlank() ? null : branchKey.trim();
+    }
+
+    private void persistExecutionState(UUID userId, UUID workflowRunId,
+                                       Map<Integer, Map<String, Object>> allStepOutputs) {
+        workflowRunService.saveExecutionState(userId, workflowRunId, stringifiedOutputs(allStepOutputs));
+    }
+
+    private Map<String, Object> stringifiedOutputs(Map<Integer, Map<String, Object>> allStepOutputs) {
+        Map<String, Object> stringifiedOutputs = new java.util.HashMap<>();
+        for (Map.Entry<Integer, Map<String, Object>> entry : allStepOutputs.entrySet()) {
+            stringifiedOutputs.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return stringifiedOutputs;
+    }
 
     /**
      * Executes a single step: creates a StepRun, resolves the handler, invokes it,
@@ -159,7 +348,7 @@ public class WorkflowExecutionEngine {
                     userId, workflowRunId, step.getId(), inputData);
             stepRunService.failStepRun(userId, UUID.fromString(stepRun.id()),
                     "No action handler registered for " + appKey + ":" + actionKey);
-            return new StepExecutionResult(false, Map.of());
+            return new StepExecutionResult(false, false, null, null, Map.of());
         }
 
         // 2. Create StepRun (RUNNING)
@@ -179,7 +368,11 @@ public class WorkflowExecutionEngine {
                 appKey, actionKey,
                 resolvedConfig,
                 credentials,
-                inputData
+                inputData,
+                workflowRunId,
+                userId,
+                step.getId(),
+                step.getOrder().intValue()
         );
 
         try {
@@ -188,18 +381,23 @@ public class WorkflowExecutionEngine {
             if (result.success()) {
                 stepRunService.completeStepRun(userId, stepRunId, result.outputData());
                 logger.debug("[engine] Step '{}' ({}:{}) succeeded", step.getName(), appKey, actionKey);
-                return new StepExecutionResult(true, result.outputData());
+                return new StepExecutionResult(true, false, null, null, result.outputData());
             } else {
                 stepRunService.failStepRun(userId, stepRunId, result.error());
                 logger.warn("[engine] Step '{}' ({}:{}) failed: {}", step.getName(), appKey, actionKey, result.error());
-                return new StepExecutionResult(false, Map.of());
+                return new StepExecutionResult(false, false, null, null, Map.of());
             }
+        } catch (com.crescendo.execution.action.SuspendExecutionException e) {
+            logger.info("[engine] Step '{}' ({}:{}) requested suspension until {}", step.getName(), appKey, actionKey, e.getResumeAt());
+            Map<String, Object> suspendedOutput = e.getOutputData() != null ? e.getOutputData() : inputData;
+            stepRunService.completeStepRun(userId, stepRunId, suspendedOutput);
+            return new StepExecutionResult(true, true, e.getResumeAt(), e.getResumeToken(), suspendedOutput);
         } catch (Exception e) {
             logger.error("[engine] Uncaught exception in step '{}' ({}:{})",
                     step.getName(), appKey, actionKey, e);
             stepRunService.failStepRun(userId, stepRunId,
                     "Unexpected error: " + e.getMessage());
-            return new StepExecutionResult(false, Map.of());
+            return new StepExecutionResult(false, false, null, null, Map.of());
         }
     }
 
@@ -212,7 +410,6 @@ public class WorkflowExecutionEngine {
      *
      * <p>Falls back to a platform-level API key when no user connection is present.
      */
-    @SuppressWarnings("unchecked")
     private Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
         // 1. Try user connection first — with ownership enforcement
         if (connectionId != null) {
@@ -242,7 +439,6 @@ public class WorkflowExecutionEngine {
         try {
             PlatformKey pk = platformKeyRepo.findByAppKeyAndEnabledTrue(appKey).orElse(null);
             if (pk != null && pk.getEncryptedCredentials() != null) {
-                @SuppressWarnings("unchecked")
                 Map<String, Object> sealed = objectMapper
                         .readValue(pk.getEncryptedCredentials(), Map.class);
                 Map<String, Object> opened = credentialsCryptoService.open(sealed);

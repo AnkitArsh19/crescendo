@@ -201,7 +201,6 @@ public class Connections_commandService {
     /**
      * Dispatches a lightweight test call based on the app provider.
      */
-    @SuppressWarnings("unchecked")
     private String performTestCall(String appKey, Map<String, Object> credentials) {
         return switch (appKey) {
             // ── Slack ──

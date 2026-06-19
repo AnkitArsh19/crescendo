@@ -70,11 +70,14 @@ public class SharedWorkflowController {
 
         List<WorkflowDto.SharedStepResponse> sharedSteps = rawSteps.stream()
                 .map(s -> new WorkflowDto.SharedStepResponse(
+                        s.id(),
                         s.name(),
                         s.type(),
                         s.order(),
                         s.appKey(),
                         s.actionKey(),
+                        s.parentStepId(),
+                        s.branchKey(),
                         s.configuration()
                 ))
                 .toList();

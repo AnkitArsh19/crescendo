@@ -39,12 +39,11 @@ public class WorkflowEventListener {
     private static final Logger logger = LoggerFactory.getLogger(WorkflowEventListener.class);
 
     /**
-     * App keys that use polling instead of webhooks.
-     * Triggers from these apps are handled by PollingTriggerScheduler,
-     * so we skip webhook registration for them.
+     * App keys whose triggers do not use generic webhook ingestion.
      */
     private static final Set<String> POLLING_APP_KEYS = Set.of(
-            "gmail", "microsoft-outlook"
+            "gmail", "microsoft-outlook", "schedule", "error-handling", "native-form",
+            "github", "gitlab", "mqtt", "kafka", "rabbitmq"
     );
 
     private final Steps_commandRepository stepsRepo;

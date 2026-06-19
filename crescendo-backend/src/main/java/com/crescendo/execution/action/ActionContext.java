@@ -1,6 +1,7 @@
 package com.crescendo.execution.action;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Immutable context passed to an ActionHandler during step execution.
@@ -16,6 +17,10 @@ public record ActionContext(
         String actionKey,
         Map<String, Object> configuration,
         Map<String, Object> credentials,
-        Map<String, Object> inputData
+        Map<String, Object> inputData,
+        UUID workflowRunId,
+        UUID userId,
+        UUID stepId,
+        int stepOrder
 ) {
 }

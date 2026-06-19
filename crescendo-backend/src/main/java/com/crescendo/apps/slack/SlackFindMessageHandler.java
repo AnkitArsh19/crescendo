@@ -7,25 +7,23 @@ import com.crescendo.execution.action.ActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Finds a message in Slack via search.messages.
  */
 @ActionMapping(appKey = "slack", actionKey = "find-message")
+@SuppressWarnings("unchecked")
 public class SlackFindMessageHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(SlackFindMessageHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = resolveToken(creds);

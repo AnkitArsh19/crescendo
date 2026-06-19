@@ -48,6 +48,8 @@ public class WorkflowDto {
             @NotBlank String actionKey,
             @NotBlank String appKey,
             UUID connectionId,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -56,6 +58,8 @@ public class WorkflowDto {
             String actionKey,
             String appKey,
             UUID connectionId,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -100,6 +104,8 @@ public class WorkflowDto {
             String appKey,
             String actionKey,
             UUID connectionId,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration,
             Instant createdAt,
             Instant updatedAt
@@ -118,11 +124,14 @@ public class WorkflowDto {
 
     /// Step in a shared workflow — everything except connectionId.
     public record SharedStepResponse(
+            String sourceStepId,
             String name,
             String type,
             BigDecimal order,
             String appKey,
             String actionKey,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -142,11 +151,14 @@ public class WorkflowDto {
     ) {}
 
     public record ImportStepRequest(
+            String sourceStepId,
             @NotBlank @Size(max = 255) String name,
             @NotNull String type,
             @NotBlank String actionKey,
             @NotBlank String appKey,
             BigDecimal order,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -168,6 +180,8 @@ public class WorkflowDto {
             @NotBlank String actionKey,
             @NotBlank String appKey,
             UUID connectionId,
+            UUID parentStepId,
+            String branchKey,
             Map<String, Object> configuration
     ) {}
 

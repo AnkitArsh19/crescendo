@@ -63,6 +63,7 @@ public class EmailEventWebhookController {
     }
 
     @PostMapping
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, String>> handleEmailEvent(
             @RequestHeader(value = "X-Webhook-Signature", required = false) String signature,
             @RequestBody String rawBody) {
@@ -82,7 +83,6 @@ public class EmailEventWebhookController {
         // Parse the JSON body into a map
         Map<String, String> payload;
         try {
-            @SuppressWarnings("unchecked")
             Map<String, String> parsed = objectMapper.readValue(rawBody, Map.class);
             payload = parsed;
         } catch (Exception e) {

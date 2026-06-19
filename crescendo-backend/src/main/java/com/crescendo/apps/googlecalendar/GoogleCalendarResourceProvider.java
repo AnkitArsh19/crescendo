@@ -17,6 +17,7 @@ import java.util.*;
  * Supports: calendars, events (depends on calendarId)
  */
 @Component
+@SuppressWarnings("unchecked")
 public class GoogleCalendarResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarResourceProvider.class);
@@ -45,7 +46,6 @@ public class GoogleCalendarResourceProvider implements ResourceProvider {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listCalendars(String accessToken) {
         try {
             Map<String, Object> response = restClient(accessToken)
@@ -70,7 +70,6 @@ public class GoogleCalendarResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listEvents(String accessToken, String calendarId) {
         if (calendarId == null || calendarId.isBlank()) return List.of();
 

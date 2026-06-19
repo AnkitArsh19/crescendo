@@ -1,21 +1,18 @@
 package com.crescendo.apps.openai;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import java.util.*;
 
 @ActionMapping(appKey = "openai", actionKey = "generate-embeddings")
+@SuppressWarnings("unchecked")
 public class OpenAIGenerateEmbeddingsHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(OpenAIGenerateEmbeddingsHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String apiKey = creds != null ? (String) creds.get("apiKey") : null;

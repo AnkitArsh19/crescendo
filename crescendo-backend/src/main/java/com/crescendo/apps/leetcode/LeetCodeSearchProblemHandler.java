@@ -1,8 +1,6 @@
 package com.crescendo.apps.leetcode;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import java.util.*;
@@ -12,12 +10,10 @@ import java.util.*;
  */
 @ActionMapping(appKey = "leetcode", actionKey = "search-problem")
 public class LeetCodeSearchProblemHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(LeetCodeSearchProblemHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String query = config.get("query") != null ? config.get("query").toString() : null;
         if (query == null) return ActionResult.failure("'query' is required");
