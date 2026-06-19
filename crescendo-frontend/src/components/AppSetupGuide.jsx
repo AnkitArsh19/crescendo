@@ -66,8 +66,17 @@ export default function AppSetupGuide({ app, onContinue, onClose }) {
         {/* Header */}
         <div className="asg-header">
           <div className="asg-header-left">
-            <div className="asg-app-icon">
-              {app.name?.charAt(0).toUpperCase()}
+            <div className="asg-app-icon" style={{ overflow: 'hidden', padding: '4px' }}>
+              <img 
+                src={app.logoUrl || `/icons/${app.appKey}.svg`}
+                alt={app.name}
+                style={{
+                  width: '100%', height: '100%', objectFit: 'contain',
+                  filter: app.logoUrl ? 'grayscale(1) invert(1) brightness(1.5)' : 'brightness(0) invert(1)'
+                }}
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+              />
+              <span style={{ display: 'none' }}>{app.name?.charAt(0).toUpperCase()}</span>
             </div>
             <div className="asg-header-info">
               <h2 className="asg-title">{app.name}</h2>

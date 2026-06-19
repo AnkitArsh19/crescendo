@@ -14,7 +14,7 @@ public class GotifyApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("gotify", "Gotify", "Send notifications through a self-hosted Gotify server",
-                "/icons/gotify.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=gotify.net&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "send-message", "name", "Send Message",

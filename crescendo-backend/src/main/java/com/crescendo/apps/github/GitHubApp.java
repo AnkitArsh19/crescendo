@@ -24,7 +24,7 @@ public class GitHubApp implements AppDefinition {
                 "helpText", "Select the issue or PR");
 
         return new App("github", "GitHub", "Create issues, PRs, releases and manage repositories",
-                "/icons/github.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=github.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "new-issue", "name", "New Issue",
                         "description", "Triggers when a new issue is created",
@@ -89,9 +89,6 @@ public class GitHubApp implements AppDefinition {
                             Map.of("key", "prerelease", "label", "Pre-release?", "type", "dropdown", "required", false,
                                    "options", List.of(Map.of("value","false","label","No"), Map.of("value","true","label","Yes")), "helpText", "Mark as pre-release")))
                 )
-        ).credentialSchema(List.of(
-            Map.of("key", "apiKey", "label", "Personal Access Token", "type", "password", "required", true,
-                    "placeholder", "github_pat_...", "helpText", "Create a PAT at github.com/settings/tokens", "authOption", "APIKEY")
-        )).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://github.com/settings/developers");
+        ).credentialSchema(List.of()).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://github.com/settings/developers");
     }
 }

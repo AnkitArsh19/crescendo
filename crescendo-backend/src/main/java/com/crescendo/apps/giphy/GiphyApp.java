@@ -20,7 +20,7 @@ public class GiphyApp implements AppDefinition {
                 ), "helpText", "Content rating filter");
 
         return new App("giphy", "Giphy", "Search, random, and trending GIFs from Giphy",
-                "/icons/giphy.svg", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=giphy.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "search-gifs", "name", "Search GIFs",
@@ -44,9 +44,6 @@ public class GiphyApp implements AppDefinition {
                                    "placeholder", "10", "helpText", "Number of GIFs"),
                             ratingField))
                 )
-        ).credentialSchema(List.of(
-            Map.of("key", "apiKey", "label", "Giphy API Key", "type", "password", "required", false,
-                   "placeholder", "your-giphy-api-key", "helpText", "Optional — uses public beta key if empty")
-        )).category("fun").helpUrl("https://developers.giphy.com/dashboard/");
+        ).credentialSchema(List.of()).category("fun").helpUrl("https://developers.giphy.com/dashboard/");
     }
 }

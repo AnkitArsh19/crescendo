@@ -13,7 +13,7 @@ public class AwsS3App implements AppDefinition {
     @Override
     public App toApp() {
         return new App("aws-s3", "AWS S3", "List, upload, download, copy, delete, and presign S3 objects",
-                "/icons/aws-s3.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=aws.amazon.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "list-objects", "name", "List Objects", "description", "List objects in a bucket",

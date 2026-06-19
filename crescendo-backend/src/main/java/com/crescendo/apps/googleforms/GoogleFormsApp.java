@@ -14,7 +14,7 @@ public class GoogleFormsApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("google-forms", "Google Forms", "Create forms and collect responses",
-                "/icons/google-forms.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/forms_2020q4_48dp.png", AuthType.OAUTH2,
                 List.of(Map.of(
                     "triggerKey", "new-response",
                     "name", "New Response",

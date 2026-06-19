@@ -13,7 +13,7 @@ public class JenkinsApp implements AppDefinition {
                 "jenkins",
                 "Jenkins",
                 "Trigger and inspect Jenkins jobs",
-                "/icons/jenkins.svg",
+                "https://www.google.com/s2/favicons?domain=jenkins.io&sz=128",
                 AuthType.APIKEY,
                 List.of(),
                 List.of(

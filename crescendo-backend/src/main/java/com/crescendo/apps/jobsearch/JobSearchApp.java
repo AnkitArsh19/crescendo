@@ -26,7 +26,7 @@ public class JobSearchApp implements AppDefinition {
     public App toApp() {
         return new App("job-search", "Job Search",
                 "Search jobs across 10+ platforms — India focused",
-                "/icons/job-search.svg", AuthType.NONE,
+                "", AuthType.NONE,
                 List.of(), // no triggers
                 List.of(
                     Map.of(

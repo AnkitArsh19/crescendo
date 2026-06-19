@@ -13,7 +13,7 @@ public class PayPalApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("paypal", "PayPal", "Create and fetch PayPal checkout orders",
-                "/icons/paypal.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=paypal.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "create-order", "name", "Create Order",

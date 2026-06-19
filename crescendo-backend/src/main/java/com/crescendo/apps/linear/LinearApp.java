@@ -25,7 +25,7 @@ public class LinearApp implements AppDefinition {
                 "helpText", "Select the issue");
 
         return new App("linear", "Linear", "Track issues, manage projects, and automate workflows in Linear",
-                "/icons/linear.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=linear.app&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(

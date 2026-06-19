@@ -14,7 +14,7 @@ public class BrevoApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("brevo", "Brevo", "Send Brevo emails and manage contacts",
-                "/icons/brevo.svg", AuthType.APIKEY,
+                "https://cdn.brandfetch.io/id87KI8yDJ/w/200/h/200/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1759046719977", AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "send-email", "name", "Send Transactional Email",
@@ -34,8 +34,6 @@ public class BrevoApp implements AppDefinition {
                                         Map.of("key", "listIds", "label", "List IDs (JSON Array)", "type", "json", "required", false,
                                                 "placeholder", "[2]")))
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true)
-        )).category("marketing").helpUrl("https://developers.brevo.com/");
+        ).credentialSchema(List.of()).category("marketing").helpUrl("https://avatars.githubusercontent.com/u/100062402?v=4");
     }
 }

@@ -13,8 +13,8 @@ public class JiraApp implements AppDefinition {
                 "jira",
                 "Jira",
                 "Create and fetch Jira issues",
-                "/icons/jira.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=atlassian.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(

@@ -14,7 +14,7 @@ public class WordPressApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("wordpress", "WordPress", "Create and fetch WordPress posts using application passwords",
-                "/icons/wordpress.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=wordpress.org&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "create-post", "name", "Create Post",

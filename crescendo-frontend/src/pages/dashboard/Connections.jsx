@@ -154,7 +154,17 @@ export default function Connections() {
                 >
                   <div className="conn-card-header">
                     <div className="conn-card-app-icon">
-                      {matchingApp?.name?.charAt(0).toUpperCase() || conn.appKey?.charAt(0).toUpperCase()}
+                      {matchingApp ? (
+                        <img 
+                          src={matchingApp.logoUrl || `/icons/${conn.appKey}.svg`}
+                          alt={matchingApp.name || conn.appKey}
+                          className={matchingApp.logoUrl ? "app-logo-clearbit-dark" : "app-logo-white-svg"}
+                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                        />
+                      ) : null}
+                      <span style={{ display: matchingApp ? 'none' : 'block' }}>
+                        {matchingApp?.name?.charAt(0).toUpperCase() || conn.appKey?.charAt(0).toUpperCase()}
+                      </span>
                     </div>
                     <div className="conn-card-info">
                       <h3 className="conn-card-name">{conn.name}</h3>
@@ -593,7 +603,15 @@ function AddConnectionModal({ apps, preselectedAppKey, onClose, onCreate }) {
 function AppPickerItem({ app, onSelect }) {
   return (
     <button className="conn-app-item" onClick={() => onSelect(app)}>
-      <div className="conn-app-icon">{app.name.charAt(0)}</div>
+      <div className="conn-app-icon">
+        <img 
+          src={app.logoUrl || `/icons/${app.appKey}.svg`}
+          alt={app.name}
+          className={app.logoUrl ? "app-logo-clearbit-dark" : "app-logo-white-svg"}
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+        />
+        <span style={{ display: 'none' }}>{app.name.charAt(0)}</span>
+      </div>
       <div className="conn-app-info">
         <span className="conn-app-name">{app.name}</span>
         <span className="conn-app-desc">{app.description || app.appKey}</span>

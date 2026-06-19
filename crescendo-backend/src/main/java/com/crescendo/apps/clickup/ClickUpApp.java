@@ -13,8 +13,8 @@ public class ClickUpApp implements AppDefinition {
                 "clickup",
                 "ClickUp",
                 "Create and list ClickUp tasks",
-                "/icons/clickup.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=clickup.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(
@@ -36,8 +36,6 @@ public class ClickUpApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "apiToken", "label", "API Token", "type", "password", "required", true)
-        )).category("productivity").helpUrl("https://clickup.com/api/");
+        ).credentialSchema(List.of()).category("productivity").helpUrl("https://clickup.com/api/");
     }
 }

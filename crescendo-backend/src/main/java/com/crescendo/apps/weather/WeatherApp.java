@@ -12,7 +12,7 @@ public class WeatherApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("weather", "Weather", "Get current weather, forecast, air quality, hourly, and daily data",
-                "/icons/weather.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=openweathermap.org&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "get-weather", "name", "Get Current Weather",
@@ -50,9 +50,7 @@ public class WeatherApp implements AppDefinition {
                             Map.of("key", "lon", "label", "Longitude", "type", "text", "required", true),
                             Map.of("key", "units", "label", "Units", "type", "text", "required", false, "placeholder", "metric")))
                 )
-        ).credentialSchema(List.of(Map.of("key", "apiKey", "label", "OpenWeather API Key", "type", "password", "required", false,
-                "helpText", "Optional when an admin platform key is configured")))
-                .category("productivity")
+        ).credentialSchema(List.of()).category("productivity")
                 .helpUrl("https://openweathermap.org/appid");
     }
 }

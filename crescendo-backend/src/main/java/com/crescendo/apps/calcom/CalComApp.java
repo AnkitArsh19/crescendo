@@ -11,7 +11,7 @@ import java.util.*;
 @Component
 public class CalComApp implements AppDefinition {
     public App toApp() {
-        return new App("cal-com", "Cal.com", "Read Cal.com bookings and event types", "/icons/calcom.svg",
+        return new App("cal-com", "Cal.com", "Read Cal.com bookings and event types", "https://www.google.com/s2/favicons?domain=cal.com&sz=128",
                 AuthType.APIKEY,
                 List.of(Map.of("triggerKey", "booking-created", "name", "Booking Created", "description",
                         "Triggers from Cal.com webhook", "configSchema", List.of()),

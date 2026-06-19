@@ -13,8 +13,8 @@ public class TrelloApp implements AppDefinition {
                 "trello",
                 "Trello",
                 "Create cards and list board cards",
-                "/icons/trello.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=trello.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(

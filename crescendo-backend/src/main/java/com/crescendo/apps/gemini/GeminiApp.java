@@ -12,7 +12,7 @@ public class GeminiApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("gemini", "Google AI Studio (Gemini)", "Generate text, analyze images with Google Gemini",
-                "/icons/gemini.svg", AuthType.APIKEY,
+                "https://upload.wikimedia.org/wikipedia/commons/5/51/Gemini_sparkle_v002.svg", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "generate-text", "name", "Generate Text",
@@ -34,7 +34,7 @@ public class GeminiApp implements AppDefinition {
                         "description", "Analyze an image with Gemini vision",
                         "configSchema", List.of(
                             Map.of("key", "imageUrl", "label", "Image URL", "type", "text", "required", true,
-                                   "placeholder", "https://example.com/photo.jpg", "helpText", "URL of the image"),
+                                   "placeholder", "https://upload.wikimedia.org/wikipedia/commons/5/51/Gemini_sparkle_v002.svg", "helpText", "URL of the image"),
                             Map.of("key", "prompt", "label", "Question", "type", "textarea", "required", true,
                                    "placeholder", "What is in this image?", "helpText", "What to analyze"),
                             Map.of("key", "model", "label", "Model", "type", "select", "required", false,
@@ -46,6 +46,6 @@ public class GeminiApp implements AppDefinition {
         ).credentialSchema(List.of(
             Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true,
                     "placeholder", "AIzaSy...", "helpText", "Create at aistudio.google.com/app/apikey")
-        )).category("ai").helpUrl("https://aistudio.google.com/app/apikey");
+        )).category("ai").helpUrl("https://upload.wikimedia.org/wikipedia/commons/5/51/Gemini_sparkle_v002.svg");
     }
 }

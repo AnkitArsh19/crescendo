@@ -13,7 +13,7 @@ public class YouTubeApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("youtube", "YouTube", "Search, list, upload, and update YouTube videos",
-                "/icons/youtube.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=youtube.com&sz=128", AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "search", "name", "Search Videos", "description", "Search YouTube videos",

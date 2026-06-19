@@ -14,7 +14,7 @@ public class WikipediaApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("wikipedia", "Wikipedia", "Search and fetch Wikipedia article summaries",
-                "/icons/wikipedia.svg", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "search", "name", "Search Articles",

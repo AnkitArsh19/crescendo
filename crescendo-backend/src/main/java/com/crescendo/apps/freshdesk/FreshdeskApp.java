@@ -14,7 +14,7 @@ public class FreshdeskApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("freshdesk", "Freshdesk", "Create and fetch Freshdesk tickets",
-                "/icons/freshdesk.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=freshdesk.com&sz=128", AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "create-ticket", "name", "Create Ticket",

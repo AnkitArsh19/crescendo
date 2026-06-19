@@ -31,7 +31,7 @@ public class GoogleSheetsApp implements AppDefinition {
                 "helpText", "Optionally limit trigger to changes in a specific column");
 
         return new App("google-sheets", "Google Sheets", "Read, write, and watch spreadsheet data",
-                "/icons/google-sheets.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(

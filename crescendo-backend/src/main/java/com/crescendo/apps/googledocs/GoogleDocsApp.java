@@ -19,7 +19,7 @@ public class GoogleDocsApp implements AppDefinition {
                 "helpText", "Select the Google Doc");
 
         return new App("google-docs", "Google Docs", "Create documents, append text, and search-replace content",
-                "/icons/google-docs.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/docs_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(

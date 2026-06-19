@@ -25,7 +25,7 @@ public class AirtableApp implements AppDefinition {
                 "helpText", "Select the table within the base");
 
         return new App("airtable", "Airtable", "Create, update, and manage records in Airtable bases",
-                "/icons/airtable.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=airtable.com&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(
@@ -115,14 +115,7 @@ public class AirtableApp implements AppDefinition {
                     )
                 )
         )
-        .credentialSchema(List.of(
-            Map.of("key", "apiKey", "label", "Personal Access Token",
-                    "type", "password", "required", true,
-                    "placeholder", "pat...",
-                    "helpText", "Create a personal access token at airtable.com/create/tokens",
-                    "authOption", "APIKEY")
-        ))
-        .altAuthType(AuthType.APIKEY)
+        .credentialSchema(List.of()).altAuthType(AuthType.APIKEY)
         .category("productivity")
         .helpUrl("https://airtable.com/create/tokens");
     }

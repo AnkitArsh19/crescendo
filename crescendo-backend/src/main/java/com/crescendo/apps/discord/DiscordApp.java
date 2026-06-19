@@ -38,7 +38,7 @@ public class DiscordApp implements AppDefinition {
 
         return new App("discord", "Discord",
                 "Send messages, watch channels, and manage servers in Discord",
-                "/icons/discord.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=discord.com&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(
