@@ -18,6 +18,12 @@ spring.jpa.properties.hibernate.format_sql=true
 # Example generation (PowerShell): [Convert]::ToBase64String((1..32 | ForEach-Object {Get-Random -Maximum 256}))
 credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
 
+# Public app URLs used for OAuth callbacks and native no-code public links
+app.frontend-url=https://app.crescendo.run
+app.backend-url=https://api.crescendo.run
+app.form.base-url=${app.backend-url}/public/forms
+app.approval.base-url=${app.backend-url}/public/approvals
+
 # OAuth2 client registrations (only needed if you enable direct OAuth login/connect flows)
 spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
 spring.security.oauth2.client.registration.google.client-secret=REPLACE_ME
@@ -184,12 +190,75 @@ crescendo.integrations.oauth.providers.gitlab.authorize-url=https://gitlab.com/o
 crescendo.integrations.oauth.providers.gitlab.token-url=https://gitlab.com/oauth/token
 crescendo.integrations.oauth.providers.gitlab.scopes=api read_user
 
+# Optional OAuth integrations added after the core catalog.
+# Current handlers also support personal/API tokens via Connections, so these are only needed
+# if you enable first-class OAuth connect flows for these apps.
+crescendo.integrations.oauth.providers.trello.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.trello.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.trello.authorize-url=https://trello.com/1/OAuthAuthorizeToken
+crescendo.integrations.oauth.providers.trello.token-url=https://trello.com/1/OAuthGetAccessToken
+crescendo.integrations.oauth.providers.trello.scopes=read,write
+
+crescendo.integrations.oauth.providers.asana.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.asana.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.asana.authorize-url=https://app.asana.com/-/oauth_authorize
+crescendo.integrations.oauth.providers.asana.token-url=https://app.asana.com/-/oauth_token
+crescendo.integrations.oauth.providers.asana.scopes=default
+
+crescendo.integrations.oauth.providers.hubspot.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.hubspot.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.hubspot.authorize-url=https://app.hubspot.com/oauth/authorize
+crescendo.integrations.oauth.providers.hubspot.token-url=https://api.hubapi.com/oauth/v1/token
+crescendo.integrations.oauth.providers.hubspot.scopes=crm.objects.contacts.read crm.objects.contacts.write
+
+crescendo.integrations.oauth.providers.dropbox.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.dropbox.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.dropbox.authorize-url=https://www.dropbox.com/oauth2/authorize
+crescendo.integrations.oauth.providers.dropbox.token-url=https://api.dropboxapi.com/oauth2/token
+crescendo.integrations.oauth.providers.dropbox.scopes=files.metadata.read files.content.read files.content.write sharing.read sharing.write
+
+crescendo.integrations.oauth.providers.youtube.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.youtube.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.youtube.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
+crescendo.integrations.oauth.providers.youtube.token-url=https://oauth2.googleapis.com/token
+crescendo.integrations.oauth.providers.youtube.scopes=https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+
+crescendo.integrations.oauth.providers.calendly.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.calendly.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.calendly.authorize-url=https://auth.calendly.com/oauth/authorize
+crescendo.integrations.oauth.providers.calendly.token-url=https://auth.calendly.com/oauth/token
+crescendo.integrations.oauth.providers.calendly.scopes=default
+
+crescendo.integrations.oauth.providers.typeform.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.typeform.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.typeform.authorize-url=https://api.typeform.com/oauth/authorize
+crescendo.integrations.oauth.providers.typeform.token-url=https://api.typeform.com/oauth/token
+crescendo.integrations.oauth.providers.typeform.scopes=forms:read responses:read webhooks:write
+
+crescendo.integrations.oauth.providers.salesforce.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.salesforce.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.salesforce.authorize-url=https://login.salesforce.com/services/oauth2/authorize
+crescendo.integrations.oauth.providers.salesforce.token-url=https://login.salesforce.com/services/oauth2/token
+crescendo.integrations.oauth.providers.salesforce.scopes=api refresh_token
+
+crescendo.integrations.oauth.providers.facebook-graph.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.facebook-graph.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.facebook-graph.authorize-url=https://www.facebook.com/v20.0/dialog/oauth
+crescendo.integrations.oauth.providers.facebook-graph.token-url=https://graph.facebook.com/v20.0/oauth/access_token
+crescendo.integrations.oauth.providers.facebook-graph.scopes=pages_read_engagement pages_manage_posts instagram_basic instagram_content_publish
+
 
 # SMTP relay for crescendo-email app (recommended providers: AWS SES, SendGrid, Mailgun)
 crescendo.email.smtp.host=REPLACE_ME
 crescendo.email.smtp.port=587
 crescendo.email.smtp.username=REPLACE_ME
 crescendo.email.smtp.password=REPLACE_ME
+
+# Payment apps
+# Razorpay and PayPal keys are normally user-owned connection credentials:
+# - razorpay credentialSchema: keyId, keySecret
+# - paypal credentialSchema: clientId, clientSecret, environment
+# Admin/platform keys, if enabled, should be managed through platform key storage rather than hard-coded here.
 
 # Optional provider key if you use Gemini connections
 # Users still provide this per connection in production; keep server-level keys only for controlled internal use.
@@ -198,3 +267,42 @@ gemini.api.key=REPLACE_ME_IF_USED
 # Optional provider key if you use Sarvam AI connections
 # Leave empty if you do not want server-level fallback keys.
 sarvam.api.key=REPLACE_ME_IF_USED
+
+# Platform-managed API keys for public/free-tier APIs.
+# These apps use AuthType.NONE — users don't need to create connections.
+# Replace with your own keys for higher rate limits.
+crescendo.platform.weather-api-key=REPLACE_ME
+crescendo.platform.giphy-api-key=REPLACE_ME
+crescendo.platform.nasa-api-key=REPLACE_ME
+
+# Job Search provider API keys (platform-managed, leave blank to disable)
+# SerpAPI — Google Jobs aggregator (100 free searches/month at https://serpapi.com)
+crescendo.jobsearch.serpapi-key=REPLACE_ME
+# Adzuna — Indian job market (free at https://developer.adzuna.com)
+crescendo.jobsearch.adzuna-app-id=REPLACE_ME
+crescendo.jobsearch.adzuna-api-key=REPLACE_ME
+# Jooble — Global job aggregator (free at https://jooble.org/api/about)
+crescendo.jobsearch.jooble-api-key=REPLACE_ME
+
+# JWT expiration times in milliseconds
+# 604800000 = 7 days (refresh token lifetime)
+# 3600000   = 1 hour  (access token lifetime)
+# WARNING: jwt.secret must be replaced with a strong secret and managed via environment variable in production
+jwt.refresh.expiration=604800000
+jwt.access.expiration=3600000
+jwt.secret=REPLACE_ME_BASE64_KEY
+
+# Frontend URL for OAuth2 redirects after login/failure
+app.frontend.url=https://app.crescendo.run
+
+# Allowed CORS origins
+app.security.cors.allowed-origins=http://localhost:5173,https://app.crescendo.run
+
+# Base URL used for open/click tracking links injected into outgoing HTML emails.
+# Set this to the public URL where this backend is reachable (e.g. https://api.crescendo.run).
+# Leave empty (default) to disable tracking injection in local development.
+app.tracking.base-url=${app.backend-url}
+
+# Redis Cache
+spring.cache.type=redis
+spring.data.redis.repositories.enabled=false

@@ -191,6 +191,12 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - Reduces hardcoded action wiring in business flows
 - Makes new integration onboarding faster for contributors
 
+### 12. Directed Rooted Tree execution
+
+- Workflow execution modeled as a rooted tree to support branching logic (e.g. If, Switch conditions)
+- Recursive sequence execution that isolates unexecuted branch state
+- Fine-grained suspend and resume execution that maintains sub-branch execution context
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads

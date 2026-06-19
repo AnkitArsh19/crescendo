@@ -22,6 +22,7 @@ import java.util.*;
  * </ol>
  */
 @Component
+@SuppressWarnings("unchecked")
 public class GoogleSheetsResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleSheetsResourceProvider.class);
@@ -46,7 +47,6 @@ public class GoogleSheetsResourceProvider implements ResourceProvider {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<ResourceOption> listResources(Map<String, Object> credentials,
                                                String resourceType,
                                                Map<String, String> params) {
@@ -64,7 +64,6 @@ public class GoogleSheetsResourceProvider implements ResourceProvider {
 
     // ─── Spreadsheets ────────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listSpreadsheets(String accessToken) {
         try {
             Map<String, Object> response = restClient.get()
@@ -89,7 +88,6 @@ public class GoogleSheetsResourceProvider implements ResourceProvider {
 
     // ─── Worksheets (sheets within a spreadsheet) ────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listWorksheets(String accessToken, String spreadsheetId) {
         try {
             Map<String, Object> response = restClient.get()
@@ -118,7 +116,6 @@ public class GoogleSheetsResourceProvider implements ResourceProvider {
 
     // ─── Columns (header row) ────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listColumns(String accessToken, String spreadsheetId, String sheetName) {
         try {
             String range = sheetName + "!1:1";

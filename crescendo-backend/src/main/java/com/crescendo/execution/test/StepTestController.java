@@ -2,7 +2,7 @@ package com.crescendo.execution.test;
 
 import com.crescendo.admin.PlatformKey;
 import com.crescendo.admin.PlatformKeyRepository;
-import com.crescendo.connections.connections_command.Connections_commandRepository;
+
 import com.crescendo.connections.oauth.OAuthTokenRefreshService;
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
 import com.crescendo.execution.action.ActionContext;
@@ -42,20 +42,17 @@ public class StepTestController {
     private static final Logger logger = LoggerFactory.getLogger(StepTestController.class);
 
     private final ActionHandlerRegistry handlerRegistry;
-    private final Connections_commandRepository connectionsRepo;
     private final OAuthTokenRefreshService tokenService;
     private final PlatformKeyRepository platformKeyRepo;
     private final ConnectionCredentialsCryptoService cryptoService;
     private final ObjectMapper objectMapper;
 
     public StepTestController(ActionHandlerRegistry handlerRegistry,
-            Connections_commandRepository connectionsRepo,
             OAuthTokenRefreshService tokenService,
             PlatformKeyRepository platformKeyRepo,
             ConnectionCredentialsCryptoService cryptoService,
             ObjectMapper objectMapper) {
         this.handlerRegistry = handlerRegistry;
-        this.connectionsRepo = connectionsRepo;
         this.tokenService = tokenService;
         this.platformKeyRepo = platformKeyRepo;
         this.cryptoService = cryptoService;
@@ -132,7 +129,11 @@ public class StepTestController {
                     request.actionKey(),
                     request.configuration() != null ? request.configuration() : Map.of(),
                     credentials,
-                    Map.of() // No input data in test mode
+                    Map.of(), // No input data in test mode
+                    null,
+                    userId,
+                    null,
+                    0
             );
 
             logger.info("[step-test] Testing {}:{} for user {}",

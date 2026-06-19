@@ -230,8 +230,8 @@ public class OAuthTokenRefreshService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    config.getTokenUrl(), HttpMethod.POST, request, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    config.getTokenUrl(), HttpMethod.POST, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new RuntimeException("Token refresh returned non-200: " + response.getStatusCode());

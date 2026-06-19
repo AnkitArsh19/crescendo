@@ -140,7 +140,7 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
             return ExecutionStatus.DLQ;
         }
 
-        if (run.getStatus() != WorkflowRunStatus.PENDING) {
+        if (run.getStatus() != WorkflowRunStatus.PENDING && run.getStatus() != WorkflowRunStatus.SUSPENDED) {
             logger.info("[execution] Run {} is already {}, skipping", workflowRunId, run.getStatus());
             return ExecutionStatus.PROCESSED;
         }
@@ -152,12 +152,7 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
                 workflowRunId);
 
         try {
-            executionEngine.execute(
-                    UUID.fromString(workflowRunId),
-                    UUID.fromString(workflowId),
-                    userId != null ? UUID.fromString(userId) : null,
-                    run.getTriggerData()
-            );
+            executionEngine.execute(run);
             return ExecutionStatus.PROCESSED;
         } catch (Exception e) {
             logger.error("[execution] Engine failed for run {}: {}", workflowRunId, e.getMessage(), e);

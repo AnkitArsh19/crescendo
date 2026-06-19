@@ -21,6 +21,7 @@ import java.util.UUID;
     indexes = {
         @Index(name = "idx_steps_workflow", columnList = "workflowId"),
         @Index(name = "idx_steps_order", columnList = "workflowId, step_order"),
+        @Index(name = "idx_steps_parent_branch", columnList = "workflowId, parentStepId, branchKey"),
         @Index(name = "idx_steps_deleted", columnList = "deletedAt")
     })
 public class Steps_command {
@@ -69,6 +70,12 @@ public class Steps_command {
      */
     @Column(name = "connectionId")
     private UUID connectionId;
+
+    @Column(name = "parentStepId")
+    private UUID parentStepId;
+
+    @Column(name = "branchKey", length = 120)
+    private String branchKey;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "configuration", columnDefinition = "jsonb")
@@ -221,5 +228,21 @@ public class Steps_command {
 
     public void setConnectionId(UUID connectionId) {
         this.connectionId = connectionId;
+    }
+
+    public UUID getParentStepId() {
+        return parentStepId;
+    }
+
+    public void setParentStepId(UUID parentStepId) {
+        this.parentStepId = parentStepId;
+    }
+
+    public String getBranchKey() {
+        return branchKey;
+    }
+
+    public void setBranchKey(String branchKey) {
+        this.branchKey = branchKey;
     }
 }

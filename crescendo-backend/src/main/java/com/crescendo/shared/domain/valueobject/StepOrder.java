@@ -13,7 +13,6 @@ import java.math.RoundingMode;
 public record StepOrder(BigDecimal value) implements Comparable<StepOrder> {
 
     private static final int SCALE = 6;
-    private static final int PRECISION = 18;
 
     public StepOrder {
         if (value == null) {

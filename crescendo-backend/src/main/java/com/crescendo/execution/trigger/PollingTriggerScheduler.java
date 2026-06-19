@@ -169,33 +169,31 @@ public class PollingTriggerScheduler {
                 continue;
             }
 
-            UUID connectionId = triggerStep.getConnectionId();
-            if (connectionId == null) {
-                logger.warn("[poller] Trigger step {} has no connectionId, skipping", triggerStep.getId());
-                continue;
-            }
-
             try {
-                // Get valid OAuth credentials
-                Connections_command connection = connectionsRepo.findByIdAndUser_Id(connectionId, userId)
-                        .orElse(null);
-                if (connection == null) {
-                    logger.warn("[poller] Connection {} not found for user {}", connectionId, userId);
-                    continue;
+                UUID connectionId = triggerStep.getConnectionId();
+                Map<String, Object> credentials = Map.of();
+                if (connectionId != null) {
+                    Connections_command connection = connectionsRepo.findByIdAndUser_Id(connectionId, userId)
+                            .orElse(null);
+                    if (connection == null) {
+                        logger.warn("[poller] Connection {} not found for user {}", connectionId, userId);
+                        continue;
+                    }
+                    credentials = tokenService.getValidCredentials(connection);
                 }
-
-                Map<String, Object> credentials = tokenService.getValidCredentials(connection);
 
                 // Get the last poll time from Redis
                 Instant lastPollTime = getLastPollTime(triggerStep.getId());
 
                 // Poll for new events
-                Map<String, Object> stepConfig = triggerStep.getConfiguration() != null
+                Map<String, Object> stepConfig = new HashMap<>(triggerStep.getConfiguration() != null
                         ? triggerStep.getConfiguration()
-                        : Map.of();
+                        : Map.of());
+                stepConfig.put("appKey", appKey);
+                stepConfig.put("triggerKey", triggerKey);
 
                 logger.info("[poller] Polling {}:{} — stepId={}, connectionId={}, config={}, lastPoll={}",
-                        appKey, triggerKey, triggerStep.getId(), connectionId, stepConfig, lastPollTime);
+                        appKey, triggerKey, triggerStep.getId(), triggerStep.getConnectionId(), stepConfig, lastPollTime);
 
                 List<Map<String, Object>> newEvents = poller.poll(credentials, stepConfig, lastPollTime);
 

@@ -1,8 +1,6 @@
 package com.crescendo.apps.webhook;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import java.util.*;
@@ -12,12 +10,10 @@ import java.util.*;
  */
 @ActionMapping(appKey = "crescendo-webhook", actionKey = "post-webhook")
 public class WebhookPostHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(WebhookPostHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String url = config.get("url") != null ? config.get("url").toString() : null;
         if (url == null) return ActionResult.failure("'url' is required");

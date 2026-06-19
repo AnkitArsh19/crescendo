@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +23,7 @@ public class WeatherGetHandler implements ActionHandler {
     private String platformApiKey;
 
     @Override
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
@@ -57,6 +58,9 @@ public class WeatherGetHandler implements ActionHandler {
             logger.info("[weather] Weather fetched for city={}", city);
             return ActionResult.success(output);
         } catch (Exception e) {
+            if (e instanceof RestClientResponseException r) {
+                return ActionResult.failure("Weather fetch failed: " + r.getResponseBodyAsString());
+            }
             logger.error("[weather] Get weather failed for city={}", city, e);
             return ActionResult.failure("Weather fetch failed: " + e.getMessage());
         }

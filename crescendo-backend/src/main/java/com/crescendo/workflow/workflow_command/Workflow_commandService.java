@@ -1,12 +1,10 @@
 package com.crescendo.workflow.workflow_command;
 
-import com.crescendo.enums.StepType;
 import com.crescendo.enums.WorkflowStatus;
 import com.crescendo.security.access.AccessControlService;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
 import com.crescendo.shared.domain.valueobject.GuestSessionId;
-import com.crescendo.steps.steps_command.Steps_command;
-import com.crescendo.steps.steps_command.Steps_commandRepository;
+
 import com.crescendo.steps.steps_command.Steps_commandService;
 import com.crescendo.user.user_command.User_command;
 import com.crescendo.user.user_command.User_commandRepository;
@@ -25,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -47,7 +46,6 @@ public class Workflow_commandService {
     private final AccessControlService accessControl;
     private final DomainEventPublisher eventPublisher;
     private final Steps_commandService stepsCommandService;
-    private final Steps_commandRepository stepsRepo;
     private final WorkflowActivationValidator activationValidator;
 
     public Workflow_commandService(Workflow_commandRepository workflowRepo,
@@ -56,7 +54,6 @@ public class Workflow_commandService {
                                    AccessControlService accessControl,
                                    DomainEventPublisher eventPublisher,
                                    Steps_commandService stepsCommandService,
-                                   Steps_commandRepository stepsRepo,
                                    WorkflowActivationValidator activationValidator) {
         this.workflowRepo = workflowRepo;
         this.workflowQueryRepo = workflowQueryRepo;
@@ -64,7 +61,6 @@ public class Workflow_commandService {
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
         this.stepsCommandService = stepsCommandService;
-        this.stepsRepo = stepsRepo;
         this.activationValidator = activationValidator;
     }
 
@@ -186,9 +182,13 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
+                                    stepReq.parentStepId(),
+                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
+                    stepsCommandService.setStepTreePosition(userId, workflowId, UUID.fromString(stepReq.backendId()),
+                            stepReq.parentStepId(), stepReq.branchKey());
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
                 } else {
                     // Create new
@@ -199,6 +199,8 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
+                                    stepReq.parentStepId(),
+                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
@@ -334,9 +336,13 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
+                                    stepReq.parentStepId(),
+                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
+                    stepsCommandService.setGuestStepTreePosition(guestSessionId, workflowId, UUID.fromString(stepReq.backendId()),
+                            stepReq.parentStepId(), stepReq.branchKey());
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
                 } else {
                     WorkflowDto.StepResponse created = stepsCommandService.addGuestStep(guestSessionId, workflowId,
@@ -346,6 +352,8 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
+                                    stepReq.parentStepId(),
+                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
@@ -469,18 +477,41 @@ public class Workflow_commandService {
         // inside addStep() finds a valid workflow_query row to update.
         projectWorkflowToQuery(workflow);
 
-        // Create steps
+        Map<String, UUID> importedStepIdsBySourceId = new java.util.HashMap<>();
+        Map<Integer, UUID> importedStepIdsByIndex = new java.util.HashMap<>();
+
+        // Create steps first, then connect branch parents once all new IDs exist.
         if (req.steps() != null) {
-            for (WorkflowDto.ImportStepRequest stepReq : req.steps()) {
-                stepsCommandService.addStep(userId, workflowId,
+            for (int i = 0; i < req.steps().size(); i++) {
+                WorkflowDto.ImportStepRequest stepReq = req.steps().get(i);
+                WorkflowDto.StepResponse created = stepsCommandService.addStep(userId, workflowId,
                         new WorkflowDto.CreateStepRequest(
                                 stepReq.name(),
                                 com.crescendo.enums.StepType.valueOf(stepReq.type()),
                                 stepReq.actionKey(),
                                 stepReq.appKey(),
                                 null, // no connectionId — user connects later
+                                null,
+                                null,
                                 stepReq.configuration()
                         ));
+                UUID createdId = UUID.fromString(created.id());
+                importedStepIdsByIndex.put(i, createdId);
+                if (stepReq.sourceStepId() != null && !stepReq.sourceStepId().isBlank()) {
+                    importedStepIdsBySourceId.put(stepReq.sourceStepId(), createdId);
+                }
+            }
+
+            for (int i = 0; i < req.steps().size(); i++) {
+                WorkflowDto.ImportStepRequest stepReq = req.steps().get(i);
+                UUID parentStepId = null;
+                if (stepReq.parentStepId() != null) {
+                    parentStepId = importedStepIdsBySourceId.get(stepReq.parentStepId().toString());
+                }
+                if (parentStepId != null || stepReq.branchKey() != null) {
+                    stepsCommandService.setStepTreePosition(userId, workflowId, importedStepIdsByIndex.get(i),
+                            parentStepId, stepReq.branchKey());
+                }
             }
         }
 

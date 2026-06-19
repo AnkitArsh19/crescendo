@@ -353,8 +353,8 @@ public class IntegrationOAuthService {
         }
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    config.getTokenUrl(), HttpMethod.POST, request, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    config.getTokenUrl(), HttpMethod.POST, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -403,7 +403,6 @@ public class IntegrationOAuthService {
      * API.
      * Returns a map with "email" and "displayName" keys.
      */
-    @SuppressWarnings("unchecked")
     private Map<String, String> fetchAccountIdentity(String providerKey, Map<String, Object> credentials) {
         String accessToken = credentials.get("accessToken").toString();
         Map<String, String> identity = new HashMap<>();
@@ -523,7 +522,7 @@ public class IntegrationOAuthService {
             headers.addAll(extraHeaders);
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(url, HttpMethod.GET, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
         return response.getBody() != null ? response.getBody() : Map.of();
     }
 
@@ -541,7 +540,7 @@ public class IntegrationOAuthService {
                 .toUri();
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.GET, request, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
         return response.getBody() != null ? response.getBody() : Map.of();
     }
 
@@ -688,11 +687,6 @@ public class IntegrationOAuthService {
                 || providerKey.startsWith("google-");
     }
 
-    private String capitalize(String s) {
-        if (s == null || s.isEmpty())
-            return s;
-        return s.substring(0, 1).toUpperCase() + s.substring(1);
-    }
 
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);

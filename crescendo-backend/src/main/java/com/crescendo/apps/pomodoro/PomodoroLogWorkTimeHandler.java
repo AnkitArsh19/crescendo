@@ -1,8 +1,6 @@
 package com.crescendo.apps.pomodoro;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.*;
 
@@ -11,10 +9,9 @@ import java.util.*;
  */
 @ActionMapping(appKey = "pomodoro", actionKey = "log-work-time")
 public class PomodoroLogWorkTimeHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(PomodoroLogWorkTimeHandler.class);
 
     @Override
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String duration = config.get("durationMinutes") != null ? config.get("durationMinutes").toString() : null;
         if (duration == null) return ActionResult.failure("'durationMinutes' is required");

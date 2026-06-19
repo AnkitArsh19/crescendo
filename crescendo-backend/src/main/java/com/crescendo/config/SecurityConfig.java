@@ -109,6 +109,7 @@ public class SecurityConfig {
                 .requestMatchers("/guest/**").permitAll() // guest workflows — identified by X-Guest-Session header
                 .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll() // external webhook ingestion
                 .requestMatchers(HttpMethod.GET, "/webhooks/email-events").permitAll() // provider delivery callbacks
+                .requestMatchers("/public/forms/**", "/public/approvals/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/t/**").permitAll()  // open/click tracking pixel & redirect
                 .requestMatchers(HttpMethod.GET, "/unsubscribe").permitAll() // one-click unsubscribe page
                 .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()

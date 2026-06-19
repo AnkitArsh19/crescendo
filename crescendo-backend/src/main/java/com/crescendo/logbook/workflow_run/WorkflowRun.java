@@ -19,7 +19,8 @@ import java.util.UUID;
     indexes = {
         @Index(name = "idx_workflow_run_workflow", columnList = "workflowId"),
         @Index(name = "idx_workflow_run_user", columnList = "userId"),
-        @Index(name = "idx_workflow_run_status", columnList = "workflow_run_status")
+        @Index(name = "idx_workflow_run_status", columnList = "workflow_run_status"),
+        @Index(name = "idx_workflow_run_resume_token", columnList = "resume_token")
     })
 public class WorkflowRun {
 
@@ -53,6 +54,19 @@ public class WorkflowRun {
 
     @Column(name = "completedAt")
     private Instant completedAt;
+
+    @Column(name = "resume_at")
+    private Instant resumeAt;
+
+    @Column(name = "resume_step_id")
+    private UUID resumeStepId;
+
+    @Column(name = "resume_token", length = 120)
+    private String resumeToken;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "execution_state", columnDefinition = "jsonb")
+    private Map<String, Object> executionState;
 
     public WorkflowRun() {
     }
@@ -127,5 +141,37 @@ public class WorkflowRun {
 
     public void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public Instant getResumeAt() {
+        return resumeAt;
+    }
+
+    public void setResumeAt(Instant resumeAt) {
+        this.resumeAt = resumeAt;
+    }
+
+    public UUID getResumeStepId() {
+        return resumeStepId;
+    }
+
+    public void setResumeStepId(UUID resumeStepId) {
+        this.resumeStepId = resumeStepId;
+    }
+
+    public String getResumeToken() {
+        return resumeToken;
+    }
+
+    public void setResumeToken(String resumeToken) {
+        this.resumeToken = resumeToken;
+    }
+
+    public Map<String, Object> getExecutionState() {
+        return executionState;
+    }
+
+    public void setExecutionState(Map<String, Object> executionState) {
+        this.executionState = executionState;
     }
 }

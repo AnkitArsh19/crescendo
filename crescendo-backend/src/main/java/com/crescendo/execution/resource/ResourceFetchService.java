@@ -3,7 +3,7 @@ package com.crescendo.execution.resource;
 import com.crescendo.connections.connections_command.Connections_command;
 import com.crescendo.connections.connections_command.Connections_commandRepository;
 import com.crescendo.connections.oauth.OAuthTokenRefreshService;
-import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
+
 import com.crescendo.security.AppUserDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,16 +35,13 @@ public class ResourceFetchService {
     private final ResourceProviderRegistry registry;
     private final Connections_commandRepository connectionsRepo;
     private final OAuthTokenRefreshService tokenService;
-    private final ConnectionCredentialsCryptoService cryptoService;
 
     public ResourceFetchService(ResourceProviderRegistry registry,
                                  Connections_commandRepository connectionsRepo,
-                                 OAuthTokenRefreshService tokenService,
-                                 ConnectionCredentialsCryptoService cryptoService) {
+                                 OAuthTokenRefreshService tokenService) {
         this.registry = registry;
         this.connectionsRepo = connectionsRepo;
         this.tokenService = tokenService;
-        this.cryptoService = cryptoService;
     }
 
     /**

@@ -11,12 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Adds attendees to a Google Calendar event via events.patch.
  */
 @ActionMapping(appKey = "google-calendar", actionKey = "add-attendee")
+@SuppressWarnings("unchecked")
 public class GoogleCalendarAddAttendeeHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleCalendarAddAttendeeHandler.class);
@@ -29,8 +29,7 @@ public class GoogleCalendarAddAttendeeHandler implements ActionHandler {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
@@ -72,7 +71,7 @@ public class GoogleCalendarAddAttendeeHandler implements ActionHandler {
             }
 
             // Patch the event
-            Map<String, Object> response = restClient.patch()
+            restClient.patch()
                     .uri(getUrl)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)

@@ -6,7 +6,6 @@ import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
@@ -17,6 +16,7 @@ import java.util.Map;
  * Creates a merge request in GitLab via POST /api/v4/projects/{id}/merge_requests.
  */
 @ActionMapping(appKey = "gitlab", actionKey = "create-mr")
+@SuppressWarnings("unchecked")
 public class GitLabCreateMrHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GitLabCreateMrHandler.class);
@@ -24,8 +24,7 @@ public class GitLabCreateMrHandler implements ActionHandler {
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 

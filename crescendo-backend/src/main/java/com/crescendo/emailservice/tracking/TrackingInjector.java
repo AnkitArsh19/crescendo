@@ -1,6 +1,5 @@
 package com.crescendo.emailservice.tracking;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;

@@ -17,6 +17,7 @@ import java.util.*;
  * Supports: presentations
  */
 @Component
+@SuppressWarnings("unchecked")
 public class GoogleSlidesResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleSlidesResourceProvider.class);
@@ -40,7 +41,6 @@ public class GoogleSlidesResourceProvider implements ResourceProvider {
         return listPresentations(accessToken);
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listPresentations(String accessToken) {
         try {
             String query = "mimeType='application/vnd.google-apps.presentation' and trashed=false";

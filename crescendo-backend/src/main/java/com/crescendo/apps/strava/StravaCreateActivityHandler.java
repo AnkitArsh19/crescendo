@@ -1,8 +1,6 @@
 package com.crescendo.apps.strava;
 
 import com.crescendo.execution.action.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
@@ -12,13 +10,12 @@ import java.util.*;
  * Creates a manual activity in Strava via POST /api/v3/activities.
  */
 @ActionMapping(appKey = "strava", actionKey = "create-activity")
+@SuppressWarnings("unchecked")
 public class StravaCreateActivityHandler implements ActionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(StravaCreateActivityHandler.class);
     private final RestClient restClient = RestClient.create();
 
     @Override
-    @SuppressWarnings("unchecked")
-    public ActionResult execute(ActionContext context) {
+public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
         String token = creds != null ? (String) creds.get("accessToken") : null;

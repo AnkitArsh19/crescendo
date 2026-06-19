@@ -143,6 +143,8 @@ public class Steps_queryService {
                 step.getAppKey(),
                 step.getActionKey(),
                 step.getConnectionId(),
+                step.getParentStepId(),
+                step.getBranchKey(),
                 step.getConfiguration(),
                 conditions,
                 step.getCreatedAt(),
@@ -189,6 +191,8 @@ public class Steps_queryService {
                 step.getAppKey(),
                 step.getActionKey(),
                 step.getConnectionId(),
+                step.getParentStepId(),
+                step.getBranchKey(),
                 step.getConfiguration(),
                 step.getCreatedAt(),
                 step.getUpdatedAt()

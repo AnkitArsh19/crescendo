@@ -17,6 +17,7 @@ import java.util.*;
  * Supports: mailFolders, contacts
  */
 @Component
+@SuppressWarnings("unchecked")
 public class MicrosoftOutlookResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(MicrosoftOutlookResourceProvider.class);
@@ -46,7 +47,6 @@ public class MicrosoftOutlookResourceProvider implements ResourceProvider {
         };
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listMailFolders(String accessToken) {
         try {
             Map<String, Object> response = restClient(accessToken)
@@ -71,7 +71,6 @@ public class MicrosoftOutlookResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listContacts(String accessToken) {
         try {
             Map<String, Object> response = restClient(accessToken)
@@ -106,7 +105,6 @@ public class MicrosoftOutlookResourceProvider implements ResourceProvider {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private List<ResourceOption> listCalendars(String accessToken) {
         try {
             Map<String, Object> response = restClient(accessToken)

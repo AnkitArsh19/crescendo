@@ -21,6 +21,12 @@ logging.level.org.springframework.web=DEBUG
 # Required for encrypting connection credentials at rest (AES-256 Base64 key)
 credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
 
+# Public app URLs used for OAuth callbacks and native no-code public links
+app.frontend-url=http://localhost:3000
+app.backend-url=http://localhost:8080
+app.form.base-url=${app.backend-url}/public/forms
+app.approval.base-url=${app.backend-url}/public/approvals
+
 # OAuth2 client registrations (for direct OAuth login/connect flows)
 # The Google client is reused for Google Sheets, Drive, Calendar, and Forms if those scopes are enabled.
 spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
@@ -50,3 +56,9 @@ crescendo.email.smtp.password=REPLACE_ME
 # Optional provider keys for controlled internal connections
 gemini.api.key=REPLACE_ME_IF_USED
 sarvam.api.key=REPLACE_ME_IF_USED
+
+# Razorpay and PayPal are user-owned connection credentials by default.
+# Configure keyId/keySecret or clientId/clientSecret in the user's Connection UI.
+
+# Optional OAuth provider rows for newly added apps are listed in application.properties.example.
+# Token-based connections work immediately for Trello, Asana, HubSpot, Dropbox, etc.
