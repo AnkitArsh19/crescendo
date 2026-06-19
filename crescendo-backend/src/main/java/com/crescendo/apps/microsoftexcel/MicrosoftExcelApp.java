@@ -33,7 +33,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                 "microsoft-excel",
                 "Microsoft Excel",
                 "Connect Excel workbooks in OneDrive — read rows, append data, and watch for changes",
-                "/icons/microsoft-excel.svg",
+                "https://www.google.com/s2/favicons?domain=excel.office.com&sz=128",
                 AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══

@@ -13,7 +13,7 @@ public class MattermostApp implements AppDefinition {
                 "mattermost",
                 "Mattermost",
                 "Post messages to Mattermost channels",
-                "/icons/mattermost.svg",
+                "https://upload.wikimedia.org/wikipedia/commons/9/91/Cib-mattermost_%28CoreUI_Icons_v1.0.0%29.svg",
                 AuthType.APIKEY,
                 List.of(),
                 List.of(
@@ -30,6 +30,6 @@ public class MattermostApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "baseUrl", "label", "Base URL", "type", "text", "required", true),
                 Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).category("communication").helpUrl("https://api.mattermost.com/");
+        )).category("communication").helpUrl("https://avatars.githubusercontent.com/u/8966922?v=4");
     }
 }

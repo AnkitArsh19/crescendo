@@ -13,8 +13,8 @@ public class HubSpotApp implements AppDefinition {
                 "hubspot",
                 "HubSpot",
                 "Create and search CRM contacts",
-                "/icons/hubspot.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=hubspot.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(
@@ -36,8 +36,6 @@ public class HubSpotApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "accessToken", "label", "Private App Access Token", "type", "password", "required", true)
-        )).category("crm").helpUrl("https://developers.hubspot.com/docs/api/crm/contacts");
+        ).credentialSchema(List.of()).category("crm").helpUrl("https://developers.hubspot.com/docs/api/crm/contacts");
     }
 }

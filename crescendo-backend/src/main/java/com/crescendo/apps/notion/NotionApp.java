@@ -20,7 +20,7 @@ public class NotionApp implements AppDefinition {
 
         return new App(
             "notion", "Notion", "Create, update, and watch pages and databases in Notion",
-            "/icons/notion.svg", AuthType.OAUTH2,
+            "https://www.google.com/s2/favicons?domain=notion.so&sz=128", AuthType.OAUTH2,
 
             // ═══ TRIGGERS ═══
             List.of(

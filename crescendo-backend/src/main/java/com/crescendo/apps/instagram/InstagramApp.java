@@ -13,8 +13,8 @@ public class InstagramApp implements AppDefinition {
                 "instagram",
                 "Instagram Graph API",
                 "Create Instagram media containers and publish media",
-                "/icons/instagram.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=instagram.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(
                         Map.of(
                                 "triggerKey", "instagram-event",

@@ -12,7 +12,7 @@ public class OpenAIApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("openai", "OpenAI", "Generate text, images, and embeddings with GPT and DALL-E",
-                "/icons/openai.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=openai.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "chat-completion", "name", "Chat Completion",

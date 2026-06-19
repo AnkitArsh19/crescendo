@@ -12,7 +12,7 @@ public class TwitterApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("twitter", "X (Twitter)", "Post, delete, and manage tweets on X",
-                "/icons/x.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=twitter.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "new-mention", "name", "New Mention",
                         "description", "Triggers when you are mentioned in a tweet",

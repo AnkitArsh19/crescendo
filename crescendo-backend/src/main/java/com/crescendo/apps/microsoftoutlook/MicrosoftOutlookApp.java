@@ -27,7 +27,7 @@ public class MicrosoftOutlookApp implements AppDefinition {
                 "microsoft-outlook",
                 "Microsoft Outlook",
                 "Send emails, watch for new messages, manage drafts and calendar events via Microsoft Graph",
-                "/icons/microsoft-outlook.svg",
+                "https://www.google.com/s2/favicons?domain=outlook.office.com&sz=128",
                 AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══

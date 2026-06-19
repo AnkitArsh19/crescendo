@@ -13,7 +13,7 @@ public class MediumApp implements AppDefinition {
                 "medium",
                 "Medium",
                 "Publish Medium articles with an integration token",
-                "/icons/medium.svg",
+                "https://www.google.com/s2/favicons?domain=medium.com&sz=128",
                 AuthType.APIKEY,
                 List.of(),
                 List.of(

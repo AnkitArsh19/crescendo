@@ -13,7 +13,7 @@ public class RazorpayApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("razorpay", "Razorpay", "Create Razorpay orders and payment links",
-                "/icons/razorpay.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=razorpay.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "create-order", "name", "Create Order",

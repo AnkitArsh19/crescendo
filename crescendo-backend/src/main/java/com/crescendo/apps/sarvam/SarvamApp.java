@@ -25,7 +25,7 @@ public class SarvamApp implements AppDefinition {
         );
 
         return new App("sarvam", "Sarvam AI", "Indian language AI — translation, TTS, and speech-to-text",
-                "/icons/sarvam.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=sarvam.ai&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "translate", "name", "Translate Text",

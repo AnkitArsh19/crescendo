@@ -12,7 +12,7 @@ public class LinkedInApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("linkedin", "LinkedIn", "Share posts, articles, and manage your professional presence",
-                "/icons/linkedin.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "new-follower", "name", "New Follower",
                         "description", "Triggers when a new person follows you",

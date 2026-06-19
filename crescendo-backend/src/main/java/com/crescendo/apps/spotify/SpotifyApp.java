@@ -12,7 +12,7 @@ public class SpotifyApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("spotify", "Spotify", "Search, manage playlists, and control your Spotify library",
-                "/icons/spotify.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=spotify.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "track-saved", "name", "New Saved Track",
                         "description", "Triggers when a track is saved to your library",

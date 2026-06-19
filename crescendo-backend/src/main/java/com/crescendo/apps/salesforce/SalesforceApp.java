@@ -13,8 +13,8 @@ public class SalesforceApp implements AppDefinition {
                 "salesforce",
                 "Salesforce",
                 "Query and create Salesforce records",
-                "/icons/salesforce.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=salesforce.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(

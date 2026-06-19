@@ -16,7 +16,7 @@ public class GoogleSlidesApp implements AppDefinition {
                 "required", true, "helpText", "Select the presentation");
 
         return new App("google-slides", "Google Slides", "Create presentations and manage slide decks",
-                "/icons/google-slides.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/slides_2020q4_48dp.png", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "presentation-updated", "name", "Presentation Updated",
                         "description", "Triggers when a presentation changes",

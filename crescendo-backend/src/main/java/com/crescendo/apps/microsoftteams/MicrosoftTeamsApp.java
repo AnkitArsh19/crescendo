@@ -28,7 +28,7 @@ public class MicrosoftTeamsApp implements AppDefinition {
                 "microsoft-teams",
                 "Microsoft Teams",
                 "Send messages, watch channels, and manage teams via Microsoft Graph",
-                "/icons/microsoft-teams.svg",
+                "https://www.google.com/s2/favicons?domain=teams.microsoft.com&sz=128",
                 AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══

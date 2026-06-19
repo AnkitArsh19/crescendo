@@ -24,7 +24,7 @@ public class SlackApp implements AppDefinition {
                 "helpText", "Select the user");
 
         return new App("slack", "Slack", "Send messages, manage channels, and automate Slack workflows",
-                "/icons/slack.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=slack.com&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(
@@ -160,14 +160,7 @@ public class SlackApp implements AppDefinition {
                     )
                 )
         )
-        .credentialSchema(List.of(
-            Map.of("key", "botToken", "label", "Bot User OAuth Token",
-                    "type", "password", "required", true,
-                    "placeholder", "xoxb-...",
-                    "helpText", "Install your Slack app and copy the Bot User OAuth Token",
-                    "authOption", "APIKEY")
-        ))
-        .altAuthType(AuthType.APIKEY)
+        .credentialSchema(List.of()).altAuthType(AuthType.APIKEY)
         .category("communication")
         .helpUrl("https://api.slack.com/apps");
     }

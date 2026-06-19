@@ -13,8 +13,8 @@ public class BrandfetchApp implements AppDefinition {
                 "brandfetch",
                 "Brandfetch",
                 "Fetch brand logos, colors, and fonts by domain",
-                "/icons/brandfetch.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=brandfetch.com&sz=128",
+                AuthType.NONE,
                 List.of(),
                 List.of(
                         Map.of(
@@ -26,8 +26,6 @@ public class BrandfetchApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true)
-        )).category("data").helpUrl("https://docs.brandfetch.com/");
+        ).credentialSchema(List.of()).category("data").helpUrl("https://docs.brandfetch.com/");
     }
 }

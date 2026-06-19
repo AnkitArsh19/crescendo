@@ -12,7 +12,7 @@ public class NasaApodApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("nasa-apod", "NASA", "Astronomy Picture of the Day, Mars Rover photos, and more",
-                "/icons/nasa.svg", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=nasa.gov&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "get-apod", "name", "Get Astronomy Picture",

@@ -14,7 +14,7 @@ public class HackerNewsApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("hackernews", "Hacker News", "Fetch stories, users, and comments from Hacker News",
-                "/icons/hackernews.svg", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=ycombinator.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "get-top-stories", "name", "Get Top Stories",

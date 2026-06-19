@@ -13,8 +13,8 @@ public class FacebookGraphApp implements AppDefinition {
                 "facebook-graph",
                 "Facebook Graph API",
                 "Call Facebook Graph API for pages and posts",
-                "/icons/facebook.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=facebook.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(
                         Map.of(
                                 "triggerKey", "page-event",

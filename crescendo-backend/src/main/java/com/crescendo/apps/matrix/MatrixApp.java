@@ -13,7 +13,7 @@ public class MatrixApp implements AppDefinition {
                 "matrix",
                 "Matrix",
                 "Send messages to Matrix rooms",
-                "/icons/matrix.svg",
+                "https://www.google.com/s2/favicons?domain=matrix.org&sz=128",
                 AuthType.APIKEY,
                 List.of(),
                 List.of(

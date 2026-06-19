@@ -23,7 +23,7 @@ public class GoogleCalendarApp implements AppDefinition {
                 "helpText", "The ID of the event (from a trigger or search)");
 
         return new App("google-calendar", "Google Calendar", "Create, update, and watch calendar events",
-                "/icons/google-calendar.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/calendar_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(

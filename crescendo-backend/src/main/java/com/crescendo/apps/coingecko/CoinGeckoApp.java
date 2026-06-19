@@ -14,7 +14,7 @@ public class CoinGeckoApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("coingecko", "CoinGecko", "Fetch cryptocurrency prices and market data",
-                "/icons/coingecko.svg", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=coingecko.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "simple-price", "name", "Get Simple Price",

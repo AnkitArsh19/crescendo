@@ -485,15 +485,13 @@ export default function AppBrowserModal({
                                                 }}
                                             >
                                                 <div className="abm-app-icon">
-                                                    {app.iconUrl ? (
-                                                        <img
-                                                            src={app.iconUrl}
-                                                            alt={app.name}
-                                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                                        />
-                                                    ) : (
-                                                        <HiOutlineBolt className="abm-app-icon-fallback" />
-                                                    )}
+                                                    <img 
+                                                        src={app.logoUrl || `/icons/${app.appKey}.svg`}
+                                                        alt={app.name}
+                                                        className={app.logoUrl ? "app-logo-clearbit-dark" : "app-logo-white-svg"}
+                                                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                                    />
+                                                    <HiOutlineBolt className="abm-app-icon-fallback" style={{ display: 'none' }} />
                                                 </div>
                                                 <div className="abm-app-info">
                                                     <div className="abm-app-name">{app.name}</div>

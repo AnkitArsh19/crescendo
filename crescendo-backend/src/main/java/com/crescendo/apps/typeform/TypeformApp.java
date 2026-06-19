@@ -13,8 +13,8 @@ public class TypeformApp implements AppDefinition {
                 "typeform",
                 "Typeform",
                 "Read Typeform forms and responses",
-                "/icons/typeform.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=typeform.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(
                         Map.of(
                                 "triggerKey", "form-submit",
@@ -42,8 +42,6 @@ public class TypeformApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).altAuthType(AuthType.OAUTH2).category("forms").helpUrl("https://www.typeform.com/developers/");
+        ).credentialSchema(List.of()).altAuthType(AuthType.OAUTH2).category("forms").helpUrl("https://www.typeform.com/developers/");
     }
 }

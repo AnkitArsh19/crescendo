@@ -104,7 +104,25 @@
     font-weight: 700;
     color: var(--text-accent);
     flex-shrink: 0;
+    overflow: hidden;
+    padding: 6px;
 }
+
+.app-logo-white-svg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+.app-logo-clearbit-dark {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: grayscale(1) invert(1) brightness(1.5);
+    border-radius: 4px;
+}
+
 
 .conn-card-info {
     flex: 1;
@@ -652,6 +670,8 @@
     font-size: 0.9rem;
     color: var(--text-accent);
     flex-shrink: 0;
+    overflow: hidden;
+    padding: 4px;
 }
 
 .conn-app-info {

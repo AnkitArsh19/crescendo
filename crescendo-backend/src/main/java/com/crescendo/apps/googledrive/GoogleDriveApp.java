@@ -24,7 +24,7 @@ public class GoogleDriveApp implements AppDefinition {
                 "helpText", "Select a file");
 
         return new App("google-drive", "Google Drive", "Upload files, manage folders, and watch for changes in Google Drive",
-                "/icons/google-drive.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(

@@ -13,8 +13,8 @@ public class CalendlyApp implements AppDefinition {
                 "calendly",
                 "Calendly",
                 "Read Calendly users and scheduled events",
-                "/icons/calendly.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=calendly.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(
                         Map.of(
                                 "triggerKey", "event-created",
@@ -47,8 +47,6 @@ public class CalendlyApp implements AppDefinition {
                                 "configSchema", List.of()
                         )
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).altAuthType(AuthType.OAUTH2).category("productivity").helpUrl("https://developer.calendly.com/");
+        ).credentialSchema(List.of()).altAuthType(AuthType.OAUTH2).category("productivity").helpUrl("https://developer.calendly.com/");
     }
 }

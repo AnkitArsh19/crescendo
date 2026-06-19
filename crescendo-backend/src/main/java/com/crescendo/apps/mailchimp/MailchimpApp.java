@@ -13,8 +13,8 @@ public class MailchimpApp implements AppDefinition {
                 "mailchimp",
                 "Mailchimp",
                 "Manage Mailchimp audience members",
-                "/icons/mailchimp.svg",
-                AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=mailchimp.com&sz=128",
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of(

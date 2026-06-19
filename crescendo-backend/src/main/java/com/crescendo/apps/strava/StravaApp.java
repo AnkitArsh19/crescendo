@@ -12,7 +12,7 @@ public class StravaApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("strava", "Strava", "Log activities, track workouts, and manage athletic data",
-                "/icons/strava.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=strava.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "activity-created", "name", "New Activity",
                         "description", "Triggers when a new activity is recorded",

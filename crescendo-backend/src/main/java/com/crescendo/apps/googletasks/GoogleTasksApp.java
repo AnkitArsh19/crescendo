@@ -19,7 +19,7 @@ public class GoogleTasksApp implements AppDefinition {
                 "helpText", "Select which task list to use");
 
         return new App("google-tasks", "Google Tasks", "Create, complete, and manage Google Tasks",
-                "/icons/google-tasks.svg", AuthType.OAUTH2,
+                "https://upload.wikimedia.org/wikipedia/commons/5/5b/Google_Tasks_2021.svg", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 List.of(
@@ -132,6 +132,6 @@ public class GoogleTasksApp implements AppDefinition {
                 ))
                 .credentialSchema(List.of())
                 .category("productivity")
-                .helpUrl("https://console.cloud.google.com/");
+                .helpUrl("https://ssl.gstatic.com/images/branding/product/2x/tasks_48dp.png");
     }
 }

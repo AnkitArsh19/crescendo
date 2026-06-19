@@ -14,7 +14,7 @@ public class TodoistApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("todoist", "Todoist", "Create and list Todoist tasks",
-                "/icons/todoist.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=todoist.com&sz=128", AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "create-task", "name", "Create Task",
@@ -30,8 +30,6 @@ public class TodoistApp implements AppDefinition {
                                 "configSchema", List.of(
                                         Map.of("key", "projectId", "label", "Project ID", "type", "text", "required", false)))
                 )
-        ).credentialSchema(List.of(
-                Map.of("key", "apiToken", "label", "API Token", "type", "password", "required", true)
-        )).category("productivity").helpUrl("https://developer.todoist.com/rest/v2/");
+        ).credentialSchema(List.of()).category("productivity").helpUrl("https://developer.todoist.com/rest/v2/");
     }
 }

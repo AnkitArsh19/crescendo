@@ -13,7 +13,7 @@ public class DropboxApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("dropbox", "Dropbox", "List, upload, download, share, search, and manage Dropbox files",
-                "/icons/dropbox.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=dropbox.com&sz=128", AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "list-folder", "name", "List Folder", "description", "List Dropbox folder contents",
@@ -49,8 +49,7 @@ public class DropboxApp implements AppDefinition {
                                         Map.of("key", "path", "label", "Path", "type", "text", "required", true),
                                         Map.of("key", "rev", "label", "Revision ID", "type", "text", "required", true)))
                 )
-        ).credentialSchema(List.of(Map.of("key", "accessToken", "label", "Access Token", "type", "password", "required", true)))
-                .altAuthType(AuthType.OAUTH2)
+        ).credentialSchema(List.of()).altAuthType(AuthType.OAUTH2)
                 .category("file-storage")
                 .helpUrl("https://www.dropbox.com/developers/documentation/http/documentation");
     }

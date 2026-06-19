@@ -14,7 +14,7 @@ public class PushbulletApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("pushbullet", "Pushbullet", "Send pushes to Pushbullet devices",
-                "/icons/pushbullet.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=pushbullet.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "send-note", "name", "Send Note",

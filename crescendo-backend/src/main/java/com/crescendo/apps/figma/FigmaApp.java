@@ -17,7 +17,7 @@ public class FigmaApp implements AppDefinition {
                 "helpText", "Paste a Figma file URL or just the file key");
 
         return new App("figma", "Figma", "Monitor files, export assets, and manage comments in Figma",
-                "/icons/figma.svg", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=figma.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "file-updated", "name", "File Updated",
                         "description", "Triggers when a Figma file is modified",

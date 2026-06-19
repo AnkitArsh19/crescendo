@@ -10,7 +10,7 @@ import java.util.*;
 @Component
 public class AsanaApp implements AppDefinition {
     public App toApp() {
-        return new App("asana", "Asana", "Create and list Asana tasks", "/icons/asana.svg", AuthType.APIKEY, List.of(),
+        return new App("asana", "Asana", "Create and list Asana tasks", "https://www.google.com/s2/favicons?domain=asana.com&sz=128", AuthType.OAUTH2, List.of(),
                 List.of(Map.of("actionKey", "create-task", "name", "Create Task", "description", "Create an Asana task",
                         "configSchema",
                         List.of(Map.of("key", "workspace", "label", "Workspace GID", "type", "text", "required", true),
@@ -22,8 +22,6 @@ public class AsanaApp implements AppDefinition {
                                 "List tasks in a project", "configSchema",
                                 List.of(Map.of("key", "project", "label", "Project GID", "type", "text", "required",
                                         true)))))
-                .credentialSchema(List.of(Map.of("key", "accessToken", "label", "Personal Access Token", "type",
-                        "password", "required", true)))
-                .category("productivity").helpUrl("https://developers.asana.com/docs/");
+                .credentialSchema(List.of()).category("productivity").helpUrl("https://developers.asana.com/docs/");
     }
 }

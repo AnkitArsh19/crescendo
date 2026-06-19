@@ -14,7 +14,7 @@ public class HomeAssistantApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("home-assistant", "Home Assistant", "Control a self-hosted Home Assistant instance",
-                "/icons/home-assistant.svg", AuthType.APIKEY,
+                "https://www.google.com/s2/favicons?domain=home-assistant.io&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "get-state", "name", "Get Entity State",

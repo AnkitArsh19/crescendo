@@ -28,7 +28,7 @@ public class GmailApp implements AppDefinition {
                 "helpText", "Select the label to apply");
 
         return new App("gmail", "Gmail", "Send, search, and watch emails via the Gmail API",
-                "/icons/gmail.svg", AuthType.OAUTH2,
+                "https://ssl.gstatic.com/images/branding/product/2x/gmail_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
                 // Only triggers with a real PollingTriggerScheduler implementation are listed here.
