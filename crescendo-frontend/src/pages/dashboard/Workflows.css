@@ -125,11 +125,11 @@
     color: var(--bg-primary);
 }
 
-/* Card checkbox positioned top-left */
+/* Card checkbox positioned top-right (avoids overlap with card icon/name) */
 .wf-card-checkbox {
     position: absolute;
     top: 12px;
-    left: 12px;
+    right: 12px;
     z-index: 2;
 }
 
@@ -506,6 +506,15 @@
 
 .wf-bulk-btn.share:hover {
     background: rgba(255, 255, 255, 0.14);
+}
+
+.wf-bulk-btn.delete-all {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.wf-bulk-btn.delete-all:hover {
+    background: rgba(239, 68, 68, 0.2);
 }
 
 .wf-bulk-btn:disabled {

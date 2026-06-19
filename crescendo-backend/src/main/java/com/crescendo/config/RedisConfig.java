@@ -18,7 +18,6 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -132,10 +131,9 @@ public class RedisConfig implements CachingConfigurer {
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         JacksonJsonRedisSerializer<Object> jsonSerializer =
                 new JacksonJsonRedisSerializer<>(redisObjectMapper(), Object.class);
-                JdkSerializationRedisSerializer jdkSerializer = new JdkSerializationRedisSerializer();
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .prefixCacheNameWith("v2:")   // orphans all v1 keys written with old serializer format
+                .prefixCacheNameWith("v3:")   // orphans v2 keys written with incompatible type-info format
                 .entryTtl(Duration.ofMinutes(30))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
@@ -147,9 +145,8 @@ public class RedisConfig implements CachingConfigurer {
                 "steps", defaultConfig.entryTtl(Duration.ofMinutes(30)),
                 "accessTiers", defaultConfig.entryTtl(Duration.ofMinutes(5)),
                 "workflowRuns", defaultConfig.entryTtl(Duration.ofHours(1)),
-                // Dedicated serializer for app catalog to avoid JSON polymorphic type-wrapper edge cases.
+                // Use JSON serialization for app catalog to prevent JDK serialization exceptions
                 "apps", defaultConfig.entryTtl(Duration.ofHours(6))
-                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jdkSerializer))
         );
 
         return RedisCacheManager.builder(connectionFactory)

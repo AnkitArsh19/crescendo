@@ -68,10 +68,12 @@ public class EmailTemplate_commandService {
 
         // Sync to query side
         queryRepo.findByIdAndUserId(templateId, userId).ifPresent(q -> {
-            if (req.name() != null) q.setName(req.name());
-            if (req.subject() != null) q.setSubject(req.subject());
-            if (req.htmlBody() != null) q.setHTMLBody(req.htmlBody());
-            if (req.textBody() != null) q.setTextBody(req.textBody());
+            boolean modified = false;
+            if (req.name() != null) { q.setName(req.name()); modified = true; }
+            if (req.subject() != null) { q.setSubject(req.subject()); modified = true; }
+            if (req.htmlBody() != null) { q.setHTMLBody(req.htmlBody()); modified = true; }
+            if (req.textBody() != null) { q.setTextBody(req.textBody()); modified = true; }
+            if (modified) queryRepo.save(q);
         });
 
         return toResponse(template);

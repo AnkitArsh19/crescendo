@@ -116,25 +116,25 @@ public class StepTestController {
                     "No handler for " + request.appKey() + ":" + request.actionKey());
         }
 
-        // 3. Load credentials (user connection or platform key fallback)
-        Map<String, Object> credentials = Map.of();
-        if (request.connectionId() != null) {
-            credentials = tokenService.getValidCredentials(request.connectionId(), userId);
-        }
-        if (credentials.isEmpty()) {
-            credentials = loadPlatformCredentials(request.appKey());
-        }
-
-        // 4. Execute with empty input data (test mode — no prior step output)
-        ActionContext context = new ActionContext(
-                request.appKey(),
-                request.actionKey(),
-                request.configuration() != null ? request.configuration() : Map.of(),
-                credentials,
-                Map.of() // No input data in test mode
-        );
-
         try {
+            // 3. Load credentials (user connection or platform key fallback)
+            Map<String, Object> credentials = Map.of();
+            if (request.connectionId() != null) {
+                credentials = tokenService.getValidCredentials(request.connectionId(), userId);
+            }
+            if (credentials.isEmpty()) {
+                credentials = loadPlatformCredentials(request.appKey());
+            }
+
+            // 4. Execute with empty input data (test mode — no prior step output)
+            ActionContext context = new ActionContext(
+                    request.appKey(),
+                    request.actionKey(),
+                    request.configuration() != null ? request.configuration() : Map.of(),
+                    credentials,
+                    Map.of() // No input data in test mode
+            );
+
             logger.info("[step-test] Testing {}:{} for user {}",
                     request.appKey(), request.actionKey(), userId);
 

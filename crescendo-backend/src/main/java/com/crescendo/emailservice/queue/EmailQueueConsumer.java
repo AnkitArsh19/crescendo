@@ -6,10 +6,12 @@ import com.crescendo.emailservice.provider.EmailMessage;
 import com.crescendo.emailservice.provider.EmailProvider;
 import com.crescendo.emailservice.provider.EmailSendResult;
 import com.crescendo.enums.EmailStatus;
+import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.shared.infrastructure.lock.DistributedLockService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
 
@@ -41,13 +43,16 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
     private final EmailLogRepository emailLogRepo;
     private final EmailProvider emailProvider;
     private final DistributedLockService lockService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     public EmailQueueConsumer(EmailLogRepository emailLogRepo,
                               EmailProvider emailProvider,
-                              DistributedLockService lockService) {
+                              DistributedLockService lockService,
+                              RedisTemplate<String, Object> redisTemplate) {
         this.emailLogRepo = emailLogRepo;
         this.emailProvider = emailProvider;
         this.lockService = lockService;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -64,6 +69,7 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
 
         if (emailId == null || to == null || from == null) {
             logger.warn("[email-queue] Malformed email message, missing required fields: {}", raw);
+            acknowledge(message);
             return;
         }
 
@@ -79,6 +85,7 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
 
         try {
             processEmail(emailId, to, from, subject, htmlBody, textBody, listUnsubscribeHeader);
+            acknowledge(message);
         } finally {
             lockService.unlock(lockKey, lockToken.get());
         }
@@ -129,6 +136,17 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
             emailLogRepo.save(log);
 
             logger.error("[email-queue] Uncaught exception sending email {}: {}", emailId, e.getMessage(), e);
+        }
+    }
+
+    private void acknowledge(MapRecord<String, Object, Object> message) {
+        try {
+            redisTemplate.opsForStream().acknowledge(
+                    RedisStreamConfig.STREAM_EMAIL_QUEUE,
+                    RedisStreamConfig.CONSUMER_GROUP,
+                    message.getId());
+        } catch (Exception e) {
+            logger.error("[email-queue] Failed to ACK message {}: {}", message.getId(), e.getMessage());
         }
     }
 

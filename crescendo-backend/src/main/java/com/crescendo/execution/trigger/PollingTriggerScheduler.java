@@ -9,11 +9,14 @@ import com.crescendo.logbook.domain_event.WorkflowRunStartedEvent;
 import com.crescendo.logbook.workflow_run.WorkflowRun;
 import com.crescendo.logbook.workflow_run.WorkflowRunRepository;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
-import com.crescendo.shared.infrastructure.event.RedisDomainEventPublisher;
+import com.crescendo.logbook.outbox.OutboxEvent;
+import com.crescendo.logbook.outbox.OutboxEventRepository;
+import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +43,7 @@ public class PollingTriggerScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(PollingTriggerScheduler.class);
     private static final String LAST_POLL_KEY_PREFIX = "polling:lastPoll:";
-    private static final Duration DEFAULT_LOOKBACK = Duration.ofMinutes(5);
+    private static final Duration DEFAULT_LOOKBACK = Duration.ofMinutes(30);
 
     private final List<TriggerPoller> pollers;
     private final Workflow_commandRepository workflowRepo;
@@ -49,7 +52,7 @@ public class PollingTriggerScheduler {
     private final OAuthTokenRefreshService tokenService;
     private final WorkflowRunRepository runRepo;
     private final DomainEventPublisher eventPublisher;
-    private final RedisDomainEventPublisher redisEventPublisher;
+    private final OutboxEventRepository outboxRepo;
     private final StringRedisTemplate redisTemplate;
 
     public PollingTriggerScheduler(List<TriggerPoller> pollers,
@@ -59,7 +62,7 @@ public class PollingTriggerScheduler {
                                     OAuthTokenRefreshService tokenService,
                                     WorkflowRunRepository runRepo,
                                     DomainEventPublisher eventPublisher,
-                                    RedisDomainEventPublisher redisEventPublisher,
+                                    OutboxEventRepository outboxRepo,
                                     StringRedisTemplate redisTemplate) {
         this.pollers = pollers;
         this.workflowRepo = workflowRepo;
@@ -68,8 +71,36 @@ public class PollingTriggerScheduler {
         this.tokenService = tokenService;
         this.runRepo = runRepo;
         this.eventPublisher = eventPublisher;
-        this.redisEventPublisher = redisEventPublisher;
+        this.outboxRepo = outboxRepo;
         this.redisTemplate = redisTemplate;
+    }
+
+    /**
+     * On startup, do NOT clear poll cursors. The cursor in Redis is the source of truth
+     * for "what has already been processed". Clearing it on every restart causes the same
+     * emails to be re-detected and re-executed after every backend restart.
+     *
+     * If you need to force a re-scan (e.g. for debugging), call resetPollCursor() manually
+     * or delete the Redis key: polling:lastPoll:<stepId>
+     */
+    @PostConstruct
+    public void logStartupCursorState() {
+        try {
+            var keys = redisTemplate.keys(LAST_POLL_KEY_PREFIX + "*");
+            if (keys != null && !keys.isEmpty()) {
+                logger.info("[poller] {} poll cursor(s) found in Redis — resuming from last known positions", keys.size());
+            } else {
+                logger.info("[poller] No poll cursors found — first poll will look back {} min", DEFAULT_LOOKBACK.toMinutes());
+            }
+        } catch (Exception e) {
+            logger.warn("[poller] Could not read poll cursor state on startup: {}", e.getMessage());
+        }
+    }
+
+    /** Resets the poll cursor for a specific step (useful for debugging). */
+    public void resetPollCursor(UUID stepId) {
+        redisTemplate.delete(LAST_POLL_KEY_PREFIX + stepId);
+        logger.info("[poller] Reset poll cursor for step {}", stepId);
     }
 
     /**
@@ -168,8 +199,7 @@ public class PollingTriggerScheduler {
 
                 List<Map<String, Object>> newEvents = poller.poll(credentials, stepConfig, lastPollTime);
 
-                // Update last poll time regardless of whether events were found
-                setLastPollTime(triggerStep.getId(), Instant.now());
+                Instant nextPollTime = lastPollTime;
 
                 if (!newEvents.isEmpty()) {
                     logger.info("[poller] {} new event(s) found for workflow {} ({}:{})",
@@ -177,10 +207,55 @@ public class PollingTriggerScheduler {
 
                     // Create a workflow run for each new event
                     for (Map<String, Object> eventData : newEvents) {
-                        createPollerRun(workflowId, userId, eventData, appKey, triggerKey);
+                        // ── Deduplication by message ID ────────────────────────────────
+                        // Prevent the same message from triggering multiple runs even if the
+                        // cursor is reset (e.g. backend restart). We use Redis SETNX (setIfAbsent)
+                        // which is a single atomic command — only the first caller wins.
+                        // This is safe for multi-instance deployments.
+                        String messageId = extractMessageId(eventData);
+                        String seenKey = null;
+                        if (messageId != null) {
+                            seenKey = "polling:seen:" + triggerStep.getId() + ":" + messageId;
+                            // setIfAbsent = Redis SETNX: returns true only if key did NOT exist before.
+                            // Atomic: no race condition possible even with multiple backend instances.
+                            Boolean claimed = redisTemplate.opsForValue()
+                                    .setIfAbsent(seenKey, "1", java.time.Duration.ofDays(7));
+                            if (!Boolean.TRUE.equals(claimed)) {
+                                logger.info("[poller] Skipping already-processed message '{}' for step {}", messageId, triggerStep.getId());
+                                continue;
+                            }
+                        }
+
+                        try {
+                            createPollerRun(workflowId, userId, eventData, appKey, triggerKey);
+                        } catch (Exception e) {
+                            // If run creation fails (e.g. DB down), release the SETNX key so the
+                            // message is eligible for retry on the next poll cycle.
+                            // Without this, the email would be permanently lost — marked "seen"
+                            // but never actually executed.
+                            logger.error("[poller] Failed to create run for message '{}', releasing dedup key for retry: {}",
+                                    messageId, e.getMessage());
+                            if (seenKey != null) {
+                                redisTemplate.delete(seenKey);
+                            }
+                            throw e; // Re-throw so the outer catch logs it and skips cursor advance
+                        }
+
                         triggered++;
+                        Instant eventTime = extractTimestamp(eventData);
+                        if (eventTime != null && eventTime.isAfter(nextPollTime)) {
+                            nextPollTime = eventTime;
+                        }
+                    }
+                } else {
+                    // If no events, advance to now() minus 1 minute buffer for provider replication lag
+                    Instant safeNow = Instant.now().minus(Duration.ofMinutes(1));
+                    if (safeNow.isAfter(nextPollTime)) {
+                        nextPollTime = safeNow;
                     }
                 }
+
+                setLastPollTime(triggerStep.getId(), nextPollTime);
             } catch (Exception e) {
                 logger.error("[poller] Failed to poll {}:{} for step {}: {}",
                         appKey, triggerKey, triggerStep.getId(), e.getMessage());
@@ -207,11 +282,15 @@ public class PollingTriggerScheduler {
         eventPublisher.publish(
                 new WorkflowRunStartedEvent(runId, workflowId, userId, fullTriggerData));
 
-        // Enqueue for async execution
-        redisEventPublisher.enqueueExecution(Map.of(
-                "workflowRunId", runId.toString(),
-                "workflowId", workflowId.toString(),
-                "userId", userId.toString()
+        // Enqueue for async execution via outbox
+        outboxRepo.save(new OutboxEvent(
+                UUID.randomUUID(),
+                RedisStreamConfig.STREAM_EXECUTION_QUEUE,
+                Map.of(
+                        "workflowRunId", runId.toString(),
+                        "workflowId", workflowId.toString(),
+                        "userId", userId.toString()
+                )
         ));
 
         logger.info("[poller] Enqueued workflow run {} for workflow {} (triggered by {}:{})",
@@ -237,5 +316,32 @@ public class PollingTriggerScheduler {
                 time.toString(),
                 Duration.ofDays(7) // Expire after 7 days of inactivity
         );
+    }
+
+    private Instant extractTimestamp(Map<String, Object> eventData) {
+        // Provider-specific timestamp field names:
+        // - receivedDateTime: Microsoft Outlook (Graph API)
+        // - updatedAt/createdAt: generic
+        // - timestamp/time/date: legacy
+        String[] keys = {"receivedDateTime", "updatedAt", "createdAt", "timestamp", "time", "date"};
+        for (String key : keys) {
+            Object val = eventData.get(key);
+            if (val != null) {
+                try {
+                    return Instant.parse(val.toString());
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extracts a stable, unique message/event ID from trigger event data for deduplication.
+     * All pollers (Outlook, Gmail, GitHub, etc.) put the provider's native ID in the "id" field.
+     */
+    private String extractMessageId(Map<String, Object> eventData) {
+        Object id = eventData.get("id");
+        return id != null ? id.toString() : null;
     }
 }

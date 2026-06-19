@@ -16,6 +16,7 @@ import {
     HiOutlineClipboardCopy,
 } from 'react-icons/hi';
 import useWorkflowStore from '../../store/workflowStore';
+import useToastStore from '../../store/toastStore';
 import './Workflows.css';
 
 const fadeIn = {
@@ -120,6 +121,19 @@ export default function Workflows() {
         setBulkAction('deactivating');
         try {
             await bulkDeactivate([...selected]);
+        } finally {
+            setBulkAction(null);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        const count = selected.size;
+        if (!window.confirm(`Delete ${count} workflow${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+        setBulkAction('deleting');
+        try {
+            await Promise.all([...selected].map((id) => deleteWorkflow(id)));
+            exitSelectMode();
+            useToastStore.getState().addToast(`Deleted ${count} workflow${count !== 1 ? 's' : ''}`, 'success');
         } finally {
             setBulkAction(null);
         }
@@ -379,6 +393,14 @@ export default function Workflows() {
                             >
                                 <HiOutlineShare />
                                 Share
+                            </button>
+                            <button
+                                className="wf-bulk-btn delete-all"
+                                onClick={handleBulkDelete}
+                                disabled={!!bulkAction}
+                            >
+                                {bulkAction === 'deleting' ? <span className="wf-spinner" /> : <HiOutlineTrash />}
+                                Delete All
                             </button>
                         </div>
                     </motion.div>

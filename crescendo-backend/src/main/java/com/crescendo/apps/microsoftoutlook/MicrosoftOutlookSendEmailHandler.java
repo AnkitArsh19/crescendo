@@ -11,7 +11,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @ActionMapping(appKey = "microsoft-outlook", actionKey = "send-email")
@@ -46,23 +48,33 @@ public class MicrosoftOutlookSendEmailHandler implements ActionHandler {
         logger.info("[microsoft-outlook] Sending email: to='{}', subject='{}'", to, subject);
 
         try {
-            Map<String, Object> message = Map.of(
-                    "subject", subject,
-                    "body", Map.of(
-                            "contentType", "HTML",
-                            "content", bodyHtml
-                    ),
-                    "toRecipients", java.util.List.of(Map.of(
-                            "emailAddress", Map.of("address", to)
-                    ))
-            );
+            // Build toRecipients — support comma-separated addresses
+            List<Map<String, Object>> toRecipients = Arrays.stream(to.split(","))
+                    .map(String::trim)
+                    .filter(addr -> !addr.isBlank())
+                    .map(addr -> Map.<String, Object>of("emailAddress", Map.of("address", addr)))
+                    .toList();
+
+            Map<String, Object> message = new HashMap<>();
+            message.put("subject", subject);
+            message.put("body", Map.of("contentType", "HTML", "content", bodyHtml));
+            message.put("toRecipients", toRecipients);
+
+            // Add ccRecipients when cc is provided (schema exposes it but handler was previously ignoring it)
+            String cc = asString(config.get("cc"));
+            if (cc != null && !cc.isBlank()) {
+                List<Map<String, Object>> ccRecipients = Arrays.stream(cc.split(","))
+                        .map(String::trim)
+                        .filter(addr -> !addr.isBlank())
+                        .map(addr -> Map.<String, Object>of("emailAddress", Map.of("address", addr)))
+                        .toList();
+                message.put("ccRecipients", ccRecipients);
+            }
 
             // Add importance if specified
             String importance = asString(config.get("importance"));
             if (importance != null && !importance.isBlank()) {
-                Map<String, Object> msgWithImportance = new HashMap<>(message);
-                msgWithImportance.put("importance", importance);
-                message = msgWithImportance;
+                message.put("importance", importance);
             }
 
             Map<String, Object> requestBody = Map.of("message", message, "saveToSentItems", true);

@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.time.Instant;
@@ -18,12 +19,37 @@ import java.util.stream.Collectors;
 
 /**
  * Global exception handler for all REST controllers.
- * @RestControllerAdvice catches exceptions thrown anywhere in the controller layer
+ * {@code @RestControllerAdvice} catches exceptions thrown anywhere in the controller layer
  * and returns a structured JSON error response instead of Spring's default HTML error page.
- * Extends ResponseEntityExceptionHandler to override handling of built-in Spring MVC exceptions.
+ *
+ * <p>Extends {@link ResponseEntityExceptionHandler} to override handling of built-in
+ * Spring MVC exceptions.</p>
+ *
+ * <p><strong>Why ResponseStatusException is handled explicitly:</strong>
+ * Spring Boot 3+/4 returns RFC 9457 ProblemDetail format for {@code ResponseStatusException},
+ * using a {@code detail} field. Our frontend universally reads {@code message}. Without this
+ * handler, every {@code ResponseStatusException} message would be invisible to the client —
+ * it would fall back to generic text like "Activation failed" instead of showing
+ * "Step 2: select a connected account."</p>
  */
 @RestControllerAdvice
 public class RestExceptionHandler extends ResponseEntityExceptionHandler {
+
+    /**
+     * Handles {@link ResponseStatusException} thrown by service/controller code.
+     *
+     * <p>Without this handler, Spring's built-in {@code ResponseEntityExceptionHandler}
+     * returns RFC 9457 ProblemDetail with a {@code detail} field. Our frontend reads
+     * {@code err.response?.data?.message}, which would be {@code undefined} for
+     * ProblemDetail responses. This handler returns our standard {@code { message: "..." }}
+     * format so all error messages reach the client consistently.</p>
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Object> handleResponseStatus(ResponseStatusException ex, WebRequest req) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String reason = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+        return build(status, reason, req);
+    }
 
     /**
      * Handles validation failures from @Valid / @Validated on request bodies.

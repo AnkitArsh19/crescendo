@@ -9,7 +9,9 @@ import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
-import com.crescendo.shared.infrastructure.event.RedisDomainEventPublisher;
+import com.crescendo.logbook.outbox.OutboxEvent;
+import com.crescendo.logbook.outbox.OutboxEventRepository;
+import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.shared.util.TemplateInterpolator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +33,14 @@ public class CrescendoEmailSendHandler implements ActionHandler {
 
     private final EmailLogRepository emailLogRepo;
     private final EmailTemplate_commandRepository templateRepo;
-    private final RedisDomainEventPublisher redisDomainEventPublisher;
+    private final OutboxEventRepository outboxRepo;
 
     public CrescendoEmailSendHandler(EmailLogRepository emailLogRepo,
                                      EmailTemplate_commandRepository templateRepo,
-                                     RedisDomainEventPublisher redisDomainEventPublisher) {
+                                     OutboxEventRepository outboxRepo) {
         this.emailLogRepo = emailLogRepo;
         this.templateRepo = templateRepo;
-        this.redisDomainEventPublisher = redisDomainEventPublisher;
+        this.outboxRepo = outboxRepo;
     }
 
     @Override
@@ -112,7 +114,12 @@ public class CrescendoEmailSendHandler implements ActionHandler {
         if (textBody != null) emailData.put("textBody", textBody);
         if (templateId != null) emailData.put("templateId", templateId.toString());
 
-        redisDomainEventPublisher.enqueueEmail(emailData);
+        Map<String, Object> outboxData = new HashMap<>(emailData);
+        outboxRepo.save(new OutboxEvent(
+                UUID.randomUUID(),
+                RedisStreamConfig.STREAM_EMAIL_QUEUE,
+                outboxData
+        ));
 
         logger.info("[email-action] Enqueued email {} to={} from={} subject='{}'",
                 emailId, to, from, subject);

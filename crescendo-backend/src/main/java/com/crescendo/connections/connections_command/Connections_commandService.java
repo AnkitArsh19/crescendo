@@ -121,8 +121,18 @@ public class Connections_commandService {
 
         // Sync name/status to query side
         connectionQueryRepo.findById(connectionId).ifPresent(q -> {
-            if (req.name() != null) q.setName(req.name());
-            if (req.credentials() != null) q.setStatus(ConnectionStatus.ACTIVE);
+            boolean modified = false;
+            if (req.name() != null) {
+                q.setName(req.name());
+                modified = true;
+            }
+            if (req.credentials() != null) {
+                q.setStatus(ConnectionStatus.ACTIVE);
+                modified = true;
+            }
+            if (modified) {
+                connectionQueryRepo.save(q);
+            }
         });
 
         eventPublisher.publish(new ConnectionUpdatedEvent(connectionId));

@@ -5,6 +5,7 @@ import { appCatalogApi } from '../../api/appCatalogApi';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import TestResultPanel from './TestResultPanel';
 import useToastStore from '../../store/toastStore';
+import { parseConfigSchema } from '../../workflow/workflowGraphSerializer';
 import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
 
@@ -94,42 +95,6 @@ function getOutputFieldsForApp(appKey, isTriggerStep) {
         return TRIGGER_OUTPUT_FIELDS[appKey] || TRIGGER_OUTPUT_FIELDS['__default__'];
     }
     return ACTION_OUTPUT_FIELDS[appKey] || ACTION_OUTPUT_FIELDS['__default__'];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function parseConfigSchema(configSchema) {
-    if (!configSchema) return [];
-    if (Array.isArray(configSchema)) {
-        return configSchema.map((f) => ({
-            key: f.key,
-            label: f.label || f.key,
-            type: f.type || 'text',
-            required: f.required === true,
-            helpText: f.helpText || '',
-            placeholder: f.placeholder || '',
-            resourceType: f.resourceType || null,
-            dependsOn: Array.isArray(f.dependsOn) ? f.dependsOn : (typeof f.dependsOn === 'string' ? [f.dependsOn] : []),
-            options: Array.isArray(f.options) ? f.options : [],
-            accept: f.accept || null,
-            maxSizeMB: f.maxSizeMB || null,
-        }));
-    }
-    if (typeof configSchema === 'object') {
-        return Object.entries(configSchema).map(([key, hint]) => {
-            const t = String(hint || '').toLowerCase();
-            const required = t.includes('required');
-            let type = 'text';
-            if (t.includes('array')) type = 'array';
-            else if (t.includes('number')) type = 'number';
-            else if (t.includes('boolean')) type = 'boolean';
-            else if (t.includes('json') || t.includes('object')) type = 'json';
-            return { key, label: key, required, type, helpText: hint, placeholder: '', resourceType: null, dependsOn: [], options: [] };
-        });
-    }
-    return [];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -558,7 +523,7 @@ export default function ConfigPanelBody({
     configNode, updateNodeData, connectedAppOptions, selectedConnections,
     selectedTriggerOptions, selectedActionOptions, ensureAppDetail, appDetailsByKey,
     catalogApps, allNodes, allConnections, onOpenAppBrowser,
-    onClose, onDelete, onNavigate, nodeCount, nodeIndex,
+    onClose, onDelete, onClear, onSaveAndClose, onNavigate, nodeCount, nodeIndex,
 }) {
     const { data } = configNode;
     const isTrigger = configNode.type === 'trigger';
@@ -715,40 +680,6 @@ export default function ConfigPanelBody({
             // non-fatal
         }
     };
-
-    // Listen for OAuth popup postMessage → auto-refresh connections, stay on canvas
-    useEffect(() => {
-        const handler = (event) => {
-            if (event.data?.type === 'oauth-connected') {
-                const addToast = useToastStore.getState().addToast;
-                const isReconnect = event.data.reconnect;
-                addToast(
-                    isReconnect
-                        ? `Reconnected: ${event.data.connectionName || event.data.appKey}`
-                        : `Connected: ${event.data.connectionName || event.data.appKey}`,
-                    'success'
-                );
-                // Refresh connections list so the dropdown updates
-                if (data.appKey) {
-                    connectionsApi.list().then((conns) => {
-                        const appConns = conns.filter(c => c.appKey === data.appKey);
-                        setSelectedConnections(appConns);
-                        // If this was a reconnection, the connectionId stays the same
-                        // If this was a new connection, auto-select it
-                        if (!isReconnect && event.data.connectionId) {
-                            updateNodeData(configNode.id, {
-                                connectionId: event.data.connectionId,
-                                account: event.data.connectionId,
-                                accountName: event.data.connectionName || '',
-                            });
-                        }
-                    }).catch(() => {});
-                }
-            }
-        };
-        window.addEventListener('message', handler);
-        return () => window.removeEventListener('message', handler);
-    }, [data.appKey, configNode?.id]);
 
     // Close account menu on outside click
     useEffect(() => {
@@ -922,7 +853,7 @@ export default function ConfigPanelBody({
                                                 <p>No accounts connected for <strong>{data.appName || data.appKey}</strong></p>
                                             </div>
                                         )}
-                                        <button type="button" className={`cpb-browse-btn ${selectedConnections.length === 0 ? 'cpb-connect-cta' : ''}`} onClick={handleNewConnection}>
+                                        <button type="button" className={`cpb-browse-btn ${selectedConnections.length === 0 ? 'cpb-connect-cta' : ''}`} onClick={() => handleNewConnection()}>
                                             <HiPlus style={{ fontSize: '0.7rem' }} />
                                             {selectedConnections.length === 0 ? `Connect ${data.appName || data.appKey}` : 'Connect new account'}
                                         </button>
@@ -1029,9 +960,22 @@ export default function ConfigPanelBody({
 
             {/* ── Footer ── */}
             <div className="canvas-config-footer">
-                <button className="canvas-config-btn danger" onClick={onDelete}>
-                    <HiOutlineTrash />
-                </button>
+                {isTrigger ? (
+                    // Trigger nodes: clear contents but keep node position
+                    <button
+                        className="canvas-config-btn"
+                        title="Clear this trigger's configuration"
+                        onClick={onClear || onDelete}
+                        style={{ color: 'var(--text-tertiary)' }}
+                    >
+                        <HiOutlineTrash />
+                        <span style={{ fontSize: '0.72rem', marginLeft: 4 }}>Clear</span>
+                    </button>
+                ) : (
+                    <button className="canvas-config-btn danger" title="Remove this action step" onClick={onDelete}>
+                        <HiOutlineTrash />
+                    </button>
+                )}
                 <button className="canvas-config-btn canvas-config-btn-save" onClick={() => {
                     const appMeta = catalogApps.find(a => a.appKey === data.appKey);
                     const appName = appMeta?.name || data.appName || data.appKey;
@@ -1043,7 +987,12 @@ export default function ConfigPanelBody({
                         const triggerName = selectedTriggerOptions.find(t => t.triggerKey === triggerKey)?.name || triggerKey;
                         updateNodeData(configNode.id, { label: `${appName} · ${triggerName}`, triggerName });
                     }
-                    onClose?.();
+                    // Persist to backend via parent's handleSave, then close
+                    if (onSaveAndClose) {
+                        onSaveAndClose();
+                    } else {
+                        onClose?.();
+                    }
                 }}>
                     <HiCheck style={{ fontSize: '1rem' }} /> Save & Close
                 </button>

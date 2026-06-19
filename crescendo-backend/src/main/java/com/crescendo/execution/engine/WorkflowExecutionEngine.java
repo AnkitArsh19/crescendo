@@ -168,7 +168,7 @@ public class WorkflowExecutionEngine {
         UUID stepRunId = UUID.fromString(stepRun.id());
 
         // 3. Load connection credentials — user connection or platform key fallback
-        Map<String, Object> credentials = loadCredentials(step.getConnectionId(), appKey);
+        Map<String, Object> credentials = loadCredentials(step.getConnectionId(), appKey, userId);
 
         // 4. Resolve variable templates in configuration (e.g. {{steps.1.fieldName}})
         Map<String, Object> rawConfig = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
@@ -203,16 +203,34 @@ public class WorkflowExecutionEngine {
         }
     }
 
+    /**
+     * Loads credentials for a step.
+     *
+     * <p>When a connectionId is present, enforces that the connection belongs to
+     * the workflow owner (userId). This prevents a step whose connectionId was
+     * forged or leaked from accessing another user's credentials.
+     *
+     * <p>Falls back to a platform-level API key when no user connection is present.
+     */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> loadCredentials(UUID connectionId, String appKey) {
-        // 1. Try user connection first
+    private Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
+        // 1. Try user connection first — with ownership enforcement
         if (connectionId != null) {
             try {
-                Connections_command connection = connectionsRepo.findById(connectionId).orElse(null);
+                // findByIdAndUser_Id enforces ownership at the DB level
+                Connections_command connection = connectionsRepo
+                        .findByIdAndUser_Id(connectionId, userId)
+                        .orElse(null);
                 if (connection != null) {
                     return tokenRefreshService.getValidCredentials(connection);
                 }
-                logger.warn("[engine] Connection {} not found", connectionId);
+                // Connection not found or owned by another user — fail fast
+                logger.error("[engine] Connection {} not found or not owned by user {}",
+                        connectionId, userId);
+                throw new IllegalStateException(
+                        "Connection " + connectionId + " not found or not owned by this user");
+            } catch (IllegalStateException e) {
+                throw e;
             } catch (Exception e) {
                 logger.error("[engine] Failed to load credentials for connection {}: {}",
                         connectionId, e.getMessage());
@@ -268,6 +286,8 @@ public class WorkflowExecutionEngine {
 
         Matcher matcher = TEMPLATE_PATTERN.matcher(template);
         StringBuilder sb = new StringBuilder();
+        // appendReplacement copies literal text between matches into sb, then appends our replacement.
+        // appendTail copies any text after the last match. Together they rebuild the full string.
         while (matcher.find()) {
             int stepIndex = Integer.parseInt(matcher.group(1));
             String fieldName = matcher.group(2).trim();

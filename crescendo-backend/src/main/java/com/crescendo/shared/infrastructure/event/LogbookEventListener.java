@@ -27,9 +27,9 @@ import java.time.Instant;
  *   - Set Workflow_query.lastRunAt and status when a run completes
  *   - Log step run completions for observability
  *
- * Each handler opens its own transaction because @TransactionalEventListener
- * defaults to AFTER_COMMIT, which means the originating transaction has
- * already committed and there is no active persistence context.
+ * Each handler runs synchronously in the same transaction as the publisher using @EventListener.
+ * This guarantees the command (WorkflowRun) and query (Workflow_query) databases
+ * stay perfectly in sync.
  */
 @Component
 public class LogbookEventListener {
@@ -49,7 +49,7 @@ public class LogbookEventListener {
      * When a workflow run starts, mark the workflow's query projection as RUNNING.
      */
     @Transactional
-    @TransactionalEventListener
+    @org.springframework.context.event.EventListener
     public void onWorkflowRunStarted(WorkflowRunStartedEvent event) {
         logger.info("Workflow run started: runId={}, workflowId={}, userId={}",
                 event.aggregateId(), event.getWorkflowId(), event.getUserId());
@@ -67,7 +67,7 @@ public class LogbookEventListener {
      * update the query projection's lastRunAt and status.
      */
     @Transactional
-    @TransactionalEventListener
+    @org.springframework.context.event.EventListener
     public void onWorkflowRunCompleted(WorkflowRunCompletedEvent event) {
         logger.info("Workflow run completed: runId={}, workflowId={}, status={}",
                 event.aggregateId(), event.getWorkflowId(), event.getStatus());
@@ -84,7 +84,7 @@ public class LogbookEventListener {
     /**
      * Log step run completions for observability.
      */
-    @TransactionalEventListener
+    @org.springframework.context.event.EventListener
     public void onStepRunCompleted(StepRunCompletedEvent event) {
         logger.info("Step run completed: stepRunId={}, workflowRunId={}, stepId={}, status={}",
                 event.aggregateId(), event.getWorkflowRunId(), event.getStepId(), event.getStatus());
