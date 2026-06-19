@@ -149,4 +149,36 @@ public class WorkflowDto {
             BigDecimal order,
             Map<String, Object> configuration
     ) {}
+
+    // GRAPH SAVE
+
+    public record WorkflowGraphRequest(
+            @Size(max = 255) String name,
+            @Size(max = 500) String description,
+            String revision,
+            List<GraphStepRequest> steps,
+            List<String> deletedStepIds
+    ) {}
+
+    public record GraphStepRequest(
+            @NotBlank String clientId,
+            String backendId,
+            @NotNull StepType type,
+            @NotBlank String name,
+            @NotBlank String actionKey,
+            @NotBlank String appKey,
+            UUID connectionId,
+            Map<String, Object> configuration
+    ) {}
+
+    public record WorkflowGraphResponse(
+            String id,
+            String revision,
+            List<GraphStepResponse> savedSteps
+    ) {}
+
+    public record GraphStepResponse(
+            String clientId,
+            String backendId
+    ) {}
 }

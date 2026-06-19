@@ -134,11 +134,18 @@ public class WebhookIngestController {
                         return false;
                 }
 
+                String actualSignature = signature;
+                if (actualSignature.toLowerCase().startsWith("sha256=")) {
+                        actualSignature = actualSignature.substring(7);
+                } else if (actualSignature.toLowerCase().startsWith("sha1=")) {
+                        actualSignature = actualSignature.substring(5);
+                }
+
                 String body = rawBody != null ? rawBody : "";
                 String computed = computeHmacSha256Hex(body, webhook.getSecretKey());
                 boolean matches = MessageDigest.isEqual(
                                 computed.getBytes(StandardCharsets.UTF_8),
-                                signature.getBytes(StandardCharsets.UTF_8));
+                                actualSignature.getBytes(StandardCharsets.UTF_8));
 
                 if (!matches) {
                         logger.warn("[webhook] Invalid signature for webhook {}", webhook.getWebhookKey());

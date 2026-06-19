@@ -272,6 +272,7 @@ public class IntegrationOAuthService {
                 connectionQueryRepo.findById(reconnectConnectionId).ifPresent(q -> {
                     q.setName(connectionName);
                     q.setStatus(ConnectionStatus.ACTIVE);
+                    connectionQueryRepo.save(q);
                 });
 
                 connectionId = reconnectConnectionId;

@@ -29,4 +29,9 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
     long countByWorkflowIdAndUserId(UUID workflowId, UUID userId);
 
     long countByWorkflowIdAndUserIdAndStatus(UUID workflowId, UUID userId, WorkflowRunStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM WorkflowRun r WHERE r.status = :status AND r.createdAt < :threshold")
+    List<WorkflowRun> findByStatusAndCreatedAtBefore(
+            @org.springframework.data.repository.query.Param("status") WorkflowRunStatus status,
+            @org.springframework.data.repository.query.Param("threshold") java.time.Instant threshold);
 }

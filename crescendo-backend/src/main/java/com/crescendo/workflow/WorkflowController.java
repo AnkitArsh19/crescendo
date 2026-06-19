@@ -74,6 +74,15 @@ public class WorkflowController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{workflowId}/graph")
+    public ResponseEntity<WorkflowDto.WorkflowGraphResponse> saveGraph(
+            @PathVariable UUID workflowId,
+            @Valid @RequestBody WorkflowDto.WorkflowGraphRequest req,
+            Authentication auth) {
+        var resp = commandService.saveGraph(userId(auth), workflowId, req);
+        return ResponseEntity.ok(resp);
+    }
+
     @DeleteMapping("/{workflowId}")
     public ResponseEntity<Void> deleteWorkflow(
             @PathVariable UUID workflowId,

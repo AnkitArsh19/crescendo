@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams, useBeforeUnload } from 'react-router-dom';
 import { workflowApi, stepApi, resourceApi, stepTestApi } from '../../api/workflowApi';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
@@ -8,6 +8,9 @@ import useWorkflowStore from '../../store/workflowStore';
 import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
+import { parseConfigSchema, toPersistedConfig, stepsToGraph, makeEdge } from '../../workflow/workflowGraphSerializer';
+import { createDraftStore } from '../../workflow/workflowDraftStore';
+import { createSaveCoordinator } from '../../workflow/workflowSaveCoordinator';
 import {
     ReactFlow,
     Background,
@@ -56,85 +59,11 @@ const makeDefaultNodes = (vertical) => [
     },
 ];
 
-const makeEdge = (sourceId, targetId, vertical) => ({
-    id: `e${sourceId}-${targetId}`,
-    source: sourceId,
-    target: targetId,
-    sourceHandle: 'out',
-    targetHandle: 'in',
-    type: vertical ? 'straight' : 'default',
-    animated: true,
-    style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
-});
+
 
 const makeDefaultEdge = (vertical) => makeEdge('1', '2', vertical);
 
 /* Hardcoded app/trigger/action lists removed — all data comes from appCatalogApi and appDetailsByKey */
-
-/**
- * Normalizes configSchema from either the new structured List<Map> format
- * or the legacy Map<String, String> hint format.
- */
-function parseConfigSchema(configSchema) {
-    if (!configSchema) return [];
-    // New structured format: configSchema is an Array of field objects
-    if (Array.isArray(configSchema)) {
-        return configSchema.map((field) => ({
-            key: field.key,
-            label: field.label || field.key,
-            type: field.type || 'text',
-            required: field.required === true,
-            helpText: field.helpText || '',
-            placeholder: field.placeholder || '',
-            resourceType: field.resourceType || null,
-            dependsOn: Array.isArray(field.dependsOn) ? field.dependsOn : [],
-            options: Array.isArray(field.options) ? field.options : [],
-        }));
-    }
-    // Legacy format: configSchema is { key: "hint string" }
-    if (typeof configSchema === 'object') {
-        return Object.entries(configSchema).map(([key, hint]) => {
-            const text = String(hint || '');
-            const lower = text.toLowerCase();
-            const required = lower.includes('required');
-            let type = 'text';
-            if (lower.includes('array')) type = 'array';
-            else if (lower.includes('number')) type = 'number';
-            else if (lower.includes('boolean')) type = 'boolean';
-            else if (lower.includes('json') || lower.includes('object')) type = 'json';
-            return { key, label: key, required, type, helpText: text, placeholder: '', resourceType: null, dependsOn: [], options: [] };
-        });
-    }
-    return [];
-}
-
-function toPersistedConfig(schemaFields, config) {
-    const output = { ...(config || {}) };
-    for (const field of schemaFields) {
-        const raw = output[field.key];
-        if (raw == null || raw === '') continue;
-        if (field.type === 'number') {
-            const n = Number(raw);
-            output[field.key] = Number.isNaN(n) ? raw : n;
-        } else if (field.type === 'boolean') {
-            if (typeof raw === 'string') output[field.key] = raw === 'true';
-        } else if (field.type === 'array' || field.type === 'multi_select_tags') {
-            if (typeof raw === 'string') {
-                output[field.key] = raw.split(',').map((s) => s.trim()).filter(Boolean);
-            }
-            // If already an array, ensure it's clean
-            if (Array.isArray(raw)) {
-                output[field.key] = raw.filter(Boolean);
-            }
-        } else if (field.type === 'json') {
-            if (typeof raw === 'string') {
-                try { output[field.key] = JSON.parse(raw); } catch { /* keep as-is */ }
-            }
-        }
-    }
-    return output;
-}
 
 let nodeId = 3;
 
@@ -155,8 +84,17 @@ export default function WorkflowCanvas() {
     const [isRunning, setIsRunning] = useState(false);
     const [savedAt, setSavedAt] = useState(null);
     const [saveError, setSaveError] = useState(null);
+    const [isDirty, setIsDirty] = useState(false);
     const autosaveTimerRef = useRef(null);
     const lastAutosaveSignatureRef = useRef('');
+
+    // ── Undo history ──
+    // Each entry: { nodes, edges }. Max 50 entries.
+    const historyRef = useRef([]);
+    const historyIndexRef = useRef(-1);
+    const [canUndo, setCanUndo] = useState(false);
+    // Prevent history pushes during undo/redo restores
+    const isRestoringRef = useRef(false);
 
     // ── Canvas state ──
     const [workflowName, setWorkflowName] = useState('');
@@ -183,77 +121,49 @@ export default function WorkflowCanvas() {
     const [contextMenu, setContextMenu] = useState(null);
 
     const ensureAppDetail = useCallback(async (appKey) => {
-        if (!appKey || appDetailsByKey[appKey]) return;
+        if (!appKey || stateRefs.current.appDetailsByKey[appKey]) return;
         try {
             const detail = await appCatalogApi.get(appKey);
             setAppDetailsByKey((prev) => ({ ...prev, [appKey]: detail }));
         } catch {
             // Non-fatal; UI will show fallback labels.
         }
-    }, [appDetailsByKey]);
-
-    const getTriggerDefinitionsForApp = useCallback((appKey) => {
-        const detail = appDetailsByKey[appKey];
-        if (!detail) return [];
-        const triggers = Array.isArray(detail.triggers) ? detail.triggers : [];
-        if (triggers.length > 0) return triggers;
-        const actions = Array.isArray(detail.actions) ? detail.actions : [];
-        // Fallback: allow action-based trigger selection when app has no explicit trigger metadata.
-        return actions.map((a) => ({
-            triggerKey: a.actionKey,
-            name: `${a.name} (manual trigger)`,
-            description: 'No native trigger metadata yet; uses selected action key for manual/test runs',
-            configSchema: a.configSchema || {},
-        }));
-    }, [appDetailsByKey]);
-
-    const getActionDefinitionsForApp = useCallback((appKey) => {
-        const detail = appDetailsByKey[appKey];
-        return Array.isArray(detail?.actions) ? detail.actions : [];
-    }, [appDetailsByKey]);
-
-    const getNodeOperationKey = useCallback((node) => {
-        return node.type === 'trigger'
-            ? (node.data?.triggerKey || node.data?.actionKey)
-            : node.data?.actionKey;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const isNodeConfiguredForSave = useCallback((node, index) => {
-        if (index === 0 && node.type !== 'trigger') return false;
-        if (index > 0 && node.type !== 'action') return false;
+    const stateRefs = useRef({ nodes, workflowId, workflowName, catalogApps, appDetailsByKey });
+    useEffect(() => {
+        stateRefs.current = { nodes, workflowId, workflowName, catalogApps, appDetailsByKey };
+    }, [nodes, workflowId, workflowName, catalogApps, appDetailsByKey]);
 
-        const appKey = node.data?.appKey;
-        if (!appKey) return false;
+    const draftRef = useRef(null);
+    if (!draftRef.current) draftRef.current = createDraftStore();
 
-        const opKey = getNodeOperationKey(node);
-        if (!opKey) return false;
-
-        const appInfo = catalogApps.find((a) => a.appKey === appKey);
-        const needsAuth = appInfo?.authType !== 'NONE';
-        if (needsAuth && !node.data?.connectionId) return false;
-
-        const defs = node.type === 'trigger'
-            ? getTriggerDefinitionsForApp(appKey)
-            : getActionDefinitionsForApp(appKey);
-        const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
-        const schemaFields = parseConfigSchema(def?.configSchema || {});
-        const currentConfig = node.data?.configuration || {};
-
-        return schemaFields.every((field) => {
-            if (!field.required) return true;
-            const value = currentConfig[field.key];
-            return value != null && String(value).trim() !== '';
+    const saveCoordinatorRef = useRef(null);
+    useEffect(() => {
+        saveCoordinatorRef.current = createSaveCoordinator({
+            getNodes: () => stateRefs.current.nodes,
+            getWorkflowId: () => stateRefs.current.workflowId,
+            getWorkflowName: () => stateRefs.current.workflowName,
+            getCatalogApps: () => stateRefs.current.catalogApps,
+            getAppDetailsByKey: () => stateRefs.current.appDetailsByKey,
+            draft: draftRef.current,
+            onWorkflowCreated: (id) => setWorkflowId(id),
+            onNodeSaved: (nodeId, backendId) => {
+                setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, _backendId: backendId } } : n));
+            },
+            onSaveStart: () => { setIsSaving(true); setSaveError(null); },
+            onSaveSuccess: (time) => { setIsSaving(false); setSavedAt(time); setIsDirty(false); },
+            onSaveError: (msg) => { setIsSaving(false); setSaveError(msg); },
+            onDirtyChange: (dirty) => setIsDirty(dirty),
+            onAppDetailLoaded: (key, detail) => setAppDetailsByKey((prev) => ({ ...prev, [key]: detail }))
         });
-    }, [catalogApps, getActionDefinitionsForApp, getNodeOperationKey, getTriggerDefinitionsForApp]);
+        return () => saveCoordinatorRef.current?.destroy();
+    }, [setNodes]);
 
-    const getConfiguredPrefixCount = useCallback((allNodes) => {
-        let count = 0;
-        for (let i = 0; i < allNodes.length; i++) {
-            if (!isNodeConfiguredForSave(allNodes[i], i)) break;
-            count += 1;
-        }
-        return count;
-    }, [isNodeConfiguredForSave]);
+    const handleSave = useCallback(async () => {
+        return await saveCoordinatorRef.current?.saveManual();
+    }, []);
 
     useEffect(() => {
         Promise.all([appCatalogApi.list(), connectionsApi.list()])
@@ -297,46 +207,24 @@ export default function WorkflowCanvas() {
                 }
 
                 if (steps.length > 0) {
-                    const sortedSteps = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-                    const loaded = sortedSteps.map((s, idx) => ({
-                        id: s.id,
-                        type: s.type === 'TRIGGER' ? 'trigger' : 'action',
-                        position: vertical
-                            ? { x: 250, y: 60 + idx * 220 }
-                            : { x: 120 + idx * 330, y: 200 },
-                        data: {
-                            stepIndex: idx + 1,
-                            label: s.name,
-                            appKey: s.appKey,
-                            app: s.appKey,
-                            appName: s.appKey,
-                            actionKey: s.actionKey,
-                            action: s.actionKey,
-                            actionName: s.type !== 'TRIGGER' ? s.name : undefined,
-                            triggerKey: s.type === 'TRIGGER' ? s.actionKey : undefined,
-                            triggerName: s.type === 'TRIGGER' ? s.name : undefined,
-                            operationKey: s.actionKey,
-                            connectionId: s.connectionId || null,
-                            configuration: s.configuration,
-                            _backendId: s.id,
-                            _vertical: vertical,
-                        },
-                    }));
-                    setNodes(loaded);
+                    const { nodes: loadedNodes, edges: loadedEdges } = stepsToGraph(steps, vertical);
+                    setNodes(loadedNodes);
+                    setEdges(loadedEdges);
 
                     // Bump nodeId to avoid collisions
-                    nodeId = Math.max(nodeId, loaded.length + 10);
+                    nodeId = Math.max(nodeId, loadedNodes.length + 10);
 
-                    // Load app details for all steps
-                    const uniqueAppKeys = [...new Set(sortedSteps.map((s) => s.appKey).filter(Boolean))];
-                    uniqueAppKeys.forEach((appKey) => ensureAppDetail(appKey));
+                    // Pre-fetch app details for every step so the config panel
+                    // can render trigger/action options and configSchema immediately
+                    // without waiting for the user to open the panel first.
+                    const uniqueAppKeys = [...new Set(steps.map((s) => s.appKey).filter(Boolean))];
+                    await Promise.all(uniqueAppKeys.map((appKey) => ensureAppDetail(appKey)));
 
-                    if (loaded.length > 1) {
-                        const loadedEdges = loaded.slice(0, -1).map((n, idx) =>
-                            makeEdge(n.id, loaded[idx + 1].id, vertical)
-                        );
-                        setEdges(loadedEdges);
-                    }
+
+                } else {
+                    // Workflow exists but has no steps yet — show default placeholder nodes
+                    setNodes(makeDefaultNodes(vertical));
+                    setEdges([makeDefaultEdge(vertical)]);
                 }
             } catch {
                 // If loading fails completely, show default nodes
@@ -347,254 +235,96 @@ export default function WorkflowCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [routeWorkflowId]);
 
-    // Handle naming modal — create workflow in backend on confirm
-    const handleCreateWorkflow = async () => {
+    // Handle naming modal — just set name and close. Workflow is created on first save.
+    // IMPORTANT: do NOT call workflowApi.create() here — it would create a duplicate
+    // workflow if autosave fires before the state update propagates.
+    const handleCreateWorkflow = () => {
         const name = nameInput.trim() || 'Untitled';
         setWorkflowName(name);
         setShowNamingModal(false);
-        // Eagerly create in backend so we have an ID for steps
-        try {
-            const wf = await workflowApi.create({ name, description: '' });
-            setWorkflowId(wf.id);
-        } catch {
-            // Non-fatal — save will create it anyway
-        }
     };
 
     const handleCancelCreate = () => {
         navigate('/dashboard');
     };
 
-    // Update node data from config panel (defined before handleSave to avoid TDZ)
+    // ── Undo history helpers ──
+    const pushHistory = useCallback((currentNodes, currentEdges) => {
+        if (isRestoringRef.current) return;
+        const snapshot = {
+            nodes: JSON.parse(JSON.stringify(currentNodes)),
+            edges: JSON.parse(JSON.stringify(currentEdges)),
+        };
+        // Truncate redo stack
+        const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+        newHistory.push(snapshot);
+        // Limit to 50 entries
+        if (newHistory.length > 50) newHistory.shift();
+        historyRef.current = newHistory;
+        historyIndexRef.current = newHistory.length - 1;
+        setCanUndo(historyIndexRef.current > 0);
+        setIsDirty(true);
+        saveCoordinatorRef.current?.saveAuto();
+    }, []);
+
+    const handleUndo = useCallback(() => {
+        if (historyIndexRef.current <= 0) return;
+        historyIndexRef.current -= 1;
+        const snapshot = historyRef.current[historyIndexRef.current];
+        if (!snapshot) return;
+        isRestoringRef.current = true;
+        setNodes(snapshot.nodes);
+        setEdges(snapshot.edges);
+        setCanUndo(historyIndexRef.current > 0);
+        // Re-sync configNode if it still exists
+        setConfigNode((prev) => {
+            if (!prev) return null;
+            const restored = snapshot.nodes.find(n => n.id === prev.id);
+            return restored || null;
+        });
+        setTimeout(() => { isRestoringRef.current = false; }, 0);
+        useToastStore.getState().addToast('Undone', 'info', 1500);
+    }, [setNodes, setEdges]);
+
+    // ── Keyboard shortcut: Ctrl/Cmd+Z → undo ──
+    useEffect(() => {
+        const handler = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                handleUndo();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [handleUndo]);
+
+    const historyTimeoutRef = useRef(null);
+
+    // ── Update node data from config panel (defined before handleSave to avoid TDZ) ──
     const updateNodeData = useCallback(
-        (nodeId, newData) => {
-            setNodes((nds) =>
-                nds.map((n) =>
+        (nodeId, newData, { skipHistory = false } = {}) => {
+            setNodes((nds) => {
+                const updated = nds.map((n) =>
                     n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n
-                )
-            );
+                );
+                draftRef.current?.markChanged(nodeId);
+                if (!skipHistory) {
+                    if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
+                    historyTimeoutRef.current = setTimeout(() => {
+                        pushHistory(updated, edges);
+                    }, 500);
+                }
+                return updated;
+            });
             setConfigNode((prev) =>
                 prev && prev.id === nodeId ? { ...prev, data: { ...prev.data, ...newData } } : prev
             );
         },
-        [setNodes]
+        [setNodes, pushHistory, edges]
     );
 
     // ── Save workflow + steps to backend ──
-    const handleSave = useCallback(async (options = {}) => {
-        const { mode = 'strict' } = options;
-        if (isSaving) return;
-        setIsSaving(true);
-        if (mode === 'strict') setSaveError(null);
-        try {
-            const normalizedWorkflowName = (workflowName || '').trim() || 'Untitled';
-            const configuredPrefixCount = mode === 'partial'
-                ? getConfiguredPrefixCount(nodes)
-                : nodes.length;
-            const nodesToSave = mode === 'partial'
-                ? nodes.slice(0, configuredPrefixCount)
-                : nodes;
 
-            if (mode === 'strict') {
-                if (nodes.length === 0) {
-                    const msg = 'Add at least one trigger and one action.';
-                    setSaveError(msg);
-                    useToastStore.getState().addToast(msg, 'error');
-                    return null;
-                }
-
-                // Enforce trigger-first model: first step must be trigger; all others actions.
-                for (let idx = 0; idx < nodes.length; idx++) {
-                    const node = nodes[idx];
-                    if (idx === 0 && node.type !== 'trigger') {
-                        const msg = 'The first step must be a trigger.';
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                    if (idx > 0 && node.type === 'trigger') {
-                        const msg = 'Only the first step can be a trigger. Remove duplicate triggers before saving.';
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                }
-            } else if (nodesToSave.length === 0 && !workflowId) {
-                return null;
-            }
-
-            // Resolve missing app details before validation.
-            for (const node of nodesToSave) {
-                if (node.data?.appKey && !appDetailsByKey[node.data.appKey]) {
-                    try {
-                        const detail = await appCatalogApi.get(node.data.appKey);
-                        setAppDetailsByKey((prev) => ({ ...prev, [node.data.appKey]: detail }));
-                    } catch {
-                        if (mode === 'strict') {
-                            const msg = `Failed to load app metadata for ${node.data.appKey}`;
-                            setSaveError(msg);
-                            useToastStore.getState().addToast(msg, 'error');
-                            return null;
-                        }
-                    }
-                }
-            }
-
-            let id = workflowId;
-
-            // Keep local UI in sync with normalized persisted name.
-            if (normalizedWorkflowName !== workflowName) {
-                setWorkflowName(normalizedWorkflowName);
-            }
-
-            // 1. Create or update the workflow record
-            if (!id) {
-                if (nodesToSave.length === 0) return null;
-                const wf = await workflowApi.create({
-                    name: normalizedWorkflowName,
-                    description: '',
-                });
-                id = wf.id;
-                setWorkflowId(id);
-            } else if (normalizedWorkflowName !== workflowName) {
-                await workflowApi.update(id, { name: normalizedWorkflowName });
-            } else if (mode === 'partial' && nodesToSave.length === 0) {
-                return id;
-            }
-
-            // 2. Upsert each node as a step in order
-            for (let idx = 0; idx < nodesToSave.length; idx++) {
-                const node = nodesToSave[idx];
-                const stepType = node.type === 'trigger' ? 'TRIGGER' : 'ACTION';
-
-                if (!node.data?.appKey) {
-                    if (mode === 'strict') {
-                        const msg = `Step ${idx + 1}: select an app.`;
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                    continue;
-                }
-                // Only require connectionId for apps that need auth
-                const appInfo = catalogApps.find((a) => a.appKey === node.data.appKey);
-                const needsAuth = appInfo?.authType !== 'NONE';
-                if (needsAuth && !node.data?.connectionId) {
-                    if (mode === 'strict') {
-                        const msg = `Step ${idx + 1}: select a connected account.`;
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                    continue;
-                }
-
-                const defs = stepType === 'TRIGGER'
-                    ? getTriggerDefinitionsForApp(node.data.appKey)
-                    : getActionDefinitionsForApp(node.data.appKey);
-                const opKey = stepType === 'TRIGGER'
-                    ? (node.data.triggerKey || node.data.actionKey)
-                    : node.data.actionKey;
-
-                if (!opKey) {
-                    if (mode === 'strict') {
-                        const msg = `Step ${idx + 1}: select a ${stepType === 'TRIGGER' ? 'trigger event' : 'action'}.`;
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                    continue;
-                }
-
-                const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
-                const schemaFields = parseConfigSchema(def?.configSchema || {});
-                const currentConfig = node.data.configuration || {};
-                let missingRequired = false;
-                for (const field of schemaFields) {
-                    if (!field.required) continue;
-                    const value = currentConfig[field.key];
-                    if (value == null || String(value).trim() === '') {
-                        if (mode === 'strict') {
-                            const msg = `Step ${idx + 1}: '${field.key}' is required.`;
-                            setSaveError(msg);
-                            useToastStore.getState().addToast(msg, 'error');
-                            return null;
-                        }
-                        missingRequired = true;
-                        break;
-                    }
-                }
-                if (missingRequired) continue;
-
-                const persistedConfig = toPersistedConfig(schemaFields, currentConfig);
-                const payload = {
-                    name: node.data.label || (stepType === 'TRIGGER' ? 'Trigger' : 'Action'),
-                    type: stepType,
-                    actionKey: opKey,
-                    appKey: node.data.appKey,
-                    connectionId: node.data.connectionId,
-                    configuration: persistedConfig,
-                };
-
-                if (node.data._backendId) {
-                    await stepApi.update(id, node.data._backendId, payload);
-                } else {
-                    const saved = await stepApi.add(id, payload);
-                    updateNodeData(node.id, { _backendId: saved.id });
-                }
-            }
-
-            if (id) {
-                try {
-                    const existingSteps = await stepApi.list(id);
-                    const currentStepIds = new Set(
-                        nodesToSave.map((node) => node.data?._backendId).filter(Boolean)
-                    );
-                    const staleSteps = Array.isArray(existingSteps)
-                        ? existingSteps.filter((step) => !currentStepIds.has(step.id))
-                        : [];
-                    for (const staleStep of staleSteps) {
-                        try {
-                            await stepApi.delete(id, staleStep.id);
-                        } catch (delErr) {
-                            // Gracefully handle 404 — step may have been deleted by a concurrent save
-                            if (delErr.response?.status !== 404) throw delErr;
-                        }
-                    }
-                } catch (cleanupErr) {
-                    if (mode === 'strict') {
-                        const msg = cleanupErr.response?.data?.message || 'Failed to reconcile workflow steps';
-                        setSaveError(msg);
-                        useToastStore.getState().addToast(msg, 'error');
-                        return null;
-                    }
-                }
-            }
-
-            setSavedAt(Date.now());
-            return id;
-        } catch (err) {
-            if (mode === 'strict') {
-                const msg = err.response?.data?.message || 'Save failed';
-                setSaveError(msg);
-                useToastStore.getState().addToast(msg, 'error');
-            }
-            return null;
-        } finally {
-            setIsSaving(false);
-        }
-    }, [
-        isSaving,
-        workflowId,
-        workflowName,
-        nodes,
-        updateNodeData,
-        catalogApps,
-        appDetailsByKey,
-        getActionDefinitionsForApp,
-        getTriggerDefinitionsForApp,
-        getConfiguredPrefixCount,
-    ]);
 
     const { activateWorkflow: storeActivateWorkflow } = useWorkflowStore();
 
@@ -627,7 +357,7 @@ export default function WorkflowCanvas() {
         }
 
         try {
-            const id = await handleSave({ mode: 'strict', reason: 'run' });
+            const id = await saveCoordinatorRef.current?.saveManual();
             if (!id) return;
 
             // Use the Zustand store method so in-memory state stays in sync
@@ -644,44 +374,7 @@ export default function WorkflowCanvas() {
         }
     }, [isRunning, handleSave, storeActivateWorkflow, nodes]);
 
-    const autosaveSnapshot = useMemo(() => {
-        const prefixCount = getConfiguredPrefixCount(nodes);
-        const snapshotNodes = nodes.slice(0, prefixCount).map((node) => ({
-            id: node.id,
-            type: node.type,
-            appKey: node.data?.appKey || '',
-            actionKey: node.data?.actionKey || '',
-            triggerKey: node.data?.triggerKey || '',
-            connectionId: node.data?.connectionId || '',
-            configuration: node.data?.configuration || {},
-            label: node.data?.label || '',
-            stepLabel: node.data?.stepLabel || '',
-        }));
-        return {
-            prefixCount,
-            signature: JSON.stringify({
-                workflowId: workflowId || 'new',
-                workflowName: (workflowName || '').trim() || 'Untitled',
-                nodes: snapshotNodes,
-            }),
-        };
-    }, [nodes, workflowId, workflowName, getConfiguredPrefixCount]);
 
-    useEffect(() => {
-        if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-        if (isLoadingWorkflow) return; // Don't autosave while loading existing workflow
-        if (autosaveSnapshot.prefixCount === 0 && !workflowId) return;
-        if (autosaveSnapshot.signature === lastAutosaveSignatureRef.current) return;
-        lastAutosaveSignatureRef.current = autosaveSnapshot.signature;
-
-        autosaveTimerRef.current = setTimeout(() => {
-            handleSave({ mode: 'partial', reason: 'autosave' });
-        }, 800);
-
-        return () => {
-            if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-        };
-    }, [autosaveSnapshot, workflowId, handleSave, isLoadingWorkflow]);
 
     // Handle editable name
     const handleNameSubmit = () => {
@@ -692,21 +385,23 @@ export default function WorkflowCanvas() {
     // Connect edges
     const onConnect = useCallback(
         (params) =>
-            setEdges((eds) =>
-                addEdge(
+            setEdges((eds) => {
+                const newEdges = addEdge(
                     {
                         ...params,
                         sourceHandle: params.sourceHandle || 'out',
                         targetHandle: params.targetHandle || 'in',
-                        type: vertical ? 'straight' : 'default',
+                        type: vertical ? 'smoothstep' : 'default',
                         animated: true,
                         style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
                         markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
                     },
                     eds
-                )
-            ),
-        [setEdges, vertical]
+                );
+                pushHistory(nodes, newEdges);
+                return newEdges;
+            }),
+        [setEdges, vertical, pushHistory, nodes]
     );
 
     // Add a blank action node — auto-connects to last node when called without position
@@ -714,6 +409,7 @@ export default function WorkflowCanvas() {
         (position) => {
             const id = String(nodeId++);
             let lastNodeId = null;
+            let updatedNodes = null;
             setNodes((nds) => {
                 // Find the last node in the chain to auto-position and auto-connect
                 const lastNode = nds.length > 0 ? nds[nds.length - 1] : null;
@@ -722,23 +418,26 @@ export default function WorkflowCanvas() {
                     id,
                     type: 'action',
                     position: position || {
-                        x: lastNode ? lastNode.position.x + (vertical ? 0 : 330) : 250,
+                        // In vertical mode, keep same X as other nodes (250) for straight edges
+                        x: vertical ? 250 : (lastNode ? lastNode.position.x + 330 : 250),
                         y: lastNode ? lastNode.position.y + (vertical ? 220 : 0) : 200,
                     },
                     data: { label: 'New Action', stepIndex: nds.length + 1, _vertical: vertical },
                 };
-                return [...nds, newNode];
+                updatedNodes = [...nds, newNode];
+                return updatedNodes;
             });
             // Auto-connect to the last node if no explicit position was given
             if (!position && lastNodeId) {
-                setEdges((eds) => [
-                    ...eds,
-                    makeEdge(lastNodeId, id, vertical),
-                ]);
+                setEdges((eds) => {
+                    const newEdges = [...eds, makeEdge(lastNodeId, id, vertical)];
+                    if (updatedNodes) pushHistory(updatedNodes, newEdges);
+                    return newEdges;
+                });
             }
             return id;
         },
-        [setNodes, setEdges, vertical]
+        [setNodes, setEdges, vertical, pushHistory]
     );
 
     // Add branch from a node
@@ -758,35 +457,68 @@ export default function WorkflowCanvas() {
         [nodes, addActionNode, setEdges, vertical]
     );
 
-    // Delete node
+    // Clear trigger node — reset its data without removing the node
+    const clearTriggerNode = useCallback(
+        (id) => {
+            setNodes((nds) => {
+                const updated = nds.map((n) =>
+                    n.id === id
+                        ? {
+                            ...n,
+                            data: {
+                                label: 'Select Trigger',
+                                stepIndex: n.data.stepIndex,
+                                _vertical: n.data._vertical,
+                                // All config cleared
+                                appKey: undefined, appName: undefined, iconUrl: undefined,
+                                connectionId: null, actionKey: '', triggerKey: '',
+                                triggerType: '', triggerName: '', actionName: '',
+                                configuration: {}, _backendId: n.data._backendId,
+                            },
+                        }
+                        : n
+                );
+                draftRef.current?.markChanged(id);
+                pushHistory(updated, edges);
+                return updated;
+            });
+            setConfigNode(null);
+            useToastStore.getState().addToast('Trigger cleared. Reconfigure it to continue.', 'info');
+        },
+        [setNodes, edges, pushHistory]
+    );
+
+    // Delete node (action nodes only — trigger nodes use clearTriggerNode)
     const deleteNode = useCallback(
         (id) => {
+            const nodeToDelete = nodes.find(n => n.id === id);
+            // Guard: never hard-delete the trigger node — clear it instead
+            if (nodeToDelete?.type === 'trigger') {
+                clearTriggerNode(id);
+                return;
+            }
+            if (nodeToDelete?.data?._backendId) {
+                draftRef.current?.markDeleted(nodeToDelete.data._backendId);
+            }
             setNodes((nds) => {
                 const remaining = nds.filter((n) => n.id !== id);
                 if (remaining.length === 0) {
-                    // No nodes left — return fresh defaults
-                    return makeDefaultNodes(vertical);
+                    const defaults = makeDefaultNodes(vertical);
+                    pushHistory(defaults, [makeDefaultEdge(vertical)]);
+                    return defaults;
                 }
-                // Re-index step numbers but DON'T force-convert the first remaining node
-                // to trigger type — only the user should decide what type each node is.
-                // If the deleted node was the trigger (first node), the remaining nodes
-                // keep their types. The save validation will catch the missing trigger.
-                return remaining.map((n, idx) => ({
+                const reindexed = remaining.map((n, idx) => ({
                     ...n,
                     data: { ...n.data, stepIndex: idx + 1, _vertical: vertical },
                 }));
+                pushHistory(reindexed, edges.filter((e) => e.source !== id && e.target !== id));
+                return reindexed;
             });
             setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
             if (configNode?.id === id) setConfigNode(null);
             setContextMenu(null);
-
-            // Show a toast if the deleted node was a trigger
-            const deletedNode = nodes.find(n => n.id === id);
-            if (deletedNode?.type === 'trigger') {
-                useToastStore.getState().addToast('Trigger removed. Add a new trigger as the first step.', 'info');
-            }
         },
-        [setNodes, setEdges, configNode, vertical, nodes]
+        [setNodes, setEdges, configNode, vertical, nodes, edges, pushHistory, clearTriggerNode]
     );
 
     // Node click → open config panel (but NOT if clicking a handle)
@@ -854,21 +586,23 @@ export default function WorkflowCanvas() {
         const nextVertical = !vertical;
         setVertical(nextVertical);
         // Rearrange existing nodes and update _vertical in data
-        setNodes((nds) =>
-            nds.map((n, i) => ({
+        // In vertical mode all nodes share x=250 so edges go straight down
+        setNodes((nds) => {
+            const rearranged = nds.map((n, i) => ({
                 ...n,
                 position: {
                     x: nextVertical ? 250 : 120 + i * 330,
                     y: nextVertical ? 60 + i * 220 : 200,
                 },
                 data: { ...n.data, _vertical: nextVertical },
-            }))
-        );
-        // Update Edge types and ensure handle IDs
+            }));
+            return rearranged;
+        });
+        // Update Edge types — smoothstep for vertical (orthogonal), default (bezier) for horizontal
         setEdges((eds) =>
             eds.map((e) => ({
                 ...e,
-                type: nextVertical ? 'straight' : 'default',
+                type: nextVertical ? 'smoothstep' : 'default',
                 sourceHandle: 'out',
                 targetHandle: 'in',
             }))
@@ -896,12 +630,76 @@ export default function WorkflowCanvas() {
         [reactFlowInstance, addActionNode]
     );
 
+    // ── Initial history snapshot after load ──
+    useEffect(() => {
+        if (isLoadingWorkflow || historyRef.current.length > 0) return;
+        // Push first snapshot once nodes are ready
+        if (nodes.length > 0) {
+            pushHistory(nodes, edges);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoadingWorkflow]);
+
+    // ── Warn on browser tab close if unsaved ──
+    useBeforeUnload(
+        useCallback((event) => {
+            if (isDirty) {
+                event.preventDefault();
+                // Attempt a fire-and-forget background save using keepalive
+                saveCoordinatorRef.current?.saveExit({ keepalive: true });
+            }
+        }, [isDirty])
+    );
+
+    // ── Save on component unmount (SPA navigation away) ──
+    const isDirtyRef = useRef(isDirty);
+    useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+    useEffect(() => {
+        return () => {
+            if (isDirtyRef.current) {
+                // Fire-and-forget save on unmount
+                saveCoordinatorRef.current?.saveExit();
+            }
+        };
+    }, []);
+
     // Close context menu on outside click
     useEffect(() => {
         const handler = () => setContextMenu(null);
         if (contextMenu) window.addEventListener('click', handler);
         return () => window.removeEventListener('click', handler);
     }, [contextMenu]);
+
+    // ── OAuth popup postMessage listener ──
+    // Handles the 'oauth-connected' message sent by the OAuth callback page.
+    // Kept here (not in ConfigPanelBody) because `connections` state lives here.
+    useEffect(() => {
+        const handler = (event) => {
+            if (event.data?.type !== 'oauth-connected') return;
+            const addToast = useToastStore.getState().addToast;
+            const isReconnect = event.data.reconnect;
+            addToast(
+                isReconnect
+                    ? `Reconnected: ${event.data.connectionName || event.data.appKey}`
+                    : `Connected: ${event.data.connectionName || event.data.appKey}`,
+                'success'
+            );
+            // Refresh connections list so the dropdown updates immediately
+            connectionsApi.list().then((conns) => {
+                setConnections(Array.isArray(conns) ? conns : []);
+                // Auto-select the newly created connection on the current config node
+                if (!isReconnect && event.data.connectionId && configNode) {
+                    updateNodeData(configNode.id, {
+                        connectionId: event.data.connectionId,
+                        account: event.data.connectionId,
+                        accountName: event.data.connectionName || '',
+                    });
+                }
+            }).catch(() => {});
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [configNode, updateNodeData]);
 
     // ──────────────────────────────
     // RENDER
@@ -926,7 +724,7 @@ export default function WorkflowCanvas() {
     const selectedConnections = selectedAppKey
         ? connections.filter((c) => c.appKey === selectedAppKey)
         : [];
-    const selectedTriggerOptions = selectedAppKey ? getTriggerDefinitionsForApp(selectedAppKey) : [];
+    const selectedTriggerOptions = Array.isArray(selectedAppDetail?.triggers) ? selectedAppDetail.triggers : [];
     const selectedActionOptions = Array.isArray(selectedAppDetail?.actions) ? selectedAppDetail.actions : [];
 
     // Naming modal
@@ -1013,14 +811,28 @@ export default function WorkflowCanvas() {
                 </div>
 
                 <div className="canvas-topbar-center">
-                    <button className="canvas-tb-btn" title="Undo"><HiOutlineReply /></button>
+                    <button
+                        className="canvas-tb-btn"
+                        title="Undo (Ctrl+Z)"
+                        onClick={handleUndo}
+                        disabled={!canUndo}
+                        data-tooltip="Undo"
+                    >
+                        <HiOutlineReply />
+                    </button>
                     <div className="canvas-tb-divider" />
-                    <button className="canvas-tb-btn" title="Add Action" onClick={() => addActionNode()}>
+                    <button
+                        className="canvas-tb-btn"
+                        title="Add Action Step"
+                        data-tooltip="Add Step"
+                        onClick={() => addActionNode()}
+                    >
                         <HiPlus />
                     </button>
                     <button
                         className="canvas-tb-btn"
-                        title={vertical ? 'Switch to Horizontal' : 'Switch to Vertical'}
+                        title={vertical ? 'Switch to Horizontal Layout' : 'Switch to Vertical Layout'}
+                        data-tooltip={vertical ? 'Horizontal' : 'Vertical'}
                         onClick={toggleOrientation}
                     >
                         {vertical ? <HiOutlineSwitchHorizontal /> : <HiOutlineSwitchVertical />}
@@ -1028,7 +840,8 @@ export default function WorkflowCanvas() {
                     <div className="canvas-tb-divider" />
                     <button
                         className="canvas-tb-btn"
-                        title="Save"
+                        title="Save workflow (Ctrl+S)"
+                        data-tooltip="Save"
                         onClick={handleSave}
                         disabled={isSaving}
                     >
@@ -1040,7 +853,8 @@ export default function WorkflowCanvas() {
                     )}
                     <button
                         className="canvas-tb-btn canvas-tb-btn-primary"
-                        title="Run"
+                        title="Save and run this workflow"
+                        data-tooltip="Run"
                         onClick={handleRunWorkflow}
                         disabled={isRunning || isSaving}
                     >
@@ -1064,6 +878,7 @@ export default function WorkflowCanvas() {
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
                     onInit={setReactFlowInstance}
+                    onNodeDragStop={() => pushHistory(nodes, edges)}
                     onNodeClick={onNodeClick}
                     onNodeDoubleClick={onNodeDoubleClick}
                     onNodeContextMenu={onNodeContextMenu}
@@ -1084,7 +899,17 @@ export default function WorkflowCanvas() {
                     edgesReconnectable
                 >
                     <Background variant={BackgroundVariant.Dots} gap={18} size={1.6} color="var(--dot-color-bright)" />
-                    <Controls showInteractive={false} position="bottom-left" />
+                    <Controls showInteractive={false} position="bottom-left">
+                        <button
+                            className="react-flow__controls-button"
+                            onClick={handleSave}
+                            title="Save Workflow"
+                            disabled={isSaving}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            {isSaving ? <span className="canvas-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> : <HiOutlineSave />}
+                        </button>
+                    </Controls>
                 </ReactFlow>
 
                 {/* ── Right-click context menu ── */}
@@ -1161,6 +986,12 @@ export default function WorkflowCanvas() {
                                     }}
                                     onClose={() => setConfigNode(null)}
                                     onDelete={() => deleteNode(configNode.id)}
+                                    onClear={() => clearTriggerNode(configNode.id)}
+                                    onSaveAndClose={() => {
+                                        // Save current step data to backend (silent partial save) then close panel
+                                        saveCoordinatorRef.current?.saveAuto();
+                                        setConfigNode(null);
+                                    }}
                                     onNavigate={(dir) => {
                                         const idx = nodes.findIndex(n => n.id === configNode.id);
                                         if (dir === 'prev' && idx > 0) setConfigNode(nodes[idx - 1]);

@@ -86,7 +86,7 @@ public class StreamConsumerRegistrar {
                 StreamOffset.create(RedisStreamConfig.STREAM_EXECUTION_QUEUE, ReadOffset.lastConsumed()),
                 executionConsumer);
 
-        container.receiveAutoAck(consumer,
+        container.receive(consumer,
                 StreamOffset.create(RedisStreamConfig.STREAM_EMAIL_QUEUE, ReadOffset.lastConsumed()),
                 emailConsumer);
 

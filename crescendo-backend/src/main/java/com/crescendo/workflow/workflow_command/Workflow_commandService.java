@@ -48,6 +48,7 @@ public class Workflow_commandService {
     private final DomainEventPublisher eventPublisher;
     private final Steps_commandService stepsCommandService;
     private final Steps_commandRepository stepsRepo;
+    private final WorkflowActivationValidator activationValidator;
 
     public Workflow_commandService(Workflow_commandRepository workflowRepo,
                                    Workflow_queryRepository workflowQueryRepo,
@@ -55,7 +56,8 @@ public class Workflow_commandService {
                                    AccessControlService accessControl,
                                    DomainEventPublisher eventPublisher,
                                    Steps_commandService stepsCommandService,
-                                   Steps_commandRepository stepsRepo) {
+                                   Steps_commandRepository stepsRepo,
+                                   WorkflowActivationValidator activationValidator) {
         this.workflowRepo = workflowRepo;
         this.workflowQueryRepo = workflowQueryRepo;
         this.userRepo = userRepo;
@@ -63,6 +65,7 @@ public class Workflow_commandService {
         this.eventPublisher = eventPublisher;
         this.stepsCommandService = stepsCommandService;
         this.stepsRepo = stepsRepo;
+        this.activationValidator = activationValidator;
     }
 
     // WORKFLOW CRUD
@@ -136,6 +139,90 @@ public class Workflow_commandService {
     }
 
     /**
+     * Atomically saves the workflow graph (upserting steps and processing deletions).
+     */
+    public WorkflowDto.WorkflowGraphResponse saveGraph(UUID userId, UUID workflowId, WorkflowDto.WorkflowGraphRequest req) {
+        Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
+
+        if (req.revision() != null && !req.revision().isBlank()) {
+            if (workflow.getUpdatedAt() != null && !req.revision().equals(workflow.getUpdatedAt().toString())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow has been modified by another session. Please refresh.");
+            }
+        }
+
+        // We will update the updatedAt timestamp to act as a new revision
+        workflow.setUpdatedAt(java.time.Instant.now());
+
+        if (req.name() != null || req.description() != null) {
+            if (req.name() != null) workflow.setName(req.name());
+            if (req.description() != null) workflow.setDescription(req.description());
+            publishWorkflow(workflowId, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
+        }
+
+        // 1. Process deletions
+        if (req.deletedStepIds() != null) {
+            for (String stepIdStr : req.deletedStepIds()) {
+                if (stepIdStr != null && !stepIdStr.isBlank()) {
+                    try {
+                        stepsCommandService.deleteStep(userId, workflowId, UUID.fromString(stepIdStr));
+                    } catch (ResponseStatusException e) {
+                        if (e.getStatusCode() != HttpStatus.NOT_FOUND) throw e;
+                    }
+                }
+            }
+        }
+
+        // 2. Process upserts
+        List<WorkflowDto.GraphStepResponse> savedSteps = new java.util.ArrayList<>();
+        if (req.steps() != null) {
+            // We'll trust the order in the list as the intended order.
+            for (int i = 0; i < req.steps().size(); i++) {
+                WorkflowDto.GraphStepRequest stepReq = req.steps().get(i);
+                if (stepReq.backendId() != null && !stepReq.backendId().isBlank()) {
+                    // Update existing
+                    stepsCommandService.updateStep(userId, workflowId, UUID.fromString(stepReq.backendId()),
+                            new WorkflowDto.UpdateStepRequest(
+                                    stepReq.name(),
+                                    stepReq.actionKey(),
+                                    stepReq.appKey(),
+                                    stepReq.connectionId(),
+                                    stepReq.configuration()
+                            )
+                    );
+                    savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
+                } else {
+                    // Create new
+                    WorkflowDto.StepResponse created = stepsCommandService.addStep(userId, workflowId,
+                            new WorkflowDto.CreateStepRequest(
+                                    stepReq.name(),
+                                    stepReq.type(),
+                                    stepReq.actionKey(),
+                                    stepReq.appKey(),
+                                    stepReq.connectionId(),
+                                    stepReq.configuration()
+                            )
+                    );
+                    savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), created.id()));
+                }
+            }
+
+            // 3. Reorder steps to match the requested order
+            // Since we iterate through them in order, we can simply reorder them
+            // wait, we can just assign new order values.
+            // Since `addStep` assigns maxOrder + 1, and `updateStep` doesn't change order,
+            // we should reorder them if they are not in the correct order.
+            // A simple approach: use reorderStep for each step in the list.
+            for (int i = 0; i < savedSteps.size(); i++) {
+                WorkflowDto.GraphStepResponse saved = savedSteps.get(i);
+                stepsCommandService.reorderStep(userId, workflowId, UUID.fromString(saved.backendId()),
+                        new WorkflowDto.ReorderStepRequest(new java.math.BigDecimal(i + 1)));
+            }
+        }
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getUpdatedAt().toString(), savedSteps);
+    }
+
+    /**
      * Soft-deletes a workflow and all its steps.
      * The workflow and steps remain in the database but are excluded from all queries.
      * The query-side rows are removed entirely since they serve no purpose once deleted.
@@ -167,24 +254,7 @@ public class Workflow_commandService {
         if (workflow.isActive()) return; // Idempotent
 
         // Validate workflow structure before activation
-        List<Steps_command> steps = stepsRepo.findActiveByWorkflowIdOrdered(workflowId);
-        if (steps.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Cannot activate a workflow with no steps. Add at least a trigger and one action.");
-        }
-        if (steps.getFirst().getType() != StepType.TRIGGER) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The first step must be a trigger.");
-        }
-        long triggerCount = steps.stream().filter(s -> s.getType() == StepType.TRIGGER).count();
-        if (triggerCount > 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A workflow can only have one trigger. Remove extra triggers before activating.");
-        }
-        if (steps.size() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A workflow needs at least a trigger and one action step.");
-        }
+        activationValidator.validateForActivation(workflowId);
 
         workflow.setActive(true);
 
@@ -229,11 +299,77 @@ public class Workflow_commandService {
         publishWorkflow(workflowId, req);
     }
 
+    /**
+     * Atomically saves the guest workflow graph (upserting steps and processing deletions).
+     */
+    public WorkflowDto.WorkflowGraphResponse saveGuestGraph(String guestSessionId, UUID workflowId, WorkflowDto.WorkflowGraphRequest req) {
+        Workflow_command workflow = findGuestOwnedWorkflow(guestSessionId, workflowId);
+
+        if (req.name() != null || req.description() != null) {
+            if (req.name() != null) workflow.setName(req.name());
+            if (req.description() != null) workflow.setDescription(req.description());
+            publishWorkflow(workflowId, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
+        }
+
+        if (req.deletedStepIds() != null) {
+            for (String stepIdStr : req.deletedStepIds()) {
+                if (stepIdStr != null && !stepIdStr.isBlank()) {
+                    try {
+                        stepsCommandService.deleteGuestStep(guestSessionId, workflowId, UUID.fromString(stepIdStr));
+                    } catch (ResponseStatusException e) {
+                        if (e.getStatusCode() != HttpStatus.NOT_FOUND) throw e;
+                    }
+                }
+            }
+        }
+
+        List<WorkflowDto.GraphStepResponse> savedSteps = new java.util.ArrayList<>();
+        if (req.steps() != null) {
+            for (int i = 0; i < req.steps().size(); i++) {
+                WorkflowDto.GraphStepRequest stepReq = req.steps().get(i);
+                if (stepReq.backendId() != null && !stepReq.backendId().isBlank()) {
+                    stepsCommandService.updateGuestStep(guestSessionId, workflowId, UUID.fromString(stepReq.backendId()),
+                            new WorkflowDto.UpdateStepRequest(
+                                    stepReq.name(),
+                                    stepReq.actionKey(),
+                                    stepReq.appKey(),
+                                    stepReq.connectionId(),
+                                    stepReq.configuration()
+                            )
+                    );
+                    savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
+                } else {
+                    WorkflowDto.StepResponse created = stepsCommandService.addGuestStep(guestSessionId, workflowId,
+                            new WorkflowDto.CreateStepRequest(
+                                    stepReq.name(),
+                                    stepReq.type(),
+                                    stepReq.actionKey(),
+                                    stepReq.appKey(),
+                                    stepReq.connectionId(),
+                                    stepReq.configuration()
+                            )
+                    );
+                    savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), created.id()));
+                }
+            }
+
+            for (int i = 0; i < savedSteps.size(); i++) {
+                WorkflowDto.GraphStepResponse saved = savedSteps.get(i);
+                stepsCommandService.reorderGuestStep(guestSessionId, workflowId, UUID.fromString(saved.backendId()),
+                        new WorkflowDto.ReorderStepRequest(new java.math.BigDecimal(i + 1)));
+            }
+        }
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), req.revision(), savedSteps);
+    }
+
     private void publishWorkflow(UUID workflowId, WorkflowDto.UpdateWorkflowRequest req) {
         Workflow_query queryWorkflow = workflowQueryRepo.findById(workflowId).orElse(null);
         if (queryWorkflow != null) {
             if (req.name() != null) queryWorkflow.setName(req.name());
             if (req.description() != null) queryWorkflow.setDescription(req.description());
+            // Persist the mutation — without this the query DB name/description stays stale
+            workflowQueryRepo.save(queryWorkflow);
         }
 
         eventPublisher.publish(new WorkflowUpdatedEvent(workflowId));
@@ -279,12 +415,16 @@ public class Workflow_commandService {
     /**
      * Activates multiple workflows for the given user. Idempotent —
      * workflows that are already active remain active without error.
+     * Uses the same structural validation as single activation so empty
+     * or malformed workflows cannot be bulk-activated.
      */
     public void bulkActivateWorkflows(UUID userId, List<UUID> ids) {
         accessControl.requireCanActivateWorkflow();
         for (UUID workflowId : ids) {
             Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
             if (!workflow.isActive()) {
+                // Reuse single-workflow structural validation
+                activationValidator.validateForActivation(workflowId);
                 workflow.setActive(true);
                 workflowQueryRepo.updateIsActive(workflowId, true);
                 eventPublisher.publish(new WorkflowActivatedEvent(workflowId));
@@ -325,6 +465,10 @@ public class Workflow_commandService {
         Workflow_command workflow = new Workflow_command(workflowId, req.name(), req.description(), user, false);
         workflowRepo.save(workflow);
 
+        // Project to query DB BEFORE adding steps so that the step_count update
+        // inside addStep() finds a valid workflow_query row to update.
+        projectWorkflowToQuery(workflow);
+
         // Create steps
         if (req.steps() != null) {
             for (WorkflowDto.ImportStepRequest stepReq : req.steps()) {
@@ -340,17 +484,20 @@ public class Workflow_commandService {
             }
         }
 
-        // Sync to query database
-        projectWorkflowToQuery(workflow);
+        // step_count is now correct because addStep() increments it on each call.
+        // Re-read the final count from the command DB to be safe.
+        int finalStepCount = req.steps() != null ? req.steps().size() : 0;
 
         eventPublisher.publish(
                 new WorkflowCreatedEvent(workflowId, req.name(), userId, null));
 
-        int stepCount = req.steps() != null ? req.steps().size() : 0;
-        return toSummary(workflow, WorkflowStatus.NEVER_RUN, stepCount);
+        return toSummary(workflow, WorkflowStatus.NEVER_RUN, finalStepCount);
     }
 
     // OWNERSHIP VERIFICATION
+
+    /// Validates the structural rules required to activate a workflow.
+    /// Extracted so that both single and bulk activation use the same checks.
 
     /// Finds a non-deleted workflow and verifies the authenticated user owns it.
     private Workflow_command findOwnedWorkflow(UUID userId, UUID workflowId) {

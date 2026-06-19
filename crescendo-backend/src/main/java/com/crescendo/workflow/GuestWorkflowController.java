@@ -91,6 +91,17 @@ public class GuestWorkflowController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{workflowId}/graph")
+    public ResponseEntity<WorkflowDto.WorkflowGraphResponse> saveGraph(
+            @PathVariable UUID workflowId,
+            @RequestHeader("X-Guest-Session") String guestSession,
+            @Valid @RequestBody WorkflowDto.WorkflowGraphRequest req) {
+        String session = validGuestSession(guestSession);
+        enforceSessionExpiry(session);
+        var resp = commandService.saveGuestGraph(session, workflowId, req);
+        return ResponseEntity.ok(resp);
+    }
+
     @DeleteMapping("/{workflowId}")
     public ResponseEntity<Void> deleteWorkflow(
             @PathVariable UUID workflowId,

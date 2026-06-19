@@ -58,6 +58,8 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
         this.redisTemplate = redisTemplate;
     }
 
+    private enum ExecutionStatus { PROCESSED, RETRY, DLQ }
+
     @Override
     public void onMessage(MapRecord<String, Object, Object> message) {
         Map<Object, Object> raw = message.getValue();
@@ -97,8 +99,17 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
         }, 3, 3, TimeUnit.MINUTES);
 
         try {
-            processExecution(workflowRunId, workflowId, userId);
-            acknowledge(message); // ACK only after successful processing
+            ExecutionStatus status = processExecution(workflowRunId, workflowId, userId);
+            if (status == ExecutionStatus.PROCESSED) {
+                acknowledge(message); // ACK only after successful processing
+            } else if (status == ExecutionStatus.DLQ) {
+                logger.error("[execution] Dead-lettering run {}", workflowRunId);
+                // Could push to a DLQ stream here. For now, ACK to stop redelivery.
+                acknowledge(message);
+            } else {
+                logger.info("[execution] Run {} needs retry, message will be redelivered", workflowRunId);
+                // Do NOT acknowledge
+            }
         } catch (Exception e) {
             logger.error("[execution] Processing failed for run {}, message will be redelivered: {}",
                     workflowRunId, e.getMessage());
@@ -110,7 +121,7 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
         }
     }
 
-    private void processExecution(String workflowRunId, String workflowId, String userId) {
+    private ExecutionStatus processExecution(String workflowRunId, String workflowId, String userId) {
         // Retry loop: the poller saves the WorkflowRun and enqueues to Redis within
         // the same transaction. The consumer may dequeue before the DB commits.
         WorkflowRun run = null;
@@ -121,17 +132,17 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
                     workflowRunId, attempt);
             try { Thread.sleep(2000); } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return;
+                return ExecutionStatus.RETRY;
             }
         }
         if (run == null) {
             logger.error("[execution] Workflow run {} not found after 3 retries — giving up", workflowRunId);
-            return;
+            return ExecutionStatus.DLQ;
         }
 
         if (run.getStatus() != WorkflowRunStatus.PENDING) {
             logger.info("[execution] Run {} is already {}, skipping", workflowRunId, run.getStatus());
-            return;
+            return ExecutionStatus.PROCESSED;
         }
 
         run.setStatus(WorkflowRunStatus.RUNNING);
@@ -147,11 +158,13 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
                     userId != null ? UUID.fromString(userId) : null,
                     run.getTriggerData()
             );
+            return ExecutionStatus.PROCESSED;
         } catch (Exception e) {
             logger.error("[execution] Engine failed for run {}: {}", workflowRunId, e.getMessage(), e);
             run.setStatus(WorkflowRunStatus.FAILED);
             run.setErrorMessage("Engine error: " + e.getMessage());
             workflowRunRepo.save(run);
+            return ExecutionStatus.DLQ;
         }
     }
 

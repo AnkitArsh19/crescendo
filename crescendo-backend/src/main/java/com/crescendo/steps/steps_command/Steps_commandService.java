@@ -48,6 +48,7 @@ public class Steps_commandService {
     private final StepConditionRepository conditionRepo;
     private final AccessControlService accessControl;
     private final DomainEventPublisher eventPublisher;
+    private final StepDefinitionValidator stepValidator;
 
     public Steps_commandService(Steps_commandRepository stepRepo,
                                 Steps_queryRepository stepQueryRepo,
@@ -55,7 +56,8 @@ public class Steps_commandService {
                                 Workflow_queryRepository workflowQueryRepo,
                                 StepConditionRepository conditionRepo,
                                 AccessControlService accessControl,
-                                DomainEventPublisher eventPublisher) {
+                                DomainEventPublisher eventPublisher,
+                                StepDefinitionValidator stepValidator) {
         this.stepRepo = stepRepo;
         this.stepQueryRepo = stepQueryRepo;
         this.workflowRepo = workflowRepo;
@@ -63,6 +65,7 @@ public class Steps_commandService {
         this.conditionRepo = conditionRepo;
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
+        this.stepValidator = stepValidator;
     }
 
     // =====================================================================
@@ -251,6 +254,9 @@ public class Steps_commandService {
             }
         }
 
+        UUID userId = workflow.getUser() != null ? workflow.getUser().getId() : null;
+        stepValidator.validateStepDefinition(userId, req.type(), req.appKey(), req.actionKey(), req.connectionId(), req.configuration());
+
         StepOrder order = calculateNextOrder(workflowId);
 
         UUID stepId = UUID.randomUUID();
@@ -268,6 +274,13 @@ public class Steps_commandService {
     }
 
     private void applyStepUpdate(Steps_command step, WorkflowDto.UpdateStepRequest req) {
+        UUID userId = step.getWorkflow().getUser() != null ? step.getWorkflow().getUser().getId() : null;
+        stepValidator.validateStepDefinition(userId, step.getType(), 
+                req.appKey() != null ? req.appKey() : step.getAppKey(), 
+                req.actionKey() != null ? req.actionKey() : step.getActionKey(), 
+                req.connectionId() != null ? req.connectionId() : step.getConnectionId(), 
+                req.configuration() != null ? req.configuration() : step.getConfiguration());
+
         if (req.name() != null) step.setName(req.name());
         if (req.actionKey() != null) step.setActionKey(req.actionKey());
         if (req.appKey() != null) step.setAppKey(req.appKey());
@@ -284,6 +297,8 @@ public class Steps_commandService {
             if (req.actionKey() != null) queryStep.setActionKey(req.actionKey());
             if (req.connectionId() != null) queryStep.setConnectionId(req.connectionId());
             if (req.configuration() != null) queryStep.setConfiguration(req.configuration());
+            // Persist the mutation — without this the query DB stays stale
+            stepQueryRepo.save(queryStep);
         }
     }
 
@@ -310,6 +325,8 @@ public class Steps_commandService {
         Steps_query queryStep = stepQueryRepo.findById(stepId).orElse(null);
         if (queryStep != null) {
             queryStep.setOrder(newOrder.value());
+            // Persist the mutation — without this the query DB order stays stale
+            stepQueryRepo.save(queryStep);
         }
         eventPublisher.publish(new StepReorderedEvent(stepId, workflowId));
     }

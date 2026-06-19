@@ -17,6 +17,9 @@ export const workflowApi = {
   update: (id, data) =>
     api.patch(`/workflows/${id}`, data),
 
+  updateGraph: (id, data) =>
+    api.put(`/workflows/${id}/graph`, data).then((r) => r.data),
+
   delete: (id) =>
     api.delete(`/workflows/${id}`),
 
@@ -95,6 +98,9 @@ export const guestWorkflowApi = {
 
   update: (sessionId, id, data) =>
     api.patch(`/guest/workflows/${id}`, data, guestHeaders(sessionId)),
+
+  updateGraph: (sessionId, id, data) =>
+    api.put(`/guest/workflows/${id}/graph`, data, guestHeaders(sessionId)).then((r) => r.data),
 
   delete: (sessionId, id) =>
     api.delete(`/guest/workflows/${id}`, guestHeaders(sessionId)),

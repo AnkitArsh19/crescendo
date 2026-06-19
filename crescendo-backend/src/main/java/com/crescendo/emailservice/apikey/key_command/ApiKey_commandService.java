@@ -101,7 +101,10 @@ public class ApiKey_commandService {
 
         // Mark revoked on query side
         queryRepo.findByIdAndUserId(apiKeyId, userId)
-                .ifPresent(q -> q.setRevokedAt(apiKey.getRevokedAt()));
+                .ifPresent(q -> {
+                    q.setRevokedAt(apiKey.getRevokedAt());
+                    queryRepo.save(q);
+                });
 
         eventPublisher.publish(new ApiKeyRevokedEvent(apiKeyId, userId));
     }

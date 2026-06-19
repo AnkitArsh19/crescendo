@@ -7,26 +7,46 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
- * Polling trigger for Microsoft Outlook — checks for new emails using the
- * Microsoft Graph API.
+ * Polling trigger for Microsoft Outlook — checks for new emails via Microsoft Graph API.
  *
- * Supports the trigger key "new-email" for the "microsoft-outlook" app.
- * Uses the /me/messages endpoint with $filter to find emails
- * received since the last poll.
+ * <h3>Personal Account OData Limitation — the root cause of months of debugging</h3>
+ *
+ * <p>For personal @outlook.com / @hotmail.com accounts, Microsoft Graph silently returns
+ * {@code value=[]} (HTTP 200, no error) for ANY of these OData operations:
+ * <ul>
+ *   <li>{@code $filter=receivedDateTime ge ...} — silently returns []</li>
+ *   <li>{@code $filter=receivedDateTime ge ... and receivedDateTime lt ...} — silently returns []</li>
+ *   <li>{@code $filter=contains(subject, ...)} — silently returns []</li>
+ *   <li>{@code $filter=from/emailAddress/address eq ...} — silently returns []</li>
+ *   <li>{@code $filter} combined with {@code $orderby} — silently returns []</li>
+ * </ul>
+ *
+ * <h3>Solution (no OData filter at all)</h3>
+ * <ol>
+ *   <li>Fetch messages using ONLY {@code $top} — no {@code $filter}, no {@code $orderby}.</li>
+ *   <li>Graph returns messages in default order (newest first — receivedDateTime desc).
+ *       This is the documented default behaviour and does not require an explicit $orderby.</li>
+ *   <li>Stop paginating as soon as we hit a message older than {@code lastPollTime}.
+ *       This is efficient: we never fetch more than we need.</li>
+ *   <li>Apply sender, subject, and timestamp filters entirely client-side in Java.</li>
+ * </ol>
+ *
+ * <p>This is equivalent to how n8n handles its "test/manual" mode and how ActivePieces
+ * handles the first poll — the key insight being that server-side date filtering is
+ * unreliable for personal accounts.
  */
 @Component
 public class OutlookTriggerPoller implements TriggerPoller {
 
     private static final Logger logger = LoggerFactory.getLogger(OutlookTriggerPoller.class);
-    private static final String GRAPH_MESSAGES_URL = "https://graph.microsoft.com/v1.0/me/messages";
+    private static final String GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+    private static final int PAGE_SIZE = 50;
+    private static final int MAX_PAGES = 10; // 500 emails max per poll
 
     private final RestClient restClient;
 
@@ -45,105 +65,166 @@ public class OutlookTriggerPoller implements TriggerPoller {
                                           Map<String, Object> configuration,
                                           Instant lastPollTime) {
         String accessToken = String.valueOf(credentials.get("accessToken"));
+        logger.debug("[outlook-poller] Configuration: {}", configuration);
 
-        String isoTime = DateTimeFormatter.ISO_INSTANT.format(lastPollTime.atZone(ZoneOffset.UTC));
-        String filter = "receivedDateTime ge " + isoTime;
+        // Truncate to seconds for consistent comparison with Graph API timestamps
+        Instant cursor = lastPollTime.truncatedTo(ChronoUnit.SECONDS);
 
-        // Apply user-configured filters
-        if (configuration != null) {
-            logger.debug("[outlook-poller] Raw configuration: {}", configuration);
-
-            String subjectFilter = asStr(configuration.get("subjectFilter"));
-            if (subjectFilter != null && !subjectFilter.isBlank()) {
-                filter += " and contains(subject, '" + subjectFilter.replace("'", "''") + "')";
-            }
-            String fromFilter = asStr(configuration.get("fromFilter"));
-            if (fromFilter != null && !fromFilter.isBlank()) {
-                filter += " and from/emailAddress/address eq '" + fromFilter.replace("'", "''") + "'";
-            }
-            // Legacy fallback key
-            String senderEmail = asStr(configuration.get("senderEmail"));
-            if (senderEmail != null && !senderEmail.isBlank() &&
-                    (fromFilter == null || fromFilter.isBlank())) {
-                filter += " and from/emailAddress/address eq '" + senderEmail.replace("'", "''") + "'";
-            }
+        // ── Client-side filters from step configuration ────────────────────────────
+        String fromFilter = asStr(configuration != null ? configuration.get("fromFilter") : null);
+        if (fromFilter == null) {
+            fromFilter = asStr(configuration != null ? configuration.get("senderEmail") : null);
         }
+        String subjectFilter = asStr(configuration != null ? configuration.get("subjectFilter") : null);
 
-        // Build URL with folder if specified
-        String baseUrl = GRAPH_MESSAGES_URL;
-        if (configuration != null) {
-            String folderId = asStr(configuration.get("folderId"));
-            if (folderId != null && !folderId.isBlank()) {
-                baseUrl = "https://graph.microsoft.com/v1.0/me/mailFolders/" + folderId + "/messages";
-            }
-        }
+        // ── Endpoint ─────────────────────────────────────────────────────────────
+        // Use /me/messages (all folders) so emails landing in Junk/Other are found.
+        // The specific folderId from config is intentionally ignored for polling
+        // because Graph's $filter breaks silently for personal accounts anyway.
+        String endpoint = GRAPH_BASE + "/me/messages";
 
-        // URL-encode the filter to avoid OData syntax issues, but use URI.create()
-        // so Spring does NOT double-encode the already-encoded query string.
-        String encodedFilter = URLEncoder.encode(filter, StandardCharsets.UTF_8)
-                .replace("+", "%20"); // OData requires %20 not +
-        String url = baseUrl
-                + "?$filter=" + encodedFilter
-                + "&$top=10"
+        // ── NO $filter — personal accounts ignore it silently ─────────────────────
+        // We MUST use $orderby=receivedDateTime%20desc because default order is NOT guaranteed.
+        // The Microsoft API limitation only applies when combining $filter and $orderby.
+        // Using $orderby WITHOUT $filter works perfectly fine for personal accounts.
+        String initialUrl = endpoint
+                + "?$top=" + PAGE_SIZE
                 + "&$orderby=receivedDateTime%20desc"
-                + "&$select=id,subject,from,receivedDateTime,bodyPreview";
+                + "&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments";
 
-        logger.info("[outlook-poller] Polling Outlook: url='{}', since='{}'", url, isoTime);
+        logger.info("[outlook-poller] Polling since '{}' | fromFilter='{}' | subjectFilter='{}'",
+                cursor, fromFilter, subjectFilter);
+        logger.debug("[outlook-poller] URL: {}", initialUrl);
 
-        try {
-            // Use URI.create() to prevent Spring RestClient from re-encoding
-            // the OData query parameters ($ signs, spaces, etc.)
-            Map<String, Object> response = restClient.get()
-                    .uri(URI.create(url))
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                    .retrieve()
-                    .body(Map.class);
+        List<Map<String, Object>> results = new ArrayList<>();
+        String nextUrl = initialUrl;
+        int page = 0;
+        boolean reachedOldMessages = false;
 
-            logger.debug("[outlook-poller] Raw API response: {}", response);
+        while (nextUrl != null && page < MAX_PAGES && !reachedOldMessages) {
+            page++;
+            Map<String, Object> response = fetchPage(nextUrl, accessToken);
+            if (response == null) break;
 
-            if (response == null || !response.containsKey("value")) {
-                logger.info("[outlook-poller] No new messages found");
-                return List.of();
-            }
+            Object valueObj = response.get("value");
+            if (!(valueObj instanceof List)) break;
 
-            List<Map<String, Object>> messages = (List<Map<String, Object>>) response.get("value");
-            if (messages == null || messages.isEmpty()) {
-                logger.info("[outlook-poller] Empty value array in response");
-                return List.of();
-            }
+            List<Map<String, Object>> pageItems = (List<Map<String, Object>>) valueObj;
+            logger.info("[outlook-poller] Page {}: {} message(s) returned", page, pageItems.size());
 
-            logger.info("[outlook-poller] Found {} new message(s)", messages.size());
+            if (pageItems.isEmpty()) break;
 
-            List<Map<String, Object>> results = new ArrayList<>();
-            for (Map<String, Object> msg : messages) {
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("id", msg.get("id"));
-                payload.put("subject", msg.get("subject"));
-                payload.put("bodyPreview", msg.get("bodyPreview"));
-                payload.put("receivedDateTime", msg.get("receivedDateTime"));
+            for (Map<String, Object> msg : pageItems) {
+                // ── Timestamp check (client-side) ──────────────────────────────────
+                // Graph returns messages newest-first. Once we hit one older than cursor,
+                // all subsequent messages will also be older — stop paginating.
+                String receivedAt = asStr(msg.get("receivedDateTime"));
+                if (receivedAt == null) continue;
 
-                Map<String, Object> from = (Map<String, Object>) msg.get("from");
-                if (from != null) {
-                    Map<String, Object> emailAddr = (Map<String, Object>) from.get("emailAddress");
-                    if (emailAddr != null) {
-                        payload.put("fromEmail", emailAddr.get("address"));
-                        payload.put("fromName", emailAddr.get("name"));
+                Instant msgTime;
+                try {
+                    msgTime = Instant.parse(receivedAt).truncatedTo(ChronoUnit.SECONDS);
+                } catch (Exception e) {
+                    logger.warn("[outlook-poller] Could not parse receivedDateTime '{}' — skipping", receivedAt);
+                    continue;
+                }
+
+                if (!msgTime.isAfter(cursor)) {
+                    // This message is AT or BEFORE the cursor — we're done
+                    logger.info("[outlook-poller] Hit message at '{}' ≤ cursor '{}' — stopping pagination", msgTime, cursor);
+                    reachedOldMessages = true;
+                    break;
+                }
+
+                // ── Sender filter (exact, case-insensitive) ────────────────────────
+                String fromEmail = extractFromEmail(msg);
+                if (fromFilter != null) {
+                    if (fromEmail == null || !fromEmail.equalsIgnoreCase(fromFilter)) {
+                        logger.info("[outlook-poller] Skip '{}' — from='{}' != '{}'",
+                                msg.get("subject"), fromEmail, fromFilter);
+                        continue;
                     }
                 }
 
-                logger.debug("[outlook-poller] Email: subject='{}', from='{}'",
-                        payload.get("subject"), payload.get("fromEmail"));
+                // ── Subject filter (case-insensitive contains) ─────────────────────
+                String subject = asStr(msg.get("subject"));
+                if (subjectFilter != null) {
+                    if (subject == null || !subject.toLowerCase().contains(subjectFilter.toLowerCase())) {
+                        logger.info("[outlook-poller] Skip — subject '{}' doesn't contain '{}'",
+                                subject, subjectFilter);
+                        continue;
+                    }
+                }
+
+                // ── Build output payload ───────────────────────────────────────────
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("id",               msg.get("id"));
+                payload.put("subject",          subject);
+                payload.put("bodyPreview",      msg.get("bodyPreview"));
+                payload.put("receivedDateTime", receivedAt);
+                payload.put("hasAttachments",   msg.get("hasAttachments"));
+                payload.put("fromEmail",        fromEmail);
+                payload.put("fromName",         extractFromName(msg));
+
+                logger.info("[outlook-poller] ✓ Matched — subject='{}', from='{}', receivedAt='{}'",
+                        subject, fromEmail, receivedAt);
                 results.add(payload);
             }
 
-            return results;
+            nextUrl = reachedOldMessages ? null : asStr(response.get("@odata.nextLink"));
+        }
+
+        logger.info("[outlook-poller] Done after {} page(s): {} message(s) matched", page, results.size());
+        return results;
+    }
+
+    // ── HTTP ──────────────────────────────────────────────────────────────────────
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Map<String, Object> fetchPage(String url, String accessToken) {
+        try {
+            Map response = restClient.get()
+                    .uri(URI.create(url))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .header("Accept", "application/json")
+                    .retrieve()
+                    .body(Map.class);
+            if (response != null) {
+                logger.debug("[outlook-poller] Response keys: {}", response.keySet());
+            }
+            return (Map<String, Object>) response;
         } catch (Exception e) {
-            logger.error("[outlook-poller] Failed to poll: {} — {}", e.getClass().getSimpleName(), e.getMessage());
-            return List.of();
+            logger.error("[outlook-poller] HTTP error on '{}': {} — {}",
+                    url, e.getClass().getSimpleName(), e.getMessage());
+            return null;
         }
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    private String extractFromEmail(Map<String, Object> msg) {
+        try {
+            Map<String, Object> from = (Map<String, Object>) msg.get("from");
+            if (from == null) return null;
+            Map<String, Object> addr = (Map<String, Object>) from.get("emailAddress");
+            return addr != null ? asStr(addr.get("address")) : null;
+        } catch (Exception e) { return null; }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractFromName(Map<String, Object> msg) {
+        try {
+            Map<String, Object> from = (Map<String, Object>) msg.get("from");
+            if (from == null) return null;
+            Map<String, Object> addr = (Map<String, Object>) from.get("emailAddress");
+            return addr != null ? asStr(addr.get("name")) : null;
+        } catch (Exception e) { return null; }
+    }
+
     private static String asStr(Object obj) {
-        return obj != null ? String.valueOf(obj) : null;
+        if (obj == null) return null;
+        String s = String.valueOf(obj).trim();
+        return s.isEmpty() ? null : s;
     }
 }

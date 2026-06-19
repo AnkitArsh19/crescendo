@@ -163,7 +163,20 @@ public class GmailTriggerPoller implements TriggerPoller {
                     if ("Subject".equalsIgnoreCase(name)) {
                         payload.put("subject", header.get("value"));
                     } else if ("From".equalsIgnoreCase(name)) {
-                        payload.put("from", header.get("value"));
+                        String raw = header.get("value");
+                        // Keep raw "from" for backward compat
+                        payload.put("from", raw);
+                        // Also emit normalized fields matching frontend variable hints:
+                        // e.g. "John Doe <john@example.com>" or just "john@example.com"
+                        if (raw != null && raw.contains("<")) {
+                            int lt = raw.indexOf('<');
+                            int gt = raw.indexOf('>');
+                            payload.put("fromName", raw.substring(0, lt).trim());
+                            payload.put("fromEmail", raw.substring(lt + 1, gt).trim());
+                        } else {
+                            payload.put("fromEmail", raw);
+                            payload.put("fromName", "");
+                        }
                     } else if ("Date".equalsIgnoreCase(name)) {
                         payload.put("date", header.get("value"));
                     }

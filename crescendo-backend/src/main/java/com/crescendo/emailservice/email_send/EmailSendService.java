@@ -7,7 +7,9 @@ import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_c
 import com.crescendo.emailservice.suppression.EmailSuppressionService;
 import com.crescendo.emailservice.tracking.TrackingInjector;
 import com.crescendo.enums.EmailStatus;
-import com.crescendo.shared.infrastructure.event.RedisDomainEventPublisher;
+import com.crescendo.config.RedisStreamConfig;
+import com.crescendo.logbook.outbox.OutboxEvent;
+import com.crescendo.logbook.outbox.OutboxEventRepository;
 import com.crescendo.shared.util.TemplateInterpolator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +42,7 @@ public class EmailSendService {
 
     private final EmailLogRepository emailLogRepo;
     private final EmailTemplate_commandRepository templateRepo;
-    private final RedisDomainEventPublisher redisDomainEventPublisher;
+    private final OutboxEventRepository outboxRepo;
     private final EmailSuppressionService suppressionService;
 
     @Value("${app.tracking.base-url:}")
@@ -48,11 +50,11 @@ public class EmailSendService {
 
     public EmailSendService(EmailLogRepository emailLogRepo,
                             EmailTemplate_commandRepository templateRepo,
-                            RedisDomainEventPublisher redisDomainEventPublisher,
+                            OutboxEventRepository outboxRepo,
                             EmailSuppressionService suppressionService) {
         this.emailLogRepo = emailLogRepo;
         this.templateRepo = templateRepo;
-        this.redisDomainEventPublisher = redisDomainEventPublisher;
+        this.outboxRepo = outboxRepo;
         this.suppressionService = suppressionService;
     }
 
@@ -129,7 +131,12 @@ public class EmailSendService {
         if (textBody != null) emailData.put("textBody", textBody);
         if (listUnsubscribeHeader != null) emailData.put("listUnsubscribeHeader", listUnsubscribeHeader);
 
-        redisDomainEventPublisher.enqueueEmail(emailData);
+        Map<String, Object> outboxData = new HashMap<>(emailData);
+        outboxRepo.save(new OutboxEvent(
+                UUID.randomUUID(),
+                RedisStreamConfig.STREAM_EMAIL_QUEUE,
+                outboxData
+        ));
 
         logger.info("[email-send] Enqueued email {} for user {} via API key {}", emailId, userId, apiKeyId);
 

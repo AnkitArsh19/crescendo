@@ -11,8 +11,10 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,14 +57,21 @@ public class GmailSendEmailHandler implements ActionHandler {
 
         logger.info("[gmail] Sending email: to='{}', subject='{}'", to, subject);
 
+        // Optional cc / bcc (schema exposes them but handler was previously ignoring them)
+        String cc = getOptional(config, "cc");
+        String bcc = getOptional(config, "bcc");
+
         try {
-            String rawMessage = String.join("\r\n",
-                    "To: " + to,
-                    "Subject: " + subject,
-                    "Content-Type: text/html; charset=UTF-8",
-                    "",
-                    body
-            );
+            List<String> mimeLines = new ArrayList<>();
+            mimeLines.add("To: " + to);
+            if (cc != null && !cc.isBlank()) mimeLines.add("Cc: " + cc);
+            if (bcc != null && !bcc.isBlank()) mimeLines.add("Bcc: " + bcc);
+            mimeLines.add("Subject: " + subject);
+            mimeLines.add("Content-Type: text/html; charset=UTF-8");
+            mimeLines.add("");
+            mimeLines.add(body);
+
+            String rawMessage = String.join("\r\n", mimeLines);
 
             String encodedMessage = Base64.getUrlEncoder().withoutPadding()
                     .encodeToString(rawMessage.getBytes(StandardCharsets.UTF_8));
@@ -77,6 +86,7 @@ public class GmailSendEmailHandler implements ActionHandler {
             Map<String, Object> output = new HashMap<>();
             output.put("provider", "gmail");
             output.put("to", to);
+            if (cc != null && !cc.isBlank()) output.put("cc", cc);
             output.put("subject", subject);
             output.put("response", response);
             logger.info("[gmail] Email sent successfully to '{}'", to);
@@ -91,5 +101,10 @@ public class GmailSendEmailHandler implements ActionHandler {
     private String getRequired(Map<String, Object> config, String key) {
         Object val = config.get(key);
         return val != null ? val.toString() : null;
+    }
+
+    private String getOptional(Map<String, Object> config, String key) {
+        Object val = config.get(key);
+        return val != null && !val.toString().isBlank() ? val.toString() : null;
     }
 }

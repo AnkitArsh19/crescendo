@@ -31,6 +31,8 @@ public class MicrosoftOutlookApp implements AppDefinition {
                 AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
+                // Only triggers with a real PollingTriggerScheduler implementation are listed.
+                // new-event (calendar) is omitted until its poller is implemented.
                 List.of(
                     Map.of(
                         "triggerKey", "new-email",
@@ -46,17 +48,6 @@ public class MicrosoftOutlookApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "placeholder", "boss@company.com",
                                    "helpText", "Optionally filter by sender address")
-                        )
-                    ),
-                    Map.of(
-                        "triggerKey", "new-event",
-                        "name", "New Calendar Event",
-                        "description", "Triggers when a new event is created in your calendar",
-                        "configSchema", List.of(
-                            Map.of("key", "calendarId", "label", "Calendar",
-                                   "type", "dynamic_dropdown", "resourceType", "calendars",
-                                   "required", false,
-                                   "helpText", "Select calendar (default: primary)")
                         )
                     )
                 ),

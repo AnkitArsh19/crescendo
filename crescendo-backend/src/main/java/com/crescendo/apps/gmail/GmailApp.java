@@ -31,6 +31,9 @@ public class GmailApp implements AppDefinition {
                 "/icons/gmail.svg", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
+                // Only triggers with a real PollingTriggerScheduler implementation are listed here.
+                // Unsupported trigger keys (new-attachment, new-labeled-email, etc.) are omitted
+                // until their pollers are implemented, to prevent silent no-op activations.
                 List.of(
                     Map.of(
                         "triggerKey", "new-email",
@@ -46,58 +49,6 @@ public class GmailApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "placeholder", "boss@company.com",
                                    "helpText", "Optionally filter by sender address")
-                        )
-                    ),
-                    Map.of(
-                        "triggerKey", "new-attachment",
-                        "name", "New Attachment",
-                        "description", "Triggers when a new email with an attachment arrives",
-                        "configSchema", List.of(labelField)
-                    ),
-                    Map.of(
-                        "triggerKey", "new-labeled-email",
-                        "name", "New Labeled Email",
-                        "description", "Triggers when an email receives a specific label",
-                        "configSchema", List.of(
-                            Map.of("key", "labelId", "label", "Label",
-                                   "type", "dynamic_dropdown", "resourceType", "labels",
-                                   "required", true,
-                                   "helpText", "Select the Gmail label to watch")
-                        )
-                    ),
-                    Map.of(
-                        "triggerKey", "new-email-matching-search",
-                        "name", "New Email Matching Search",
-                        "description", "Triggers only for emails matching a Gmail search query",
-                        "configSchema", List.of(
-                            Map.of("key", "searchQuery", "label", "Search Query",
-                                   "type", "text", "required", true,
-                                   "placeholder", "from:boss@acme.com has:attachment",
-                                   "helpText", "Gmail advanced search query (same syntax as Gmail search bar)")
-                        )
-                    ),
-                    Map.of(
-                        "triggerKey", "new-email-from-person",
-                        "name", "New Email from Specific Person",
-                        "description", "Triggers when an email arrives from a specific sender",
-                        "configSchema", List.of(
-                            Map.of("key", "fromAddress", "label", "From Address",
-                                   "type", "text", "required", true,
-                                   "placeholder", "alice@company.com",
-                                   "helpText", "Sender email address to watch"),
-                            labelField
-                        )
-                    ),
-                    Map.of(
-                        "triggerKey", "new-email-with-subject",
-                        "name", "New Email with Subject",
-                        "description", "Triggers when an email with a specific subject arrives",
-                        "configSchema", List.of(
-                            Map.of("key", "subjectKeywords", "label", "Subject Keywords",
-                                   "type", "text", "required", true,
-                                   "placeholder", "Quarterly Report",
-                                   "helpText", "Keywords to match in the subject line"),
-                            labelField
                         )
                     )
                 ),
@@ -128,11 +79,7 @@ public class GmailApp implements AppDefinition {
                             Map.of("key", "body", "label", "Body",
                                    "type", "textarea", "required", true,
                                    "placeholder", "<p>Your email content here...</p>",
-                                   "helpText", "Email body (HTML supported)"),
-                            Map.of("key", "attachment", "label", "Attachment",
-                                   "type", "file", "required", false,
-                                   "accept", "*/*", "maxSizeMB", 25,
-                                   "helpText", "Attach a file to the email (max 25MB)")
+                                   "helpText", "Email body (HTML supported)")
                         )
                     ),
                     Map.of(
