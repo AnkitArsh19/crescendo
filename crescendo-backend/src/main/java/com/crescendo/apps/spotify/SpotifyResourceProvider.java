@@ -25,10 +25,7 @@ public class SpotifyResourceProvider implements ResourceProvider {
     private static final Logger logger = LoggerFactory.getLogger(SpotifyResourceProvider.class);
     private static final String SPOTIFY_API = "https://api.spotify.com/v1";
 
-    private final SpotifyClientCredentialsHelper credentialsHelper;
-
-    public SpotifyResourceProvider(SpotifyClientCredentialsHelper credentialsHelper) {
-        this.credentialsHelper = credentialsHelper;
+    public SpotifyResourceProvider() {
     }
 
     @Override
@@ -45,11 +42,9 @@ public class SpotifyResourceProvider implements ResourceProvider {
     public List<ResourceOption> listResources(Map<String, Object> credentials,
                                                String resourceType,
                                                Map<String, String> params) {
-        String accessToken;
-        try {
-            accessToken = credentialsHelper.resolveAccessToken(credentials);
-        } catch (SpotifyClientCredentialsHelper.SpotifyAuthException e) {
-            logger.warn("[spotify] Cannot resolve token for resource listing: {}", e.getMessage());
+        String accessToken = credentials != null && credentials.get("accessToken") != null ? credentials.get("accessToken").toString() : null;
+        if (accessToken == null || accessToken.isBlank()) {
+            logger.warn("[spotify] Cannot resolve token for resource listing");
             return List.of();
         }
 

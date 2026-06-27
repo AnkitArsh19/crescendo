@@ -8,33 +8,68 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for JWT.
+ */
 @Component
 public class JwtApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("jwt", "JWT", "Sign and Verify JSON Web Tokens",
-                "/icons/jwt.svg", AuthType.NONE,
+        return new App(
+                "jwt",
+                "JWT",
+                """
+                JSON Web Token (JWT) is a standard for creating data with optional signature and/or optional encryption whose payload holds JSON that asserts some number of claims.
+                
+                This integration provides operations for:
+                - **Sign**: Create a new signed JWT
+                - **Verify**: Verify the signature of a JWT
+                - **Decode**: Decode a JWT without verifying the signature
+                
+                Authenticate using a secret passphrase or PEM encoded public/private keys.
+                """,
+                "https://www.google.com/s2/favicons?domain=jwt.io&sz=128", // Generic icon
+                AuthType.APIKEY, // Uses custom credentials map
                 List.of(),
                 List.of(
-                    Map.of("actionKey", "sign", "name", "Sign",
-                        "description", "Create a new JWT from a payload",
-                        "configSchema", List.of(
-                            Map.of("key", "secret", "label", "Secret Key", "type", "text", "required", true,
-                                   "placeholder", "your-256-bit-secret", "helpText", "The secret used to sign the token"),
-                            Map.of("key", "payload", "label", "Payload (JSON)", "type", "json", "required", true,
-                                   "placeholder", "{\"sub\": \"1234567890\", \"name\": \"John Doe\"}", "helpText", "The JSON payload to sign"),
-                            Map.of("key", "expiresIn", "label", "Expires In (seconds)", "type", "number", "required", false,
-                                   "placeholder", "3600", "helpText", "Expiration time in seconds from now (optional)")
-                        )),
-                    Map.of("actionKey", "verify", "name", "Verify",
-                        "description", "Verify a JWT and extract its payload",
-                        "configSchema", List.of(
-                            Map.of("key", "token", "label", "Token", "type", "text", "required", true,
-                                   "placeholder", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "helpText", "The JWT to verify"),
-                            Map.of("key", "secret", "label", "Secret Key", "type", "text", "required", true,
-                                   "placeholder", "your-256-bit-secret", "helpText", "The secret used to verify the signature")
-                        ))
+                        Map.of(
+                                "actionKey", "jwt:sign",
+                                "name", "Sign a JWT",
+                                "description", "Sign a JWT",
+                                "configSchema", List.of(
+                                        Map.of("key", "useJson", "label", "Use JSON to Build Payload", "type", "boolean", "default", false),
+                                        Map.of("key", "claims", "label", "Payload Claims", "type", "json"),
+                                        Map.of("key", "claimsJson", "label", "Payload Claims (JSON)", "type", "json"),
+                                        Map.of("key", "headerClaims", "label", "Header Claims (JSON)", "type", "json"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "jwt:verify",
+                                "name", "Verify a JWT",
+                                "description", "Verify a JWT",
+                                "configSchema", List.of(
+                                        Map.of("key", "token", "label", "Token", "type", "text", "required", true),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "jwt:decode",
+                                "name", "Decode a JWT",
+                                "description", "Decode a JWT without verifying the signature",
+                                "configSchema", List.of(
+                                        Map.of("key", "token", "label", "Token", "type", "text", "required", true),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of(
+                Map.of("key", "keyType", "label", "Key Type", "type", "text", "default", "passphrase"),
+                Map.of("key", "secret", "label", "Secret", "type", "password"),
+                Map.of("key", "privateKey", "label", "Private Key", "type", "password"),
+                Map.of("key", "publicKey", "label", "Public Key", "type", "password"),
+                Map.of("key", "algorithm", "label", "Algorithm", "type", "text", "default", "HS256")
+        )).category("developer-tools");
     }
 }

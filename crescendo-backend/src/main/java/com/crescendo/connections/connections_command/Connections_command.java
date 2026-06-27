@@ -16,13 +16,12 @@ import java.util.UUID;
 
 @Entity
 /// Indexes tell that when creating table create indexes for the given columns.
-/// Here the selection process improves.
-/// The index column is the name given, and it creates index from the column list given
-@Table(name = "connections_command",
-    indexes = {
+/// Here the selection process improves. The index column is the name given, and
+/// it creates index from the column list given
+@Table(name = "connections_command", indexes = {
         @Index(name = "idx_connection_user", columnList = "userId"),
         @Index(name = "idx_connection_status", columnList = "status")
-    })
+})
 public class Connections_command {
 
     @Id
@@ -48,6 +47,29 @@ public class Connections_command {
     @Column(name = "status", nullable = false, length = 20)
     private ConnectionStatus status;
 
+    /**
+     * Indicates which master key version was used to encrypt {@code credentials}.
+     * Defaults to 1. When the master key is rotated, re-encrypted entries will get
+     * the new version number. This allows safe migration without a big-bang
+     * re-encryption.
+     */
+    @Column(name = "key_version", nullable = false, columnDefinition = "integer default 1")
+    private int keyVersion = 1;
+
+    /**
+     * Space/comma-separated OAuth scopes that were actually granted by the user
+     * at the time the connection was created.
+     * Populated from the {@code scope} field in the token response (most providers
+     * return it).
+     * {@code null} for API-key connections and for OAuth connections where the
+     * provider
+     * did not return a scope string.
+     * Used by the frontend to grey out actions that require scopes the user did not
+     * grant.
+     */
+    @Column(name = "granted_scopes", columnDefinition = "TEXT")
+    private String grantedScopes;
+
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
@@ -59,7 +81,8 @@ public class Connections_command {
     public Connections_command() {
     }
 
-    public Connections_command(UUID id, User_command user, AppKey appKey, String name, Map<String, Object> credentials, ConnectionStatus status) {
+    public Connections_command(UUID id, User_command user, AppKey appKey, String name, Map<String, Object> credentials,
+            ConnectionStatus status) {
         this.id = id;
         this.user = user;
         this.appKey = appKey;
@@ -71,7 +94,8 @@ public class Connections_command {
     /**
      * Convenience constructor accepting raw string for appKey.
      */
-    public Connections_command(UUID id, User_command user, String appKey, String name, Map<String, Object> credentials, ConnectionStatus status) {
+    public Connections_command(UUID id, User_command user, String appKey, String name, Map<String, Object> credentials,
+            ConnectionStatus status) {
         this(id, user, AppKey.of(appKey), name, credentials, status);
     }
 
@@ -148,5 +172,21 @@ public class Connections_command {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public int getKeyVersion() {
+        return keyVersion;
+    }
+
+    public void setKeyVersion(int keyVersion) {
+        this.keyVersion = keyVersion;
+    }
+
+    public String getGrantedScopes() {
+        return grantedScopes;
+    }
+
+    public void setGrantedScopes(String grantedScopes) {
+        this.grantedScopes = grantedScopes;
     }
 }

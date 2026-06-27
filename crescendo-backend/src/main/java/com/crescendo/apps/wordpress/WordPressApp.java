@@ -13,11 +13,27 @@ public class WordPressApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("wordpress", "WordPress", "Create and fetch WordPress posts using application passwords",
+        return new App("wordpress", "WordPress", """
+                WordPress is a popular open-source content management system. The Crescendo WordPress app allows you to automate blog publishing and retrieve existing posts programmatically.
+
+                **What you can do with WordPress in Crescendo:**
+                - Publish an AI-generated meeting summary directly to an internal WordPress blog
+                - Cross-post your published WordPress articles to LinkedIn and Twitter automatically using a scheduled trigger
+                - Sync new WordPress posts into an Airtable base for editorial tracking and SEO analysis
+                - Send a celebratory Slack message to the marketing channel whenever a new post goes live
+
+                **Actions available:**
+                - Create Post — generate a new article (draft or published) with a title and HTML/text content
+                - List Posts — fetch a list of recent articles, with optional search filtering
+
+                **Who should use this:** Content managers, SEO specialists, and marketing teams automating their publishing pipeline.
+
+                **Authentication:** WordPress credentials (Site URL, Username, and Application Password).
+                """,
                 "https://www.google.com/s2/favicons?domain=wordpress.org&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
-                        Map.of("actionKey", "create-post", "name", "Create Post",
+                        Map.of("actionKey", "wordpress:post:create", "name", "Create Post",
                                 "description", "Create a WordPress post",
                                 "configSchema", List.of(
                                         Map.of("key", "title", "label", "Title", "type", "text", "required", true),
@@ -27,7 +43,7 @@ public class WordPressApp implements AppDefinition {
                                                         Map.of("value", "draft", "label", "Draft"),
                                                         Map.of("value", "publish", "label", "Publish")
                                                 )))),
-                        Map.of("actionKey", "list-posts", "name", "List Posts",
+                        Map.of("actionKey", "wordpress:post:getMany", "name", "List Posts",
                                 "description", "List recent WordPress posts",
                                 "configSchema", List.of(
                                         Map.of("key", "perPage", "label", "Per Page", "type", "text", "required", false,

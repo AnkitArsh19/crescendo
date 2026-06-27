@@ -139,7 +139,10 @@ export default function SearchableSelect({
                 case 'Enter':
                     e.preventDefault();
                     if (focusIdx >= 0 && focusIdx < filtered.length) {
-                        handleSelect(filtered[focusIdx].id);
+                        const opt = filtered[focusIdx];
+                        if (!opt.disabled) {
+                            handleSelect(opt.id);
+                        }
                     }
                     break;
                 case 'Escape':
@@ -210,9 +213,19 @@ export default function SearchableSelect({
                         <button
                             key={opt.id}
                             type="button"
-                            className={`ss-option ${value === opt.id ? 'selected' : ''} ${focusIdx === idx ? 'focused' : ''}`}
-                            onClick={() => handleSelect(opt.id)}
-                            onMouseEnter={() => setFocusIdx(idx)}
+                            className={`ss-option ${value === opt.id ? 'selected' : ''} ${focusIdx === idx ? 'focused' : ''} ${opt.disabled ? 'disabled' : ''}`}
+                            onClick={(e) => {
+                                if (opt.disabled) {
+                                    e.preventDefault();
+                                    return;
+                                }
+                                handleSelect(opt.id);
+                            }}
+                            onMouseEnter={() => {
+                                if (!opt.disabled) setFocusIdx(idx);
+                            }}
+                            title={opt.tooltip || ''}
+                            style={opt.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
                         >
                             <div className="ss-option-content">
                                 <div className="ss-option-label">{opt.label}</div>

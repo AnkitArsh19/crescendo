@@ -8,36 +8,52 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for TOTP.
+ */
 @Component
 public class TotpApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("totp", "TOTP", "Generate and verify time-based one-time passcodes",
-                "/icons/totp.svg", AuthType.NONE,
-                List.of(),
+        return new App(
+                "totp",
+                "TOTP",
+                """
+                TOTP (Time-Based One-Time Password) is a standard algorithm that generates a one-time password using the current time as a source of uniqueness.
+                
+                **What you can do with TOTP in Crescendo:**
+                - Generate secure two-factor authentication (2FA) tokens on the fly
+                - Programmatically authenticate into external services that enforce 2FA
+                - Automate login flows that require TOTP verification
+                
+                **Actions available:**
+                - Generate Secret — generates a time-based one-time password based on your configured TOTP API credentials
+                
+                **Who should use this:** Security engineers, backend developers, and automation specialists managing 2FA-secured services.
+                
+                **Authentication:** Requires TOTP API Credentials.
+                """,
+                "/icons/totp.png", // Generic icon
+                AuthType.NONE,
                 List.of(
-                        Map.of("actionKey", "generate", "name", "Generate Code",
-                                "description", "Generate a TOTP code from a Base32 secret",
-                                "configSchema", schema(false)),
-                        Map.of("actionKey", "verify", "name", "Verify Code",
-                                "description", "Verify a TOTP code from a Base32 secret",
-                                "configSchema", schema(true))
+                        Map.of(
+                                "key", "totpApi",
+                                "label", "TOTP API Credentials",
+                                "type", "string",
+                                "required", true
+                        )
+                ),
+                List.of(
+                        Map.of(
+                                "actionKey", "totp:generateSecret",
+                                "name", "Generate Secret",
+                                "description", "Generate a time-based one-time password",
+                                "configSchema", List.of(
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
-    }
-
-    private List<Map<String, Object>> schema(boolean includeCode) {
-        java.util.ArrayList<Map<String, Object>> fields = new java.util.ArrayList<>();
-        fields.add(Map.of("key", "secret", "label", "Base32 Secret", "type", "password", "required", true,
-                "placeholder", "JBSWY3DPEHPK3PXP", "helpText", "Shared TOTP secret"));
-        if (includeCode) {
-            fields.add(Map.of("key", "code", "label", "Code", "type", "text", "required", true,
-                    "placeholder", "123456", "helpText", "Code to verify"));
-        }
-        fields.add(Map.of("key", "digits", "label", "Digits", "type", "number", "required", false,
-                "placeholder", "6", "helpText", "Number of code digits"));
-        fields.add(Map.of("key", "period", "label", "Period Seconds", "type", "number", "required", false,
-                "placeholder", "30", "helpText", "TOTP time step"));
-        return fields;
+        ).category("logic-and-flow");
     }
 }

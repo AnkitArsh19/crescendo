@@ -32,8 +32,15 @@ public final class AuthenticatedUser {
      * @throws ResponseStatusException 401 if not authenticated or principal is unexpected type
      */
     public static UUID userId(Authentication auth) {
-        if (auth == null || !(auth.getPrincipal() instanceof AppUserDetails details))
+        if (auth == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
-        return details.getId();
+        }
+        if (auth.getPrincipal() instanceof AppUserDetails details) {
+            return details.getId();
+        }
+        if (auth.getPrincipal() instanceof PublicApiPrincipal principal) {
+            return principal.getId();
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
     }
 }

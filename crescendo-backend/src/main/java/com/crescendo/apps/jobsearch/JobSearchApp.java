@@ -24,8 +24,23 @@ public class JobSearchApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("job-search", "Job Search",
-                "Search jobs across 10+ platforms — India focused",
+        return new App("job-search", "Job Search", """
+                Search jobs across 10+ platforms including LinkedIn, Greenhouse, Lever, and more. The Crescendo Job Search app is specifically optimized for the Indian job market, letting you automate job discovery.
+
+                **What you can do with Job Search in Crescendo:**
+                - Run scheduled searches for specific roles (e.g., "Software Engineer in Bangalore")
+                - Export job listings directly to a Google Sheet or Airtable CRM
+                - Send new high-paying or remote job alerts to Telegram or Discord
+                - Customize searches with advanced LinkedIn filters (experience, job type, work arrangement)
+
+                **Actions available:**
+                - Search Jobs (India) — search across major job boards and ATS systems
+                - Search Remote Jobs — find remote-friendly roles globally
+
+                **Who should use this:** Job seekers tracking specific companies or roles, recruiters analyzing the job market, and community managers sharing opportunities.
+
+                **Authentication:** None required (Crescendo manages the API keys for you).
+                """,
                 "", AuthType.NONE,
                 List.of(), // no triggers
                 List.of(

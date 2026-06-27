@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
+import static com.crescendo.publicapi.PublicApiScopes.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -44,12 +45,14 @@ public class PublicConnectionController {
     public ResponseEntity<ConnectionsDto.ConnectionResponse> createConnection(
             @Valid @RequestBody ConnectionsDto.CreateConnectionRequest req,
             Authentication auth) {
+        require(auth, CONNECTION_WRITE);
         var resp = commandService.createConnection(userId(auth), req);
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
     @GetMapping
     public ResponseEntity<List<ConnectionsDto.ConnectionResponse>> listConnections(Authentication auth) {
+        require(auth, CONNECTION_READ);
         return ResponseEntity.ok(queryService.listConnections(userId(auth)));
     }
 
@@ -57,6 +60,7 @@ public class PublicConnectionController {
     public ResponseEntity<ConnectionsDto.ConnectionResponse> getConnection(
             @PathVariable UUID connectionId,
             Authentication auth) {
+        require(auth, CONNECTION_READ);
         return ResponseEntity.ok(queryService.getConnection(userId(auth), connectionId));
     }
 
@@ -65,6 +69,7 @@ public class PublicConnectionController {
             @PathVariable UUID connectionId,
             @Valid @RequestBody ConnectionsDto.UpdateConnectionRequest req,
             Authentication auth) {
+        require(auth, CONNECTION_WRITE);
         commandService.updateConnection(userId(auth), connectionId, req);
         return ResponseEntity.noContent().build();
     }
@@ -73,6 +78,7 @@ public class PublicConnectionController {
     public ResponseEntity<Void> deleteConnection(
             @PathVariable UUID connectionId,
             Authentication auth) {
+        require(auth, CONNECTION_WRITE);
         commandService.deleteConnection(userId(auth), connectionId);
         return ResponseEntity.noContent().build();
     }

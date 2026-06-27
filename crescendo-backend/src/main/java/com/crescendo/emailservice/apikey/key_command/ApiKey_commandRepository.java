@@ -12,6 +12,8 @@ public interface ApiKey_commandRepository extends JpaRepository<ApiKey_command, 
 
     Optional<ApiKey_command> findByPrefix(String prefix);
 
+    boolean existsByPrefix(String prefix);
+
     List<ApiKey_command> findByUserIdAndRevokedAtIsNullOrderByCreatedAtDesc(UUID userId);
 
     Optional<ApiKey_command> findByIdAndUserId(UUID id, UUID userId);

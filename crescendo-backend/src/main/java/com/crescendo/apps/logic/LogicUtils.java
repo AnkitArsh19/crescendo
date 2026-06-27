@@ -46,6 +46,7 @@ final class LogicUtils {
             case "is_empty" -> left == null || stringValue(left).isBlank();
             case "is_not_empty" -> left != null && !stringValue(left).isBlank();
             case "regex" -> Pattern.compile(stringValue(right)).matcher(stringValue(left)).find();
+            case "not_regex" -> !Pattern.compile(stringValue(right)).matcher(stringValue(left)).find();
             default -> false;
         };
     }

@@ -9,6 +9,8 @@ import com.crescendo.connections.connections_query.Connections_queryRepository;
 import com.crescendo.connections.domain_event.ConnectionCreatedEvent;
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
 import com.crescendo.enums.ConnectionStatus;
+import com.crescendo.settings.oauth.UserOAuthAppDto;
+import com.crescendo.settings.oauth.UserOAuthAppService;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
 import com.crescendo.shared.domain.valueobject.AppKey;
 import com.crescendo.user.user_command.User_command;
@@ -79,6 +81,7 @@ public class IntegrationOAuthService {
     private final DomainEventPublisher eventPublisher;
     private final RestTemplate restTemplate;
     private final byte[] hmacKeyBytes;
+    private final UserOAuthAppService userOAuthAppService;
 
     /**
      * Bounded LRU cache for PKCE code_verifier values, keyed by OAuth state.
@@ -110,6 +113,7 @@ public class IntegrationOAuthService {
             AppRepository appRepo,
             ConnectionCredentialsCryptoService cryptoService,
             DomainEventPublisher eventPublisher,
+            UserOAuthAppService userOAuthAppService,
             @Value("${credentials.crypto.key:}") String base64Key) {
         this.oauthConfig = oauthConfig;
         this.connectionRepo = connectionRepo;
@@ -118,6 +122,7 @@ public class IntegrationOAuthService {
         this.appRepo = appRepo;
         this.cryptoService = cryptoService;
         this.eventPublisher = eventPublisher;
+        this.userOAuthAppService = userOAuthAppService;
         this.restTemplate = new RestTemplate();
         this.hmacKeyBytes = Base64.getDecoder().decode(base64Key.trim());
     }
@@ -137,6 +142,25 @@ public class IntegrationOAuthService {
 
         String redirectUri = backendUrl + "/connections/oauth/" + providerKey + "/callback";
 
+        // ── User-owned OAuth app (n8n-style BYOA) ────────────────
+        // If the user has configured their own client_id/secret for this provider,
+        // use those instead of the platform credentials. This enables custom branding
+        // and custom scopes on the consent screen.
+        String effectiveClientId = config.getClientId();
+        @SuppressWarnings("unused")
+        String effectiveClientSecret = config.getClientSecret();
+        String effectiveScopes = config.getScopes();
+
+        UserOAuthAppDto.DecryptedOAuthApp userApp = userOAuthAppService.getDecrypted(userId, providerKey);
+        if (userApp != null) {
+            effectiveClientId = userApp.clientId();
+            effectiveClientSecret = userApp.clientSecret();
+            if (userApp.scopes() != null && !userApp.scopes().isBlank()) {
+                effectiveScopes = userApp.scopes();
+            }
+            logger.debug("[oauth] Using user-owned OAuth app for provider={} userId={}", providerKey, userId);
+        }
+
         // State format:
         // New: userId:nonce:hmac
         // Reconnect: userId:nonce:connectionId:hmac
@@ -152,13 +176,13 @@ public class IntegrationOAuthService {
         String state = payload + ":" + signature;
 
         StringBuilder url = new StringBuilder(config.getAuthorizeUrl());
-        url.append("?client_id=").append(encode(config.getClientId()));
+        url.append("?client_id=").append(encode(effectiveClientId));
         url.append("&redirect_uri=").append(encode(redirectUri));
         url.append("&response_type=code");
         url.append("&state=").append(encode(state));
 
-        if (config.getScopes() != null && !config.getScopes().isBlank()) {
-            url.append("&scope=").append(encode(config.getScopes()));
+        if (effectiveScopes != null && !effectiveScopes.isBlank()) {
+            url.append("&scope=").append(encode(effectiveScopes));
         }
 
         if (isGoogleProvider(providerKey)) {
@@ -219,6 +243,14 @@ public class IntegrationOAuthService {
             credentials.put("tokenType", tokenResponse.get("token_type"));
         }
 
+        // Capture granted scopes for scope-aware UI greying.
+        // Most OAuth providers return the actual granted scopes in the token response.
+        // Store separately (not in encrypted credentials blob) so the read side can surface it.
+        String grantedScopes = null;
+        if (tokenResponse.containsKey("scope") && tokenResponse.get("scope") != null) {
+            grantedScopes = tokenResponse.get("scope").toString();
+        }
+
         // Resolve app key from provider key
         String appKey = resolveAppKey(providerKey);
         App app = appRepo.findById(AppKey.of(appKey))
@@ -266,12 +298,15 @@ public class IntegrationOAuthService {
                 existing.setCredentials(encryptedCredentials);
                 existing.setName(connectionName);
                 existing.setStatus(ConnectionStatus.ACTIVE);
+                if (grantedScopes != null) existing.setGrantedScopes(grantedScopes);
                 connectionRepo.save(existing);
 
                 // Update query side
+                final String finalGrantedScopes = grantedScopes;
                 connectionQueryRepo.findById(reconnectConnectionId).ifPresent(q -> {
                     q.setName(connectionName);
                     q.setStatus(ConnectionStatus.ACTIVE);
+                    if (finalGrantedScopes != null) q.setGrantedScopes(finalGrantedScopes);
                     connectionQueryRepo.save(q);
                 });
 
@@ -281,12 +316,12 @@ public class IntegrationOAuthService {
             } else {
                 // Connection was deleted — fall through to create new
                 connectionId = createNewConnection(user, appKey, connectionName, encryptedCredentials, userId,
-                        providerKey, accountEmail);
+                        providerKey, accountEmail, grantedScopes);
             }
         } else {
             // ── NEW CONNECTION ──
             connectionId = createNewConnection(user, appKey, connectionName, encryptedCredentials, userId, providerKey,
-                    accountEmail);
+                    accountEmail, grantedScopes);
         }
 
         // Return JSON for the popup postMessage
@@ -624,22 +659,25 @@ public class IntegrationOAuthService {
     }
 
     /**
-     * Creates a new connection (used for both new and fallback-from-deleted
-     * reconnection).
+     * Creates a new connection (used for both new and fallback-from-deleted reconnection).
+     *
+     * @param grantedScopes space/comma-separated scopes from the OAuth token response; may be null
      */
     private UUID createNewConnection(User_command user, String appKey, String connectionName,
             Map<String, Object> encryptedCredentials, UUID userId,
-            String providerKey, String accountEmail) {
+            String providerKey, String accountEmail, String grantedScopes) {
         UUID connectionId = UUID.randomUUID();
         Connections_command connection = new Connections_command(
                 connectionId, user, AppKey.of(appKey),
                 connectionName,
                 encryptedCredentials, ConnectionStatus.ACTIVE);
+        if (grantedScopes != null) connection.setGrantedScopes(grantedScopes);
         connectionRepo.save(connection);
 
         Connections_query queryProjection = new Connections_query(
                 connectionId, userId, appKey,
                 connectionName, ConnectionStatus.ACTIVE);
+        if (grantedScopes != null) queryProjection.setGrantedScopes(grantedScopes);
         connectionQueryRepo.save(queryProjection);
 
         eventPublisher.publish(new ConnectionCreatedEvent(connectionId, userId, appKey));

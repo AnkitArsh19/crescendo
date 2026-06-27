@@ -229,3 +229,14 @@ img {
   background: rgba(128, 128, 128, 0.25);
   color: var(--text-accent);
 }
+
+/* ───────────── App Logo Icons ───────────── */
+/* Dark mode: grayscale preserves shading detail, invert makes icons light */
+.app-logo-img {
+  filter: grayscale(1) invert(1);
+}
+
+/* Light mode: grayscale keeps dark shading naturally visible */
+[data-theme="light"] .app-logo-img {
+  filter: grayscale(1);
+}

@@ -1,68 +1,77 @@
 package com.crescendo.apps.facebookgraph;
 
-import com.crescendo.apps.simpleapi.SimpleApiSupport;
-import com.crescendo.execution.action.*;
-import tools.jackson.databind.ObjectMapper;
-import org.springframework.http.MediaType;
+import com.crescendo.execution.action.ActionContext;
+import com.crescendo.execution.action.ActionMapping;
+import com.crescendo.execution.action.ActionResult;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import java.util.*;
 
-class FbBase {
-    static String base(ActionContext c) {
-        String v = SimpleApiSupport.cred(c, "graphVersion");
-        return "https://graph.facebook.com/" + (v.isBlank() ? "v20.0" : v);
+import java.util.Map;
+import java.util.HashMap;
+
+@Component
+public class FacebookGraphHandlers {
+
+    private static final String DEFAULT_VERSION = "v20.0";
+
+    private String getVersion(ActionContext context) {
+        String ver = (String) context.credentials().get("graphVersion");
+        return (ver != null && !ver.isBlank()) ? ver : DEFAULT_VERSION;
     }
 
-    static RestClient client(ActionContext c) {
-        return RestClient.create(base(c));
-    }
-}
-
-@ActionMapping(appKey = "facebook-graph", actionKey = "get-node")
-class FacebookGetNodeHandler implements ActionHandler {
-    private final ObjectMapper m;
-
-    FacebookGetNodeHandler(ObjectMapper m) {
-        this.m = m;
+    private String getAuth(ActionContext context) {
+        return "Bearer " + context.credentials().get("accessToken");
     }
 
-    @Override
-    public ActionResult execute(ActionContext c) {
-        try {
-            String fields = SimpleApiSupport.cfg(c, "fields");
-            String uri = fields.isBlank() ? "/{id}?access_token={token}" : "/{id}?fields={fields}&access_token={token}";
-            String res = fields.isBlank() ?
-                    FbBase.client(c).get().uri(uri, SimpleApiSupport.cfg(c, "nodeId"), SimpleApiSupport.cred(c, "accessToken"))
-                            .retrieve().body(String.class) :
-                    FbBase.client(c).get().uri(uri, SimpleApiSupport.cfg(c, "nodeId"), fields, SimpleApiSupport.cred(c, "accessToken"))
-                            .retrieve().body(String.class);
-            return SimpleApiSupport.parsed(m, res);
-        } catch (Exception e) {
-            return ActionResult.failure("Facebook get node failed: " + e.getMessage());
+    @ActionMapping(appKey = "facebook-graph", actionKey = "create-page-post")
+    public Object createPost(ActionContext context) throws Exception {
+        String pageId = context.configuration().get("pageId") != null ? context.configuration().get("pageId").toString() : "";
+        String message = context.configuration().get("message") != null ? context.configuration().get("message").toString() : "";
+
+        if (pageId.isBlank() || message.isBlank()) {
+            return ActionResult.failure("Page ID and message are required");
         }
-    }
-}
 
-@ActionMapping(appKey = "facebook-graph", actionKey = "create-page-post")
-class FacebookCreatePagePostHandler implements ActionHandler {
-    private final ObjectMapper m;
+        Map<String, String> body = new HashMap<>();
+        body.put("message", message);
 
-    FacebookCreatePagePostHandler(ObjectMapper m) {
-        this.m = m;
-    }
-
-    @Override
-    public ActionResult execute(ActionContext c) {
         try {
-            String res = FbBase.client(c).post()
-                    .uri("/{pageId}/feed?access_token={token}", SimpleApiSupport.cfg(c, "pageId"), SimpleApiSupport.cred(c, "accessToken"))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("message", SimpleApiSupport.cfg(c, "message")))
+            String response = RestClient.create("https://graph.facebook.com")
+                    .post()
+                    .uri("/{version}/{pageId}/feed", getVersion(context), pageId)
+                    .header("Authorization", getAuth(context))
+                    .header("Content-Type", "application/json")
+                    .body(body)
                     .retrieve()
                     .body(String.class);
-            return SimpleApiSupport.parsed(m, res);
+            return ActionResult.success(Map.of("data", response));
         } catch (Exception e) {
-            return ActionResult.failure("Facebook create page post failed: " + e.getMessage());
+            return ActionResult.failure("Failed to create Facebook Page post: " + e.getMessage());
+        }
+    }
+
+    @ActionMapping(appKey = "facebook-graph", actionKey = "get-node")
+    public Object getNode(ActionContext context) throws Exception {
+        String nodeId = context.configuration().get("nodeId") != null ? context.configuration().get("nodeId").toString() : "";
+        String fields = context.configuration().get("fields") != null ? context.configuration().get("fields").toString() : "";
+
+        if (nodeId.isBlank()) {
+            return ActionResult.failure("Node ID is required");
+        }
+
+        try {
+            RestClient.RequestHeadersSpec<?> spec = RestClient.create("https://graph.facebook.com")
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                        .path("/{version}/{nodeId}")
+                        .queryParamIfPresent("fields", java.util.Optional.ofNullable(fields.isBlank() ? null : fields))
+                        .build(getVersion(context), nodeId))
+                    .header("Authorization", getAuth(context));
+
+            String response = spec.retrieve().body(String.class);
+            return ActionResult.success(Map.of("data", response));
+        } catch (Exception e) {
+            return ActionResult.failure("Failed to fetch Facebook Graph node: " + e.getMessage());
         }
     }
 }

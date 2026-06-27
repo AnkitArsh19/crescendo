@@ -19,6 +19,17 @@ public record ActionResult(
         return new ActionResult(true, outputData, null);
     }
 
+    @SuppressWarnings("unchecked")
+    public static ActionResult success(Object outputData) {
+        if (outputData instanceof Map) {
+            return new ActionResult(true, (Map<String, Object>) outputData, null);
+        } else if (outputData == null) {
+            return new ActionResult(true, Map.of(), null);
+        } else {
+            return new ActionResult(true, Map.of("result", outputData), null);
+        }
+    }
+
     public static ActionResult failure(String error) {
         return new ActionResult(false, Map.of(), error);
     }

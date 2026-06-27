@@ -12,11 +12,27 @@ import java.util.Map;
 public class PayPalApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("paypal", "PayPal", "Create and fetch PayPal checkout orders",
+        return new App("paypal", "PayPal", """
+                PayPal is a global leader in online payments. The Crescendo PayPal app lets you automate invoicing and track checkout orders seamlessly within your workflows.
+
+                **What you can do with PayPal in Crescendo:**
+                - Automatically generate a PayPal checkout link when a user clicks "Buy" in your custom application
+                - Send a confirmation email via SendGrid when a PayPal order is successfully captured
+                - Retrieve order details to update inventory counts in your PostgreSQL database
+                - Notify your accounting channel in Slack when a large payment clears
+
+                **Actions available:**
+                - Create Order — generate a checkout session for a specific currency and value
+                - Get Order — retrieve the current status and details of an existing order
+
+                **Who should use this:** E-commerce operators, freelancers, and billing teams integrating digital payments.
+
+                **Authentication:** API credentials (Client ID and Secret).
+                """,
                 "https://www.google.com/s2/favicons?domain=paypal.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
-                        Map.of("actionKey", "create-order", "name", "Create Order",
+                        Map.of("actionKey", "paypal:order:create", "name", "Create Order",
                                 "description", "Create a PayPal checkout order",
                                 "configSchema", List.of(
                                         Map.of("key", "amount", "label", "Amount", "type", "text", "required", true,
@@ -26,7 +42,7 @@ public class PayPalApp implements AppDefinition {
                                         Map.of("key", "intent", "label", "Intent", "type", "text", "required", false,
                                                 "placeholder", "CAPTURE", "helpText", "CAPTURE or AUTHORIZE")
                                 )),
-                        Map.of("actionKey", "fetch-order", "name", "Fetch Order",
+                        Map.of("actionKey", "paypal:order:get", "name", "Fetch Order",
                                 "description", "Fetch a PayPal order",
                                 "configSchema", List.of(
                                         Map.of("key", "orderId", "label", "Order ID", "type", "text", "required", true,

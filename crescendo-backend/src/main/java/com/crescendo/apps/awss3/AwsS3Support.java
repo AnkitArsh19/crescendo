@@ -1,7 +1,7 @@
 package com.crescendo.apps.awss3;
 
 import com.crescendo.execution.action.ActionContext;
-import com.crescendo.execution.action.ActionHandler;
+// import com.crescendo.execution.action.ActionHandler;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
 
-abstract class AwsS3Support implements ActionHandler {
+abstract class AwsS3Support {
     S3Client s3(ActionContext c) {
         var b = S3Client.builder()
                 .credentialsProvider(credentials(c))

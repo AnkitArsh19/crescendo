@@ -15,7 +15,23 @@ public class GoogleSlidesApp implements AppDefinition {
                 "type", "dynamic_dropdown", "resourceType", "presentations",
                 "required", true, "helpText", "Select the presentation");
 
-        return new App("google-slides", "Google Slides", "Create presentations and manage slide decks",
+        return new App("google-slides", "Google Slides", """
+                Google Slides is a presentation program included as part of the free, web-based Google Docs Editors suite. The Crescendo Google Slides app allows you to automate the generation and modification of slide decks.
+
+                **What you can do with Google Slides in Crescendo:**
+                - Automatically generate a weekly sales presentation using data from Salesforce
+                - Replace template placeholder text with client names for automated pitch decks
+                - Create a new, blank slide deck whenever a new project is created in Asana
+                - Send a Slack notification when a presentation is successfully generated
+
+                **Actions available:**
+                - Create Presentation — generate a new blank slideshow
+                - Replace Text — find and replace specific placeholder strings across all slides
+
+                **Who should use this:** Sales teams generating pitch decks, educators creating automated lessons, and analysts building recurring visual reports.
+
+                **Authentication:** OAuth 2.0 (connect your Google account).
+                """,
                 "https://ssl.gstatic.com/images/branding/product/2x/slides_2020q4_48dp.png", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "presentation-updated", "name", "Presentation Updated",
@@ -23,15 +39,15 @@ public class GoogleSlidesApp implements AppDefinition {
                         "configSchema", List.of(presField))
                 ),
                 List.of(
-                    Map.of("actionKey", "create-presentation", "name", "Create Presentation",
+                    Map.of("actionKey", "create", "name", "Create Presentation",
                         "description", "Create a new Google Slides presentation",
                         "configSchema", List.of(
                             Map.of("key", "title", "label", "Title", "type", "text", "required", true,
                                    "placeholder", "Q1 Review", "helpText", "Presentation title"))),
-                    Map.of("actionKey", "get-presentation", "name", "Get Presentation",
+                    Map.of("actionKey", "get", "name", "Get Presentation",
                         "description", "Fetch a presentation's metadata and slides",
                         "configSchema", List.of(presField)),
-                    Map.of("actionKey", "add-slide", "name", "Add Slide",
+                    Map.of("actionKey", "addSlide", "name", "Add Slide",
                         "description", "Add a new slide to a presentation",
                         "configSchema", List.of(presField,
                             Map.of("key", "layout", "label", "Layout", "type", "select", "required", false,

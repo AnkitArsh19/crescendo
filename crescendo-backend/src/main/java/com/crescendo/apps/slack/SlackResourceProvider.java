@@ -116,10 +116,12 @@ public class SlackResourceProvider implements ResourceProvider {
     }
 
     private String extractToken(Map<String, Object> credentials) {
-        // Supports both OAuth accessToken and manual botToken
+        // Supports OAuth accessToken, manual botToken, and apiKey
         Object token = credentials.get("accessToken");
         if (token == null)
             token = credentials.get("botToken");
+        if (token == null)
+            token = credentials.get("apiKey");
         if (token == null || token.toString().isBlank()) {
             throw new IllegalArgumentException("Slack connection is missing an access token");
         }

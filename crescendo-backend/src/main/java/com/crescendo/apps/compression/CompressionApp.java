@@ -8,37 +8,49 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Compression.
+ */
 @Component
 public class CompressionApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("compression", "Compression", "Compress and decompress text payloads",
-                "/icons/compression.svg", AuthType.NONE,
+        return new App(
+                "compression",
+                "Compression",
+                """
+                Compress and decompress files.
+                
+                This integration provides operations for:
+                - **Compress**: Compress files into a zip or gzip archive
+                - **Decompress**: Decompress zip or gzip archives
+                """,
+                "/icons/compress.svg", // Generic icon
+                AuthType.NONE,
                 List.of(),
                 List.of(
-                        Map.of("actionKey", "compress", "name", "Compress Text",
-                                "description", "Compress text as gzip or zip and return Base64",
+                        Map.of(
+                                "actionKey", "compression:compress",
+                                "name", "Compress",
+                                "description", "Compress files into a zip or gzip archive",
                                 "configSchema", List.of(
-                                        Map.of("key", "format", "label", "Format", "type", "select", "required", false,
-                                                "options", List.of(
-                                                        Map.of("value", "gzip", "label", "Gzip"),
-                                                        Map.of("value", "zip", "label", "Zip")
-                                                )),
-                                        Map.of("key", "text", "label", "Text", "type", "textarea", "required", true,
-                                                "placeholder", "Text to compress"),
-                                        Map.of("key", "fileName", "label", "Zip File Name", "type", "text", "required", false,
-                                                "placeholder", "data.txt"))),
-                        Map.of("actionKey", "decompress", "name", "Decompress Text",
-                                "description", "Decompress Base64 gzip or zip data",
+                                        Map.of("key", "binaryPropertyName", "label", "Input Binary Field(s)", "type", "text", "required", true, "default", "data"),
+                                        Map.of("key", "outputFormat", "label", "Output Format", "type", "text", "default", "zip"),
+                                        Map.of("key", "fileName", "label", "File Name", "type", "text"),
+                                        Map.of("key", "binaryPropertyOutput", "label", "Put Output File in Field", "type", "text", "default", "data")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "compression:decompress",
+                                "name", "Decompress",
+                                "description", "Decompress zip or gzip archives",
                                 "configSchema", List.of(
-                                        Map.of("key", "format", "label", "Format", "type", "select", "required", false,
-                                                "options", List.of(
-                                                        Map.of("value", "gzip", "label", "Gzip"),
-                                                        Map.of("value", "zip", "label", "Zip")
-                                                )),
-                                        Map.of("key", "base64", "label", "Base64 Data", "type", "textarea", "required", true)))
+                                        Map.of("key", "binaryPropertyName", "label", "Input Binary Field(s)", "type", "text", "required", true, "default", "data"),
+                                        Map.of("key", "outputPrefix", "label", "Output Prefix", "type", "text", "default", "file_")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("files-and-storage");
     }
 }

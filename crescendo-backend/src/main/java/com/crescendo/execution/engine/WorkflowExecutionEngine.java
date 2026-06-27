@@ -6,6 +6,7 @@ import com.crescendo.connections.connections_command.Connections_command;
 import com.crescendo.connections.connections_command.Connections_commandRepository;
 import com.crescendo.connections.oauth.OAuthTokenRefreshService;
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
+import com.crescendo.enums.CredentialSource;
 import com.crescendo.enums.StepType;
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
@@ -16,6 +17,9 @@ import com.crescendo.logbook.step_run.StepRunService;
 import com.crescendo.logbook.workflow_run.WorkflowRunService;
 import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
+import com.crescendo.user.user_query.User_query;
+import com.crescendo.user.user_query.User_queryRepository;
+import com.crescendo.enums.UserRole;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +60,7 @@ public class WorkflowExecutionEngine {
     private final StepRunService stepRunService;
     private final WorkflowRunService workflowRunService;
     private final PlatformKeyRepository platformKeyRepo;
+    private final User_queryRepository userQueryRepo;
     private final ObjectMapper objectMapper;
 
     public WorkflowExecutionEngine(Steps_commandRepository stepsRepo,
@@ -66,6 +71,7 @@ public class WorkflowExecutionEngine {
                                     StepRunService stepRunService,
                                     WorkflowRunService workflowRunService,
                                     PlatformKeyRepository platformKeyRepo,
+                                    User_queryRepository userQueryRepo,
                                     ObjectMapper objectMapper) {
         this.stepsRepo = stepsRepo;
         this.connectionsRepo = connectionsRepo;
@@ -75,6 +81,7 @@ public class WorkflowExecutionEngine {
         this.stepRunService = stepRunService;
         this.workflowRunService = workflowRunService;
         this.platformKeyRepo = platformKeyRepo;
+        this.userQueryRepo = userQueryRepo;
         this.objectMapper = objectMapper;
     }
 
@@ -402,56 +409,70 @@ public class WorkflowExecutionEngine {
     }
 
     /**
-     * Loads credentials for a step.
+     * Resolves credentials for a step using a three-tier fallback:
      *
-     * <p>When a connectionId is present, enforces that the connection belongs to
-     * the workflow owner (userId). This prevents a step whose connectionId was
-     * forged or leaked from accessing another user's credentials.
+     * <ol>
+     *   <li>{@link CredentialSource#PERSONAL} — the user's own connection. Ownership is
+     *       enforced at the DB level via {@code findByIdAndUser_Id}.</li>
+     *   <li>{@link CredentialSource#PLATFORM} — an admin-configured platform key.
+     *       Used as a transparent fallback when the step has no connectionId.
+     *       The auth <em>mechanism</em> (OAuth2, APIKEY) does not change between sources;
+     *       only <em>whose</em> credential it is differs.</li>
+     *   <li>No credential — throws with a user-facing message indicating next steps.</li>
+     * </ol>
      *
-     * <p>Falls back to a platform-level API key when no user connection is present.
+     * <p>When a connectionId is present, ownership is strictly enforced: a connection
+     * owned by another user cannot be used even if the ID is known.
      */
     private Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
-        // 1. Try user connection first — with ownership enforcement
+        // ── Tier 1: PERSONAL connection (user's own) ──────────────────────────
         if (connectionId != null) {
+            Connections_command connection = connectionsRepo
+                    .findByIdAndUser_Id(connectionId, userId)
+                    .orElse(null);
+            if (connection != null) {
+                logger.debug("[engine] Using PERSONAL credentials for app '{}' (connection {})",
+                        appKey, connectionId);
+                return tokenRefreshService.getValidCredentials(connection);
+            }
+            // Connection ID was set but not found / not owned — hard fail
+            logger.error("[engine] Connection {} not found or not owned by user {}",
+                    connectionId, userId);
+            throw new IllegalStateException(
+                    "Connection " + connectionId + " not found or not owned by this user.");
+        }
+
+        // ── Tier 2: PLATFORM key (admin-configured fallback) ──────────────────
+        boolean isAdmin = userQueryRepo.findById(userId)
+                .map(User_query::getRole)
+                .map(role -> role == UserRole.ADMIN)
+                .orElse(false);
+
+        if (isAdmin) {
             try {
-                // findByIdAndUser_Id enforces ownership at the DB level
-                Connections_command connection = connectionsRepo
-                        .findByIdAndUser_Id(connectionId, userId)
-                        .orElse(null);
-                if (connection != null) {
-                    return tokenRefreshService.getValidCredentials(connection);
+                PlatformKey pk = platformKeyRepo.findByAppKeyAndEnabledTrue(appKey).orElse(null);
+                if (pk != null && pk.getEncryptedCredentials() != null) {
+                    Map<String, Object> sealed = objectMapper
+                            .readValue(pk.getEncryptedCredentials(), Map.class);
+                    Map<String, Object> opened = credentialsCryptoService.open(sealed);
+                    pk.incrementUsageCount();
+                    platformKeyRepo.save(pk);
+                    logger.debug("[engine] Using PLATFORM credentials for app '{}' (source=admin)", appKey);
+                    return opened;
                 }
-                // Connection not found or owned by another user — fail fast
-                logger.error("[engine] Connection {} not found or not owned by user {}",
-                        connectionId, userId);
-                throw new IllegalStateException(
-                        "Connection " + connectionId + " not found or not owned by this user");
-            } catch (IllegalStateException e) {
-                throw e;
             } catch (Exception e) {
-                logger.error("[engine] Failed to load credentials for connection {}: {}",
-                        connectionId, e.getMessage());
-                throw e;
+                logger.warn("[engine] Failed to load platform key for app '{}': {}", appKey, e.getMessage());
             }
+        } else {
+            logger.debug("[engine] Skipping PLATFORM credentials for app '{}' because user {} is not an ADMIN", appKey, userId);
         }
 
-        // 2. Fall back to platform key if no user connection
-        try {
-            PlatformKey pk = platformKeyRepo.findByAppKeyAndEnabledTrue(appKey).orElse(null);
-            if (pk != null && pk.getEncryptedCredentials() != null) {
-                Map<String, Object> sealed = objectMapper
-                        .readValue(pk.getEncryptedCredentials(), Map.class);
-                Map<String, Object> opened = credentialsCryptoService.open(sealed);
-                pk.incrementUsageCount();
-                platformKeyRepo.save(pk);
-                logger.debug("[engine] Using platform key for app '{}'", appKey);
-                return opened;
-            }
-        } catch (Exception e) {
-            logger.warn("[engine] Failed to load platform key for app '{}': {}", appKey, e.getMessage());
-        }
-
-        return Map.of();
+        // ── Tier 3: No credential available ───────────────────────────────────
+        logger.warn("[engine] No credential available for app '{}' (userId={})", appKey, userId);
+        throw new IllegalStateException(
+                "No credential found for app '" + appKey + "'. " +
+                "Connect your own account under Connections, or ask your admin to enable " +
+                "the platform key for this app.");
     }
 
     private static final Pattern TEMPLATE_PATTERN = Pattern.compile("\\{\\{steps\\.(\\d+)\\.([^}]+)}}");

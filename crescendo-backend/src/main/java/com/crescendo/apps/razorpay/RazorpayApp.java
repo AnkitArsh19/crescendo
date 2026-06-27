@@ -12,7 +12,23 @@ import java.util.Map;
 public class RazorpayApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("razorpay", "Razorpay", "Create Razorpay orders and payment links",
+        return new App("razorpay", "Razorpay", """
+                Razorpay is the only payments solution in India that allows businesses to accept, process, and disburse payments. The Crescendo Razorpay app lets you create and track payment links effortlessly.
+
+                **What you can do with Razorpay in Crescendo:**
+                - Generate a secure payment link immediately when a client accepts a digital proposal
+                - Send an SMS reminder containing a Razorpay link for overdue invoices
+                - Automatically update a Google Sheet when a new Razorpay order is created
+                - Trigger a welcome email sequence in Mailchimp once a payment link is paid
+
+                **Actions available:**
+                - Create Order — generate an order ID required for standard checkout integrations
+                - Create Payment Link — generate a hosted checkout URL to share with customers via email/SMS
+
+                **Who should use this:** Indian businesses, freelancers, and e-commerce platforms automating their billing and collections.
+
+                **Authentication:** API credentials (Key ID and Key Secret).
+                """,
                 "https://www.google.com/s2/favicons?domain=razorpay.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(

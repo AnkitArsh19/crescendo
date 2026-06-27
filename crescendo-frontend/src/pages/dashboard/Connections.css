@@ -857,6 +857,75 @@
     opacity: 0.6;
 }
 
+/* ─── Custom OAuth App Accordion ─────────────────────────────────────────── */
+
+.conn-custom-oauth-accordion {
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.conn-custom-oauth-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    letter-spacing: 0.2px;
+}
+
+.conn-custom-oauth-toggle:hover {
+    background: rgba(255,255,255,0.03);
+    color: var(--text-secondary);
+}
+
+.conn-chevron {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.conn-custom-oauth-badge {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 100px;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.conn-custom-oauth-body {
+    overflow: hidden;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.conn-custom-oauth-desc {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    line-height: 1.6;
+    padding: 10px 0 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.conn-custom-oauth-desc svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
 /* ─── Form Elements ──────────────────────────────────────────────────────── */
 
 .conn-form-label {

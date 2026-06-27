@@ -19,7 +19,24 @@ public class GiphyApp implements AppDefinition {
                     Map.of("value", "r", "label", "R")
                 ), "helpText", "Content rating filter");
 
-        return new App("giphy", "Giphy", "Search, random, and trending GIFs from Giphy",
+        return new App("giphy", "Giphy", """
+                Giphy is an online database and search engine that allows users to search for and share short looping videos. The Crescendo Giphy app brings fun and expression into your automated messaging.
+
+                **What you can do with Giphy in Crescendo:**
+                - Automatically reply to new team members in Slack with a random "Welcome" GIF
+                - Post a celebratory trending GIF to Discord when a sales goal is met
+                - Search for context-aware GIFs to embed in automated birthday emails
+                - Enrich chatbot responses with animated reactions
+
+                **Actions available:**
+                - Search GIFs — find specific animations based on a query
+                - Random GIF — retrieve a completely random GIF
+                - Trending GIFs — fetch currently popular animations
+
+                **Who should use this:** Community managers, HR teams, and developers adding a touch of humor to their workflows.
+
+                **Authentication:** API Key (create one in the Giphy Developer Portal).
+                """,
                 "https://www.google.com/s2/favicons?domain=giphy.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(

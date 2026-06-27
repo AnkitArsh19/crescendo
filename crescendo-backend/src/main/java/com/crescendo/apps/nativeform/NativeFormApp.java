@@ -13,7 +13,22 @@ public class NativeFormApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("native-form", "Form Trigger", "Start a workflow from a public no-code form",
+        return new App("native-form", "Form Trigger", """
+                Native Form is Crescendo's built-in, no-code form builder. The Crescendo Native Form app lets you generate public-facing forms instantly and trigger workflows the moment they are submitted.
+
+                **What you can do with Native Form in Crescendo:**
+                - Create a quick "Contact Us" form and route submissions to Freshdesk
+                - Collect survey answers and append them directly to Microsoft Excel
+                - Build a simple registration page that adds users to a Mailchimp audience
+                - Gather feature requests and automatically open GitHub issues
+
+                **Triggers available:**
+                - Form Submitted — start a workflow whenever a user hits submit on your public form URL
+
+                **Who should use this:** Anyone who needs to quickly collect structured data without paying for external form providers or writing HTML.
+
+                **Authentication:** None required. Forms are public by default.
+                """,
                 "/icons/form.svg", AuthType.NONE,
                 List.of(
                         Map.of(

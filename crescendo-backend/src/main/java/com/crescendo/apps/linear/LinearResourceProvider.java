@@ -36,12 +36,12 @@ public class LinearResourceProvider implements ResourceProvider {
     public List<ResourceOption> listResources(Map<String, Object> credentials,
             String resourceType,
             Map<String, String> params) {
-        String accessToken = credentials.get("accessToken").toString();
+        String token = extractToken(credentials);
 
         return switch (resourceType) {
-            case "teams" -> listTeams(accessToken);
-            case "projects" -> listProjects(accessToken);
-            case "states" -> listStates(accessToken, params.get("teamId"));
+            case "teams" -> listTeams(token);
+            case "projects" -> listProjects(token);
+            case "states" -> listStates(token, params.get("teamId"));
             default -> List.of();
         };
     }
@@ -118,9 +118,9 @@ public class LinearResourceProvider implements ResourceProvider {
         }
     }
 
-    private Map<String, Object> graphQL(String accessToken, String body) {
+    private Map<String, Object> graphQL(String token, String body) {
         return RestClient.builder()
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, token)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build()
                 .post()
@@ -129,5 +129,13 @@ public class LinearResourceProvider implements ResourceProvider {
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {
                 });
+    }
+
+    private String extractToken(Map<String, Object> credentials) {
+        if (credentials == null) return null;
+        Object tokenObj = credentials.get("accessToken");
+        if (tokenObj != null && !tokenObj.toString().isBlank()) return "Bearer " + tokenObj.toString();
+        Object apiKey = credentials.get("apiKey");
+        return apiKey != null && !apiKey.toString().isBlank() ? apiKey.toString() : null;
     }
 }

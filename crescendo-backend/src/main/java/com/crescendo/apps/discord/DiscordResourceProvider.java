@@ -181,6 +181,10 @@ public class DiscordResourceProvider implements ResourceProvider {
             logger.debug("[discord] Using Bot token (length={})", token.length());
             return "Bot " + token;
         }
+        Object apiKey = credentials.get("apiKey");
+        if (apiKey != null && !apiKey.toString().isBlank()) {
+            return "Bot " + apiKey.toString();
+        }
         // OAuth access token
         Object accessToken = credentials.get("accessToken");
         if (accessToken != null && !accessToken.toString().isBlank()) {

@@ -1189,4 +1189,244 @@
     text-align: right;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
-}
+}
+
+.apikey-table .settings-table-head,
+.apikey-table .settings-table-row {
+    grid-template-columns: minmax(120px, 1.5fr) minmax(110px, 1fr) 70px 100px 85px 78px;
+}
+
+.apikey-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
+.apikey-create-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.apikey-scope-fieldset {
+    margin: 2px 0 0;
+    padding: 0;
+    border: 0;
+}
+
+.apikey-scope-fieldset legend {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.apikey-scope-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.apikey-scope-grid label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 7px 8px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.apikey-scope-grid code {
+    color: var(--text-tertiary);
+    font-size: 0.68rem;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .apikey-table {
+        overflow-x: auto;
+    }
+
+    .apikey-table .settings-table-head,
+    .apikey-table .settings-table-row {
+        min-width: 720px;
+    }
+}
+
+@media (max-width: 520px) {
+    .apikey-create-grid,
+    .apikey-scope-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Developer Applications ──────────────────────────────────────── */
+
+.developer-app-list {
+    display: grid;
+    gap: 12px;
+}
+
+.developer-app-item {
+    padding: 18px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+}
+
+.developer-app-main,
+.developer-app-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.developer-app-main h3 {
+    margin: 0 0 5px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    letter-spacing: 0;
+}
+
+.developer-app-main code {
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.developer-app-status {
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.developer-app-status.active {
+    color: var(--text-secondary);
+}
+
+.developer-app-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin: 15px 0;
+    color: var(--text-tertiary);
+    font-size: 0.76rem;
+}
+
+.developer-app-actions {
+    justify-content: flex-end;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.developer-app-modal {
+    width: min(680px, calc(100vw - 32px));
+    max-height: min(820px, calc(100vh - 32px));
+}
+
+.developer-uri-input {
+    min-height: 82px;
+    resize: vertical;
+    font-family: monospace;
+}
+
+.developer-client-type {
+    display: inline-flex;
+    margin-top: 7px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.developer-client-type button {
+    min-width: 130px;
+    padding: 8px 12px;
+    border: 0;
+    border-right: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+}
+
+.developer-client-type button:last-child {
+    border-right: 0;
+}
+
+.developer-client-type button.active {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.08);
+}
+
+.developer-scope-fieldset {
+    margin: 2px 0 0;
+    padding: 0;
+    border: 0;
+}
+
+.developer-scope-fieldset legend {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.developer-scope-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.developer-scope-grid label {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    min-width: 0;
+    padding: 9px;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.developer-scope-grid input {
+    margin-top: 2px;
+}
+
+.developer-scope-grid span {
+    display: grid;
+    min-width: 0;
+}
+
+.developer-scope-grid strong {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+.developer-scope-grid code {
+    margin-top: 2px;
+    color: var(--text-tertiary);
+    font-size: 0.66rem;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+    .developer-scope-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .developer-app-actions {
+        flex-wrap: wrap;
+    }
+
+    .developer-client-type {
+        width: 100%;
+    }
+
+    .developer-client-type button {
+        min-width: 0;
+        flex: 1;
+    }
+}

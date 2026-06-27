@@ -5,6 +5,7 @@ import {
   HiOutlineCog, HiOutlineExternalLink, HiOutlineClipboardCopy,
   HiOutlineCheckCircle, HiOutlineArrowRight, HiOutlineInformationCircle,
 } from 'react-icons/hi';
+import ReactMarkdown from 'react-markdown';
 import { getAppGuide, getCallbackUrl } from '../data/appGuideData';
 import './AppSetupGuide.css';
 
@@ -70,10 +71,8 @@ export default function AppSetupGuide({ app, onContinue, onClose }) {
               <img 
                 src={app.logoUrl || `/icons/${app.appKey}.svg`}
                 alt={app.name}
-                style={{
-                  width: '100%', height: '100%', objectFit: 'contain',
-                  filter: app.logoUrl ? 'grayscale(1) invert(1) brightness(1.5)' : 'brightness(0) invert(1)'
-                }}
+                className="app-logo-img"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
               />
               <span style={{ display: 'none' }}>{app.name?.charAt(0).toUpperCase()}</span>
@@ -109,8 +108,11 @@ export default function AppSetupGuide({ app, onContinue, onClose }) {
           {activeTab === 'overview' && (
             <div className="asg-overview">
               <div className="asg-desc-card">
-                <h3>What does {app.name} do?</h3>
-                <p>{guide.description}</p>
+                <div className="asg-markdown-content">
+                  <ReactMarkdown>
+                    {app.description || guide.description}
+                  </ReactMarkdown>
+                </div>
               </div>
 
               <div className="asg-returns-card">

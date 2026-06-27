@@ -8,119 +8,47 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Linear.
+ *
+ * Resources:
+ *   - issue: create, delete, get, getAll, update, addLink
+ *   - comment: addComment
+ */
 @Component
 public class LinearApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        var teamField = Map.of("key", "teamId", "label", "Team",
-                "type", "dynamic_dropdown", "resourceType", "teams",
-                "required", true,
-                "helpText", "Select the Linear team");
-
-        var issueField = Map.<String, Object>of("key", "issueId", "label", "Issue",
-                "type", "dynamic_dropdown", "resourceType", "issues",
-                "dependsOn", List.of("teamId"),
-                "required", true,
-                "helpText", "Select the issue");
-
-        return new App("linear", "Linear", "Track issues, manage projects, and automate workflows in Linear",
-                "https://www.google.com/s2/favicons?domain=linear.app&sz=128", AuthType.OAUTH2,
-
-                // ═══ TRIGGERS ═══
+        return new App(
+                "linear",
+                "Linear",
+                """
+                Linear is an issue tracking tool built for speed.
+                
+                This integration provides operations for:
+                - **Issue**: Create, Delete, Get, Get All, Update, Add Link
+                - **Comment**: Add Comment
+                
+                Authenticate using a Linear API Key or OAuth2.
+                """,
+                "https://www.google.com/s2/favicons?domain=linear.app&sz=128",
+                AuthType.APIKEY,
+                List.of(),
                 List.of(
-                    Map.of(
-                        "triggerKey", "issue-created",
-                        "name", "Issue Created",
-                        "description", "Triggers when a new issue is created",
-                        "configSchema", List.of(teamField)
-                    ),
-                    Map.of(
-                        "triggerKey", "issue-updated",
-                        "name", "Issue Updated",
-                        "description", "Triggers when an issue is modified",
-                        "configSchema", List.of(teamField)
-                    ),
-                    Map.of(
-                        "triggerKey", "issue-completed",
-                        "name", "Issue Completed",
-                        "description", "Triggers when an issue is marked as done",
-                        "configSchema", List.of(teamField)
-                    )
-                ),
+                        // ISSUE
+                        Map.of("actionKey", "linear:issue:create", "name", "Create Issue", "description", "Create an issue", "configSchema", List.of(Map.of("key", "teamId", "label", "Team ID", "type", "text", "required", true), Map.of("key", "title", "label", "Title", "type", "text", "required", true), Map.of("key", "description", "label", "Description", "type", "text"), Map.of("key", "assigneeId", "label", "Assignee ID", "type", "text"), Map.of("key", "stateId", "label", "State ID", "type", "text"))),
+                        Map.of("actionKey", "linear:issue:delete", "name", "Delete Issue", "description", "Delete an issue", "configSchema", List.of(Map.of("key", "issueId", "label", "Issue ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "linear:issue:get", "name", "Get Issue", "description", "Get an issue", "configSchema", List.of(Map.of("key", "issueId", "label", "Issue ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "linear:issue:getAll", "name", "Get All Issues", "description", "Get all issues", "configSchema", List.of()),
+                        Map.of("actionKey", "linear:issue:update", "name", "Update Issue", "description", "Update an issue", "configSchema", List.of(Map.of("key", "issueId", "label", "Issue ID", "type", "text", "required", true), Map.of("key", "title", "label", "Title", "type", "text"), Map.of("key", "description", "label", "Description", "type", "text"), Map.of("key", "assigneeId", "label", "Assignee ID", "type", "text"), Map.of("key", "stateId", "label", "State ID", "type", "text"))),
+                        Map.of("actionKey", "linear:issue:addLink", "name", "Add Link", "description", "Add a link to an issue", "configSchema", List.of(Map.of("key", "issueId", "label", "Issue ID", "type", "text", "required", true), Map.of("key", "link", "label", "Link URL", "type", "text", "required", true))),
 
-                // ═══ ACTIONS ═══
-                List.of(
-                    Map.of(
-                        "actionKey", "create-issue",
-                        "name", "Create Issue",
-                        "description", "Create a new issue in Linear",
-                        "configSchema", List.of(
-                            teamField,
-                            Map.of("key", "title", "label", "Issue Title",
-                                   "type", "text", "required", true,
-                                   "placeholder", "Implement feature X",
-                                   "helpText", "Title of the issue"),
-                            Map.of("key", "description", "label", "Description",
-                                   "type", "textarea", "required", false,
-                                   "helpText", "Issue description (Markdown supported)"),
-                            Map.of("key", "priority", "label", "Priority",
-                                   "type", "select", "required", false,
-                                   "options", List.of(
-                                       Map.of("value", "0", "label", "No Priority"),
-                                       Map.of("value", "1", "label", "Urgent"),
-                                       Map.of("value", "2", "label", "High"),
-                                       Map.of("value", "3", "label", "Medium"),
-                                       Map.of("value", "4", "label", "Low")
-                                   ),
-                                   "helpText", "Issue priority level"),
-                            Map.of("key", "dueDate", "label", "Due Date",
-                                   "type", "text", "required", false,
-                                   "placeholder", "2025-12-31",
-                                   "helpText", "Due date in YYYY-MM-DD format")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "update-issue",
-                        "name", "Update Issue",
-                        "description", "Modify an existing issue",
-                        "configSchema", List.of(
-                            teamField, issueField,
-                            Map.of("key", "title", "label", "Title",
-                                   "type", "text", "required", false,
-                                   "helpText", "Updated title"),
-                            Map.of("key", "status", "label", "Status",
-                                   "type", "text", "required", false,
-                                   "placeholder", "Done",
-                                   "helpText", "New status name"),
-                            Map.of("key", "priority", "label", "Priority",
-                                   "type", "select", "required", false,
-                                   "options", List.of(
-                                       Map.of("value", "0", "label", "No Priority"),
-                                       Map.of("value", "1", "label", "Urgent"),
-                                       Map.of("value", "2", "label", "High"),
-                                       Map.of("value", "3", "label", "Medium"),
-                                       Map.of("value", "4", "label", "Low")
-                                   ),
-                                   "helpText", "Updated priority")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "add-comment",
-                        "name", "Add Comment",
-                        "description", "Add a comment to a Linear issue",
-                        "configSchema", List.of(
-                            teamField, issueField,
-                            Map.of("key", "comment", "label", "Comment",
-                                   "type", "textarea", "required", true,
-                                   "placeholder", "Looks good, shipping this sprint.",
-                                   "helpText", "Comment body (Markdown supported)")
-                        )
-                    )
+                        // COMMENT
+                        Map.of("actionKey", "linear:comment:addComment", "name", "Add Comment", "description", "Add a comment to an issue", "configSchema", List.of(Map.of("key", "issueId", "label", "Issue ID", "type", "text", "required", true), Map.of("key", "comment", "label", "Comment", "type", "text", "required", true), Map.of("key", "parentId", "label", "Parent Comment ID", "type", "text")))
                 )
-        )
-        .credentialSchema(List.of())
-        .category("developer")
-        .helpUrl("https://linear.app/settings/api");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiToken", "label", "API Key", "type", "password", "required", true)
+        )).altAuthType(AuthType.OAUTH2).category("task-management");
     }
 }

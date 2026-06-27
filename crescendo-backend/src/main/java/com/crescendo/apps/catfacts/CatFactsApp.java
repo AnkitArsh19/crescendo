@@ -11,7 +11,22 @@ import java.util.Map;
 public class CatFactsApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("cat-facts", "Cat Facts", "Get random cat facts",
+        return new App("cat-facts", "Cat Facts", """
+                The Cat Facts app is a fun, lightweight utility that connects to the popular public Cat Facts API, retrieving random trivia about felines.
+
+                **What you can do with Cat Facts in Crescendo:**
+                - Send a random cat fact to a Discord channel every morning at 9 AM
+                - Append a cat fact to the footer of internal team emails
+                - Reply to specific Twitter mentions with a fun piece of trivia
+                - Test out new webhook or message formatting configurations using predictable dummy data
+
+                **Actions available:**
+                - Get Fact — returns a single, random string containing a cat fact
+
+                **Who should use this:** Community managers looking to add engagement, and developers testing new messaging workflows.
+
+                **Authentication:** None required.
+                """,
                 "/icons/catfacts.svg", AuthType.NONE,
                 List.of(),
                 List.of(

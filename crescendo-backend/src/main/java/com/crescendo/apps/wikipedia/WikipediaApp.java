@@ -13,7 +13,22 @@ public class WikipediaApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("wikipedia", "Wikipedia", "Search and fetch Wikipedia article summaries",
+        return new App("wikipedia", "Wikipedia", """
+                Wikipedia is a free, multilingual open-collaborative online encyclopedia. The Crescendo Wikipedia app allows you to automatically fetch article summaries and knowledge data.
+
+                **What you can do with Wikipedia in Crescendo:**
+                - Automatically reply to specific Discord questions with the first paragraph of a relevant Wikipedia article
+                - Append Wikipedia context summaries to daily news briefs generated for your team
+                - Fetch metadata and URLs for historical figures mentioned in an incoming RSS feed
+                - Build a custom chatbot in Slack that queries Wikipedia when you type `/wiki [topic]`
+
+                **Actions available:**
+                - Get Article Summary — fetch the introductory text, URL, and thumbnail image for a specific search term
+
+                **Who should use this:** Bot developers, researchers, and community managers automating knowledge retrieval.
+
+                **Authentication:** None required.
+                """,
                 "https://www.google.com/s2/favicons?domain=wikipedia.org&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(

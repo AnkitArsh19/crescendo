@@ -11,7 +11,23 @@ import java.util.Map;
 public class WeatherApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("weather", "Weather", "Get current weather, forecast, air quality, hourly, and daily data",
+        return new App("weather", "Weather", """
+                The Weather app provides access to current conditions, forecasts, and historical weather data. The Crescendo Weather app allows you to automate workflows based on meteorological conditions in any city worldwide.
+
+                **What you can do with Weather in Crescendo:**
+                - Send daily forecast summaries to a Telegram or Slack group
+                - Trigger notifications when the temperature drops below a certain threshold
+                - Log air quality data to Google Sheets for analysis
+                - Automate reminders to bring an umbrella based on rain probability
+
+                **Actions available:**
+                - Get Current Weather — fetch the current temperature and conditions for a city
+                - Get 5-Day Forecast — retrieve upcoming weather predictions
+
+                **Who should use this:** Outdoor event planners, individuals wanting personalized daily briefings, and teams tracking environmental conditions.
+
+                **Authentication:** None natively (uses a demo API key by default, but you can provide your own OpenWeatherMap key).
+                """,
                 "https://www.google.com/s2/favicons?domain=openweathermap.org&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(

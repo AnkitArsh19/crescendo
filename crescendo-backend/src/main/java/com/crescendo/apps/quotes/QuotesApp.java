@@ -11,7 +11,22 @@ import java.util.Map;
 public class QuotesApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("quotes", "Random Quotes", "Get random, daily, and categorized inspirational quotes",
+        return new App("quotes", "Random Quotes", """
+                The Random Quotes app is a lightweight utility that connects to public quote APIs to fetch inspirational, funny, or thought-provoking sayings from historical figures and authors.
+
+                **What you can do with Quotes in Crescendo:**
+                - Post an inspirational "Quote of the Day" to a company-wide Slack channel every morning
+                - Append a random thought-provoking quote to the footer of internal team newsletters
+                - Use placeholder quote data while testing new messaging workflows and formatting
+                - Send a motivational SMS to yourself via Twilio before a big presentation
+
+                **Actions available:**
+                - Get Quote — fetch a random quote with its author
+
+                **Who should use this:** Community managers and developers looking to add a touch of personality to their automated messaging.
+
+                **Authentication:** None required.
+                """,
                 "/icons/quotes.svg", AuthType.NONE,
                 List.of(),
                 List.of(

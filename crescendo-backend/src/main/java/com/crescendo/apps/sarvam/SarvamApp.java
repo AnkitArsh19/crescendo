@@ -4,6 +4,7 @@ import com.crescendo.app.App;
 import com.crescendo.apps.AppDefinition;
 import com.crescendo.enums.AuthType;
 import org.springframework.stereotype.Component;
+
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +25,24 @@ public class SarvamApp implements AppDefinition {
             Map.of("value", "en-IN", "label", "English (India)")
         );
 
-        return new App("sarvam", "Sarvam AI", "Indian language AI — translation, TTS, and speech-to-text",
+        return new App("sarvam", "Sarvam AI", """
+                Sarvam AI specializes in Indian language AI models. The Crescendo Sarvam app enables translation, speech-to-text, and text-to-speech across multiple Indian languages.
+
+                **What you can do with Sarvam in Crescendo:**
+                - Translate Slack messages from English to Hindi automatically
+                - Generate voice announcements from Google Sheets data
+                - Auto-translate customer support emails into regional languages
+                - Transcribe voice notes sent via Telegram
+
+                **Actions available:**
+                - Translate Text — convert text between supported Indian languages
+                - Text to Speech — generate audio from text
+                - Speech to Text — transcribe audio files
+
+                **Who should use this:** Customer support teams operating in India, content creators targeting regional audiences, and developers building localized applications.
+
+                **Authentication:** API Key (create one at sarvam.ai).
+                """,
                 "https://www.google.com/s2/favicons?domain=sarvam.ai&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(

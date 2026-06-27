@@ -11,7 +11,25 @@ import java.util.Map;
 public class SpotifyApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("spotify", "Spotify", "Search, manage playlists, and control your Spotify library",
+        return new App("spotify", "Spotify", """
+                Spotify is the world's most popular audio streaming subscription service. The Crescendo Spotify app lets you search for music, manage your playlists, and control your library automatically.
+
+                **What you can do with Spotify in Crescendo:**
+                - Search for tracks, albums, and artists based on external data
+                - Automatically add songs from Discord/Slack messages to a collaborative playlist
+                - Create "Song of the Day" automated posts
+                - Back up your saved tracks to a Google Sheet
+
+                **Actions available:**
+                - Search Spotify — find music using queries and filters
+                - Add Track to Playlist — add a specific song to a playlist
+                - Create Playlist — generate a new playlist dynamically
+                - Save Track — add a song to your Liked Songs
+
+                **Who should use this:** Music enthusiasts, community managers building collaborative playlists, and users wanting to automate their music libraries.
+
+                **Authentication:** OAuth 2.0 (connect your Spotify account) or API Key.
+                """,
                 "https://www.google.com/s2/favicons?domain=spotify.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "track-saved", "name", "New Saved Track",

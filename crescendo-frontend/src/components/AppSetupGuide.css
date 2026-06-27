@@ -186,6 +186,34 @@
   margin: 0;
 }
 
+.asg-markdown-content {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #aaa);
+}
+
+.asg-markdown-content p {
+  margin-bottom: 0.8em;
+}
+
+.asg-markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.asg-markdown-content ul, .asg-markdown-content ol {
+  margin: 0.5em 0 1em;
+  padding-left: 1.5em;
+}
+
+.asg-markdown-content li {
+  margin-bottom: 0.3em;
+}
+
+.asg-markdown-content strong {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}
+
 .asg-returns-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.06));

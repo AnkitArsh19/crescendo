@@ -23,7 +23,27 @@ public class SlackApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select the user");
 
-        return new App("slack", "Slack", "Send messages, manage channels, and automate Slack workflows",
+        return new App("slack", "Slack", """
+                Slack is the leading team communication platform used by millions of organizations worldwide. It organizes conversations into channels, supports direct messaging, file sharing, and integrates with hundreds of apps.
+
+                **What you can do with Slack in Crescendo:**
+                - Send messages to any channel or user automatically
+                - Post announcements, alerts, or daily digests
+                - Get notified via trigger when a message is posted, someone is mentioned, or a reaction is added
+                - Create new channels, invite users, and set channel topics programmatically
+                - Search messages across your workspace
+
+                **Triggers available:**
+                - New Message in Channel — fire a workflow whenever a message is posted
+                - New Mention — react when your bot or keyword is mentioned
+                - New Reaction — catch emoji reactions on messages
+                - New Channel Created — trigger when channels are created
+                - New User Joined — onboard new workspace members automatically
+
+                **Who should use this:** Engineering teams for incident alerts, HR teams for onboarding flows, marketing teams for campaign notifications, and anyone who wants to receive automated reports or approvals in Slack.
+
+                **Authentication:** OAuth 2.0 (connect your Slack account) or Bot Token / API Key (paste a bot token from api.slack.com/apps — best for server-side bots and webhook-style automation).
+                """,
                 "https://www.google.com/s2/favicons?domain=slack.com&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -69,31 +89,91 @@ public class SlackApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "send-message",
+                        "actionKey", "sendMessage",
                         "name", "Send Channel Message",
                         "description", "Post a message to a Slack channel",
                         "configSchema", List.of(
                             channelField,
                             Map.of("key", "text", "label", "Message Text",
-                                   "type", "textarea", "required", true,
+                                   "type", "textarea", "required", false,
                                    "placeholder", "Hello from Crescendo!",
-                                   "helpText", "The message content to send")
+                                   "helpText", "The message content to send (required if blocksUi is empty)"),
+                            Map.of("key", "blocksUi", "label", "Blocks (JSON)",
+                                   "type", "textarea", "required", false,
+                                   "placeholder", "[{\"type\": \"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"Hello\"}}]",
+                                   "helpText", "Advanced Slack Blocks UI JSON"),
+                            Map.of("key", "thread_ts", "label", "Thread Timestamp",
+                                   "type", "text", "required", false,
+                                   "placeholder", "1663233118.856619",
+                                   "helpText", "Provide a message timestamp to reply in its thread"),
+                            Map.of("key", "replyBroadcast", "label", "Also Send to Channel",
+                                   "type", "dropdown", "required", false,
+                                   "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False")),
+                                   "helpText", "If replying to a thread, broadcast to the channel"),
+                            Map.of("key", "ephemeralUserId", "label", "Ephemeral User ID",
+                                   "type", "text", "required", false,
+                                   "helpText", "If provided, sends message to the channel but only visible to this user"),
+                            Map.of("key", "icon_emoji", "label", "Icon Emoji",
+                                   "type", "text", "required", false,
+                                   "placeholder", ":ghost:",
+                                   "helpText", "Override bot icon (requires chat:write.customize)"),
+                            Map.of("key", "icon_url", "label", "Icon URL",
+                                   "type", "text", "required", false,
+                                   "helpText", "Override bot avatar URL (requires chat:write.customize)"),
+                            Map.of("key", "username", "label", "Bot Username",
+                                   "type", "text", "required", false,
+                                   "placeholder", "My Custom Bot",
+                                   "helpText", "Override bot name (requires chat:write.customize)")
                         )
                     ),
                     Map.of(
-                        "actionKey", "send-dm",
+                        "actionKey", "sendDirectMessage",
                         "name", "Send Direct Message",
                         "description", "Send a direct message to a user",
                         "configSchema", List.of(
                             userField,
                             Map.of("key", "text", "label", "Message Text",
-                                   "type", "textarea", "required", true,
+                                   "type", "textarea", "required", false,
                                    "placeholder", "Hello!",
-                                   "helpText", "The message content to send")
+                                   "helpText", "The message content to send (required if blocksUi is empty)"),
+                            Map.of("key", "blocksUi", "label", "Blocks (JSON)",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "Advanced Slack Blocks UI JSON"),
+                            Map.of("key", "thread_ts", "label", "Thread Timestamp",
+                                   "type", "text", "required", false,
+                                   "helpText", "Provide a message timestamp to reply in its thread")
                         )
                     ),
                     Map.of(
-                        "actionKey", "create-channel",
+                        "actionKey", "updateMessage",
+                        "name", "Update Message",
+                        "description", "Update an existing message in Slack",
+                        "configSchema", List.of(
+                            channelField,
+                            Map.of("key", "ts", "label", "Message Timestamp",
+                                   "type", "text", "required", true,
+                                   "helpText", "The timestamp of the message to update"),
+                            Map.of("key", "text", "label", "New Text",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "The updated text (required if blocksUi is empty)"),
+                            Map.of("key", "blocksUi", "label", "New Blocks (JSON)",
+                                   "type", "textarea", "required", false,
+                                   "helpText", "The updated Blocks JSON array")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "deleteMessage",
+                        "name", "Delete Message",
+                        "description", "Delete a message in Slack",
+                        "configSchema", List.of(
+                            channelField,
+                            Map.of("key", "ts", "label", "Message Timestamp",
+                                   "type", "text", "required", true,
+                                   "helpText", "The timestamp of the message to delete")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "createChannel",
                         "name", "Create Channel",
                         "description", "Create a new Slack channel",
                         "configSchema", List.of(
@@ -111,7 +191,7 @@ public class SlackApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "set-channel-topic",
+                        "actionKey", "setTopic",
                         "name", "Set Channel Topic",
                         "description", "Set or update a channel's topic",
                         "configSchema", List.of(
@@ -123,7 +203,7 @@ public class SlackApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "add-reaction",
+                        "actionKey", "addReaction",
                         "name", "Add Reaction",
                         "description", "Add an emoji reaction to a message",
                         "configSchema", List.of(
@@ -138,7 +218,7 @@ public class SlackApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "find-message",
+                        "actionKey", "searchMessages",
                         "name", "Find Message",
                         "description", "Search for messages matching a query",
                         "configSchema", List.of(
@@ -153,14 +233,25 @@ public class SlackApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "invite-to-channel",
+                        "actionKey", "inviteToChannel",
                         "name", "Invite User to Channel",
                         "description", "Invite a user to join a channel",
                         "configSchema", List.of(channelField, userField)
                     )
                 )
         )
-        .credentialSchema(List.of()).altAuthType(AuthType.APIKEY)
+        .altAuthType(AuthType.OAUTH2)
+        .credentialSchema(List.of(
+            Map.of("key", "botToken", "label", "Bot Token",
+                    "type", "password", "required", true,
+                    "placeholder", "xoxb-...",
+                    "helpText", "Create an app at api.slack.com and copy its Bot User OAuth Token.",
+                    "authOption", "APIKEY"),
+            Map.of("key", "accessToken", "label", "OAuth Access Token",
+                    "type", "oauth", "required", true,
+                    "helpText", "Sign in with Slack to authorize user-level actions.",
+                    "authOption", "OAUTH2")
+        ))
         .category("communication")
         .helpUrl("https://api.slack.com/apps");
     }

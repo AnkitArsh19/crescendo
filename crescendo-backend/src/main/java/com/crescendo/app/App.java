@@ -40,7 +40,13 @@ public class App {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
-    @Column(name = "description", length = 1000)
+    /**
+     * Rich Markdown description shown in the AppSetupGuide Overview tab.
+     * Single source of truth — stored in DB, returned by the API.
+     * Supports bold, bullets, headers, and inline code.
+     * No character limit — typical descriptions are 500–3,000 chars.
+     */
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "logoUrl", length = 500)
@@ -86,6 +92,17 @@ public class App {
     /** Internal apps (e.g. debug log) are hidden from the user-facing app catalog. */
     @Column(name = "internal", nullable = false)
     private boolean internal = false;
+
+    /**
+     * Transient — NOT persisted. Populated at query time by {@link AppService}
+     * by checking whether an enabled {@code PlatformKey} exists for this app.
+     *
+     * <p>When {@code true}, the frontend shows a "Use Crescendo's Key" toggle so
+     * the user can run the app without providing personal credentials.
+     * When {@code false}, the user must connect their own account or provide their own key.
+     */
+    @Transient
+    private boolean hasPlatformKey = false;
 
     // ─── Constructors ──────────────────────────────────────────────
 
@@ -136,6 +153,11 @@ public class App {
         return this;
     }
 
+    public App hasPlatformKey(boolean hasPlatformKey) {
+        this.hasPlatformKey = hasPlatformKey;
+        return this;
+    }
+
     // ─── Getters / Setters ─────────────────────────────────────────
 
     public AppKey getAppKeyVO() { return appKey; }
@@ -178,4 +200,7 @@ public class App {
 
     public boolean isInternal() { return internal; }
     public void setInternal(boolean internal) { this.internal = internal; }
+
+    public boolean isHasPlatformKey() { return hasPlatformKey; }
+    public void setHasPlatformKey(boolean hasPlatformKey) { this.hasPlatformKey = hasPlatformKey; }
 }

@@ -224,6 +224,9 @@ public class AccessControlService {
         if (auth == null || !auth.isAuthenticated()) return null;
         Object principal = auth.getPrincipal();
         if (principal instanceof AppUserDetails details) return details;
+        if (principal instanceof com.crescendo.security.PublicApiPrincipal publicPrincipal) {
+            return publicPrincipal.user();
+        }
         return null;
     }
 }

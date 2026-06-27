@@ -2,6 +2,7 @@ package com.crescendo.config;
 
 import com.crescendo.security.ApiKeyAuthenticationFilter;
 import com.crescendo.security.JWTFilter;
+import com.crescendo.security.OAuthAccessTokenAuthenticationFilter;
 import com.crescendo.security.error.JsonAuthenticationEntryPoint;
 import com.crescendo.security.error.JsonAccessDeniedHandler;
 import com.crescendo.security.oauth.OAuth2LoginSuccessHandler;
@@ -11,6 +12,7 @@ import com.crescendo.security.oauth.GitHubEmailOAuth2UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -39,6 +41,7 @@ public class SecurityConfig {
 
     private final JWTFilter jwtFilter;
     private final ApiKeyAuthenticationFilter apiKeyFilter;
+    private final OAuthAccessTokenAuthenticationFilter oauthAccessTokenFilter;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
     private final OAuth2LoginSuccessHandler oAuth2SuccessHandler;
@@ -51,6 +54,7 @@ public class SecurityConfig {
 
     public SecurityConfig(JWTFilter jwtFilter,
                           ApiKeyAuthenticationFilter apiKeyFilter,
+                          OAuthAccessTokenAuthenticationFilter oauthAccessTokenFilter,
                           JsonAuthenticationEntryPoint authenticationEntryPoint,
                           JsonAccessDeniedHandler accessDeniedHandler,
                           OAuth2LoginSuccessHandler oAuth2SuccessHandler,
@@ -59,6 +63,7 @@ public class SecurityConfig {
                           GitHubEmailOAuth2UserService gitHubEmailOAuth2UserService) {
         this.jwtFilter = jwtFilter;
         this.apiKeyFilter = apiKeyFilter;
+        this.oauthAccessTokenFilter = oauthAccessTokenFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
         this.oAuth2SuccessHandler = oAuth2SuccessHandler;
@@ -73,6 +78,7 @@ public class SecurityConfig {
      * error handling, and inserts the JWT filter before Spring's default username/password filter.
      */
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         /// CSRF is disabled because this app uses stateless JWT authentication.
         /// The refresh token cookie has SameSite=Strict which already prevents cross-site
@@ -104,7 +110,8 @@ public class SecurityConfig {
                     "/auth/verify-email",   // token is in query param, no auth header available
                     "/mfa/challenge",       // called before tokens are issued (post-login MFA step)
                     "/mfa/backup-code",     // called before tokens are issued (backup code login)
-                    "/actuator/health"
+                    "/actuator/health",
+                    "/oauth/session-required"
                 ).permitAll()
                 .requestMatchers("/guest/**").permitAll() // guest workflows — identified by X-Guest-Session header
                 .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll() // external webhook ingestion
@@ -132,8 +139,9 @@ public class SecurityConfig {
                 .successHandler(oAuth2SuccessHandler)
                 .failureHandler(oAuth2FailureHandler)
             )
-            .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(oauthAccessTokenFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();
     }
@@ -177,7 +185,12 @@ public class SecurityConfig {
         }
         cfg.setAllowedOriginPatterns(allowedOrigins);
         cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization","Content-Type","X-Guest-Session"));
+        cfg.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Guest-Session",
+                "Idempotency-Key"
+        ));
         cfg.setExposedHeaders(List.of("Location"));
         cfg.setAllowCredentials(true); // required if refresh cookie used cross-origin (adjust in prod)
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

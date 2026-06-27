@@ -15,10 +15,9 @@ import com.crescendo.app.App;
  * <strong>To add a new integration:</strong>
  * <ol>
  * <li>Create a package under {@code com.crescendo.apps.myapp}</li>
- * <li>Create a class implementing {@code AppDefinition}, annotated with
- * {@code @Component}</li>
- * <li>Create one or more {@code ActionHandler} classes with
- * {@code @ActionMapping}</li>
+ * <li>Create a class implementing {@code AppDefinition}, annotated with {@code @Component}</li>
+ * <li>Create a handler class (e.g. {@code MyHandlers}) annotated with {@code @Component} containing methods annotated with {@code @ActionMapping}</li>
+ * <li>(Optional) Alternatively, create individual {@code ActionHandler} classes</li>
  * <li>That's it — everything is auto-discovered</li>
  * </ol>
  *

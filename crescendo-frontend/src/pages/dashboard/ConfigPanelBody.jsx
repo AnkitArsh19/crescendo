@@ -5,6 +5,7 @@ import { appCatalogApi } from '../../api/appCatalogApi';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 import TestResultPanel from './TestResultPanel';
 import useToastStore from '../../store/toastStore';
+import useAuthStore from '../../store/authStore';
 import { parseConfigSchema } from '../../workflow/workflowGraphSerializer';
 import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
@@ -533,6 +534,9 @@ export default function ConfigPanelBody({
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const accountMenuRef = useRef(null);
 
+    const user = useAuthStore(state => state.user);
+    const isAdmin = user?.role === 'ADMIN';
+
     // ── Resolve configSchema ──
     const appDetail = appDetailsByKey?.[data.appKey];
     const actionOrTriggerKey = isTrigger ? (data.triggerKey || data.actionKey) : data.actionKey;
@@ -551,7 +555,8 @@ export default function ConfigPanelBody({
     const isNoAuthApp = selectedCatalogApp?.authType === 'NONE';
 
     // ── Tab completion state ──
-    const hasConnection = isNoAuthApp || !!data.connectionId;
+    const isUsingAdminKey = data.credentialSource === 'ADMIN_KEY' && appDetail?.hasPlatformKey;
+    const hasConnection = isNoAuthApp || !!data.connectionId || isUsingAdminKey;
     const setupComplete = !!(data.appKey && hasConnection && actionOrTriggerKey);
     const configComplete = setupComplete && configSchema.every((f) => {
         if (!f.required) return true;
@@ -617,13 +622,30 @@ export default function ConfigPanelBody({
         iconUrl: a.iconUrl || null,
     }));
 
+    // Extract granted scopes from the active connection
+    const activeConnection = selectedConnections.find((c) => c.id === data.connectionId);
+    const grantedScopes = activeConnection?.grantedScopes ? activeConnection.grantedScopes.split(/[\s,]+/).filter(Boolean) : null;
+
     // ── Trigger/Action options ──
     const operationOptions = (isTrigger ? selectedTriggerOptions : selectedActionOptions).map((opt) => {
         const kf = isTrigger ? 'triggerKey' : 'actionKey';
+        let isGreyedOut = false;
+        let tooltip = null;
+
+        if (opt.requiredScopes && grantedScopes) {
+            const missingScopes = opt.requiredScopes.filter((s) => !grantedScopes.includes(s));
+            if (missingScopes.length > 0) {
+                isGreyedOut = true;
+                tooltip = `Missing required scopes: ${missingScopes.join(', ')}. Please reconnect your account and grant these permissions.`;
+            }
+        }
+
         return {
             id: opt[kf] || opt.name || '',
             label: opt.name || opt[kf] || '',
             description: opt.description || null,
+            disabled: isGreyedOut,
+            tooltip: tooltip,
         };
     });
 
@@ -792,7 +814,38 @@ export default function ConfigPanelBody({
                         {data.appKey && !isNoAuthApp && (
                             <div className="cpb-field">
                                 <label className="cpb-label">Account <span className="cpb-required">*</span></label>
-                                {data.connectionId && selectedConnections.length > 0 ? (() => {
+                                
+                                {appDetail?.hasPlatformKey && (
+                                    <div className="cpb-admin-key-toggle" style={{ display: 'flex', gap: '16px', marginBottom: '12px', fontSize: '0.85rem' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                            <input 
+                                                type="radio" 
+                                                checked={data.credentialSource !== 'ADMIN_KEY'} 
+                                                onChange={() => {
+                                                    updateNodeData(configNode.id, { credentialSource: 'PERSONAL' });
+                                                }} 
+                                            /> 
+                                            Use My Own Account
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                            <input 
+                                                type="radio" 
+                                                checked={data.credentialSource === 'ADMIN_KEY'} 
+                                                onChange={() => {
+                                                    updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                }} 
+                                            /> 
+                                            Use Crescendo's key
+                                        </label>
+                                    </div>
+                                )}
+
+                                {data.credentialSource === 'ADMIN_KEY' && appDetail?.hasPlatformKey ? (
+                                    <div className="cpb-admin-key-pill" style={{ padding: '10px 14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <HiCheck style={{ color: '#22c55e' }} />
+                                        <span>Using Crescendo's platform key</span>
+                                    </div>
+                                ) : data.connectionId && selectedConnections.length > 0 ? (() => {
                                     const conn = selectedConnections.find(c => c.id === data.connectionId);
                                     return (
                                         <div className="cpb-account-card">

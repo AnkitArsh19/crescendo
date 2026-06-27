@@ -40,6 +40,9 @@ import Settings from './pages/settings/Settings';
 import ProfileSettings from './pages/settings/ProfileSettings';
 import SecuritySettings from './pages/settings/SecuritySettings';
 import ConnectedAccounts from './pages/settings/ConnectedAccounts';
+import OAuthAppsSettings from './pages/settings/OAuthAppsSettings';
+import DeveloperAppsSettings from './pages/settings/DeveloperAppsSettings';
+import OAuthAuthorizePage from './pages/auth/OAuthAuthorizePage';
 
 // Legal
 import TermsPage from './pages/legal/TermsPage';
@@ -111,6 +114,7 @@ function App() {
 
       {/* Dashboard (Protected) */}
       <Route element={<ProtectedRoute />}>
+        <Route path="/oauth/authorize" element={<OAuthAuthorizePage />} />
         {/* Shared workflow import — inside ProtectedRoute but outside DashboardLayout */}
         <Route path="/shared" element={<DashboardLayout />}>
           <Route index element={<SharedWorkflows />} />
@@ -142,6 +146,8 @@ function App() {
           <Route index element={<ProfileSettings />} />
           <Route path="security" element={<SecuritySettings />} />
           <Route path="accounts" element={<ConnectedAccounts />} />
+          <Route path="oauth-apps" element={<OAuthAppsSettings />} />
+          <Route path="developer-api" element={<DeveloperAppsSettings />} />
         </Route>
       </Route>
       </Route>

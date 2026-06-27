@@ -8,28 +8,45 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Error Handling.
+ */
 @Component
 public class ErrorHandlingApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("error-handling", "Error Handling", "Trigger on errors or deliberately stop a workflow",
-                "/icons/error.svg", AuthType.NONE,
+        return new App(
+                "errorhandling",
+                "Error Handling",
+                """
+                Handle workflow errors and trigger errors.
+                
+                This integration provides operations for:
+                - **Stop and Error**: Throw an error in the workflow
+                - **Error Trigger**: Triggers the workflow when another workflow has an error
+                """,
+                "/icons/error.svg", // Generic icon
+                AuthType.NONE,
+                List.of(),
                 List.of(
-                    Map.of("triggerKey", "error-trigger", "name", "Error Trigger",
-                        "description", "Triggers when another workflow fails",
-                        "configSchema", List.of(
-                            Map.of("key", "workflowId", "label", "Workflow ID (Optional)", "type", "text", "required", false,
-                                   "placeholder", "Leave blank for ANY workflow", "helpText", "ID of the workflow to monitor")
-                        ))
-                ),
-                List.of(
-                    Map.of("actionKey", "stop-and-error", "name", "Stop and Error",
-                        "description", "Stops the workflow and throws a custom error",
-                        "configSchema", List.of(
-                            Map.of("key", "errorMessage", "label", "Error Message", "type", "text", "required", true,
-                                   "placeholder", "Validation failed: User not found", "helpText", "The message that will appear in the execution logs")
-                        ))
+                        Map.of(
+                                "actionKey", "errorhandling:stopAndError",
+                                "name", "Stop and Error",
+                                "description", "Throw an error in the workflow",
+                                "configSchema", List.of(
+                                        Map.of("key", "errorType", "label", "Error Type", "type", "text", "default", "errorMessage"),
+                                        Map.of("key", "errorMessage", "label", "Error Message", "type", "text"),
+                                        Map.of("key", "errorObject", "label", "Error Object", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "errorhandling:errorTrigger",
+                                "name", "Error Trigger",
+                                "description", "Triggers the workflow when another workflow has an error",
+                                "configSchema", List.of()
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("logic-and-flow");
     }
 }

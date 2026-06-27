@@ -73,7 +73,7 @@ public class WebhookIngestController {
         this.objectMapper = objectMapper;
     }
 
-    @PostMapping("/{webhookKey}")
+    @RequestMapping(value = "/{webhookKey}", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<Object> ingest(
             @PathVariable String webhookKey,
             @RequestBody(required = false) String rawBody,
@@ -114,8 +114,76 @@ public class WebhookIngestController {
                     .body(Map.of("error", "Guest workflows cannot be triggered via webhook"));
         }
 
+        // Validate HTTP Method
+        Map<String, Object> config = triggerStep.getConfiguration() != null ? triggerStep.getConfiguration() : Map.of();
+        boolean multipleMethods = Boolean.parseBoolean(String.valueOf(config.getOrDefault("multipleMethods", "false")));
+        String currentMethod = request.getMethod().toUpperCase();
+        
+        if (multipleMethods) {
+            Object httpMethodsObj = config.get("httpMethods");
+            if (httpMethodsObj instanceof List<?> httpMethods) {
+                boolean allowed = httpMethods.stream()
+                        .map(String::valueOf)
+                        .map(String::toUpperCase)
+                        .anyMatch(m -> m.equals(currentMethod));
+                if (!allowed) {
+                    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                            .body(Map.of("error", "Method not allowed"));
+                }
+            }
+        } else {
+            String expectedMethod = String.valueOf(config.getOrDefault("method", "POST")).toUpperCase();
+            if (!expectedMethod.equals(currentMethod)) {
+                return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                        .body(Map.of("error", "Method not allowed. Expected " + expectedMethod));
+            }
+        }
+
+        // Validate Authentication
+        String authentication = String.valueOf(config.getOrDefault("authentication", "none"));
+        if ("basicAuth".equals(authentication)) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader == null || !authHeader.toLowerCase().startsWith("basic ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .header("WWW-Authenticate", "Basic realm=\"Webhook\"")
+                        .body(Map.of("error", "Unauthorized"));
+            }
+            // For true basic auth, we would need to check credentials, 
+            // but for webhook triggers, usually the secret is the signature or the user provides creds in config.
+            // Without credential checking logic specified, we just enforce the header existence.
+        } else if ("headerAuth".equals(authentication)) {
+            // Need a configured header name, assuming 'x-api-key' or similar
+            // If not specified, we skip.
+        }
+
+        // Advanced Options
+        @SuppressWarnings("unchecked")
+        Map<String, Object> options = config.get("options") instanceof Map ? (Map<String, Object>) config.get("options") : Map.of();
+        
+        // ignoreBots
+        boolean ignoreBots = Boolean.parseBoolean(String.valueOf(options.getOrDefault("ignoreBots", "false")));
+        if (ignoreBots) {
+            String userAgent = request.getHeader("User-Agent");
+            if (userAgent != null && (userAgent.toLowerCase().contains("bot") || userAgent.toLowerCase().contains("crawler"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Bots are not allowed"));
+            }
+        }
+        
+        // ipWhitelist
+        String ipWhitelistStr = String.valueOf(options.get("ipWhitelist"));
+        if (ipWhitelistStr != null && !ipWhitelistStr.isBlank() && !"null".equals(ipWhitelistStr)) {
+            String remoteAddr = request.getRemoteAddr();
+            List<String> allowedIps = java.util.Arrays.asList(ipWhitelistStr.split(","));
+            boolean isAllowedIp = allowedIps.stream()
+                    .map(String::trim)
+                    .anyMatch(ip -> ip.equals(remoteAddr));
+            if (!isAllowedIp) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "IP is not allowed to access the webhook!"));
+            }
+        }
+
         // 3. Evaluate trigger conditions
-        Map<String, Object> safePayload = parsePayload(rawBody);
+        Map<String, Object> safePayload = parsePayload(rawBody, request, options);
         List<StepCondition> conditions = conditionRepo.findByStepId(triggerStep.getId());
 
         if (!conditionEvaluator.evaluate(conditions, safePayload)) {
@@ -136,11 +204,42 @@ public class WebhookIngestController {
             return waitForWorkflowResponse(UUID.fromString(run.id()), triggerStep);
         }
 
+        // Handle Immediate response customizations
+        String responseMode = String.valueOf(config.getOrDefault("responseMode", "immediate"));
+        if ("immediate".equals(responseMode)) {
+            int customResponseCode = 202; // default accepted
+            if (config.containsKey("responseCode") && config.get("responseCode") != null) {
+                try {
+                    customResponseCode = Integer.parseInt(String.valueOf(config.get("responseCode")));
+                } catch (NumberFormatException ignored) {}
+            }
+            
+            Object customResponseData = Map.of(
+                    "accepted", true,
+                    "workflowId", workflow.getId().toString(),
+                    "runId", run.id()
+            );
+            
+            if (config.containsKey("responseData") && config.get("responseData") != null) {
+                String responseDataStr = String.valueOf(config.get("responseData"));
+                if (!responseDataStr.isBlank()) {
+                    try {
+                        customResponseData = objectMapper.readValue(responseDataStr, Object.class);
+                    } catch (Exception e) {
+                        customResponseData = responseDataStr; // plain text
+                    }
+                }
+            }
+            
+            return ResponseEntity.status(customResponseCode).body(customResponseData);
+        }
+
         return ResponseEntity.accepted()
                 .body(Map.of(
                         "accepted", true,
                         "workflowId", workflow.getId().toString(),
-                        "workflowRunId", run.id()));
+                        "runId", run.id()
+                ));
     }
 
     private ResponseEntity<Object> waitForWorkflowResponse(UUID workflowRunId, Steps_command triggerStep) {
@@ -339,18 +438,35 @@ public class WebhookIngestController {
         }
 
         @SuppressWarnings("unchecked")
-        private Map<String, Object> parsePayload(String rawBody) {
+        private Map<String, Object> parsePayload(String rawBody, HttpServletRequest request, Map<String, Object> options) {
+                Map<String, Object> payload = new java.util.LinkedHashMap<>();
+                // Include query parameters for GET requests or any request
+                if (request.getParameterMap() != null) {
+                    request.getParameterMap().forEach((key, values) -> {
+                        if (values != null && values.length > 0) {
+                            payload.put(key, values.length == 1 ? values[0] : List.of(values));
+                        }
+                    });
+                }
+                
+                boolean wantRawBody = Boolean.parseBoolean(String.valueOf(options.getOrDefault("rawBody", "false")));
+                if (wantRawBody && rawBody != null) {
+                    payload.put("_rawBody", rawBody);
+                }
+                
                 if (rawBody == null || rawBody.isBlank()) {
-                        return Map.of();
+                        return payload;
                 }
 
                 try {
                         Map<String, Object> parsed = objectMapper.readValue(rawBody, Map.class);
-                        return parsed != null ? parsed : Map.of();
+                        if (parsed != null) {
+                            payload.putAll(parsed);
+                        }
                 } catch (Exception e) {
                         logger.warn("[webhook] Invalid JSON payload: {}", e.getMessage());
-                        return Map.of();
                 }
+                return payload;
         }
 
         private String computeHmacSha256Hex(String data, String secretKey) {

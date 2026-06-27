@@ -11,8 +11,26 @@ public class InstagramApp implements AppDefinition {
     public App toApp() {
         return new App(
                 "instagram",
-                "Instagram Graph API",
-                "Create Instagram media containers and publish media",
+                "Instagram Graph API", """
+                The Instagram Graph API allows you to programmatically access Instagram Business and Creator accounts. The Crescendo Instagram app enables you to automate your visual social media presence.
+
+                **What you can do with Instagram in Crescendo:**
+                - Publish a new Instagram post automatically when a new product is added to your Shopify store
+                - Track engagement on your latest posts and append the stats to an Airtable base
+                - Alert your team in Microsoft Teams when a new high-profile comment is received
+                - Automatically reply to specific DM inquiries with a standardized response
+
+                **Triggers available:**
+                - Instagram Event — start a workflow when a webhook event (like a new message or comment) is received
+
+                **Actions available:**
+                - Create Media Container — stage an image or video with a caption for publishing
+                - Publish Media — take a staged media container and push it live to your Instagram feed
+
+                **Who should use this:** Social media managers, influencers, and digital marketing teams automating cross-platform content delivery.
+
+                **Authentication:** OAuth 2.0 (connect your linked Facebook/Instagram account).
+                """,
                 "https://www.google.com/s2/favicons?domain=instagram.com&sz=128",
                 AuthType.OAUTH2,
                 List.of(

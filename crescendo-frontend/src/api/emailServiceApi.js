@@ -16,6 +16,9 @@ export const apiKeysApi = {
 
   revoke: (id) =>
     api.delete(`/settings/api-keys/${id}`),
+
+  rotate: (id, data = { gracePeriodHours: 24 }) =>
+    api.post(`/settings/api-keys/${id}/rotate`, data).then((r) => r.data),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

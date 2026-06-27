@@ -11,7 +11,24 @@ import java.util.Map;
 public class TwitterApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("twitter", "X (Twitter)", "Post, delete, and manage tweets on X",
+        return new App("twitter", "X (Twitter)", """
+                X (formerly Twitter) is a global microblogging and social networking service. The Crescendo X app allows you to manage your audience and automate your social broadcasting.
+
+                **What you can do with X in Crescendo:**
+                - Post an automated tweet whenever a new product is added to your Shopify catalog
+                - Cross-post a summary of a new blog article simultaneously to LinkedIn and X
+                - Automatically delete old promotional tweets after a flash sale ends
+                - Trigger a workflow to notify your team when a specific hashtag or brand mention goes viral
+
+                **Actions available:**
+                - Create Tweet — publish text (and media) to your feed
+                - Delete Tweet — remove a specific post by its ID
+                - Get User — retrieve basic profile information
+
+                **Who should use this:** Social media managers, content creators, and brand teams automating their digital marketing.
+
+                **Authentication:** OAuth 2.0 or API Keys (configured in the X Developer Portal).
+                """,
                 "https://www.google.com/s2/favicons?domain=twitter.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "new-mention", "name", "New Mention",

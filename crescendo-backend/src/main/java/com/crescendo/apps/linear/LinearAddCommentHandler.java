@@ -29,9 +29,9 @@ public class LinearAddCommentHandler implements ActionHandler {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
-        String accessToken = creds != null ? (String) creds.get("accessToken") : null;
-        if (accessToken == null || accessToken.isBlank()) {
-            return ActionResult.failure("Linear requires an OAuth2 accessToken");
+        String token = resolveToken(creds);
+        if (token == null) {
+            return ActionResult.failure("Linear requires an 'accessToken' or 'apiKey' in connection credentials");
         }
 
         String issueId = str(config, "issueId");
@@ -48,7 +48,7 @@ public class LinearAddCommentHandler implements ActionHandler {
 
             Map<String, Object> response = restClient.post()
                     .uri(LINEAR_API)
-                    .header(HttpHeaders.AUTHORIZATION, accessToken)
+                    .header(HttpHeaders.AUTHORIZATION, token)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("query", mutation))
                     .retrieve()
@@ -78,5 +78,12 @@ public class LinearAddCommentHandler implements ActionHandler {
 
     private String str(Map<String, Object> m, String k) {
         Object v = m.get(k); return v != null ? v.toString() : null;
+    }
+    private String resolveToken(Map<String, Object> creds) {
+        if (creds == null) return null;
+        Object tokenObj = creds.get("accessToken");
+        if (tokenObj != null && !tokenObj.toString().isBlank()) return "Bearer " + tokenObj.toString();
+        Object apiKey = creds.get("apiKey");
+        return apiKey != null && !apiKey.toString().isBlank() ? apiKey.toString() : null;
     }
 }
