@@ -8,163 +8,68 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Notion.
+ *
+ * Resources (from n8n Notion node):
+ *   - block        : append, getAll
+ *   - database     : get, getAll, search
+ *   - databasePage : create, get, getAll, update
+ *   - page         : archive, create, get, search, update
+ *   - user         : get, getAll
+ */
 @Component
 public class NotionApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        var databaseField = Map.of("key", "databaseId", "label", "Database",
-                "type", "dynamic_dropdown", "resourceType", "databases",
-                "required", true,
-                "helpText", "Select the Notion database");
-
         return new App(
-            "notion", "Notion", "Create, update, and watch pages and databases in Notion",
-            "https://www.google.com/s2/favicons?domain=notion.so&sz=128", AuthType.OAUTH2,
+                "notion",
+                "Notion",
+                """
+                Notion is an all-in-one workspace for your notes, tasks, wikis, and databases.
+                
+                This integration provides operations for:
+                - **Block**: Append, Get All
+                - **Database**: Get, Get All, Search
+                - **Database Page**: Create, Get, Get All, Update
+                - **Page**: Archive, Create, Get, Search, Update
+                - **User**: Get, Get All
+                
+                Authenticate using a Notion Internal Integration Token or OAuth2.
+                """,
+                "https://www.google.com/s2/favicons?domain=notion.so&sz=128",
+                AuthType.APIKEY,
+                List.of(),
+                List.of(
+                        // BLOCK
+                        Map.of("actionKey", "notion:block:append", "name", "Append Block", "description", "Append a block to a parent", "configSchema", List.of(Map.of("key", "blockId", "label", "Block ID", "type", "text", "required", true), Map.of("key", "children", "label", "Children Blocks (JSON)", "type", "json", "required", true))),
+                        Map.of("actionKey", "notion:block:getAll", "name", "Get All Blocks", "description", "Get all children blocks", "configSchema", List.of(Map.of("key", "blockId", "label", "Block ID", "type", "text", "required", true))),
 
-            // ═══ TRIGGERS ═══
-            List.of(
-                Map.of(
-                    "triggerKey", "new-database-item",
-                    "name", "New Database Item",
-                    "description", "Triggers when a new page is added to a database",
-                    "configSchema", List.of(databaseField)
-                ),
-                Map.of(
-                    "triggerKey", "page-updated",
-                    "name", "Database Item Updated",
-                    "description", "Triggers when a page is modified in a database",
-                    "configSchema", List.of(databaseField)
-                ),
-                Map.of(
-                    "triggerKey", "new-page-comment",
-                    "name", "New Page Comment",
-                    "description", "Triggers when a comment is added to a page",
-                    "configSchema", List.of(
-                        Map.of("key", "pageId", "label", "Page",
-                               "type", "dynamic_dropdown", "resourceType", "pages",
-                               "required", true,
-                               "helpText", "Select the page to watch for comments")
-                    )
-                )
-            ),
+                        // DATABASE
+                        Map.of("actionKey", "notion:database:get", "name", "Get Database", "description", "Get a database", "configSchema", List.of(Map.of("key", "databaseId", "label", "Database ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:database:getAll", "name", "Get All Databases", "description", "Get all databases", "configSchema", List.of()),
+                        Map.of("actionKey", "notion:database:search", "name", "Search Database", "description", "Search for a database", "configSchema", List.of(Map.of("key", "query", "label", "Query", "type", "text"))),
 
-            // ═══ ACTIONS ═══
-            List.of(
-                Map.of(
-                    "actionKey", "create-page",
-                    "name", "Create Page",
-                    "description", "Create a new page in a Notion database",
-                    "configSchema", List.of(
-                        databaseField,
-                        Map.of("key", "title", "label", "Page Title",
-                               "type", "text", "required", true,
-                               "placeholder", "My New Page",
-                               "helpText", "Title for the new page"),
-                        Map.of("key", "status", "label", "Status",
-                               "type", "select", "required", false,
-                               "options", List.of(
-                                   Map.of("value", "", "label", "None"),
-                                   Map.of("value", "Not started", "label", "Not Started"),
-                                   Map.of("value", "In progress", "label", "In Progress"),
-                                   Map.of("value", "Done", "label", "Done")
-                               ),
-                               "helpText", "Page status (must match your database's Status options)"),
-                        Map.of("key", "priority", "label", "Priority",
-                               "type", "select", "required", false,
-                               "options", List.of(
-                                   Map.of("value", "", "label", "None"),
-                                   Map.of("value", "High", "label", "High"),
-                                   Map.of("value", "Medium", "label", "Medium"),
-                                   Map.of("value", "Low", "label", "Low")
-                               ),
-                               "helpText", "Page priority (must match your database's Priority options)"),
-                        Map.of("key", "dueDate", "label", "Due Date",
-                               "type", "text", "required", false,
-                               "placeholder", "2026-06-15",
-                               "helpText", "Due date in YYYY-MM-DD format"),
-                        Map.of("key", "assignee", "label", "Assignee",
-                               "type", "text", "required", false,
-                               "placeholder", "John Doe",
-                               "helpText", "Name of the person to assign (must match a Person property)"),
-                        Map.of("key", "tags", "label", "Tags",
-                               "type", "text", "required", false,
-                               "placeholder", "bug, frontend, urgent",
-                               "helpText", "Comma-separated tags (must match your database's Multi-select options)"),
-                        Map.of("key", "properties", "label", "Advanced: Extra Properties (JSON)",
-                               "type", "json", "required", false,
-                               "placeholder", "{\"Custom Field\": {\"rich_text\": [{\"text\": {\"content\": \"value\"}}]}}",
-                               "helpText", "Optional raw JSON for additional Notion properties not covered above")
-                    )
-                ),
-                Map.of(
-                    "actionKey", "update-page",
-                    "name", "Update Page",
-                    "description", "Update properties of an existing Notion page",
-                    "configSchema", List.of(
-                        databaseField,
-                        Map.<String, Object>of("key", "pageId", "label", "Page",
-                               "type", "dynamic_dropdown", "resourceType", "pages",
-                               "dependsOn", List.of("databaseId"),
-                               "required", true,
-                               "helpText", "Select the page to update"),
-                        Map.of("key", "properties", "label", "Properties to Update",
-                               "type", "json", "required", true,
-                               "placeholder", "{\"Status\": {\"select\": {\"name\": \"Done\"}}}",
-                               "helpText", "JSON object of Notion properties to update")
-                    )
-                ),
-                Map.of(
-                    "actionKey", "find-page",
-                    "name", "Find Page",
-                    "description", "Search for a page in a database by title or filter",
-                    "configSchema", List.of(
-                        databaseField,
-                        Map.of("key", "query", "label", "Search Text",
-                               "type", "text", "required", false,
-                               "placeholder", "Project Alpha",
-                               "helpText", "Search pages by title"),
-                        Map.of("key", "maxResults", "label", "Max Results",
-                               "type", "text", "required", false,
-                               "placeholder", "10",
-                               "helpText", "Maximum pages to return")
-                    )
-                ),
-                Map.of(
-                    "actionKey", "create-database",
-                    "name", "Create Database",
-                    "description", "Create a new inline database in a Notion page",
-                    "configSchema", List.of(
-                        Map.of("key", "parentPageId", "label", "Parent Page",
-                               "type", "dynamic_dropdown", "resourceType", "pages",
-                               "required", true,
-                               "helpText", "Select the parent page for the new database"),
-                        Map.of("key", "title", "label", "Database Title",
-                               "type", "text", "required", true,
-                               "placeholder", "Tasks",
-                               "helpText", "Title for the new database"),
-                        Map.of("key", "schema", "label", "Columns (JSON)",
-                               "type", "json", "required", false,
-                               "placeholder", "{\"Name\": {\"title\": {}}, \"Status\": {\"select\": {}}}",
-                               "helpText", "JSON schema for database properties")
-                    )
-                ),
-                Map.of(
-                    "actionKey", "archive-page",
-                    "name", "Archive Page",
-                    "description", "Archive (soft-delete) a Notion page",
-                    "configSchema", List.of(
-                        Map.<String, Object>of("key", "pageId", "label", "Page",
-                               "type", "dynamic_dropdown", "resourceType", "pages",
-                               "dependsOn", List.of("databaseId"),
-                               "required", true,
-                               "helpText", "Select the page to archive")
-                    )
+                        // DATABASE PAGE
+                        Map.of("actionKey", "notion:databasePage:create", "name", "Create Database Page", "description", "Create a page within a database", "configSchema", List.of(Map.of("key", "databaseId", "label", "Database ID", "type", "text", "required", true), Map.of("key", "properties", "label", "Properties (JSON)", "type", "json", "required", true))),
+                        Map.of("actionKey", "notion:databasePage:get", "name", "Get Database Page", "description", "Get a page within a database", "configSchema", List.of(Map.of("key", "pageId", "label", "Page ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:databasePage:getAll", "name", "Get All Database Pages", "description", "Get all pages within a database (query)", "configSchema", List.of(Map.of("key", "databaseId", "label", "Database ID", "type", "text", "required", true), Map.of("key", "filter", "label", "Filter (JSON)", "type", "json"))),
+                        Map.of("actionKey", "notion:databasePage:update", "name", "Update Database Page", "description", "Update properties of a database page", "configSchema", List.of(Map.of("key", "pageId", "label", "Page ID", "type", "text", "required", true), Map.of("key", "properties", "label", "Properties (JSON)", "type", "json", "required", true))),
+
+                        // PAGE
+                        Map.of("actionKey", "notion:page:archive", "name", "Archive Page", "description", "Archive a page", "configSchema", List.of(Map.of("key", "pageId", "label", "Page ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:page:create", "name", "Create Page", "description", "Create a page", "configSchema", List.of(Map.of("key", "pageId", "label", "Parent Page ID", "type", "text", "required", true), Map.of("key", "title", "label", "Title", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:page:get", "name", "Get Page", "description", "Get a page", "configSchema", List.of(Map.of("key", "pageId", "label", "Page ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:page:search", "name", "Search Page", "description", "Search for a page", "configSchema", List.of(Map.of("key", "query", "label", "Query", "type", "text"))),
+                        Map.of("actionKey", "notion:page:update", "name", "Update Page", "description", "Update properties of a page", "configSchema", List.of(Map.of("key", "pageId", "label", "Page ID", "type", "text", "required", true), Map.of("key", "properties", "label", "Properties (JSON)", "type", "json", "required", true))),
+
+                        // USER
+                        Map.of("actionKey", "notion:user:get", "name", "Get User", "description", "Get a user", "configSchema", List.of(Map.of("key", "userId", "label", "User ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "notion:user:getAll", "name", "Get All Users", "description", "Get all users", "configSchema", List.of())
                 )
-            )
-        )
-        .credentialSchema(List.of())
-        .category("productivity")
-        .helpUrl("https://www.notion.so/my-integrations");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiToken", "label", "Internal Integration Token", "type", "password", "required", true)
+        )).altAuthType(AuthType.OAUTH2).category("task-management"); // Notion fits here or docs
     }
 }

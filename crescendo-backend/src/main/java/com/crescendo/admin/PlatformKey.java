@@ -56,6 +56,13 @@ public class PlatformKey {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /**
+     * Indicates which master key version was used to encrypt {@code encryptedCredentials}.
+     * Defaults to 1. Increment when re-encrypting with a rotated master key.
+     */
+    @Column(name = "key_version", nullable = false)
+    private int keyVersion = 1;
+
     public PlatformKey() {}
 
     public PlatformKey(String appKey, String appName, String encryptedCredentials, String addedBy) {
@@ -77,4 +84,6 @@ public class PlatformKey {
     public void incrementUsageCount() { this.usageCount++; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public int getKeyVersion() { return keyVersion; }
+    public void setKeyVersion(int keyVersion) { this.keyVersion = keyVersion; }
 }

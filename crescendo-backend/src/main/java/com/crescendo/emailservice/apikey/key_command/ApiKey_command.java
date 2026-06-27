@@ -52,6 +52,21 @@ public class ApiKey_command {
     @Column(name = "prefix", nullable = false, length = 20)
     private String prefix;
 
+    @Column(name = "scopes", length = 1000)
+    private String scopes;
+
+    @Column(name = "rateLimitPerMinute")
+    private Integer rateLimitPerMinute = 100;
+
+    @Column(name = "expiresAt")
+    private Instant expiresAt;
+
+    @Column(name = "rotationGraceEndsAt")
+    private Instant rotationGraceEndsAt;
+
+    @Column(name = "replacedByKeyId")
+    private UUID replacedByKeyId;
+
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
@@ -66,11 +81,19 @@ public class ApiKey_command {
     }
 
     public ApiKey_command(UUID id, UUID userId, String name, String hashedKey, String prefix) {
+        this(id, userId, name, hashedKey, prefix, "", 100, null);
+    }
+
+    public ApiKey_command(UUID id, UUID userId, String name, String hashedKey, String prefix,
+                          String scopes, int rateLimitPerMinute, Instant expiresAt) {
         this.id = id;
         this.userId = userId;
         this.name = name;
         this.hashedKey = hashedKey;
         this.prefix = prefix;
+        this.scopes = scopes == null ? "" : scopes;
+        this.rateLimitPerMinute = rateLimitPerMinute;
+        this.expiresAt = expiresAt;
     }
 
     public UUID getId() {
@@ -111,6 +134,53 @@ public class ApiKey_command {
 
     public void setPrefix(String prefix) {
         this.prefix = prefix;
+    }
+
+    public String getScopes() {
+        return scopes;
+    }
+
+    public void setScopes(String scopes) {
+        this.scopes = scopes;
+    }
+
+    public int getRateLimitPerMinute() {
+        return rateLimitPerMinute == null ? 100 : rateLimitPerMinute;
+    }
+
+    public void setRateLimitPerMinute(int rateLimitPerMinute) {
+        this.rateLimitPerMinute = rateLimitPerMinute;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    public Instant getRotationGraceEndsAt() {
+        return rotationGraceEndsAt;
+    }
+
+    public void setRotationGraceEndsAt(Instant rotationGraceEndsAt) {
+        this.rotationGraceEndsAt = rotationGraceEndsAt;
+    }
+
+    public UUID getReplacedByKeyId() {
+        return replacedByKeyId;
+    }
+
+    public void setReplacedByKeyId(UUID replacedByKeyId) {
+        this.replacedByKeyId = replacedByKeyId;
+    }
+
+    public boolean isUsableAt(Instant now) {
+        if (revokedAt != null || (expiresAt != null && !expiresAt.isAfter(now))) {
+            return false;
+        }
+        return rotationGraceEndsAt == null || rotationGraceEndsAt.isAfter(now);
     }
 
     public Instant getCreatedAt() {

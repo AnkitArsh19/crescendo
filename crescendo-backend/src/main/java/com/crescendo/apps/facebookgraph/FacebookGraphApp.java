@@ -11,8 +11,26 @@ public class FacebookGraphApp implements AppDefinition {
     public App toApp() {
         return new App(
                 "facebook-graph",
-                "Facebook Graph API",
-                "Call Facebook Graph API for pages and posts",
+                "Facebook Graph API", """
+                The Graph API is the primary way to get data into and out of the Facebook platform. The Crescendo Facebook Graph app lets you automate Page interactions and post content programmatically.
+
+                **What you can do with Facebook in Crescendo:**
+                - Automatically post a new blog article to your Facebook Page when an RSS feed updates
+                - Track page engagement metrics and log them into Google Sheets
+                - Notify your team in Slack when a user mentions your Page
+                - Sync Facebook Lead Ads directly into HubSpot
+
+                **Triggers available:**
+                - Page Event — start a workflow when a webhook event (like a new comment or message) is received
+
+                **Actions available:**
+                - Create Page Post — publish text, links, or images to a Facebook Page
+                - Get Node — query any Graph API node (e.g., a Page, User, or Post ID) for specific fields
+
+                **Who should use this:** Social media managers, community moderators, and digital marketers.
+
+                **Authentication:** OAuth 2.0 (connect your Facebook account) or Page Access Token.
+                """,
                 "https://www.google.com/s2/favicons?domain=facebook.com&sz=128",
                 AuthType.OAUTH2,
                 List.of(

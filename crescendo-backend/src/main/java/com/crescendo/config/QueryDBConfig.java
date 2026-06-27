@@ -104,7 +104,10 @@ public class QueryDBConfig {
                                 "com.crescendo.emailservice.apikey.key_query",
                                 "com.crescendo.emailservice.emailtemplate.template_query",
                                 "com.crescendo.emailservice.email_log",
-                                "com.crescendo.app"
+                                "com.crescendo.app",
+                                "com.crescendo.publicapi.audit",
+                                "com.crescendo.publicapi.oauth",
+                                "com.crescendo.publicapi.oauth.persistence"
                         )
                         .persistenceUnit("query")
                         .properties(props)

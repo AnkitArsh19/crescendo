@@ -11,15 +11,23 @@ public class TypeformApp implements AppDefinition {
     public App toApp() {
         return new App(
                 "typeform",
-                "Typeform",
-                "Read Typeform forms and responses",
+                "Typeform", """
+                Typeform is a web-based platform for creating forms and surveys that are interactive and engaging.
+                
+                This integration supports:
+                - **Get Forms**: Retrieve a list of forms from your account
+                - **Get Responses**: Retrieve responses for a specific form
+                - **Trigger on Submission**: Get notified instantly when a form is submitted (Webhook)
+                
+                Authenticate using a Personal Access Token or OAuth2.
+                """,
                 "https://www.google.com/s2/favicons?domain=typeform.com&sz=128",
                 AuthType.OAUTH2,
                 List.of(
                         Map.of(
-                                "triggerKey", "form-submit",
+                                "triggerKey", "typeform:webhook:subscribe",
                                 "name", "Form Submitted",
-                                "description", "Triggers from a Typeform webhook",
+                                "description", "Triggers when a specific form is submitted via Webhook",
                                 "configSchema", List.of(
                                         Map.of("key", "formId", "label", "Form ID", "type", "text", "required", true)
                                 )
@@ -27,21 +35,22 @@ public class TypeformApp implements AppDefinition {
                 ),
                 List.of(
                         Map.of(
-                                "actionKey", "list-forms",
-                                "name", "List Forms",
-                                "description", "List forms",
+                                "actionKey", "typeform:form:getAll",
+                                "name", "Get Forms",
+                                "description", "Retrieve a list of forms",
                                 "configSchema", List.of()
                         ),
                         Map.of(
-                                "actionKey", "list-responses",
-                                "name", "List Responses",
-                                "description", "List responses for a form",
+                                "actionKey", "typeform:response:getAll",
+                                "name", "Get Responses",
+                                "description", "Retrieve responses for a specific form",
                                 "configSchema", List.of(
-                                        Map.of("key", "formId", "label", "Form ID", "type", "text", "required", true),
-                                        Map.of("key", "pageSize", "label", "Page Size", "type", "text", "required", false, "placeholder", "25")
+                                        Map.of("key", "formId", "label", "Form ID", "type", "text", "required", true)
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).altAuthType(AuthType.OAUTH2).category("forms").helpUrl("https://www.typeform.com/developers/");
+        ).credentialSchema(List.of(
+                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
+        )).altAuthType(AuthType.OAUTH2).category("marketing");
     }
 }

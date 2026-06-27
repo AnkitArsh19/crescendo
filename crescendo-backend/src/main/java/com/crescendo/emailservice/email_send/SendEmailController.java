@@ -9,6 +9,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
+import static com.crescendo.publicapi.PublicApiScopes.EMAIL_SEND;
+import static com.crescendo.publicapi.PublicApiScopes.require;
 
 import java.util.UUID;
 
@@ -36,6 +38,7 @@ public class SendEmailController {
             @Valid @RequestBody EmailSendDto.SendEmailRequest req,
             Authentication auth,
             HttpServletRequest request) {
+        require(auth, EMAIL_SEND);
         UUID userId = userId(auth);
 
         // Resolve API key ID from the request attribute set by ApiKeyAuthenticationFilter.

@@ -23,7 +23,27 @@ public class GoogleDriveApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select a file");
 
-        return new App("google-drive", "Google Drive", "Upload files, manage folders, and watch for changes in Google Drive",
+        return new App("google-drive", "Google Drive", """
+                Google Drive is a file storage and synchronization service. The Crescendo Google Drive app allows you to automatically upload files, manage folders, and watch for document changes.
+
+                **What you can do with Google Drive in Crescendo:**
+                - Save email attachments directly to specific Drive folders
+                - Trigger a notification when a new file is uploaded to a shared folder
+                - Automatically generate standard folder structures for new clients
+                - Sync files uploaded in Discord or Slack to Drive for permanent storage
+
+                **Triggers available:**
+                - New File in Folder — trigger a workflow when a file is added
+
+                **Actions available:**
+                - Upload File — save a file to a specific location
+                - Create Folder — generate new directories
+                - Find File/Folder — search your Drive by name or type
+
+                **Who should use this:** Teams managing digital assets, HR departments handling employee documents, and freelancers organizing client files.
+
+                **Authentication:** OAuth 2.0 (connect your Google account).
+                """,
                 "https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -51,7 +71,7 @@ public class GoogleDriveApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "upload-file",
+                        "actionKey", "upload",
                         "name", "Upload File",
                         "description", "Upload a file to Google Drive",
                         "configSchema", List.of(
@@ -73,7 +93,7 @@ public class GoogleDriveApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "create-folder",
+                        "actionKey", "createFolder",
                         "name", "Create Folder",
                         "description", "Create a new folder in Google Drive",
                         "configSchema", List.of(
@@ -88,11 +108,15 @@ public class GoogleDriveApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "list-files",
+                        "actionKey", "getAll",
                         "name", "List Files",
                         "description", "List files in a Google Drive folder",
                         "configSchema", List.of(
                             folderField,
+                            Map.of("key", "query", "label", "Search Query",
+                                   "type", "text", "required", false,
+                                   "placeholder", "name contains 'report'",
+                                   "helpText", "Google Drive search query (e.g., name contains 'report')"),
                             Map.of("key", "pageSize", "label", "Max Results",
                                    "type", "text", "required", false,
                                    "placeholder", "20",
@@ -100,7 +124,7 @@ public class GoogleDriveApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "move-file",
+                        "actionKey", "move",
                         "name", "Move File",
                         "description", "Move a file to a different folder",
                         "configSchema", List.of(
@@ -112,7 +136,7 @@ public class GoogleDriveApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "copy-file",
+                        "actionKey", "copy",
                         "name", "Copy File",
                         "description", "Create a copy of a file",
                         "configSchema", List.of(
@@ -128,7 +152,7 @@ public class GoogleDriveApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "delete-file",
+                        "actionKey", "deleteFile",
                         "name", "Delete File",
                         "description", "Permanently delete a file from Google Drive",
                         "configSchema", List.of(fileField)

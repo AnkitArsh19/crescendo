@@ -18,7 +18,24 @@ public class GoogleDocsApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select the Google Doc");
 
-        return new App("google-docs", "Google Docs", "Create documents, append text, and search-replace content",
+        return new App("google-docs", "Google Docs", """
+                Google Docs is an online word processor that lets you create and format documents. The Crescendo Google Docs app allows you to automate document creation, text appending, and content replacement.
+
+                **What you can do with Google Docs in Crescendo:**
+                - Generate customized contracts by replacing template variables with CRM data
+                - Append daily meeting notes to a single continuous document
+                - Automatically draft blog posts using OpenAI and save them to Docs
+                - Create a new document whenever a Jira Epic is created
+
+                **Actions available:**
+                - Create Document — generate a new blank doc
+                - Append Text — add content to the end of a document
+                - Search and Replace — modify text (e.g., replacing "{{client_name}}" with real data)
+
+                **Who should use this:** Legal teams drafting contracts, content creators organizing articles, and sales teams generating personalized proposals.
+
+                **Authentication:** OAuth 2.0 (connect your Google account).
+                """,
                 "https://ssl.gstatic.com/images/branding/product/2x/docs_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -45,7 +62,7 @@ public class GoogleDocsApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "create-document",
+                        "actionKey", "create",
                         "name", "Create Document",
                         "description", "Create a new Google Doc",
                         "configSchema", List.of(
@@ -53,6 +70,10 @@ public class GoogleDocsApp implements AppDefinition {
                                    "type", "text", "required", true,
                                    "placeholder", "Meeting Notes",
                                    "helpText", "Title of the new document"),
+                            Map.of("key", "folderId", "label", "Folder",
+                                   "type", "dynamic_dropdown", "resourceType", "folders",
+                                   "required", false,
+                                   "helpText", "Optionally place the document in a specific Google Drive folder"),
                             Map.of("key", "body", "label", "Initial Content",
                                    "type", "textarea", "required", false,
                                    "placeholder", "Start typing here...",
@@ -60,7 +81,7 @@ public class GoogleDocsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "append-text",
+                        "actionKey", "appendText",
                         "name", "Append Text to Document",
                         "description", "Append text to the end of a Google Doc",
                         "configSchema", List.of(
@@ -72,13 +93,13 @@ public class GoogleDocsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "get-document",
+                        "actionKey", "get",
                         "name", "Get Document",
                         "description", "Read the full text content of a Google Doc",
                         "configSchema", List.of(documentField)
                     ),
                     Map.of(
-                        "actionKey", "replace-text",
+                        "actionKey", "replaceText",
                         "name", "Find and Replace Text",
                         "description", "Search and replace text across the entire document",
                         "configSchema", List.of(

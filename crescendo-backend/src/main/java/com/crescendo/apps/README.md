@@ -8,26 +8,17 @@ Each app lives in its own package under `com.crescendo.apps.<appname>`.
 apps/
   myapp/
     MyAppApp.java            ← AppDefinition (catalog metadata)
-    MyAppSomeHandler.java    ← ActionHandler (one per action)
-    MyAppOtherHandler.java   ← (optional) additional actions
+    MyAppHandlers.java       ← Grouped handler (multiple actions per file) ← PREFERRED
+    MyAppSomeHandler.java    ← Classic ActionHandler (one action per class) ← also valid
 ```
+
+---
 
 ## Step 1 — Create the AppDefinition
 
-Implement `AppDefinition` and annotate with `@Component`.  
-The `toApp()` method returns the `App` entity that gets seeded into the catalog.
+Implement `AppDefinition` and annotate with `@Component`.
 
 ```java
-package com.crescendo.apps.myapp;
-
-import com.crescendo.app.App;
-import com.crescendo.apps.AppDefinition;
-import com.crescendo.enums.AuthType;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.Map;
-
 @Component
 public class MyAppApp implements AppDefinition {
 
@@ -39,16 +30,17 @@ public class MyAppApp implements AppDefinition {
             "Short description of the app",   // description
             "/icons/myapp.svg",               // icon path
             AuthType.APIKEY,                  // NONE | APIKEY | OAUTH2
-            List.of(/* triggers */),          // trigger definitions (can be empty)
-            List.of(                          // action definitions
+            List.of(/* triggers */),
+            List.of(
                 Map.of(
-                    "actionKey", "do-thing",
-                    "name", "Do a Thing",
-                    "description", "Performs some action",
-                    "configSchema", Map.of(
-                        "param1", "string (required) — description",
-                        "param2", "integer — optional param"
-                    )
+                    "actionKey", "myapp:create",
+                    "name", "Create Item",
+                    "description", "Creates a new item"
+                ),
+                Map.of(
+                    "actionKey", "myapp:get",
+                    "name", "Get Item",
+                    "description", "Gets an item by ID"
                 )
             )
         );
@@ -56,56 +48,109 @@ public class MyAppApp implements AppDefinition {
 }
 ```
 
-## Step 2 — Create ActionHandler(s)
+---
 
-One handler per action. Use `@ActionMapping` (which includes `@Component`).
+## Step 2A — Grouped Handler (PREFERRED — n8n style)
+
+Multiple actions in a single `@Component` class. Each method is annotated with `@ActionMapping`.
+Credentials are accessed via `context.getCredential("key")`, params via `context.getString("key")`.
 
 ```java
-package com.crescendo.apps.myapp;
+@Component
+public class MyAppHandlers {
 
-import com.crescendo.execution.action.*;
-import org.springframework.web.client.RestClient;
+    private String getAuth(ActionContext context) {
+        return "Bearer " + context.getCredential("apiKey");
+    }
 
-import java.util.HashMap;
-import java.util.Map;
+    @ActionMapping(appKey = "myapp", actionKey = "myapp:create")
+    public Object create(ActionContext context) throws Exception {
+        String name = context.getString("name");
+        Map<String, Object> body = Map.of("name", name);
+        return RestClient.builder()
+                .url("https://api.myapp.com/v1/items")
+                .header("Authorization", getAuth(context))
+                .post(body)
+                .execute();
+    }
 
-@ActionMapping(appKey = "myapp", actionKey = "do-thing")
-public class MyAppDoThingHandler implements ActionHandler {
+    @ActionMapping(appKey = "myapp", actionKey = "myapp:get")
+    public Object get(ActionContext context) throws Exception {
+        String id = context.getString("id");
+        return RestClient.builder()
+                .url("https://api.myapp.com/v1/items/" + id)
+                .header("Authorization", getAuth(context))
+                .get()
+                .execute();
+    }
+}
+```
+
+The `ActionHandlerRegistry` automatically scans all `@Component` beans for method-level `@ActionMapping`
+and adapts them to the engine's internal action interfaces.
+
+---
+
+## Step 2B — Classic Handler (one class per action)
+
+Still valid for complex actions that need their own class, and many existing apps still use this pattern.
+
+```java
+@ActionMapping(appKey = "myapp", actionKey = "myapp:create")
+public class MyAppCreateHandler implements ActionHandler {
 
     @Override
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds  = context.credentials();
-
-        // Use RestClient for HTTP calls
-        String response = RestClient.create()
-            .post()
-            .uri("https://api.myapp.com/v1/things")
-            .header("Authorization", "Bearer " + creds.get("apiKey"))
-            .body(Map.of("param1", config.get("param1")))
-            .retrieve()
-            .body(String.class);
-
-        Map<String, Object> output = new HashMap<>();
-        output.put("result", response);
-        return ActionResult.success(output);
+        // ... do work ...
+        return ActionResult.success(Map.of("id", "123"));
     }
 }
 ```
 
-## That's It
+---
 
-- **No registration needed** — Spring auto-discovers `@Component` beans
-- **No DataSeeder changes** — `AppDefinition` beans are injected automatically
-- **No registry changes** — `ActionHandlerRegistry` finds handlers via `@ActionMapping`
+## ActionContext Convenience Methods
+
+| Method | Description |
+|--------|-------------|
+| `context.getString("key")` | Get a config parameter as String |
+| `context.getString("key", "default")` | Get a config parameter with default |
+| `context.getInt("key")` | Get a config parameter as int |
+| `context.getInt("key", 0)` | Get a config parameter as int with default |
+| `context.getMap("key")` | Get a config parameter as `Map<String, Object>` |
+| `context.get("key")` | Get a raw config value as Object |
+| `context.getCredential("key")` | Get a credential value (decrypted) |
+| `context.configuration()` | Full raw configuration map |
+| `context.credentials()` | Full raw credentials map |
+
+---
+
+## RestClient Usage
+
+```java
+// GET
+RestClient.builder().url("https://...").header("Authorization", token).get().execute();
+
+// POST with body
+RestClient.builder().url("https://...").header("Authorization", token).post(bodyMap).execute();
+
+// PUT / PATCH / DELETE
+RestClient.builder().url("https://...").put(bodyMap).execute();
+RestClient.builder().url("https://...").patch(bodyMap).execute();
+RestClient.builder().url("https://...").delete().execute();
+```
+
+---
 
 ## Key Rules
 
 | Rule | Details |
 |------|---------|
 | `appKey` | Lowercase, matches pattern `^[a-z][a-z0-9_-]{1,99}$` |
-| `appKey` must match | Same value in `AppDefinition.toApp()` and `@ActionMapping` |
+| `appKey` must match | Same value in `AppDefinition.toApp()` and all `@ActionMapping` methods |
 | `actionKey` must match | Same value in the action list and `@ActionMapping` |
-| Return on failure | `ActionResult.failure("message")` |
-| Return on success | `ActionResult.success(outputMap)` |
-| Credentials | Available via `context.credentials()` — populated from the user's Connection |
+| Return on failure | `ActionResult.failure("message")` (classic) or throw exception (grouped handler) |
+| Return on success | `ActionResult.success(outputMap)` (classic) or return `Map` / `Object` (grouped handler) |
+| Credentials | Available via `context.getCredential("key")` or `context.credentials()` |

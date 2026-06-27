@@ -11,7 +11,23 @@ import java.util.Map;
 public class LinkedInApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("linkedin", "LinkedIn", "Share posts, articles, and manage your professional presence",
+        return new App("linkedin", "LinkedIn", """
+                LinkedIn is the world's largest professional network. The Crescendo LinkedIn app allows you to manage your professional presence and automate content sharing.
+
+                **What you can do with LinkedIn in Crescendo:**
+                - Automatically share a new blog post to your personal LinkedIn feed when your RSS feed updates
+                - Announce new product launches simultaneously across Twitter, Facebook, and LinkedIn
+                - Generate a weekly summary of your LinkedIn post engagement metrics and log them to Notion
+                - Trigger an automated direct message when a new connection is added (via webhook)
+
+                **Actions available:**
+                - Create Post — publish a text, article, or image post to your personal profile or company page
+                - Get Profile — retrieve basic information about the authenticated user
+
+                **Who should use this:** B2B marketers, thought leaders, and recruiters automating their outreach and content distribution.
+
+                **Authentication:** OAuth 2.0 (connect your LinkedIn account).
+                """,
                 "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "new-follower", "name", "New Follower",

@@ -13,27 +13,49 @@ public class BrevoApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("brevo", "Brevo", "Send Brevo emails and manage contacts",
-                "https://cdn.brandfetch.io/id87KI8yDJ/w/200/h/200/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX&t=1759046719977", AuthType.OAUTH2,
+        return new App(
+                "brevo",
+                "Brevo",
+                """
+                Brevo (formerly Sendinblue) is a SaaS solution for relationship marketing.
+                
+                This integration provides:
+                - **Attribute**: Create, Update, Delete, Get All
+                - **Contact**: Create, Upsert, Delete, Get, Get All, Update
+                - **Email**: Send, Send Template
+                - **Sender**: Create, Delete, Get All
+                
+                Authenticate using a Brevo API Key (v3).
+                """,
+                "/icons/brevo.svg",
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
-                        Map.of("actionKey", "send-email", "name", "Send Transactional Email",
-                                "description", "Send an email through Brevo API",
-                                "configSchema", List.of(
-                                        Map.of("key", "to", "label", "To", "type", "text", "required", true),
-                                        Map.of("key", "subject", "label", "Subject", "type", "text", "required", true),
-                                        Map.of("key", "htmlContent", "label", "HTML Content", "type", "textarea", "required", true),
-                                        Map.of("key", "senderEmail", "label", "Sender Email", "type", "text", "required", true),
-                                        Map.of("key", "senderName", "label", "Sender Name", "type", "text", "required", false))),
-                        Map.of("actionKey", "create-contact", "name", "Create Contact",
-                                "description", "Create or update a Brevo contact",
-                                "configSchema", List.of(
-                                        Map.of("key", "email", "label", "Email", "type", "text", "required", true),
-                                        Map.of("key", "attributes", "label", "Attributes (JSON)", "type", "json", "required", false,
-                                                "placeholder", "{\"FIRSTNAME\":\"Jane\"}"),
-                                        Map.of("key", "listIds", "label", "List IDs (JSON Array)", "type", "json", "required", false,
-                                                "placeholder", "[2]")))
+                        // ATTRIBUTE
+                        Map.of("actionKey", "brevo:attribute:create", "name", "Create Attribute", "description", "Create a contact attribute", "configSchema", List.of(Map.of("key", "category", "label", "Category", "type", "text"), Map.of("key", "name", "label", "Name", "type", "text", "required", true), Map.of("key", "type", "label", "Type", "type", "text"))),
+                        Map.of("actionKey", "brevo:attribute:update", "name", "Update Attribute", "description", "Update a contact attribute", "configSchema", List.of(Map.of("key", "category", "label", "Category", "type", "text"), Map.of("key", "name", "label", "Name", "type", "text", "required", true), Map.of("key", "type", "label", "Type", "type", "text"))),
+                        Map.of("actionKey", "brevo:attribute:delete", "name", "Delete Attribute", "description", "Delete a contact attribute", "configSchema", List.of(Map.of("key", "category", "label", "Category", "type", "text"), Map.of("key", "name", "label", "Name", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:attribute:getAll", "name", "Get All Attributes", "description", "Get all contact attributes", "configSchema", List.of()),
+
+                        // CONTACT
+                        Map.of("actionKey", "brevo:contact:create", "name", "Create Contact", "description", "Create a contact", "configSchema", List.of(Map.of("key", "email", "label", "Email", "type", "text", "required", true), Map.of("key", "attributes", "label", "Attributes (JSON)", "type", "json"))),
+                        Map.of("actionKey", "brevo:contact:upsert", "name", "Upsert Contact", "description", "Upsert a contact", "configSchema", List.of(Map.of("key", "email", "label", "Email", "type", "text", "required", true), Map.of("key", "attributes", "label", "Attributes (JSON)", "type", "json"))),
+                        Map.of("actionKey", "brevo:contact:delete", "name", "Delete Contact", "description", "Delete a contact", "configSchema", List.of(Map.of("key", "identifier", "label", "Identifier (Email or ID)", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:contact:get", "name", "Get Contact", "description", "Get a contact", "configSchema", List.of(Map.of("key", "identifier", "label", "Identifier (Email or ID)", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:contact:getAll", "name", "Get All Contacts", "description", "Get all contacts", "configSchema", List.of(Map.of("key", "limit", "label", "Limit", "type", "number", "default", 50))),
+                        Map.of("actionKey", "brevo:contact:update", "name", "Update Contact", "description", "Update a contact", "configSchema", List.of(Map.of("key", "identifier", "label", "Identifier (Email or ID)", "type", "text", "required", true), Map.of("key", "attributes", "label", "Attributes (JSON)", "type", "json"))),
+
+                        // EMAIL
+                        Map.of("actionKey", "brevo:email:send", "name", "Send Email", "description", "Send a transactional email", "configSchema", List.of(Map.of("key", "senderEmail", "label", "Sender Email", "type", "text", "required", true), Map.of("key", "senderName", "label", "Sender Name", "type", "text"), Map.of("key", "recipientEmail", "label", "Recipient Email", "type", "text", "required", true), Map.of("key", "subject", "label", "Subject", "type", "text", "required", true), Map.of("key", "htmlContent", "label", "HTML Content", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:email:sendTemplate", "name", "Send Template Email", "description", "Send a transactional email via template", "configSchema", List.of(Map.of("key", "templateId", "label", "Template ID", "type", "number", "required", true), Map.of("key", "recipientEmail", "label", "Recipient Email", "type", "text", "required", true))),
+
+                        // SENDER
+                        Map.of("actionKey", "brevo:sender:create", "name", "Create Sender", "description", "Create a sender", "configSchema", List.of(Map.of("key", "name", "label", "Name", "type", "text", "required", true), Map.of("key", "email", "label", "Email", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:sender:delete", "name", "Delete Sender", "description", "Delete a sender", "configSchema", List.of(Map.of("key", "senderId", "label", "Sender ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:sender:getAll", "name", "Get All Senders", "description", "Get all senders", "configSchema", List.of())
                 )
-        ).credentialSchema(List.of()).category("marketing").helpUrl("https://avatars.githubusercontent.com/u/100062402?v=4");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true)
+        )).category("marketing");
     }
 }

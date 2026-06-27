@@ -11,8 +11,22 @@ public class BrandfetchApp implements AppDefinition {
     public App toApp() {
         return new App(
                 "brandfetch",
-                "Brandfetch",
-                "Fetch brand logos, colors, and fonts by domain",
+                "Brandfetch", """
+                Brandfetch is the global brand registry. The Crescendo Brandfetch app allows you to retrieve accurate, up-to-date brand assets directly into your workflows.
+
+                **What you can do with Brandfetch in Crescendo:**
+                - Fetch a company's primary logo when a new Salesforce account is created
+                - Retrieve brand colors to dynamically style PDF reports or invoices
+                - Pull social media links to enrich new CRM leads
+                - Validate the existence of a corporate domain automatically
+
+                **Actions available:**
+                - Get Brand — provide a domain name (e.g., openai.com) to retrieve a full brand profile including logos, colors, fonts, and descriptions
+
+                **Who should use this:** Marketing automation specialists, designers, and developers building dynamic company profiles.
+
+                **Authentication:** None required for public endpoints (API Key available for higher limits).
+                """,
                 "https://www.google.com/s2/favicons?domain=brandfetch.com&sz=128",
                 AuthType.NONE,
                 List.of(),

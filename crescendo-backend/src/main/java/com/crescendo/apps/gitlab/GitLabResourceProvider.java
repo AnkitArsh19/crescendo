@@ -20,7 +20,6 @@ import java.util.*;
 public class GitLabResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(GitLabResourceProvider.class);
-    private static final String GITLAB_API = "https://gitlab.com/api/v4";
 
     @Override
     public String appKey() {
@@ -37,20 +36,22 @@ public class GitLabResourceProvider implements ResourceProvider {
             String resourceType,
             Map<String, String> params) {
         String accessToken = credentials.get("accessToken").toString();
+        String baseUrl = credentials.containsKey("baseUrl") ? credentials.get("baseUrl").toString() : "https://gitlab.com";
+        String apiUrl = baseUrl.endsWith("/") ? baseUrl + "api/v4" : baseUrl + "/api/v4";
 
         return switch (resourceType) {
-            case "projects" -> listProjects(accessToken);
-            case "branches" -> listBranches(accessToken, params.get("projectId"));
-            case "labels" -> listLabels(accessToken, params.get("projectId"));
+            case "projects" -> listProjects(accessToken, apiUrl);
+            case "branches" -> listBranches(accessToken, apiUrl, params.get("projectId"));
+            case "labels" -> listLabels(accessToken, apiUrl, params.get("projectId"));
             default -> List.of();
         };
     }
 
-    private List<ResourceOption> listProjects(String accessToken) {
+    private List<ResourceOption> listProjects(String accessToken, String apiUrl) {
         try {
             List<Map<String, Object>> projects = restClient(accessToken)
                     .get()
-                    .uri(GITLAB_API + "/projects?membership=true&per_page=100&order_by=last_activity_at")
+                    .uri(apiUrl + "/projects?membership=true&per_page=100&order_by=last_activity_at")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
@@ -70,13 +71,13 @@ public class GitLabResourceProvider implements ResourceProvider {
         }
     }
 
-    private List<ResourceOption> listBranches(String accessToken, String projectId) {
+    private List<ResourceOption> listBranches(String accessToken, String apiUrl, String projectId) {
         if (projectId == null || projectId.isBlank())
             return List.of();
         try {
             List<Map<String, Object>> branches = restClient(accessToken)
                     .get()
-                    .uri(GITLAB_API + "/projects/{projectId}/repository/branches?per_page=100", projectId)
+                    .uri(apiUrl + "/projects/{projectId}/repository/branches?per_page=100", projectId)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });
@@ -96,13 +97,13 @@ public class GitLabResourceProvider implements ResourceProvider {
         }
     }
 
-    private List<ResourceOption> listLabels(String accessToken, String projectId) {
+    private List<ResourceOption> listLabels(String accessToken, String apiUrl, String projectId) {
         if (projectId == null || projectId.isBlank())
             return List.of();
         try {
             List<Map<String, Object>> labels = restClient(accessToken)
                     .get()
-                    .uri(GITLAB_API + "/projects/{projectId}/labels?per_page=100", projectId)
+                    .uri(apiUrl + "/projects/{projectId}/labels?per_page=100", projectId)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });

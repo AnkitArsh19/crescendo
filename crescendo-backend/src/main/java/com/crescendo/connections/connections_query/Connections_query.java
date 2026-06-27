@@ -41,6 +41,10 @@ public class Connections_query {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
+    /** Mirror of {@link com.crescendo.connections.connections_command.Connections_command#grantedScopes}. */
+    @Column(name = "granted_scopes", columnDefinition = "TEXT")
+    private String grantedScopes;
+
     public Connections_query() {
     }
 
@@ -86,5 +90,13 @@ public class Connections_query {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getGrantedScopes() {
+        return grantedScopes;
+    }
+
+    public void setGrantedScopes(String grantedScopes) {
+        this.grantedScopes = grantedScopes;
     }
 }

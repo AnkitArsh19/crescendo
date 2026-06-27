@@ -36,8 +36,24 @@ public class DiscordApp implements AppDefinition {
                 "required", true,
                 "helpText", "Select the user");
 
-        return new App("discord", "Discord",
-                "Send messages, watch channels, and manage servers in Discord",
+        return new App("discord", "Discord", """
+                Discord is the easiest way to talk over voice, video, and text. The Crescendo Discord app connects your servers to external workflows.
+
+                **What you can do with Discord in Crescendo:**
+                - Send messages and rich embeds to channels automatically
+                - Notify your team of new GitHub issues, Notion pages, or support tickets
+                - Automatically assign or remove roles when users take actions elsewhere
+                - Direct message users for personal alerts
+
+                **Triggers available:**
+                - New Message — trigger a workflow when a message is posted
+                - New Member — welcome new users to the server
+                - New Reaction — kick off a process when a specific emoji is added
+
+                **Who should use this:** Community managers, support teams, and developer squads who use Discord as their primary operations hub.
+
+                **Authentication:** Bot Token (for background bot actions) or OAuth 2.0 (for user-level channel discovery).
+                """,
                 "https://www.google.com/s2/favicons?domain=discord.com&sz=128", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -77,7 +93,7 @@ public class DiscordApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "send-message",
+                        "actionKey", "sendMessage",
                         "name", "Send Channel Message",
                         "description", "Post a message to a Discord channel",
                         "configSchema", List.of(
@@ -85,11 +101,25 @@ public class DiscordApp implements AppDefinition {
                             Map.of("key", "content", "label", "Message Content",
                                    "type", "textarea", "required", true,
                                    "placeholder", "Hello from Crescendo!",
-                                   "helpText", "The message content to send")
+                                   "helpText", "The message content to send"),
+                            Map.of("key", "tts", "label", "Text-to-Speech (TTS)",
+                                   "type", "dropdown", "required", false,
+                                   "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False")),
+                                   "helpText", "Whether to read the message aloud"),
+                            Map.of("key", "message_reference", "label", "Reply to Message ID",
+                                   "type", "text", "required", false,
+                                   "helpText", "Fill this to make your message a reply to an existing message ID"),
+                            Map.of("key", "flags", "label", "Flags",
+                                   "type", "dropdown", "required", false,
+                                   "options", List.of(
+                                       Map.of("value", "4", "label", "Suppress Embeds"),
+                                       Map.of("value", "4096", "label", "Suppress Notifications")
+                                   ),
+                                   "helpText", "Optional message flags")
                         )
                     ),
                     Map.of(
-                        "actionKey", "send-embed",
+                        "actionKey", "sendEmbed",
                         "name", "Send Embed Message",
                         "description", "Send a rich embed message to a channel",
                         "configSchema", List.of(
@@ -107,7 +137,7 @@ public class DiscordApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "send-dm",
+                        "actionKey", "sendDirectMessage",
                         "name", "Send Direct Message",
                         "description", "Send a private message to a user",
                         "configSchema", List.of(
@@ -115,11 +145,48 @@ public class DiscordApp implements AppDefinition {
                             Map.of("key", "content", "label", "Message",
                                    "type", "textarea", "required", true,
                                    "placeholder", "Hello!",
-                                   "helpText", "The message to send privately")
+                                   "helpText", "The message to send privately"),
+                            Map.of("key", "tts", "label", "Text-to-Speech (TTS)",
+                                   "type", "dropdown", "required", false,
+                                   "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
+                            Map.of("key", "message_reference", "label", "Reply to Message ID",
+                                   "type", "text", "required", false),
+                            Map.of("key", "flags", "label", "Flags",
+                                   "type", "dropdown", "required", false,
+                                   "options", List.of(
+                                       Map.of("value", "4", "label", "Suppress Embeds"),
+                                       Map.of("value", "4096", "label", "Suppress Notifications")
+                                   ))
                         )
                     ),
                     Map.of(
-                        "actionKey", "create-channel",
+                        "actionKey", "deleteMessage",
+                        "name", "Delete Message",
+                        "description", "Delete a message in a channel",
+                        "configSchema", List.of(
+                            guildField, channelField,
+                            Map.of("key", "messageId", "label", "Message ID",
+                                   "type", "text", "required", true,
+                                   "helpText", "The ID of the message to delete")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "addReaction",
+                        "name", "Add Reaction",
+                        "description", "Add an emoji reaction to a message",
+                        "configSchema", List.of(
+                            guildField, channelField,
+                            Map.of("key", "messageId", "label", "Message ID",
+                                   "type", "text", "required", true,
+                                   "helpText", "The ID of the message to react to"),
+                            Map.of("key", "emoji", "label", "Emoji",
+                                   "type", "text", "required", true,
+                                   "placeholder", "👍",
+                                   "helpText", "The emoji character or custom emoji (name:id) to react with")
+                        )
+                    ),
+                    Map.of(
+                        "actionKey", "createChannel",
                         "name", "Create Channel",
                         "description", "Create a new text channel in a server",
                         "configSchema", List.of(
@@ -134,13 +201,13 @@ public class DiscordApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "add-role",
+                        "actionKey", "addRole",
                         "name", "Add Role to Member",
                         "description", "Assign a role to a server member",
                         "configSchema", List.of(guildField, userField, roleField)
                     ),
                     Map.of(
-                        "actionKey", "remove-role",
+                        "actionKey", "removeRole",
                         "name", "Remove Role from Member",
                         "description", "Remove a role from a server member",
                         "configSchema", List.of(guildField, userField, roleField)

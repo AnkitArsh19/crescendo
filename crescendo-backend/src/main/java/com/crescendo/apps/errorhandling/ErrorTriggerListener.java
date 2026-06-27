@@ -74,7 +74,7 @@ public class ErrorTriggerListener {
     private Steps_command findErrorTrigger(UUID workflowId) {
         return stepsRepo.findActiveByWorkflowId(workflowId).stream()
                 .filter(step -> step.getType() == StepType.TRIGGER)
-                .filter(step -> "error-handling".equals(step.getAppKey()))
+                .filter(step -> "errorhandling".equals(step.getAppKey()))
                 .filter(step -> "error-trigger".equals(step.getActionKey()))
                 .findFirst()
                 .orElse(null);

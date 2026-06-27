@@ -13,7 +13,22 @@ public class ICalendarApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("icalendar", "iCalendar", "Generate .ics calendar invite content",
+        return new App("icalendar", "iCalendar", """
+                The iCalendar app is a built-in utility that allows you to programmatically generate standard `.ics` calendar invitation files that can be imported by Google Calendar, Outlook, and Apple Calendar.
+
+                **What you can do with iCalendar in Crescendo:**
+                - Generate an `.ics` file for a webinar registration and attach it to an automated welcome email via Brevo
+                - Create custom calendar blocks for internal team events based on a Slack slash command
+                - Automatically construct a calendar invite when a client fills out a Typeform booking request
+                - Send dynamic "Save the Date" calendar attachments to event attendees
+
+                **Actions available:**
+                - Generate Invite — provide an event summary, start time, end time, and description to output a valid `text/calendar` string
+
+                **Who should use this:** Event organizers, marketing teams, and HR professionals automating meeting schedules.
+
+                **Authentication:** None required.
+                """,
                 "/icons/icalendar.svg", AuthType.NONE,
                 List.of(),
                 List.of(

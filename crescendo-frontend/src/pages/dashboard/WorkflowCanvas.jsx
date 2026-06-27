@@ -1014,7 +1014,7 @@ export default function WorkflowCanvas() {
                         apps={catalogApps}
                         connections={connections}
                         title={appBrowserTarget === 'new' ? 'Choose an App' : 'Select App'}
-                        onSelect={async (app) => {
+                        onSelect={async (app, credentialSource) => {
                             setShowAppBrowser(false);
                             if (appBrowserTarget === 'new') {
                                 // Add a new action node with the selected app
@@ -1025,6 +1025,7 @@ export default function WorkflowCanvas() {
                                     appName: app.name,
                                     iconUrl: app.iconUrl || null,
                                     label: app.name,
+                                    credentialSource: credentialSource || 'PERSONAL',
                                 });
                                 await ensureAppDetail(app.appKey);
                             } else if (appBrowserTarget && configNode) {
@@ -1036,6 +1037,7 @@ export default function WorkflowCanvas() {
                                     iconUrl: app.iconUrl || null,
                                     label: app.name,
                                     connectionId: null,
+                                    credentialSource: credentialSource || 'PERSONAL',
                                     actionKey: '',
                                     triggerKey: '',
                                     triggerType: '',

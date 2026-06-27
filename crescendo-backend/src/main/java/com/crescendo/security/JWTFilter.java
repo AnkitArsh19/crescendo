@@ -53,8 +53,11 @@ public class JWTFilter extends OncePerRequestFilter {
                 if (username != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                     if (jwtService.validateAccessToken(token, userDetails)) {
+                        UserDetails principal = isPublicApiPath(request) && userDetails instanceof AppUserDetails appUser
+                                ? PublicApiPrincipal.userSession(appUser)
+                                : userDetails;
                         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
+                                principal, null, principal.getAuthorities());
                         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(auth);
                     }
@@ -85,5 +88,10 @@ public class JWTFilter extends OncePerRequestFilter {
         }
         String queryToken = request.getParameter("access_token");
         return (queryToken != null && !queryToken.isBlank()) ? queryToken : null;
+    }
+
+    private boolean isPublicApiPath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path != null && path.startsWith("/api/v1/");
     }
 }

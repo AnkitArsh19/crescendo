@@ -24,7 +24,24 @@ public class TogglApp implements AppDefinition {
                 "required", false,
                 "helpText", "Select the project (optional)");
 
-        return new App("toggl", "Toggl Track", "Track time entries and manage projects in Toggl",
+        return new App("toggl", "Toggl Track", """
+                Toggl Track is a time tracking app that offers online time tracking and reporting services. The Crescendo Toggl app lets you automate your personal or team time tracking.
+
+                **What you can do with Toggl Track in Crescendo:**
+                - Start a new time entry automatically when a Jira ticket is moved to "In Progress"
+                - Generate a weekly summary of billable hours and send it to your accounting channel in Slack
+                - Stop your current timer when your Google Calendar indicates you are in a meeting
+                - Create a new Toggl Project whenever a client signs a contract in DocuSign
+
+                **Actions available:**
+                - Create Time Entry — start tracking time for a specific task
+                - Get Current Time Entry — find out what task is currently running
+                - Stop Time Entry — halt a running timer
+
+                **Who should use this:** Freelancers, agency owners, and productivity enthusiasts automating their time logs.
+
+                **Authentication:** API Token (available in your Toggl profile settings).
+                """,
                 "/icons/toggl.svg", AuthType.APIKEY,
 
                 // ═══ TRIGGERS ═══
@@ -46,7 +63,7 @@ public class TogglApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "create-time-entry",
+                        "actionKey", "createTimeEntry",
                         "name", "Create Time Entry",
                         "description", "Log a completed time entry",
                         "configSchema", List.of(
@@ -70,7 +87,7 @@ public class TogglApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "start-timer",
+                        "actionKey", "startTimer",
                         "name", "Start Timer",
                         "description", "Start a new running timer",
                         "configSchema", List.of(
@@ -82,13 +99,13 @@ public class TogglApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "stop-timer",
+                        "actionKey", "stopTimer",
                         "name", "Stop Timer",
                         "description", "Stop the currently running timer",
                         "configSchema", List.of(workspaceField)
                     ),
                     Map.of(
-                        "actionKey", "get-current",
+                        "actionKey", "getCurrentTimeEntry",
                         "name", "Get Running Timer",
                         "description", "Get the currently running time entry",
                         "configSchema", List.of()

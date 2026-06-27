@@ -31,9 +31,30 @@ public class MicrosoftExcelApp implements AppDefinition {
 
         return new App(
                 "microsoft-excel",
-                "Microsoft Excel",
-                "Connect Excel workbooks in OneDrive — read rows, append data, and watch for changes",
-                "https://www.google.com/s2/favicons?domain=excel.office.com&sz=128",
+                "Microsoft Excel", """
+                Microsoft Excel is a spreadsheet developed by Microsoft. The Crescendo Excel app connects to workbooks in your OneDrive, allowing you to read rows, append data, and watch for changes automatically.
+
+                **What you can do with Excel in Crescendo:**
+                - Append new rows for incoming form submissions or webhook data
+                - Trigger workflows when a specific row is updated
+                - Create monthly report workbooks automatically
+                - Sync Excel data with databases like PostgreSQL or Airtable
+
+                **Triggers available:**
+                - New Row — trigger workflows when data is appended
+                - Updated Row — detect changes in existing data
+                - New Worksheet — trigger when a sheet is added
+
+                **Actions available:**
+                - Add Row / Update Row / Delete Row — modify data
+                - Find Row — search a column for a specific value
+                - Create Workbook/Worksheet — manage your files
+
+                **Who should use this:** Finance teams tracking budgets, data analysts, and enterprise users managing records in Office 365.
+
+                **Authentication:** OAuth 2.0 (connect your Microsoft account).
+                """,
+                "https://upload.wikimedia.org/wikipedia/commons/e/e3/Microsoft_Office_Excel_%282019%E2%80%932025%29.svg",
                 AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -61,7 +82,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "append-row",
+                        "actionKey", "appendRow",
                         "name", "Add Row",
                         "description", "Append a new row to the end of a worksheet",
                         "configSchema", List.of(
@@ -72,7 +93,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "helpText", "JSON array of values for the new row, matching column order"))
                     ),
                     Map.of(
-                        "actionKey", "update-row",
+                        "actionKey", "updateRow",
                         "name", "Update Row",
                         "description", "Update an existing row in a worksheet by row number",
                         "configSchema", List.of(
@@ -87,7 +108,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "helpText", "JSON array of updated values for the row"))
                     ),
                     Map.of(
-                        "actionKey", "find-row",
+                        "actionKey", "findRow",
                         "name", "Find Row",
                         "description", "Find a row by searching a column for a value",
                         "configSchema", List.of(
@@ -102,7 +123,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "helpText", "The value to search for in the column"))
                     ),
                     Map.of(
-                        "actionKey", "create-workbook",
+                        "actionKey", "createWorkbook",
                         "name", "Create Workbook",
                         "description", "Create a new empty Excel workbook in OneDrive",
                         "configSchema", List.of(
@@ -116,7 +137,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "helpText", "Select the OneDrive folder (default: root)"))
                     ),
                     Map.of(
-                        "actionKey", "create-worksheet",
+                        "actionKey", "createWorksheet",
                         "name", "Create Worksheet",
                         "description", "Add a new worksheet to an existing workbook",
                         "configSchema", List.of(
@@ -127,7 +148,7 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "helpText", "Name for the new worksheet"))
                     ),
                     Map.of(
-                        "actionKey", "delete-row",
+                        "actionKey", "deleteRow",
                         "name", "Delete Row",
                         "description", "Delete a row from a worksheet by row number",
                         "configSchema", List.of(
@@ -136,6 +157,26 @@ public class MicrosoftExcelApp implements AppDefinition {
                                    "type", "text", "required", true,
                                    "placeholder", "5",
                                    "helpText", "The row number to delete (1-based)"))
+                    ),
+                    Map.of(
+                        "actionKey", "readRows",
+                        "name", "Read Rows",
+                        "description", "Read data from a worksheet or a specific range",
+                        "configSchema", List.of(
+                            workbookField, worksheetField,
+                            Map.of("key", "range", "label", "Range",
+                                   "type", "text", "required", false,
+                                   "placeholder", "A1:B10",
+                                   "helpText", "The sheet range to read data from (e.g. A1:B10). Leave blank to return entire used range."),
+                            Map.of("key", "keyRow", "label", "Header Row",
+                                   "type", "text", "required", false,
+                                   "placeholder", "0",
+                                   "helpText", "Index of the row which contains column names (0-based relative to Range). Default: 0"),
+                            Map.of("key", "dataStartRow", "label", "First Data Row",
+                                   "type", "text", "required", false,
+                                   "placeholder", "1",
+                                   "helpText", "Index of first row which contains actual data (0-based relative to Range). Default: 1")
+                        )
                     )
                 )
         )

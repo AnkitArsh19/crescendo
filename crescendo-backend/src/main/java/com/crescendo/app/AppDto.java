@@ -13,6 +13,9 @@ public class AppDto {
     /**
      * Summary view for app listing — includes credential schema and metadata
      * so the frontend can render structured connection forms.
+     *
+     * <p>{@code hasPlatformKey} — when {@code true}, the frontend should show a
+     * "Use Crescendo's Key" option so the user can skip providing personal credentials.
      */
     public record AppSummaryResponse(
             String appKey,
@@ -24,11 +27,15 @@ public class AppDto {
             List<Map<String, Object>> credentialSchema,
             String category,
             String helpUrl,
-            boolean internal
+            boolean internal,
+            boolean hasPlatformKey
     ) implements Serializable {}
 
     /**
      * Detail view including triggers and actions definitions.
+     *
+     * <p>{@code hasPlatformKey} — same as in summary; the frontend uses this
+     * to conditionally render the credential-source toggle in the node config panel.
      */
     public record AppDetailResponse(
             String appKey,
@@ -42,6 +49,8 @@ public class AppDto {
             List<Map<String, Object>> credentialSchema,
             String category,
             String helpUrl,
-            boolean internal
+            boolean internal,
+            boolean hasPlatformKey
         ) implements Serializable {}
 }
+

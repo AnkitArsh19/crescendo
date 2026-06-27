@@ -1,51 +1,37 @@
 package com.crescendo.apps.typeform;
 
-import com.crescendo.apps.simpleapi.SimpleApiSupport;
-import com.crescendo.execution.action.*;
-import tools.jackson.databind.ObjectMapper;
+import com.crescendo.execution.action.ActionContext;
+import com.crescendo.execution.action.ActionMapping;
+import com.crescendo.utils.RestClient;
+import org.springframework.stereotype.Component;
 
-@ActionMapping(appKey = "typeform", actionKey = "list-forms")
-class TypeformListFormsHandler implements ActionHandler {
-    private final ObjectMapper m;
+@Component
+public class TypeformHandlers {
 
-    TypeformListFormsHandler(ObjectMapper m) {
-        this.m = m;
+    private String getBaseUrl() {
+        return "https://api.typeform.com";
     }
 
-    @Override
-    public ActionResult execute(ActionContext c) {
-        try {
-            return SimpleApiSupport.parsed(m, SimpleApiSupport.bearer("https://api.typeform.com", SimpleApiSupport.cred(c, "accessToken"))
-                    .get()
-                    .uri("/forms")
-                    .retrieve()
-                    .body(String.class));
-        } catch (Exception e) {
-            return ActionResult.failure("Typeform list forms failed: " + e.getMessage());
-        }
-    }
-}
-
-@ActionMapping(appKey = "typeform", actionKey = "list-responses")
-class TypeformListResponsesHandler implements ActionHandler {
-    private final ObjectMapper m;
-
-    TypeformListResponsesHandler(ObjectMapper m) {
-        this.m = m;
+    private String getAuth(ActionContext context) {
+        return "Bearer " + context.getCredential("accessToken");
     }
 
-    @Override
-    public ActionResult execute(ActionContext c) {
-        try {
-            return SimpleApiSupport.parsed(m, SimpleApiSupport.bearer("https://api.typeform.com", SimpleApiSupport.cred(c, "accessToken"))
-                    .get()
-                    .uri("/forms/{form}/responses?page_size={size}",
-                            SimpleApiSupport.cfg(c, "formId"),
-                            Math.max(1, SimpleApiSupport.intCfg(c, "pageSize", 25)))
-                    .retrieve()
-                    .body(String.class));
-        } catch (Exception e) {
-            return ActionResult.failure("Typeform list responses failed: " + e.getMessage());
-        }
+    @ActionMapping(appKey = "typeform", actionKey = "typeform:form:getAll")
+    public Object getAllForms(ActionContext context) throws Exception {
+        return RestClient.builder()
+                .url(getBaseUrl() + "/forms")
+                .header("Authorization", getAuth(context))
+                .get()
+                .execute();
+    }
+
+    @ActionMapping(appKey = "typeform", actionKey = "typeform:response:getAll")
+    public Object getResponses(ActionContext context) throws Exception {
+        String formId = context.getString("formId");
+        return RestClient.builder()
+                .url(getBaseUrl() + "/forms/" + formId + "/responses")
+                .header("Authorization", getAuth(context))
+                .get()
+                .execute();
     }
 }

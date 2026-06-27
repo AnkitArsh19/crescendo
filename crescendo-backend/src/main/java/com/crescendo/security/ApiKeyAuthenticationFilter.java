@@ -3,6 +3,10 @@ package com.crescendo.security;
 import com.crescendo.emailservice.apikey.key_command.ApiKey_command;
 import com.crescendo.emailservice.apikey.key_command.ApiKey_commandRepository;
 import com.crescendo.emailservice.apikey.key_command.ApiKey_commandService;
+import com.crescendo.emailservice.apikey.key_query.ApiKey_queryRepository;
+import com.crescendo.publicapi.audit.ApiKeyUsageLog;
+import com.crescendo.publicapi.audit.ApiKeyUsageLogRepository;
+import com.crescendo.publicapi.PublicApiScopes;
 import com.crescendo.user.user_command.User_command;
 import com.crescendo.user.user_command.User_commandRepository;
 import com.crescendo.user.user_command.user_credential.UserCredentialRepository;
@@ -11,6 +15,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +27,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Authenticates requests carrying an API key in the Authorization header.
@@ -45,8 +51,9 @@ import java.time.Instant;
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String KEY_PREFIX = "re_";
-    private static final int LOOKUP_PREFIX_LENGTH = 8;
-    private static final long RATE_LIMIT_MAX = 100;
+    private static final String LIVE_KEY_PREFIX = "re_live_";
+    private static final int LEGACY_LOOKUP_PREFIX_LENGTH = 8;
+    private static final int LIVE_LOOKUP_PREFIX_LENGTH = 16;
     private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(1);
     private static final String RATE_LIMIT_KEY_PREFIX = "crescendo:ratelimit:apikey:";
     public static final String API_KEY_ID_ATTRIBUTE = "crescendo.apiKeyId";
@@ -55,15 +62,24 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private final User_commandRepository userRepo;
     private final UserCredentialRepository credentialRepo;
     private final StringRedisTemplate redisTemplate;
+    private final ApiKeyUsageLogRepository usageLogRepo;
+    private final ApiKey_queryRepository apiKeyQueryRepo;
+
+    @Value("${app.security.trust-forwarded-headers:false}")
+    private boolean trustForwardedHeaders;
 
     public ApiKeyAuthenticationFilter(ApiKey_commandRepository apiKeyRepo,
                                       User_commandRepository userRepo,
                                       UserCredentialRepository credentialRepo,
-                                      StringRedisTemplate redisTemplate) {
+                                      StringRedisTemplate redisTemplate,
+                                      ApiKeyUsageLogRepository usageLogRepo,
+                                      ApiKey_queryRepository apiKeyQueryRepo) {
         this.apiKeyRepo = apiKeyRepo;
         this.userRepo = userRepo;
         this.credentialRepo = credentialRepo;
         this.redisTemplate = redisTemplate;
+        this.usageLogRepo = usageLogRepo;
+        this.apiKeyQueryRepo = apiKeyQueryRepo;
     }
 
     @Override
@@ -81,29 +97,37 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
         String rawKey = authHeader.substring(7); // strip "Bearer "
 
-        if (rawKey.length() < LOOKUP_PREFIX_LENGTH) {
+        if (!isPublicApiPath(request)) {
+            sendError(response, HttpServletResponse.SC_FORBIDDEN,
+                    "API keys can only access /api/v1 endpoints");
+            return;
+        }
+
+        int lookupPrefixLength = rawKey.startsWith(LIVE_KEY_PREFIX)
+                ? LIVE_LOOKUP_PREFIX_LENGTH
+                : LEGACY_LOOKUP_PREFIX_LENGTH;
+        if (rawKey.length() < lookupPrefixLength) {
             sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid API key format");
             return;
         }
 
         // Look up by prefix for fast O(1) index scan
-        String prefix = rawKey.substring(0, LOOKUP_PREFIX_LENGTH);
+        String prefix = rawKey.substring(0, lookupPrefixLength);
         ApiKey_command apiKey = apiKeyRepo.findByPrefix(prefix).orElse(null);
 
-        if (apiKey == null || apiKey.getRevokedAt() != null) {
+        if (apiKey == null || !apiKey.isUsableAt(Instant.now())) {
             sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or revoked API key");
             return;
         }
 
         // Verify the full key hash — prefix alone is not sufficient for authentication
-        String providedHash = ApiKey_commandService.sha256Hex(rawKey);
-        if (!providedHash.equals(apiKey.getHashedKey())) {
+        if (!ApiKey_commandService.securelyMatches(rawKey, apiKey.getHashedKey())) {
             sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid API key");
             return;
         }
 
         // Rate limit per API key
-        if (isRateLimited(apiKey.getId().toString())) {
+        if (isRateLimited(apiKey.getId().toString(), apiKey.getRateLimitPerMinute())) {
             sendError(response, 429, "Rate limit exceeded");
             return;
         }
@@ -117,8 +141,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
         AppUserDetails userDetails = AppUserDetails.from(user, credentialRepo.findByUser_Id(user.getId()));
 
+        PublicApiPrincipal principal = PublicApiPrincipal.apiKey(
+                userDetails,
+                apiKey.getId(),
+                PublicApiScopes.parse(apiKey.getScopes())
+        );
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities());
+                principal, null, principal.getAuthorities());
         auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(auth);
 
@@ -126,28 +155,77 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         // (e.g., SendEmailController) can track which key was used.
         request.setAttribute(API_KEY_ID_ATTRIBUTE, apiKey.getId());
 
-        // Track usage (best-effort — no transaction required for a single UPDATE)
-        apiKey.setLastUsedAt(Instant.now());
-        apiKeyRepo.save(apiKey);
-
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            // Track usage after the controller runs so audit records include the final status code.
+            apiKey.setLastUsedAt(Instant.now());
+            apiKeyRepo.save(apiKey);
+            apiKeyQueryRepo.findById(apiKey.getId()).ifPresent(query -> {
+                query.setLastUsedAt(apiKey.getLastUsedAt());
+                apiKeyQueryRepo.save(query);
+            });
+            audit(request, response, apiKey);
+        }
     }
 
     /// Sliding-window rate limiter using Redis INCR + EXPIRE.
     /// Returns true if the key has exceeded RATE_LIMIT_MAX requests within the current window.
-    private boolean isRateLimited(String apiKeyId) {
+    private boolean isRateLimited(String apiKeyId, int maxPerMinute) {
         String key = RATE_LIMIT_KEY_PREFIX + apiKeyId;
         Long count = redisTemplate.opsForValue().increment(key);
         if (count != null && count == 1) {
             redisTemplate.expire(key, RATE_LIMIT_WINDOW);
         }
-        return count != null && count > RATE_LIMIT_MAX;
+        return count != null && count > Math.max(1, maxPerMinute);
+    }
+
+    private boolean isPublicApiPath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path != null && path.startsWith("/api/v1/");
+    }
+
+    private void audit(HttpServletRequest request, HttpServletResponse response, ApiKey_command apiKey) {
+        try {
+            usageLogRepo.save(new ApiKeyUsageLog(
+                    UUID.randomUUID(),
+                    apiKey.getId(),
+                    apiKey.getUserId(),
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    response.getStatus(),
+                    clientIp(request),
+                    trim(request.getHeader("User-Agent"), 1000)
+            ));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        if (trustForwardedHeaders) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return trim(forwarded.split(",")[0].trim(), 100);
+            }
+        }
+        return trim(request.getRemoteAddr(), 100);
+    }
+
+    private String trim(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     private void sendError(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        String errorLabel = status == 429 ? "Too Many Requests" : "Unauthorized";
+        String errorLabel = switch (status) {
+            case 403 -> "Forbidden";
+            case 429 -> "Too Many Requests";
+            default -> "Unauthorized";
+        };
         response.getWriter().write(
                 "{\"status\":" + status + ",\"error\":\"" + errorLabel + "\",\"message\":\"" + message + "\"}");
     }

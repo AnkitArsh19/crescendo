@@ -8,115 +8,48 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Airtable.
+ *
+ * Resources (from n8n Airtable v2 node):
+ *   - base   : getMany, getSchema
+ *   - record : create, delete, get, search, update, upsert
+ */
 @Component
 public class AirtableApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        var baseField = Map.of("key", "baseId", "label", "Base",
-                "type", "dynamic_dropdown", "resourceType", "bases",
-                "required", true,
-                "helpText", "Select the Airtable base");
-
-        var tableField = Map.<String, Object>of("key", "tableId", "label", "Table",
-                "type", "dynamic_dropdown", "resourceType", "tables",
-                "dependsOn", List.of("baseId"),
-                "required", true,
-                "helpText", "Select the table within the base");
-
-        return new App("airtable", "Airtable", "Create, update, and manage records in Airtable bases",
-                "https://www.google.com/s2/favicons?domain=airtable.com&sz=128", AuthType.OAUTH2,
-
-                // ═══ TRIGGERS ═══
+        return new App(
+                "airtable",
+                "Airtable",
+                """
+                Airtable is a cloud collaboration service that provides the features of a database applied to a spreadsheet.
+                
+                This integration provides operations for:
+                - **Base**: Get Many, Get Schema
+                - **Record**: Create, Delete, Get, Search, Update, Upsert
+                
+                Authenticate using an Airtable Personal Access Token (PAT) or OAuth2.
+                """,
+                "https://www.google.com/s2/favicons?domain=airtable.com&sz=128",
+                AuthType.APIKEY,
+                List.of(),
                 List.of(
-                    Map.of(
-                        "triggerKey", "new-record",
-                        "name", "New Record",
-                        "description", "Triggers when a new record is added to a table",
-                        "configSchema", List.of(baseField, tableField)
-                    ),
-                    Map.of(
-                        "triggerKey", "updated-record",
-                        "name", "Updated Record",
-                        "description", "Triggers when an existing record is modified",
-                        "configSchema", List.of(baseField, tableField)
-                    ),
-                    Map.of(
-                        "triggerKey", "new-or-updated-record",
-                        "name", "New or Updated Record",
-                        "description", "Triggers on record creation or modification",
-                        "configSchema", List.of(baseField, tableField)
-                    )
-                ),
+                        // BASE
+                        Map.of("actionKey", "airtable:base:getMany", "name", "Get Many Bases", "description", "List bases", "configSchema", List.of()),
+                        Map.of("actionKey", "airtable:base:getSchema", "name", "Get Schema", "description", "Get base schema", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true))),
 
-                // ═══ ACTIONS ═══
-                List.of(
-                    Map.of(
-                        "actionKey", "create-record",
-                        "name", "Create Record",
-                        "description", "Add a new record to an Airtable table",
-                        "configSchema", List.of(
-                            baseField, tableField,
-                            Map.of("key", "fields", "label", "Field Values (JSON)",
-                                   "type", "json", "required", true,
-                                   "placeholder", "{\"Name\": \"Alice\", \"Email\": \"alice@example.com\"}",
-                                   "helpText", "JSON object of field names → values")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "update-record",
-                        "name", "Update Record",
-                        "description", "Update an existing record's fields",
-                        "configSchema", List.of(
-                            baseField, tableField,
-                            Map.of("key", "recordId", "label", "Record ID",
-                                   "type", "text", "required", true,
-                                   "placeholder", "rec123abc",
-                                   "helpText", "The ID of the record to update (from a trigger)"),
-                            Map.of("key", "fields", "label", "Fields to Update (JSON)",
-                                   "type", "json", "required", true,
-                                   "placeholder", "{\"Status\": \"Done\"}",
-                                   "helpText", "JSON object of field names → new values")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "find-record",
-                        "name", "Find Record",
-                        "description", "Search for records using a formula",
-                        "configSchema", List.of(
-                            baseField, tableField,
-                            Map.of("key", "filterByFormula", "label", "Filter Formula",
-                                   "type", "text", "required", false,
-                                   "placeholder", "{Name} = 'Alice'",
-                                   "helpText", "Airtable formula to filter records"),
-                            Map.of("key", "maxRecords", "label", "Max Records",
-                                   "type", "text", "required", false,
-                                   "placeholder", "10",
-                                   "helpText", "Maximum records to return")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "delete-record",
-                        "name", "Delete Record",
-                        "description", "Delete a record from a table",
-                        "configSchema", List.of(
-                            baseField, tableField,
-                            Map.of("key", "recordId", "label", "Record ID",
-                                   "type", "text", "required", true,
-                                   "placeholder", "rec123abc",
-                                   "helpText", "The ID of the record to delete")
-                        )
-                    ),
-                    Map.of(
-                        "actionKey", "list-records",
-                        "name", "List Records",
-                        "description", "Retrieve records from an Airtable table",
-                        "configSchema", List.of(baseField, tableField)
-                    )
+                        // RECORD
+                        Map.of("actionKey", "airtable:record:create", "name", "Create Record", "description", "Create a record", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "fields", "label", "Fields (JSON)", "type", "json", "required", true))),
+                        Map.of("actionKey", "airtable:record:delete", "name", "Delete Record", "description", "Delete a record", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "recordId", "label", "Record ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "airtable:record:get", "name", "Get Record", "description", "Get a record", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "recordId", "label", "Record ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "airtable:record:search", "name", "Search Records", "description", "Search for records", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "filterByFormula", "label", "Filter Formula", "type", "text"), Map.of("key", "maxRecords", "label", "Max Records", "type", "number"))),
+                        Map.of("actionKey", "airtable:record:update", "name", "Update Record", "description", "Update a record", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "recordId", "label", "Record ID", "type", "text", "required", true), Map.of("key", "fields", "label", "Fields (JSON)", "type", "json", "required", true))),
+                        Map.of("actionKey", "airtable:record:upsert", "name", "Upsert Record", "description", "Create or update a record", "configSchema", List.of(Map.of("key", "baseId", "label", "Base ID", "type", "text", "required", true), Map.of("key", "tableId", "label", "Table ID or Name", "type", "text", "required", true), Map.of("key", "fields", "label", "Fields (JSON)", "type", "json", "required", true), Map.of("key", "performUpsert", "label", "Perform Upsert (Fields to merge on)", "type", "json")))
                 )
-        )
-        .credentialSchema(List.of()).altAuthType(AuthType.APIKEY)
-        .category("productivity")
-        .helpUrl("https://airtable.com/create/tokens");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiToken", "label", "Personal Access Token", "type", "password", "required", true)
+        )).altAuthType(AuthType.OAUTH2).category("docs-workspace");
     }
 }

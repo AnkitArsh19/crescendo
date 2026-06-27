@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
+import static com.crescendo.publicapi.PublicApiScopes.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +58,7 @@ public class PublicRunController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
+        require(auth, RUN_READ);
         PageRequest pageable = PageRequest.of(page, Math.min(size, 100),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(runQueryService.listRunsPaged(userId(auth), workflowId, pageable));
@@ -67,6 +69,7 @@ public class PublicRunController {
             @PathVariable UUID workflowId,
             @PathVariable UUID runId,
             Authentication auth) {
+        require(auth, RUN_READ);
         return ResponseEntity.ok(runQueryService.getRunDetail(userId(auth), workflowId, runId));
     }
 
@@ -75,6 +78,7 @@ public class PublicRunController {
             @PathVariable UUID workflowId,
             @PathVariable UUID runId,
             Authentication auth) {
+        require(auth, RUN_CANCEL);
         runCommandService.cancelRun(userId(auth), workflowId, runId);
         return ResponseEntity.noContent().build();
     }
@@ -83,6 +87,7 @@ public class PublicRunController {
     public ResponseEntity<LogbookDto.WorkflowRunStatsResponse> getRunStats(
             @PathVariable UUID workflowId,
             Authentication auth) {
+        require(auth, RUN_READ);
         return ResponseEntity.ok(runQueryService.getRunStats(userId(auth), workflowId));
     }
 
@@ -93,6 +98,7 @@ public class PublicRunController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication auth) {
+        require(auth, RUN_READ);
         PageRequest pageable = PageRequest.of(page, Math.min(size, 100),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(runQueryService.listAllRunsPaged(userId(auth), pageable));
@@ -104,6 +110,7 @@ public class PublicRunController {
     public ResponseEntity<List<LogbookDto.StepRunResponse>> listStepRuns(
             @PathVariable UUID runId,
             Authentication auth) {
+        require(auth, RUN_READ);
         return ResponseEntity.ok(stepRunQueryService.listStepRuns(userId(auth), runId));
     }
 
@@ -112,6 +119,7 @@ public class PublicRunController {
             @PathVariable UUID runId,
             @PathVariable UUID stepRunId,
             Authentication auth) {
+        require(auth, RUN_READ);
         return ResponseEntity.ok(stepRunQueryService.getStepRun(userId(auth), stepRunId));
     }
 

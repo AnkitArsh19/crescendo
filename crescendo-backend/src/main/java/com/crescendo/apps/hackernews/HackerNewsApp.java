@@ -13,7 +13,24 @@ public class HackerNewsApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        return new App("hackernews", "Hacker News", "Fetch stories, users, and comments from Hacker News",
+        return new App("hackernews", "Hacker News", """
+                Hacker News is a social news website focusing on computer science and entrepreneurship. The Crescendo Hacker News app lets you monitor trending stories and discussions automatically.
+
+                **What you can do with Hacker News in Crescendo:**
+                - Fetch the top story every morning and post it to a specific Microsoft Teams channel
+                - Trigger a workflow when a specific keyword is mentioned in new HN posts
+                - Retrieve comment threads and run them through Gemini for sentiment analysis
+                - Aggregate daily tech news into a single digest email
+
+                **Actions available:**
+                - Get Item — fetch a specific story, comment, or poll by ID
+                - Get User — retrieve a user's profile and karma
+                - Get Top Stories — pull the current highest-ranking stories
+
+                **Who should use this:** Tech enthusiasts, founders monitoring brand mentions, and developers aggregating news feeds.
+
+                **Authentication:** None required.
+                """,
                 "https://www.google.com/s2/favicons?domain=ycombinator.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(

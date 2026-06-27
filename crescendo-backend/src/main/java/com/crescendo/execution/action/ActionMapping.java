@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * Declares the {@code appKey:actionKey} pair that an {@link ActionHandler} handles.
  * The annotated class is also registered as a Spring component.
  */
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Component
 public @interface ActionMapping {

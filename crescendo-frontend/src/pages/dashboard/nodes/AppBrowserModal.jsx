@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { HiSearch, HiX, HiCheck, HiOutlineExternalLink, HiOutlineEye, HiOutlineEyeOff, HiOutlineShieldCheck, HiOutlineArrowLeft, HiOutlineLockClosed } from 'react-icons/hi';
+import { HiSearch, HiX, HiCheck, HiOutlineExternalLink, HiOutlineEye, HiOutlineEyeOff, HiOutlineShieldCheck, HiOutlineArrowLeft, HiOutlineLockClosed, HiOutlineKey } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import { appCatalogApi } from '../../../api/appCatalogApi';
 import useConnectionStore from '../../../store/connectionStore';
 import useAuthStore from '../../../store/authStore';
@@ -40,7 +41,10 @@ export default function AppBrowserModal({
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');
     const [guideApp, setGuideApp] = useState(null);
+    const [detailApp, setDetailApp] = useState(null); // App detail panel (connections page)
     const [connectApp, setConnectApp] = useState(null); // App for inline credential form
+    const [forceAuthMode, setForceAuthMode] = useState(null); // 'OAUTH2', 'CUSTOM_OAUTH2', or 'APIKEY'
+    const [platformToggleApp, setPlatformToggleApp] = useState(null); // App for Platform vs Personal toggle
     const [connectError, setConnectError] = useState(null);
     const [name, setName] = useState('');
     const [credentials, setCredentials] = useState({});
@@ -101,8 +105,8 @@ export default function AppBrowserModal({
 
     // Focus search on mount, load platform keys
     useEffect(() => {
-        if (!guideApp && !connectApp) searchRef.current?.focus();
-    }, [guideApp, connectApp]);
+        if (!guideApp && !connectApp && !platformToggleApp && !detailApp) searchRef.current?.focus();
+    }, [guideApp, connectApp, platformToggleApp, detailApp]);
 
     useEffect(() => {
         api.get('/admin/platform-keys/available')
@@ -118,13 +122,15 @@ export default function AppBrowserModal({
         const handler = (e) => {
             if (e.key === 'Escape') {
                 if (connectApp) setConnectApp(null);
+                else if (platformToggleApp) setPlatformToggleApp(null);
                 else if (guideApp) setGuideApp(null);
+                else if (detailApp) setDetailApp(null);
                 else onClose?.();
             }
         };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
-    }, [onClose, guideApp, connectApp]);
+    }, [onClose, guideApp, connectApp, platformToggleApp, detailApp]);
 
     // Clear error after 5 seconds
     useEffect(() => {
@@ -175,29 +181,26 @@ export default function AppBrowserModal({
     };
 
     /**
-     * After guide continues — route based on auth type.
+     * After guide continues — route based on platform key or auth type.
      */
     const handleGuideContinue = () => {
         const app = guideApp;
         setGuideApp(null);
 
-        if (app.authType === 'OAUTH2') {
-            startOAuth(app);
-        } else if (app.authType === 'APIKEY') {
+        if (app.hasPlatformKey) {
+            setPlatformToggleApp(app);
+        } else {
             showCredentialForm(app);
-        } else if (app.altAuthType === 'APIKEY') {
-            // Dual auth: default to OAuth, fallback to key
-            startOAuth(app);
         }
     };
 
     /**
      * Start OAuth popup flow.
      */
-    const startOAuth = async (app) => {
+    const startOAuth = async (app, opts = {}) => {
         try {
             const providerKey = resolveProviderKey(app.appKey);
-            const { authorizationUrl } = await appCatalogApi.getOAuthUrl(providerKey);
+            const { authorizationUrl } = await appCatalogApi.getOAuthUrl(providerKey, opts);
 
             const popup = window.open(authorizationUrl, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
             if (popup) {
@@ -226,7 +229,7 @@ export default function AppBrowserModal({
             if (app.altAuthType === 'APIKEY') {
                 showCredentialForm(app);
             } else {
-                setConnectError(`OAuth not configured for ${app.name}. Contact admin to set up credentials.`);
+                setConnectError(`OAuth not configured for ${app.name}. Contact admin to set up credentials or use your own custom OAuth app.`);
             }
         }
     };
@@ -234,11 +237,39 @@ export default function AppBrowserModal({
     /**
      * Show inline credential form for APIKEY apps.
      */
-    const showCredentialForm = (app) => {
+    const showCredentialForm = (app, mode = null) => {
         setConnectApp(app);
+        setForceAuthMode(mode);
         setName(`My ${app.name}`);
         setCredentials({});
+        setUseCustomOAuth(mode === 'CUSTOM_OAUTH2'); // Used for OAuth choices
         setConnectError(null);
+    };
+
+    const [useCustomOAuth, setUseCustomOAuth] = useState(false);
+
+    /**
+     * Start OAuth from the form with custom credentials if provided
+     */
+    const handleOAuthConnectFromForm = () => {
+        setConnectError(null);
+        if (!name.trim()) { setConnectError('Connection name is required'); return; }
+
+        let opts = { connectionId: undefined };
+
+        if (useCustomOAuth) {
+            if (!credentials.clientId?.trim()) { setConnectError('Client ID is required'); return; }
+            if (!credentials.clientSecret?.trim()) { setConnectError('Client Secret is required'); return; }
+            
+            opts.customClientId = credentials.clientId.trim();
+            opts.customClientSecret = credentials.clientSecret.trim();
+            if (credentials.scopes?.trim()) {
+                opts.customScopes = credentials.scopes.trim();
+            }
+        }
+        
+        setIsSubmitting(true);
+        startOAuth(connectApp, opts).finally(() => setIsSubmitting(false));
     };
 
     /**
@@ -288,9 +319,266 @@ export default function AppBrowserModal({
         );
     }
 
+    // If showing app detail panel (connectOnly mode: card click)
+    if (detailApp) {
+        const isConnected = connectedAppKeys.has(detailApp.appKey);
+        const hasApiKey = detailApp.credentialSchema?.length > 0 || detailApp.authType === 'APIKEY';
+        const hasOAuth = detailApp.authType === 'OAUTH2';
+        const hasAltApiKey = detailApp.altAuthType === 'APIKEY';
+        const needsAuth = detailApp.authType && detailApp.authType !== 'NONE';
+
+        const startConnect = (e) => {
+            setDetailApp(null);
+            handleConnectClick(e || { stopPropagation: () => {} }, detailApp);
+        };
+
+        return (
+            <div className="abm-overlay" onClick={() => setDetailApp(null)}>
+                <motion.div
+                    className="abm-modal"
+                    initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="abm-header">
+                        <div className="abm-header-top">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button className="abm-close" onClick={() => setDetailApp(null)}>
+                                    <HiOutlineArrowLeft />
+                                </button>
+                                <span className="abm-title">{detailApp.name}</span>
+                            </div>
+                            <button className="abm-close" onClick={onClose}><HiX /></button>
+                        </div>
+                    </div>
+
+                    <div className="abm-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* App header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div className="abm-app-icon" style={{ width: '56px', height: '56px', flexShrink: 0 }}>
+                                <img
+                                    src={detailApp.logoUrl || `/icons/${detailApp.appKey}.svg`}
+                                    alt={detailApp.name}
+                                    className="app-logo-img"
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-accent)' }}>{detailApp.name}</div>
+                                {detailApp.category && (
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px' }}>
+                                        {detailApp.category}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        {detailApp.description && (
+                            <div style={{
+                                fontSize: '0.83rem', color: 'var(--text-secondary)', lineHeight: 1.7,
+                                background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)',
+                                padding: '14px 16px', border: '1px solid var(--border-primary)',
+                                maxHeight: '200px', overflowY: 'auto'
+                            }}>
+                                <ReactMarkdown
+                                    components={{
+                                        p: ({node, ...props}) => <p style={{margin: '0 0 10px 0'}} {...props}/>,
+                                        a: ({node, ...props}) => <a style={{color: 'var(--brand-primary)', textDecoration: 'none'}} {...props}/>,
+                                        ul: ({node, ...props}) => <ul style={{margin: '0 0 10px 0', paddingLeft: '20px'}} {...props}/>,
+                                        li: ({node, ...props}) => <li style={{marginBottom: '4px'}} {...props}/>,
+                                        strong: ({node, ...props}) => <strong style={{color: 'var(--text-primary)', fontWeight: 600}} {...props}/>,
+                                    }}
+                                >
+                                    {detailApp.description}
+                                </ReactMarkdown>
+                            </div>
+                        )}
+
+                        {/* Auth type badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
+                            {hasOAuth && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HiOutlineLockClosed /> OAuth 2.0</span>}
+                            {hasApiKey && !hasOAuth && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HiOutlineKey /> API Key</span>}
+                            {hasAltApiKey && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>· <HiOutlineKey /> or own API key</span>}
+                            {!needsAuth && <span>No authentication required</span>}
+                        </div>
+
+                        {/* Connect actions */}
+                        {needsAuth ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {isConnected && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                        padding: '12px 16px', borderRadius: 'var(--radius-md)',
+                                        background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+                                        color: '#22c55e', fontSize: '0.83rem', fontWeight: 500
+                                    }}>
+                                        <HiCheck /> You already have an active connection to this app.
+                                    </div>
+                                )}
+                                {/* OAuth Option */}
+                                {hasOAuth && (
+                                    <button
+                                        className="abm-app-card"
+                                        style={{ padding: '14px 16px', justifyContent: 'flex-start', gap: '12px', border: '1px solid var(--border-secondary)' }}
+                                        onClick={(e) => {
+                                            setDetailApp(null);
+                                            handleConnectClick(e || { stopPropagation: () => {} }, detailApp);
+                                        }}
+                                    >
+                                        <HiOutlineLockClosed size={18} />
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                Connect with OAuth
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                Authorize via your account
+                                            </div>
+                                        </div>
+                                    </button>
+                                )}
+
+                                {/* Custom OAuth Option */}
+                                {hasOAuth && (
+                                    <button
+                                        className="abm-app-card"
+                                        style={{ padding: '14px 16px', justifyContent: 'flex-start', gap: '12px', border: '1px solid var(--border-secondary)' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDetailApp(null);
+                                            showCredentialForm(detailApp, 'CUSTOM_OAUTH2');
+                                        }}
+                                    >
+                                        <HiOutlineLockClosed size={18} />
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                Bring Your Own OAuth App
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                Provide your own Client ID and Secret
+                                            </div>
+                                        </div>
+                                    </button>
+                                )}
+
+                                {/* API Key Option */}
+                                {(hasApiKey || hasAltApiKey) && (
+                                    <button
+                                        className="abm-app-card"
+                                        style={{ padding: '14px 16px', justifyContent: 'flex-start', gap: '12px', border: '1px solid var(--border-secondary)' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDetailApp(null);
+                                            showCredentialForm(detailApp, 'APIKEY');
+                                        }}
+                                    >
+                                        <HiOutlineKey size={18} />
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                Add API Key
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                Provide your own API credentials
+                                            </div>
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.83rem' }}>This app does not require authentication.</div>
+                        )}
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // If showing platform vs personal toggle
+    if (platformToggleApp) {
+        return (
+            <div className="abm-overlay" onClick={() => setPlatformToggleApp(null)}>
+                <motion.div
+                    className="abm-modal"
+                    initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="abm-header">
+                        <div className="abm-header-top">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button className="abm-close" onClick={() => setPlatformToggleApp(null)}>
+                                    <HiOutlineArrowLeft />
+                                </button>
+                                <span className="abm-title">How do you want to connect {platformToggleApp.name}?</span>
+                            </div>
+                            <button className="abm-close" onClick={onClose}>
+                                <HiX />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="abm-body">
+                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
+                            <strong>{platformToggleApp.name}</strong> supports using Crescendo's platform credentials or connecting your own personal account.
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <button 
+                                className="abm-app-card" 
+                                style={{ textAlign: 'left', display: 'flex', alignItems: 'center', position: 'relative', border: '1px solid var(--border-secondary)', padding: '16px' }}
+                                onClick={() => {
+                                    if (connectOnly) {
+                                        setPlatformToggleApp(null);
+                                        onClose?.();
+                                    } else {
+                                        onSelect?.(platformToggleApp, 'ADMIN_KEY');
+                                    }
+                                }}
+                            >
+                                <div className="abm-app-icon" style={{ background: 'var(--bg-elevated)', border: 'none' }}>
+                                    <HiOutlineBolt size={20} />
+                                </div>
+                                <div className="abm-app-info">
+                                    <div className="abm-app-name">Use Crescendo's key</div>
+                                    <div className="abm-app-desc" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Ready to use immediately. No setup required.</div>
+                                </div>
+                                <span className="abm-app-connected-badge" style={{ background: 'var(--bg-elevated)', color: 'var(--text-accent)' }}>Recommended</span>
+                            </button>
+
+                            <button 
+                                className="abm-app-card" 
+                                style={{ textAlign: 'left', display: 'flex', alignItems: 'center', padding: '16px' }}
+                                onClick={() => {
+                                    const app = platformToggleApp;
+                                    setPlatformToggleApp(null);
+                                    showCredentialForm(app);
+                                }}
+                            >
+                                <div className="abm-app-icon" style={{ background: 'var(--bg-elevated)', border: 'none' }}>
+                                    {platformToggleApp.authType === 'OAUTH2' ? <HiOutlineLockClosed size={20} /> : <HiOutlineKey size={20} />}
+                                </div>
+                                <div className="abm-app-info">
+                                    <div className="abm-app-name">Connect your own</div>
+                                    <div className="abm-app-desc" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>
+                                        {platformToggleApp.authType === 'OAUTH2'
+                                            ? 'Authorize via the provider with your personal account'
+                                            : 'Provide your own API key for dedicated usage limits'}
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     // If showing credential form, render inline
     if (connectApp) {
         const schema = getActiveSchema(connectApp);
+        const isEffectiveOAuth = (connectApp.authType === 'OAUTH2' && forceAuthMode !== 'APIKEY');
 
         return (
             <div className="abm-overlay" onClick={() => setConnectApp(null)}>
@@ -331,7 +619,79 @@ export default function AppBrowserModal({
                             />
                         </label>
 
-                        {schema.length > 0 ? (
+                        {isEffectiveOAuth ? (
+                            <>
+                                <div className="abm-oauth-choice">
+                                    <label className="abm-radio-label">
+                                        <input 
+                                            type="radio" 
+                                            name="oauthSource" 
+                                            checked={!useCustomOAuth} 
+                                            onChange={() => setUseCustomOAuth(false)} 
+                                        />
+                                        Standard Connection (Use Crescendo Managed App)
+                                    </label>
+                                    <label className="abm-radio-label">
+                                        <input 
+                                            type="radio" 
+                                            name="oauthSource" 
+                                            checked={useCustomOAuth} 
+                                            onChange={() => setUseCustomOAuth(true)} 
+                                        />
+                                        Bring Your Own OAuth App (Advanced)
+                                    </label>
+                                </div>
+
+                                {useCustomOAuth && (
+                                    <div className="abm-custom-oauth-fields">
+                                        <div className="abm-info-box">
+                                            Register an OAuth app in the {connectApp.name} developer portal with redirect URI:<br/>
+                                            <code style={{userSelect: 'all', marginTop: '4px', display: 'block'}}>{window.location.origin}/api/connections/oauth/{resolveProviderKey(connectApp.appKey)}/callback</code>
+                                        </div>
+                                        <label className="abm-form-label">
+                                            Client ID <span className="abm-required">*</span>
+                                            <input
+                                                type="text"
+                                                className="abm-form-input"
+                                                value={credentials.clientId || ''}
+                                                onChange={(e) => setCredentials(prev => ({ ...prev, clientId: e.target.value }))}
+                                                placeholder="Enter Client ID"
+                                            />
+                                        </label>
+                                        <label className="abm-form-label">
+                                            Client Secret <span className="abm-required">*</span>
+                                            <div className="abm-password-wrap">
+                                                <input
+                                                    type={!showPasswords['clientSecret'] ? 'password' : 'text'}
+                                                    className="abm-form-input"
+                                                    value={credentials.clientSecret || ''}
+                                                    onChange={(e) => setCredentials(prev => ({ ...prev, clientSecret: e.target.value }))}
+                                                    placeholder="Enter Client Secret"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="abm-eye-toggle"
+                                                    onClick={() => setShowPasswords(prev => ({ ...prev, clientSecret: !prev.clientSecret }))}
+                                                >
+                                                    {showPasswords['clientSecret'] ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                                                </button>
+                                            </div>
+                                        </label>
+                                        <label className="abm-form-label">
+                                            Scopes (Optional)
+                                            <input
+                                                type="text"
+                                                className="abm-form-input"
+                                                value={credentials.scopes || ''}
+                                                onChange={(e) => setCredentials(prev => ({ ...prev, scopes: e.target.value }))}
+                                                placeholder="e.g. read write (space-separated)"
+                                            />
+                                            <span className="abm-field-help">Leave blank to use default scopes</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </>
+                        ) : schema.length > 0 ? (
                             schema.map(field => (
                                 <label key={field.key} className="abm-form-label">
                                     {field.label} {field.required && <span className="abm-required">*</span>}
@@ -384,8 +744,12 @@ export default function AppBrowserModal({
 
                         <div className="abm-form-footer">
                             <button className="abm-btn-secondary" onClick={() => setConnectApp(null)}>Back</button>
-                            <button className="abm-btn-primary" onClick={handleCreateConnection} disabled={isSubmitting}>
-                                {isSubmitting ? 'Creating...' : 'Create Connection'}
+                            <button 
+                                className="abm-btn-primary" 
+                                onClick={isEffectiveOAuth ? handleOAuthConnectFromForm : handleCreateConnection} 
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Connecting...' : (isEffectiveOAuth ? 'Connect via OAuth' : 'Create Connection')}
                             </button>
                         </div>
                     </div>
@@ -474,10 +838,12 @@ export default function AppBrowserModal({
                                                 key={app.appKey}
                                                 className={`abm-app-card ${isConnected ? 'connected' : ''}`}
                                                 onClick={(e) => {
-                                                    if (connectOnly) return;
-                                                    // If app has platform key and user is not admin, allow direct selection
-                                                    const hasPlatformKey = platformKeyApps.has(app.appKey);
-                                                    if (needsAuth && !isConnected && !hasPlatformKey) {
+                                                    if (connectOnly) {
+                                                        // Card click in connectOnly mode → show detail panel
+                                                        setDetailApp(app);
+                                                        return;
+                                                    }
+                                                    if (needsAuth) {
                                                         handleConnectClick(e, app);
                                                         return;
                                                     }
@@ -488,7 +854,7 @@ export default function AppBrowserModal({
                                                     <img 
                                                         src={app.logoUrl || `/icons/${app.appKey}.svg`}
                                                         alt={app.name}
-                                                        className={app.logoUrl ? "app-logo-clearbit-dark" : "app-logo-white-svg"}
+                                                        className="app-logo-img"
                                                         onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
                                                     />
                                                     <HiOutlineBolt className="abm-app-icon-fallback" style={{ display: 'none' }} />
@@ -504,11 +870,8 @@ export default function AppBrowserModal({
                                                         <span className="abm-app-connected-badge">
                                                             <HiCheck style={{ fontSize: '0.6rem' }} /> Connected
                                                         </span>
-                                                    ) : platformKeyApps.has(app.appKey) && !isAdmin ? (
-                                                        <span className="abm-app-connected-badge">
-                                                            <HiOutlineLockClosed style={{ fontSize: '0.6rem' }} /> Platform key
-                                                        </span>
-                                                    ) : needsAuth ? (
+                                                    ) : null}
+                                                    {needsAuth ? (
                                                         <span
                                                             className="abm-app-connect-btn"
                                                             role="button"

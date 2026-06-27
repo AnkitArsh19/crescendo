@@ -4,105 +4,49 @@ import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @ActionMapping(appKey = "sarvam", actionKey = "chat-completion")
 public class SarvamChatCompletionHandler implements ActionHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(SarvamChatCompletionHandler.class);
-    private static final String SARVAM_API = "https://api.sarvam.ai/v1/chat/completions";
-
-    private final RestClient restClient;
-
-    public SarvamChatCompletionHandler() {
-        this.restClient = RestClient.create();
-    }
+    private final tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
 
     @Override
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
-        String apiKey = creds != null ? asString(creds.get("apiKey")) : null;
-        if (apiKey == null || apiKey.isBlank()) {
-            return ActionResult.failure("Sarvam AI requires an 'apiKey' in connection credentials");
-        }
+        String apiKey = creds != null ? String.valueOf(creds.get("apiKey")) : null;
+        if (apiKey == null || apiKey.isBlank()) return ActionResult.failure("API Key is required");
 
-        String userPrompt = asString(config.get("userPrompt"));
-        if (userPrompt == null || userPrompt.isBlank()) {
-            return ActionResult.failure("'userPrompt' is required");
-        }
+        RestClient client = RestClient.builder()
+                .baseUrl("https://api.sarvam.ai")
+                .defaultHeader("api-subscription-key", apiKey)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
 
-        String model = defaultIfBlank(asString(config.get("model")), "sarvam-m");
-        String systemPrompt = asString(config.get("systemPrompt"));
-        double temperature = parseDouble(config.get("temperature"), 0.7);
-        int maxTokens = parseInt(config.get("maxTokens"), 1024);
+        Map<String, Object> message = Map.of("role", "user", "content", config.get("prompt"));
+        Map<String, Object> body = new HashMap<>();
+        body.put("messages", java.util.List.of(message));
+        body.put("model", config.getOrDefault("model", "saaras:v2"));
 
         try {
-            List<Map<String, String>> messages = new ArrayList<>();
-            if (systemPrompt != null && !systemPrompt.isBlank()) {
-                messages.add(Map.of("role", "system", "content", systemPrompt));
-            }
-            messages.add(Map.of("role", "user", "content", userPrompt));
-
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("model", model);
-            payload.put("messages", messages);
-            payload.put("temperature", temperature);
-            payload.put("max_tokens", maxTokens);
-
-            String response = restClient.post()
-                    .uri(SARVAM_API)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+            String response = client.post()
+                    .uri("/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
+                    .body(body)
                     .retrieve()
                     .body(String.class);
 
-            Map<String, Object> output = new HashMap<>();
-            output.put("provider", "sarvam");
-            output.put("model", model);
-            output.put("response", response);
-            logger.info("[sarvam] Chat completion succeeded, model={}", model);
-            return ActionResult.success(output);
+            Object parsedResponse = mapper.readValue(response, Object.class);
+            return ActionResult.success(parsedResponse);
         } catch (Exception e) {
-            logger.error("[sarvam] Chat completion failed", e);
-            return ActionResult.failure("Sarvam AI request failed: " + e.getMessage());
-        }
-    }
-
-    private String asString(Object value) {
-        return value != null ? value.toString() : null;
-    }
-
-    private String defaultIfBlank(String value, String defaultValue) {
-        return (value == null || value.isBlank()) ? defaultValue : value;
-    }
-
-    private double parseDouble(Object value, double defaultVal) {
-        if (value == null) return defaultVal;
-        try {
-            return Double.parseDouble(value.toString());
-        } catch (NumberFormatException ex) {
-            return defaultVal;
-        }
-    }
-
-    private int parseInt(Object value, int defaultVal) {
-        if (value == null) return defaultVal;
-        try {
-            return Integer.parseInt(value.toString());
-        } catch (NumberFormatException ex) {
-            return defaultVal;
+            return ActionResult.failure("Sarvam Chat Completion failed: " + e.getMessage());
         }
     }
 }

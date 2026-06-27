@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 @Component
-@ActionMapping(appKey = "error-handling", actionKey = "stop-and-error")
+@ActionMapping(appKey = "errorhandling", actionKey = "stop-and-error")
 public class StopAndErrorActionHandler implements ActionHandler {
 
     @Override

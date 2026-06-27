@@ -408,3 +408,56 @@ body.light .auth-card {
         transform: rotate(360deg);
     }
 }
+
+.oauth-bridge {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    text-align: center;
+}
+
+.oauth-bridge-logo {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+
+.oauth-bridge h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    letter-spacing: 0;
+}
+
+.oauth-bridge p {
+    max-width: 440px;
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.oauth-bridge .auth-btn {
+    width: auto;
+    min-width: 120px;
+}
+
+.oauth-bridge-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-primary);
+    border-top-color: var(--text-accent);
+    border-radius: 50%;
+    animation: auth-spin 0.75s linear infinite;
+}
+
+.oauth-bridge-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--text-secondary);
+}

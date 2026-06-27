@@ -4,33 +4,92 @@ import com.crescendo.app.App;
 import com.crescendo.apps.AppDefinition;
 import com.crescendo.enums.AuthType;
 import org.springframework.stereotype.Component;
+
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for MongoDB.
+ */
 @Component
 public class MongoDbApp implements AppDefinition {
-    @Override public App toApp() {
-        return new App("mongodb", "MongoDB", "Use MongoDB with Atlas Data API or a direct MongoDB connection URI",
-                "/icons/mongodb.svg", AuthType.APIKEY, List.of(), List.of(
-                Map.of("actionKey", "find", "name", "Find Documents", "description", "Find documents in a collection",
-                        "configSchema", List.of(
-                                Map.of("key", "database", "label", "Database", "type", "text", "required", true),
-                                Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
-                                Map.of("key", "filter", "label", "Filter (JSON)", "type", "json", "required", false),
-                                Map.of("key", "limit", "label", "Limit", "type", "text", "required", false, "placeholder", "20"))),
-                Map.of("actionKey", "insert-one", "name", "Insert One", "description", "Insert one document",
-                        "configSchema", List.of(
-                                Map.of("key", "database", "label", "Database", "type", "text", "required", true),
-                                Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
-                                Map.of("key", "document", "label", "Document (JSON)", "type", "json", "required", true))))
+
+    @Override
+    public App toApp() {
+        return new App(
+                "mongoDb",
+                "MongoDB",
+                """
+                Find, insert and update documents in MongoDB.
+                
+                This integration provides operations for:
+                - **Aggregate**: Aggregate documents
+                - **Delete**: Delete documents
+                - **Find**: Find documents
+                - **Insert**: Insert documents
+                - **Update**: Update documents
+                - **Find One And Replace**: Find one document and replace it
+                - **Find One And Update**: Find one document and update it
+                - Search Index operations
+                """,
+                "https://www.google.com/s2/favicons?domain=mongodb.com&sz=128",
+                AuthType.OAUTH2, // Placeholder, MongoDB uses connection string usually, but sticking to standard auth schemas
+                List.of(),
+                List.of(
+                        Map.of(
+                                "actionKey", "mongoDb:aggregate",
+                                "name", "Aggregate",
+                                "description", "Aggregate documents",
+                                "configSchema", List.of(
+                                        Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
+                                        Map.of("key", "query", "label", "Query", "type", "json", "required", true)
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "mongoDb:delete",
+                                "name", "Delete",
+                                "description", "Delete documents",
+                                "configSchema", List.of(
+                                        Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
+                                        Map.of("key", "query", "label", "Query", "type", "json", "required", true)
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "mongoDb:find",
+                                "name", "Find",
+                                "description", "Find documents",
+                                "configSchema", List.of(
+                                        Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
+                                        Map.of("key", "query", "label", "Query", "type", "json", "required", true),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "mongoDb:insert",
+                                "name", "Insert",
+                                "description", "Insert documents",
+                                "configSchema", List.of(
+                                        Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
+                                        Map.of("key", "fields", "label", "Fields", "type", "text"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "mongoDb:update",
+                                "name", "Update",
+                                "description", "Update documents",
+                                "configSchema", List.of(
+                                        Map.of("key", "collection", "label", "Collection", "type", "text", "required", true),
+                                        Map.of("key", "updateKey", "label", "Update Key", "type", "text", "required", true),
+                                        Map.of("key", "fields", "label", "Fields", "type", "text"),
+                                        Map.of("key", "upsert", "label", "Upsert", "type", "boolean"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
+                )
         ).credentialSchema(List.of(
-                Map.of("key", "connectionUri", "label", "Connection URI", "type", "password", "required", false,
-                        "placeholder", "mongodb+srv://user:password@cluster.example.net/?retryWrites=true&w=majority",
-                        "helpText", "Use for direct MongoDB/Atlas cluster connections"),
-                Map.of("key", "endpoint", "label", "Data API Endpoint", "type", "text", "required", false,
-                        "helpText", "Use for Atlas Data API mode"),
-                Map.of("key", "apiKey", "label", "Data API Key", "type", "password", "required", false),
-                Map.of("key", "dataSource", "label", "Data Source", "type", "text", "required", false, "placeholder", "Cluster0")
-        )).category("database").helpUrl("https://www.mongodb.com/docs/drivers/java/sync/current/");
+                Map.of("key", "connectionString", "label", "Connection String", "type", "string", "required", true),
+                Map.of("key", "database", "label", "Database", "type", "string", "required", true)
+        )).category("databases");
     }
 }

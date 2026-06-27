@@ -16,7 +16,24 @@ public class FigmaApp implements AppDefinition {
                 "placeholder", "https://www.figma.com/design/ABC123xyz/My-Design",
                 "helpText", "Paste a Figma file URL or just the file key");
 
-        return new App("figma", "Figma", "Monitor files, export assets, and manage comments in Figma",
+        return new App("figma", "Figma", """
+                Figma is a collaborative web application for interface design. The Crescendo Figma app allows you to monitor files, export assets, and track design changes in real-time.
+
+                **What you can do with Figma in Crescendo:**
+                - Notify Slack when a Figma file is updated
+                - Export design assets and upload them directly to Google Drive
+                - Track new comments on design files and sync them to Linear
+                - Generate a weekly report of design changes
+
+                **Actions available:**
+                - Get File — retrieve metadata and node information
+                - Get Comments — fetch the latest comments on a design
+                - Export Image — generate and download rendered images of specific nodes
+
+                **Who should use this:** Design teams coordinating with developers, project managers tracking design progress, and agencies sharing assets with clients.
+
+                **Authentication:** OAuth 2.0 (connect your Figma account) or Personal Access Token.
+                """,
                 "https://www.google.com/s2/favicons?domain=figma.com&sz=128", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "file-updated", "name", "File Updated",

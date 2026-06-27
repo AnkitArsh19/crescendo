@@ -11,14 +11,29 @@ public class JenkinsApp implements AppDefinition {
     public App toApp() {
         return new App(
                 "jenkins",
-                "Jenkins",
-                "Trigger and inspect Jenkins jobs",
+                "Jenkins", """
+                Jenkins is an open-source automation server that helps build, test, and deploy software reliably. The Crescendo Jenkins app allows you to trigger CI/CD pipelines from external events.
+
+                **What you can do with Jenkins in Crescendo:**
+                - Trigger a deployment build when a specific release label is applied to a GitHub Pull Request
+                - Pause a workflow using the Approval app, then trigger a Jenkins job only if the manager approves
+                - Monitor the status of a long-running test suite and notify a Slack channel upon completion
+                - Pass dynamic variables from an incoming webhook directly into a Jenkins parameterized build
+
+                **Actions available:**
+                - Trigger Build — start a Jenkins job execution, optionally passing dynamic JSON parameters
+                - Get Job — retrieve metadata and current status about a specific Jenkins job
+
+                **Who should use this:** DevOps engineers, Release Managers, and QA automation teams orchestrating deployment pipelines.
+
+                **Authentication:** Jenkins credentials (Base URL, Username, and API Token).
+                """,
                 "https://www.google.com/s2/favicons?domain=jenkins.io&sz=128",
                 AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(
-                                "actionKey", "trigger-build",
+                                "actionKey", "jenkins:build:trigger",
                                 "name", "Trigger Build",
                                 "description", "Trigger a Jenkins job build",
                                 "configSchema", List.of(
@@ -27,7 +42,7 @@ public class JenkinsApp implements AppDefinition {
                                 )
                         ),
                         Map.of(
-                                "actionKey", "get-job",
+                                "actionKey", "jenkins:build:get",
                                 "name", "Get Job",
                                 "description", "Fetch Jenkins job metadata",
                                 "configSchema", List.of(

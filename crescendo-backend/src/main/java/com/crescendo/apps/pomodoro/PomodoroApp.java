@@ -11,7 +11,24 @@ import java.util.Map;
 public class PomodoroApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("pomodoro", "Pomodoro Timer", "Focus timers, work logging, and time calculation",
+        return new App("pomodoro", "Pomodoro Timer", """
+                The Pomodoro Technique is a time management method that uses a timer to break work into intervals. The Crescendo Pomodoro app allows you to create focus timers, log work sessions, and calculate productivity metrics.
+
+                **What you can do with Pomodoro in Crescendo:**
+                - Start a focus timer and automatically notify Slack when it ends
+                - Log completed work sessions to a Google Sheet
+                - Chain timers with break reminders via Telegram
+                - Track daily deep work hours
+
+                **Actions available:**
+                - Start Timer — begin a new focus session
+                - Log Session — record a completed session
+                - Calculate Stats — summarize your work over a given period
+
+                **Who should use this:** Freelancers, students, and professionals looking to track and improve their productivity.
+
+                **Authentication:** None required.
+                """,
                 "/icons/pomodoro.svg", AuthType.NONE,
                 List.of(),
                 List.of(

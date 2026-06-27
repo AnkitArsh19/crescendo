@@ -78,7 +78,7 @@ public class LinearCreateIssueHandler implements ActionHandler {
     private String resolveToken(Map<String, Object> creds) {
         if (creds == null) return null;
       Object token = creds.get("accessToken");
-      if (token != null) return token.toString();
+      if (token != null) return "Bearer " + token.toString();
       Object key = creds.get("apiKey");
       return key != null ? key.toString() : null;
     }

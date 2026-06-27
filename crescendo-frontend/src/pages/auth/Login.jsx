@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,6 +24,10 @@ const mfaSchema = z.object({
 export default function Login() {
     const { theme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
+    const destination = location.state?.from
+        ? `${location.state.from.pathname}${location.state.from.search || ''}`
+        : '/dashboard';
     const loginFn = useAuthStore((state) => state.login);
     const verifyMfaFn = useAuthStore((state) => state.verifyMfa);
     
@@ -48,7 +52,7 @@ export default function Login() {
                 setSavedEmail(data.email);
                 setIsMfaStep(true);
             } else {
-                navigate('/dashboard');
+                navigate(destination, { replace: true });
             }
         } catch (error) {
             setGlobalError(error.message);
@@ -59,7 +63,7 @@ export default function Login() {
         setGlobalError('');
         try {
             await verifyMfaFn(savedEmail, data.code);
-            navigate('/dashboard');
+            navigate(destination, { replace: true });
         } catch (error) {
             setGlobalError(error.message);
         }

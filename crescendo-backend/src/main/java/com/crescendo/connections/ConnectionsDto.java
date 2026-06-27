@@ -34,6 +34,10 @@ public class ConnectionsDto {
 
     /**
      * Read-safe connection summary — no credentials exposed.
+     *
+     * {@code grantedScopes} — space/comma-separated OAuth scopes the user actually approved.
+     * {@code null} for API-key connections or providers that don't return scope in token response.
+     * Used by the frontend to grey out actions the user lacks permission to perform.
      */
     public record ConnectionResponse(
             UUID id,
@@ -41,6 +45,7 @@ public class ConnectionsDto {
             String name,
             String status,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            String grantedScopes
     ) {}
 }

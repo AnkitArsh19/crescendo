@@ -24,7 +24,9 @@ public class GitHubResourceProvider implements ResourceProvider {
     private final RestClient restClient;
 
     public GitHubResourceProvider() {
-        this.restClient = RestClient.create();
+        this.restClient = RestClient.builder()
+                .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
+                .build();
     }
 
     @Override

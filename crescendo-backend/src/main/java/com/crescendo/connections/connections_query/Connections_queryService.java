@@ -41,7 +41,8 @@ public class Connections_queryService {
                 c.getName(),
                 c.getStatus().name(),
                 c.getCreatedAt(),
-                c.getUpdatedAt()
+                c.getUpdatedAt(),
+                c.getGrantedScopes()
         );
     }
 }

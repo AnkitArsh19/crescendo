@@ -8,22 +8,46 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Rename Keys.
+ */
 @Component
 public class RenameKeysApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("rename-keys", "Rename Keys", "Rename keys in the incoming JSON data",
-                "/icons/rename-keys.svg", AuthType.NONE,
+        return new App(
+                "renameKeys",
+                "Rename Keys",
+                """
+                Rename Keys is a data-transformation utility that helps you rename fields within a JSON object dynamically.
+                
+                **What you can do with Rename Keys in Crescendo:**
+                - Reformat payload keys before sending them to a strict API endpoint
+                - Normalize incoming webhook data to match internal schemas
+                - Transform complex JSON structures easily
+                
+                **Actions available:**
+                - Rename — supply a mapping of old keys to new keys and apply it to a JSON object
+                
+                **Who should use this:** Integration engineers and developers dealing with disparate API schemas.
+                
+                **Authentication:** None required.
+                """,
+                "/icons/rename.svg", // Generic icon
+                AuthType.NONE,
                 List.of(),
                 List.of(
-                    Map.of("actionKey", "rename", "name", "Rename Keys",
-                        "description", "Map old keys to new keys",
-                        "configSchema", List.of(
-                            Map.of("key", "keyMap", "label", "Key Map (JSON)", "type", "json", "required", true,
-                                   "placeholder", "{\"old_key_name\": \"newKeyName\"}", 
-                                   "helpText", "Provide a JSON object where the key is the old name and the value is the new name.")
-                        ))
+                        Map.of(
+                                "actionKey", "renameKeys:rename",
+                                "name", "Rename",
+                                "description", "Update item field names",
+                                "configSchema", List.of(
+                                        Map.of("key", "keys", "label", "Keys", "type", "json"),
+                                        Map.of("key", "additionalOptions", "label", "Additional Options", "type", "json")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("data-transformation");
     }
 }

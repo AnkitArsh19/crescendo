@@ -8,23 +8,39 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Set.
+ */
 @Component
 public class SetApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("set", "Set", "Set, rename, or remove fields in the workflow data",
-                "/icons/set.svg", AuthType.NONE,
+        return new App(
+                "set",
+                "Set",
+                """
+                Modify, add, or remove item fields.
+                
+                This integration provides operations for:
+                - **Set**: Add or edit fields on an input item and optionally remove other fields
+                """,
+                "/icons/set.svg", // Generic icon
+                AuthType.NONE,
                 List.of(),
                 List.of(
-                    Map.of("actionKey", "edit-fields", "name", "Edit Fields",
-                        "description", "Set custom fields for the next step",
-                        "configSchema", List.of(
-                            Map.of("key", "keepOnlySet", "label", "Keep Only Set", "type", "boolean", "required", false,
-                                   "helpText", "If true, discards all other input data and keeps only the fields defined here. Defaults to false (merges fields)."),
-                            Map.of("key", "fields", "label", "Fields (JSON)", "type", "json", "required", true,
-                                   "placeholder", "{\"myKey\": \"myValue\"}", "helpText", "Provide a JSON object containing the fields to set")
-                        ))
+                        Map.of(
+                                "actionKey", "set:set",
+                                "name", "Set",
+                                "description", "Modify, add, or remove item fields",
+                                "configSchema", List.of(
+                                        Map.of("key", "mode", "label", "Mode", "type", "text", "default", "manual"),
+                                        Map.of("key", "jsonOutput", "label", "JSON Output", "type", "text"),
+                                        Map.of("key", "fields", "label", "Fields to Set", "type", "json"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("data-transformation");
     }
 }

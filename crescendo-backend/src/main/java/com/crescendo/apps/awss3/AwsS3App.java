@@ -12,7 +12,25 @@ import java.util.Map;
 public class AwsS3App implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("aws-s3", "AWS S3", "List, upload, download, copy, delete, and presign S3 objects",
+        return new App("awss3", "AWS S3", """
+                Amazon Simple Storage Service (S3) is an object storage service offering industry-leading scalability and security. The Crescendo AWS S3 app allows you to automate file management across your buckets.
+
+                **What you can do with AWS S3 in Crescendo:**
+                - Automatically back up daily PostgreSQL database dumps to a secure bucket
+                - Generate temporary, pre-signed URLs to securely share private client files
+                - Trigger a workflow when a new image is uploaded, sending it to an AI vision model
+                - Move old logs from an active bucket to a Glacier-backed archive bucket
+
+                **Actions available:**
+                - Upload Object — save a file to S3
+                - Download Object — retrieve file contents into your workflow
+                - Presign URL — generate a temporary public link to a private file
+                - List/Copy/Delete Objects — manage your bucket storage
+
+                **Who should use this:** Cloud architects, backend developers, and data engineers managing secure file storage.
+
+                **Authentication:** AWS Credentials (Access Key ID, Secret Access Key, Region).
+                """,
                 "https://www.google.com/s2/favicons?domain=aws.amazon.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(

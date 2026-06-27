@@ -1,122 +1,185 @@
-# Main Application Properties Example
-# Copy this file to application.properties and modify as needed
-
 spring.application.name=crescendo
 
-# Default active profile (can be overridden)
+# Default active profile (can be overridden at startup with -Dspring.profiles.active=prod)
 spring.profiles.active=local
 
-# Common JPA Configuration
-spring.jpa.hibernate.ddl-auto=validate
+# Admin users (comma-separated emails) — promoted to ADMIN role on first startup
+crescendo.admin.emails=your-admin@example.com
+
+# Trust reverse proxy headers (e.g. Cloudflare Tunnel, nginx) so HTTPS redirect URIs are correct
+server.forward-headers-strategy=framework
+
+# Fix for PostgreSQL 18+ which removed deprecated timezone "Asia/Calcutta"
+spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Kolkata
+
+# ─── JPA / Hibernate ─────────────────────────────────────────────────────────
+# Use 'validate' in production to avoid accidental schema changes.
+spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.open-in-view=false
 
-# Credentials Encryption (AES-256)
-credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
+# ─── Credential Encryption ───────────────────────────────────────────────────
+# AES-256-GCM key, Base64-encoded 32 bytes. Used by ConnectionCredentialsCryptoService.
+# Security note: Credentials are encrypted AT REST with this server-managed key.
+# The server must decrypt them to execute actions on behalf of users.
+# This is "encrypted at rest, server-managed keys" — not end-to-end encryption.
+#
+# Generate (PowerShell): [Convert]::ToBase64String((1..32 | ForEach-Object {Get-Random -Maximum 256}))
+# Generate (bash):        openssl rand -base64 32
+#
+# NEVER commit the real key. Use an environment variable in production:
+#   CREDENTIALS_CRYPTO_KEY=<your-base64-key>
+credentials.crypto.key=REPLACE_ME_WITH_BASE64_AES256_KEY
 
-# Public app URLs
+# ─── App URLs ─────────────────────────────────────────────────────────────────
 app.frontend-url=https://app.crescendo.run
+app.public-api.issuer=https://api.crescendo.run
+# Enable only when every request reaches Crescendo through a trusted reverse proxy.
+app.security.trust-forwarded-headers=false
 app.backend-url=https://api.crescendo.run
 app.form.base-url=${app.backend-url}/public/forms
 app.approval.base-url=${app.backend-url}/public/approvals
+app.frontend.url=${app.frontend-url}
+app.tracking.base-url=${app.backend-url}
 
-# =====================================================================
-# 1. PLATFORM MANAGED API KEYS (AuthType.NONE)
-# These are public/free-tier APIs that the platform owner pays for or
-# provisions so users don't have to provide their own keys.
-# =====================================================================
+# ─── JWT ─────────────────────────────────────────────────────────────────────
+# WARNING: Replace with a strong secret (min 32 chars) and manage via environment variable in production.
+# Generate: openssl rand -base64 32
+jwt.secret=REPLACE_ME_WITH_STRONG_JWT_SECRET
+jwt.access.expiration=3600000
+jwt.refresh.expiration=604800000
 
-# NASA Open APIs (Free, https://api.nasa.gov/)
-crescendo.platform.nasa-api-key=REPLACE_ME
+# ─── CORS ────────────────────────────────────────────────────────────────────
+app.security.cors.allowed-origins=http://localhost:5173,https://app.crescendo.run
 
-# OpenWeatherMap API (Free tier: 1M calls/month, https://openweathermap.org/api)
-crescendo.platform.weather-api-key=REPLACE_ME
+# ─── Redis Cache ─────────────────────────────────────────────────────────────
+spring.cache.type=redis
+spring.data.redis.repositories.enabled=false
+# spring.data.redis.host=localhost
+# spring.data.redis.port=6379
 
-# Giphy Developers (Free tier, https://developers.giphy.com/)
-crescendo.platform.giphy-api-key=REPLACE_ME
+# ─── Spring Security OAuth2 (login flows) ────────────────────────────────────
+# These are for the Crescendo user login via Google/GitHub — NOT for integration connections.
+spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
+spring.security.oauth2.client.registration.google.client-secret=REPLACE_ME
 
-# Brandfetch Logo API (Free tier: 100 req/mo, https://brandfetch.com/developers)
-crescendo.platform.brandfetch-api-key=REPLACE_ME
+spring.security.oauth2.client.registration.github.client-id=REPLACE_ME
+spring.security.oauth2.client.registration.github.client-secret=REPLACE_ME
+spring.security.oauth2.client.registration.github.scope=read:user, user:email
 
-# CoinGecko Crypto API (Free tier: 10k req/mo, https://www.coingecko.com/en/api)
-crescendo.platform.coingecko-api-key=REPLACE_ME
+# ═══════════════════════════════════════════════════════════════════════════════
+# INTEGRATION OAUTH PROVIDERS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# These power the /connections/oauth/{providerKey}/authorize flow, which lets
+# users connect third-party accounts to Crescendo workflows.
+#
+# REDIRECT URI PATTERN (register this in EVERY provider's developer console):
+#   https://api.crescendo.run/connections/oauth/{providerKey}/callback
+#
+# The {providerKey} matches the property key name used below (e.g. "gmail", "slack").
+#
+# PLATFORM KEYS: For any app, admins can configure a platform-level key via
+#   POST /admin/platform-keys
+# so users don't need to connect their own account. The execution engine falls
+# back to the platform key automatically when no personal connection exists.
 
-# Marketstack EOD Data (Free tier: 100 req/mo, https://marketstack.com/)
-crescendo.platform.marketstack-api-key=REPLACE_ME
-
-# Job Search APIs
-# SerpAPI (Google Jobs, 100 free/mo: https://serpapi.com)
-crescendo.jobsearch.serpapi-key=REPLACE_ME
-# Adzuna (Free tier: https://developer.adzuna.com)
-crescendo.jobsearch.adzuna-app-id=REPLACE_ME
-crescendo.jobsearch.adzuna-api-key=REPLACE_ME
-# Jooble (Free: https://jooble.org/api/about)
-crescendo.jobsearch.jooble-api-key=REPLACE_ME
-
-# =====================================================================
-# 2. OAUTH2 PROVIDERS (AuthType.OAUTH2)
-# These apps act on behalf of the user, requiring the user to
-# connect their personal accounts via OAuth.
-# =====================================================================
+# ─── Google Apps ─────────────────────────────────────────────────────────────
+# One Google Cloud project can serve multiple OAuth clients.
+# Register at: https://console.cloud.google.com/apis/credentials
+# Enable the relevant APIs in: https://console.cloud.google.com/apis/library
 
 # Gmail
+# Redirect URI: https://api.crescendo.run/connections/oauth/gmail/callback
+# Scopes: send, compose, modify, readonly, labels, userinfo
 crescendo.integrations.oauth.providers.gmail.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.gmail.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.gmail.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.gmail.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.gmail.scopes=https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.gmail.scopes=https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Sheets
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-sheets/callback
+# Scopes: spreadsheets (full R/W), drive.file (file picker access), userinfo
 crescendo.integrations.oauth.providers.google-sheets.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-sheets.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-sheets.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-sheets.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-sheets.scopes=https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-sheets.scopes=https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Drive
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-drive/callback
+# Scopes: drive (full), drive.metadata.readonly, userinfo
 crescendo.integrations.oauth.providers.google-drive.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-drive.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-drive.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-drive.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-drive.scopes=https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-drive.scopes=https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Calendar
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-calendar/callback
+# Scopes: calendar (full R/W), calendar.events, userinfo
 crescendo.integrations.oauth.providers.google-calendar.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-calendar.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-calendar.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-calendar.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-calendar.scopes=https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-calendar.scopes=https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Forms
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-forms/callback
+# Scopes: forms.body (create/edit), forms.responses.readonly, drive.readonly, userinfo
 crescendo.integrations.oauth.providers.google-forms.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-forms.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-forms.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-forms.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-forms.scopes=https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/forms.responses.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-forms.scopes=https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/forms.responses.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Tasks
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-tasks/callback
+# Scopes: tasks (full R/W), tasks.readonly, userinfo
 crescendo.integrations.oauth.providers.google-tasks.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-tasks.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-tasks.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-tasks.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-tasks.scopes=https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-tasks.scopes=https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Slides
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-slides/callback
+# Scopes: presentations (full R/W), drive.readonly (for file access), userinfo
 crescendo.integrations.oauth.providers.google-slides.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-slides.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-slides.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-slides.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-slides.scopes=https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-slides.scopes=https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
 
 # Google Docs
+# Redirect URI: https://api.crescendo.run/connections/oauth/google-docs/callback
+# Scopes: documents (full R/W), drive.readonly (for file access), userinfo
 crescendo.integrations.oauth.providers.google-docs.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.google-docs.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.google-docs.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
 crescendo.integrations.oauth.providers.google-docs.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.google-docs.scopes=https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
+crescendo.integrations.oauth.providers.google-docs.scopes=https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
+
+# YouTube
+# App registration: https://console.cloud.google.com/apis/credentials
+# Redirect URI: https://api.crescendo.run/connections/oauth/youtube/callback
+# Enable YouTube Data API v3 in Google Cloud Console
+crescendo.integrations.oauth.providers.youtube.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.youtube.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.youtube.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
+crescendo.integrations.oauth.providers.youtube.token-url=https://oauth2.googleapis.com/token
+crescendo.integrations.oauth.providers.youtube.scopes=https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid
+
+# ─── Microsoft ────────────────────────────────────────────────────────────────
+# Register apps at: https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps
+# Supported account types: "Accounts in any organizational directory and personal Microsoft accounts"
+# Redirect URI platform: Web
 
 # Microsoft Excel
+# Redirect URI: https://api.crescendo.run/connections/oauth/microsoft-excel/callback
+# Required API permissions: Files.ReadWrite.All, User.Read (delegated)
 crescendo.integrations.oauth.providers.microsoft-excel.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-excel.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-excel.authorize-url=https://login.microsoftonline.com/common/oauth2/v2.0/authorize
@@ -124,244 +187,345 @@ crescendo.integrations.oauth.providers.microsoft-excel.token-url=https://login.m
 crescendo.integrations.oauth.providers.microsoft-excel.scopes=offline_access openid profile email User.Read Files.ReadWrite.All
 
 # Microsoft Outlook
+# Redirect URI: https://api.crescendo.run/connections/oauth/microsoft-outlook/callback
+# Required API permissions: Mail.ReadWrite, Mail.Send, Calendars.ReadWrite, Contacts.ReadWrite, MailboxSettings.ReadWrite (delegated)
 crescendo.integrations.oauth.providers.microsoft-outlook.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-outlook.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-outlook.authorize-url=https://login.microsoftonline.com/common/oauth2/v2.0/authorize
 crescendo.integrations.oauth.providers.microsoft-outlook.token-url=https://login.microsoftonline.com/common/oauth2/v2.0/token
-crescendo.integrations.oauth.providers.microsoft-outlook.scopes=offline_access openid profile email User.Read Mail.ReadWrite Mail.Send
+crescendo.integrations.oauth.providers.microsoft-outlook.scopes=offline_access openid profile email User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite Contacts.ReadWrite MailboxSettings.ReadWrite
 
 # Microsoft Teams
+# Redirect URI: https://api.crescendo.run/connections/oauth/microsoft-teams/callback
+# Required API permissions: Team.ReadBasic.All, Channel.ReadBasic.All, ChannelMessage.Send, Chat.ReadWrite, OnlineMeetings.ReadWrite (delegated)
 crescendo.integrations.oauth.providers.microsoft-teams.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-teams.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.microsoft-teams.authorize-url=https://login.microsoftonline.com/common/oauth2/v2.0/authorize
 crescendo.integrations.oauth.providers.microsoft-teams.token-url=https://login.microsoftonline.com/common/oauth2/v2.0/token
-crescendo.integrations.oauth.providers.microsoft-teams.scopes=offline_access openid profile email User.Read Team.ReadBasic.All Channel.ReadBasic.All ChannelMessage.Send Chat.ReadWrite
+crescendo.integrations.oauth.providers.microsoft-teams.scopes=offline_access openid profile email User.Read Team.ReadBasic.All Channel.ReadBasic.All ChannelMessage.Send Chat.ReadWrite OnlineMeetings.ReadWrite
 
-# GitHub
+# ─── GitHub ───────────────────────────────────────────────────────────────────
+# App registration: https://github.com/settings/developers → OAuth Apps
+# Redirect URI: https://api.crescendo.run/connections/oauth/github/callback
+# Scopes: repo (full), read:user, user:email, notifications, admin:repo_hook (webhooks), workflow
 crescendo.integrations.oauth.providers.github.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.github.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.github.authorize-url=https://github.com/login/oauth/authorize
 crescendo.integrations.oauth.providers.github.token-url=https://github.com/login/oauth/access_token
-crescendo.integrations.oauth.providers.github.scopes=repo read:user user:email
+crescendo.integrations.oauth.providers.github.scopes=repo read:user user:email notifications admin:repo_hook workflow
 
-# Discord
-crescendo.integrations.oauth.providers.discord.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.discord.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.discord.authorize-url=https://discord.com/oauth2/authorize
-crescendo.integrations.oauth.providers.discord.token-url=https://discord.com/api/oauth2/token
-crescendo.integrations.oauth.providers.discord.scopes=identify guilds guilds.members.read email
-
-# Notion
-crescendo.integrations.oauth.providers.notion.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.notion.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.notion.authorize-url=https://api.notion.com/v1/oauth/authorize
-crescendo.integrations.oauth.providers.notion.token-url=https://api.notion.com/v1/oauth/token
-crescendo.integrations.oauth.providers.notion.scopes=
-
-# Linear
-crescendo.integrations.oauth.providers.linear.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.linear.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.linear.authorize-url=https://linear.app/oauth/authorize
-crescendo.integrations.oauth.providers.linear.token-url=https://api.linear.app/oauth/token
-crescendo.integrations.oauth.providers.linear.scopes=read write issues:create comments:create
-
-# Airtable
-crescendo.integrations.oauth.providers.airtable.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.airtable.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.airtable.authorize-url=https://airtable.com/oauth2/v1/authorize
-crescendo.integrations.oauth.providers.airtable.token-url=https://airtable.com/oauth2/v1/token
-crescendo.integrations.oauth.providers.airtable.scopes=data.records:read data.records:write schema.bases:read
-crescendo.integrations.oauth.providers.airtable.pkce=true
-
-# Twitter / X
-crescendo.integrations.oauth.providers.twitter.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.twitter.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.twitter.authorize-url=https://twitter.com/i/oauth2/authorize
-crescendo.integrations.oauth.providers.twitter.token-url=https://api.twitter.com/2/oauth2/token
-crescendo.integrations.oauth.providers.twitter.scopes=tweet.read tweet.write users.read offline.access
-crescendo.integrations.oauth.providers.twitter.pkce=true
-
-# Slack
-crescendo.integrations.oauth.providers.slack.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.slack.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.slack.authorize-url=https://slack.com/oauth/v2/authorize
-crescendo.integrations.oauth.providers.slack.token-url=https://slack.com/api/oauth.v2.access
-crescendo.integrations.oauth.providers.slack.scopes=chat:write channels:read channels:history users:read reactions:read reactions:write channels:manage groups:write groups:read im:write im:read channels:join conversations:write.invites search:read.public search:read.private search:read.im search:read.mpim search:read.files
-crescendo.integrations.oauth.providers.slack.pkce=true
-
-# Spotify
-crescendo.integrations.oauth.providers.spotify.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.spotify.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.spotify.authorize-url=https://accounts.spotify.com/authorize
-crescendo.integrations.oauth.providers.spotify.token-url=https://accounts.spotify.com/api/token
-crescendo.integrations.oauth.providers.spotify.scopes=playlist-modify-public playlist-modify-private user-library-read user-read-email user-read-private
-
-# Strava
-crescendo.integrations.oauth.providers.strava.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.strava.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.strava.authorize-url=https://www.strava.com/oauth/authorize
-crescendo.integrations.oauth.providers.strava.token-url=https://www.strava.com/oauth/token
-crescendo.integrations.oauth.providers.strava.scopes=read,activity:read_all
-
-# Figma
-crescendo.integrations.oauth.providers.figma.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.figma.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.figma.authorize-url=https://www.figma.com/oauth
-crescendo.integrations.oauth.providers.figma.token-url=https://www.figma.com/api/oauth/token
-crescendo.integrations.oauth.providers.figma.scopes=file_content:read file_comments:read file_comments:write file_metadata:read file_versions:read
-
-# LinkedIn
-crescendo.integrations.oauth.providers.linkedin.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.linkedin.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.linkedin.authorize-url=https://www.linkedin.com/oauth/v2/authorization
-crescendo.integrations.oauth.providers.linkedin.token-url=https://www.linkedin.com/oauth/v2/accessToken
-crescendo.integrations.oauth.providers.linkedin.scopes=openid profile email w_member_social
-
-# GitLab
+# ─── GitLab ───────────────────────────────────────────────────────────────────
+# App registration: https://gitlab.com/-/profile/applications
+# Redirect URI: https://api.crescendo.run/connections/oauth/gitlab/callback
+# Scopes: api (full REST API), read_user (user profile)
 crescendo.integrations.oauth.providers.gitlab.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.gitlab.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.gitlab.authorize-url=https://gitlab.com/oauth/authorize
 crescendo.integrations.oauth.providers.gitlab.token-url=https://gitlab.com/oauth/token
 crescendo.integrations.oauth.providers.gitlab.scopes=api read_user
 
-# Trello
+# ─── Slack ────────────────────────────────────────────────────────────────────
+# App registration: https://api.slack.com/apps → Create New App → From Scratch
+# Redirect URI: https://api.crescendo.run/connections/oauth/slack/callback
+# OAuth & Permissions → User Token Scopes (user-level OAuth, NOT bot scopes):
+# Scopes (per n8n): channels, groups, im, mpim, files, reactions, stars, usergroups, users, search
+# Note: Slack v2 OAuth returns a USER token. Add this redirect to "OAuth & Permissions" page.
+crescendo.integrations.oauth.providers.slack.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.slack.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.slack.authorize-url=https://slack.com/oauth/v2/authorize
+crescendo.integrations.oauth.providers.slack.token-url=https://slack.com/api/oauth.v2.access
+crescendo.integrations.oauth.providers.slack.scopes=channels:read channels:write channels:history chat:write files:read files:write groups:read groups:write groups:history im:read im:write im:history mpim:read mpim:history reactions:read reactions:write stars:read stars:write usergroups:read usergroups:write users:read users.profile:read users.profile:write search:read
+crescendo.integrations.oauth.providers.slack.pkce=true
+
+# ─── Discord ──────────────────────────────────────────────────────────────────
+# App registration: https://discord.com/developers/applications
+# Redirect URI: https://api.crescendo.run/connections/oauth/discord/callback
+# OAuth2 → Redirects → add the above URI
+# Scopes: identify (user info), guilds (server list), guilds.join (join servers), email, bot
+crescendo.integrations.oauth.providers.discord.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.discord.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.discord.authorize-url=https://discord.com/oauth2/authorize
+crescendo.integrations.oauth.providers.discord.token-url=https://discord.com/api/oauth2/token
+crescendo.integrations.oauth.providers.discord.scopes=identify guilds guilds.join email bot
+
+# ─── Notion ───────────────────────────────────────────────────────────────────
+# App registration: https://www.notion.so/my-integrations → Create new integration
+# Redirect URI: https://api.crescendo.run/connections/oauth/notion/callback
+# Scopes: Notion uses workspace-level access; no granular scope strings.
+# IMPORTANT: Notion token exchange requires HTTP Basic auth (client_id:client_secret as username:password).
+crescendo.integrations.oauth.providers.notion.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.notion.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.notion.authorize-url=https://api.notion.com/v1/oauth/authorize
+crescendo.integrations.oauth.providers.notion.token-url=https://api.notion.com/v1/oauth/token
+crescendo.integrations.oauth.providers.notion.scopes=
+
+# ─── Linear ───────────────────────────────────────────────────────────────────
+# App registration: https://linear.app/settings/api → OAuth Applications
+# Redirect URI: https://api.crescendo.run/connections/oauth/linear/callback
+# Scopes: read, write, issues:create, comments:create (add 'admin' to create webhooks)
+crescendo.integrations.oauth.providers.linear.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.linear.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.linear.authorize-url=https://linear.app/oauth/authorize
+crescendo.integrations.oauth.providers.linear.token-url=https://api.linear.app/oauth/token
+crescendo.integrations.oauth.providers.linear.scopes=read write issues:create comments:create
+
+# ─── Airtable ─────────────────────────────────────────────────────────────────
+# App registration: https://airtable.com/create/oauth
+# Redirect URI: https://api.crescendo.run/connections/oauth/airtable/callback
+# Scopes: schema.bases:read/write, data.records:read/write, comments:read/write, webhook:manage
+# REQUIRED: Airtable uses PKCE — pkce=true is mandatory.
+crescendo.integrations.oauth.providers.airtable.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.airtable.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.airtable.authorize-url=https://airtable.com/oauth2/v1/authorize
+crescendo.integrations.oauth.providers.airtable.token-url=https://airtable.com/oauth2/v1/token
+crescendo.integrations.oauth.providers.airtable.scopes=schema.bases:read schema.bases:write data.records:read data.records:write data.recordComments:read data.recordComments:write webhook:manage
+crescendo.integrations.oauth.providers.airtable.pkce=true
+
+# ─── Twitter / X ──────────────────────────────────────────────────────────────
+# App registration: https://developer.twitter.com/en/portal/dashboard
+# Redirect URI: https://api.crescendo.run/connections/oauth/twitter/callback
+# App settings: Enable OAuth 2.0, set Type = "Web App, Automated App, or Bot"
+# Scopes (per n8n): full tweet/user/dm/list/like/follow read+write, offline.access
+# REQUIRED: Twitter uses PKCE — pkce=true is mandatory.
+crescendo.integrations.oauth.providers.twitter.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.twitter.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.twitter.authorize-url=https://twitter.com/i/oauth2/authorize
+crescendo.integrations.oauth.providers.twitter.token-url=https://api.twitter.com/2/oauth2/token
+crescendo.integrations.oauth.providers.twitter.scopes=tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access like.read like.write dm.write dm.read list.read list.write
+crescendo.integrations.oauth.providers.twitter.pkce=true
+
+# ─── Spotify ──────────────────────────────────────────────────────────────────
+# App registration: https://developer.spotify.com/dashboard → Create app
+# Redirect URI: https://api.crescendo.run/connections/oauth/spotify/callback
+# Scopes (per n8n): playback state, playlist R/W, library R/W, user-read, follow-read
+crescendo.integrations.oauth.providers.spotify.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.spotify.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.spotify.authorize-url=https://accounts.spotify.com/authorize
+crescendo.integrations.oauth.providers.spotify.token-url=https://accounts.spotify.com/api/token
+crescendo.integrations.oauth.providers.spotify.scopes=user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-library-modify user-follow-read user-read-email user-read-private
+
+# ─── Strava ───────────────────────────────────────────────────────────────────
+# App registration: https://www.strava.com/settings/api
+# Redirect URI: https://api.crescendo.run/connections/oauth/strava/callback
+# Scopes: read, activity:read_all, activity:write, profile:read_all
+crescendo.integrations.oauth.providers.strava.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.strava.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.strava.authorize-url=https://www.strava.com/oauth/authorize
+crescendo.integrations.oauth.providers.strava.token-url=https://www.strava.com/oauth/token
+crescendo.integrations.oauth.providers.strava.scopes=read,activity:read_all,activity:write,profile:read_all
+
+# ─── Figma ────────────────────────────────────────────────────────────────────
+# App registration: https://www.figma.com/developers/apps → Create new app
+# Redirect URI: https://api.crescendo.run/connections/oauth/figma/callback
+# Scopes (per n8n defaults): webhooks:read, webhooks:write
+# Note: File-level scopes (file_content:read, etc.) are for REST API with Personal Access Tokens,
+# not for OAuth2. OAuth2 in Figma is primarily for webhook management.
+crescendo.integrations.oauth.providers.figma.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.figma.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.figma.authorize-url=https://www.figma.com/oauth
+crescendo.integrations.oauth.providers.figma.token-url=https://api.figma.com/v1/oauth/token
+crescendo.integrations.oauth.providers.figma.scopes=webhooks:read webhooks:write file_content:read file_comments:read file_comments:write file_metadata:read file_versions:read
+
+# ─── LinkedIn ─────────────────────────────────────────────────────────────────
+# App registration: https://www.linkedin.com/developers/apps → Create app
+# Redirect URI: https://api.crescendo.run/connections/oauth/linkedin/callback
+# Products to request: Sign In with LinkedIn using OpenID Connect, Share on LinkedIn
+# Scopes: openid, profile, email (OIDC), w_member_social (posting)
+# Optional (requires partner access): w_organization_social, r_organization_social
+crescendo.integrations.oauth.providers.linkedin.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.linkedin.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.linkedin.authorize-url=https://www.linkedin.com/oauth/v2/authorization
+crescendo.integrations.oauth.providers.linkedin.token-url=https://www.linkedin.com/oauth/v2/accessToken
+crescendo.integrations.oauth.providers.linkedin.scopes=openid profile email w_member_social
+
+# ─── Trello ───────────────────────────────────────────────────────────────────
+# App registration: https://trello.com/power-ups/admin → Create new Power-Up → Generate API Key
+# Redirect URI: https://api.crescendo.run/connections/oauth/trello/callback
+# Note: Trello uses OAuth 1.0a (not 2.0). The callback URL is set in the Power-Up settings.
+# Scopes: read, write
 crescendo.integrations.oauth.providers.trello.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.trello.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.trello.authorize-url=https://trello.com/1/OAuthAuthorizeToken
 crescendo.integrations.oauth.providers.trello.token-url=https://trello.com/1/OAuthGetAccessToken
 crescendo.integrations.oauth.providers.trello.scopes=read,write
 
-# Asana
+# ─── Asana ────────────────────────────────────────────────────────────────────
+# App registration: https://app.asana.com/-/developer_console → Create new app
+# Redirect URI: https://api.crescendo.run/connections/oauth/asana/callback
+# Scopes: Asana uses a single 'default' scope granting full workspace access.
 crescendo.integrations.oauth.providers.asana.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.asana.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.asana.authorize-url=https://app.asana.com/-/oauth_authorize
 crescendo.integrations.oauth.providers.asana.token-url=https://app.asana.com/-/oauth_token
 crescendo.integrations.oauth.providers.asana.scopes=default
 
-# HubSpot
+# ─── HubSpot ──────────────────────────────────────────────────────────────────
+# App registration: https://developers.hubspot.com/ → Apps → Create app
+# Redirect URI: https://api.crescendo.run/connections/oauth/hubspot/callback
+# Scopes (per n8n full CRM): contacts, companies, deals, owners, schemas, lists, forms, tickets
 crescendo.integrations.oauth.providers.hubspot.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.hubspot.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.hubspot.authorize-url=https://app.hubspot.com/oauth/authorize
 crescendo.integrations.oauth.providers.hubspot.token-url=https://api.hubapi.com/oauth/v1/token
-crescendo.integrations.oauth.providers.hubspot.scopes=crm.objects.contacts.read crm.objects.contacts.write
+crescendo.integrations.oauth.providers.hubspot.scopes=crm.lists.write crm.objects.contacts.read crm.objects.contacts.write crm.objects.companies.read crm.objects.companies.write crm.objects.deals.read crm.objects.deals.write crm.objects.owners.read crm.schemas.companies.read crm.schemas.contacts.read crm.schemas.deals.read forms tickets
 
-# Dropbox
+# ─── Dropbox ──────────────────────────────────────────────────────────────────
+# App registration: https://www.dropbox.com/developers/apps → Create app
+# Redirect URI: https://api.crescendo.run/connections/oauth/dropbox/callback
+# Permission type: Full Dropbox or App Folder
 crescendo.integrations.oauth.providers.dropbox.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.dropbox.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.dropbox.authorize-url=https://www.dropbox.com/oauth2/authorize
 crescendo.integrations.oauth.providers.dropbox.token-url=https://api.dropboxapi.com/oauth2/token
 crescendo.integrations.oauth.providers.dropbox.scopes=files.metadata.read files.content.read files.content.write sharing.read sharing.write
 
-# YouTube
-crescendo.integrations.oauth.providers.youtube.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.youtube.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.youtube.authorize-url=https://accounts.google.com/o/oauth2/v2/auth
-crescendo.integrations.oauth.providers.youtube.token-url=https://oauth2.googleapis.com/token
-crescendo.integrations.oauth.providers.youtube.scopes=https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile
-
-# Calendly
+# ─── Calendly ─────────────────────────────────────────────────────────────────
+# App registration: https://developer.calendly.com/ → OAuth Applications
+# Redirect URI: https://api.crescendo.run/connections/oauth/calendly/callback
 crescendo.integrations.oauth.providers.calendly.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.calendly.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.calendly.authorize-url=https://auth.calendly.com/oauth/authorize
 crescendo.integrations.oauth.providers.calendly.token-url=https://auth.calendly.com/oauth/token
 crescendo.integrations.oauth.providers.calendly.scopes=default
 
-# Typeform
+# ─── Typeform ─────────────────────────────────────────────────────────────────
+# App registration: https://admin.typeform.com/account#/section/tokens → Create new application
+# Redirect URI: https://api.crescendo.run/connections/oauth/typeform/callback
+# Scopes (per n8n): webhooks:write, webhooks:read, forms:read, responses:read
 crescendo.integrations.oauth.providers.typeform.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.typeform.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.typeform.authorize-url=https://api.typeform.com/oauth/authorize
 crescendo.integrations.oauth.providers.typeform.token-url=https://api.typeform.com/oauth/token
-crescendo.integrations.oauth.providers.typeform.scopes=forms:read responses:read webhooks:write
+crescendo.integrations.oauth.providers.typeform.scopes=webhooks:write webhooks:read forms:read responses:read
 
-# Salesforce
+# ─── Salesforce ───────────────────────────────────────────────────────────────
+# App registration: Setup → App Manager → New Connected App
+# Redirect URI: https://api.crescendo.run/connections/oauth/salesforce/callback
+# Scopes (per n8n): full (all REST API), refresh_token (offline)
+# Note: For sandbox environments, use https://test.salesforce.com instead of login.salesforce.com
 crescendo.integrations.oauth.providers.salesforce.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.salesforce.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.salesforce.authorize-url=https://login.salesforce.com/services/oauth2/authorize
 crescendo.integrations.oauth.providers.salesforce.token-url=https://login.salesforce.com/services/oauth2/token
-crescendo.integrations.oauth.providers.salesforce.scopes=api refresh_token
+crescendo.integrations.oauth.providers.salesforce.scopes=full refresh_token
 
-# Facebook Graph (Pages/Instagram)
+# ─── Facebook Graph ───────────────────────────────────────────────────────────
+# App registration: https://developers.facebook.com/apps
+# Redirect URI: https://api.crescendo.run/connections/oauth/facebook-graph/callback
+# App review may be required for pages_manage_posts and instagram_content_publish
 crescendo.integrations.oauth.providers.facebook-graph.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.facebook-graph.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.facebook-graph.authorize-url=https://www.facebook.com/v20.0/dialog/oauth
 crescendo.integrations.oauth.providers.facebook-graph.token-url=https://graph.facebook.com/v20.0/oauth/access_token
 crescendo.integrations.oauth.providers.facebook-graph.scopes=pages_read_engagement pages_manage_posts instagram_basic instagram_content_publish
 
-# Jira
+# ─── Jira (Atlassian Cloud) ───────────────────────────────────────────────────
+# App registration: https://developer.atlassian.com/console/myapps/ → Create OAuth 2.0 integration
+# Redirect URI: https://api.crescendo.run/connections/oauth/jira/callback
+# Required APIs: Jira platform REST API, Jira Software Cloud
+# Scopes (per n8n): read:jira-user, read:jira-work, write:jira-work, manage:jira-webhook, manage:jira-user, offline_access
 crescendo.integrations.oauth.providers.jira.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.jira.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.jira.authorize-url=https://auth.atlassian.com/authorize
 crescendo.integrations.oauth.providers.jira.token-url=https://auth.atlassian.com/oauth/token
-crescendo.integrations.oauth.providers.jira.scopes=read:jira-work write:jira-work
+crescendo.integrations.oauth.providers.jira.scopes=read:jira-user read:jira-work write:jira-work manage:jira-webhook manage:jira-user offline_access
 
-# ClickUp
+# ─── ClickUp ──────────────────────────────────────────────────────────────────
+# App registration: https://app.clickup.com/settings/integrations → API Keys
+# Redirect URI: https://api.crescendo.run/connections/oauth/clickup/callback
+# Scopes: ClickUp OAuth2 does not use scope parameters — all workspace access is granted.
 crescendo.integrations.oauth.providers.clickup.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.clickup.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.clickup.authorize-url=https://app.clickup.com/api
 crescendo.integrations.oauth.providers.clickup.token-url=https://api.clickup.com/api/v2/oauth/token
 crescendo.integrations.oauth.providers.clickup.scopes=
 
-# Mailchimp
+# ─── Mailchimp ────────────────────────────────────────────────────────────────
+# App registration: https://mailchimp.com/developer/marketing/guides/access-user-data-oauth-2/
+# Redirect URI: https://api.crescendo.run/connections/oauth/mailchimp/callback
+# Scopes: Mailchimp grants full account access — no explicit scope parameters.
 crescendo.integrations.oauth.providers.mailchimp.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.mailchimp.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.mailchimp.authorize-url=https://login.mailchimp.com/oauth2/authorize
 crescendo.integrations.oauth.providers.mailchimp.token-url=https://login.mailchimp.com/oauth2/token
 crescendo.integrations.oauth.providers.mailchimp.scopes=
 
-# Freshdesk
+# ─── Freshdesk ────────────────────────────────────────────────────────────────
+# App registration: https://developers.freshdesk.com/
+# Redirect URI: https://api.crescendo.run/connections/oauth/freshdesk/callback
+# Note: Freshdesk primarily uses API key auth. OAuth is for marketplace-published apps.
 crescendo.integrations.oauth.providers.freshdesk.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.freshdesk.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.freshdesk.authorize-url=https://www.freshworks.com/api/oauth/authorize
 crescendo.integrations.oauth.providers.freshdesk.token-url=https://www.freshworks.com/api/oauth/token
 crescendo.integrations.oauth.providers.freshdesk.scopes=
 
-# Zendesk
+# ─── Zendesk ──────────────────────────────────────────────────────────────────
+# App registration: https://developer.zendesk.com/api-reference/ticketing/oauth/oauth_clients/
+# Redirect URI: https://api.crescendo.run/connections/oauth/zendesk/callback
+# Note: Replace {subdomain} with your actual Zendesk subdomain in the URLs below.
+# Scopes: read (tickets/users), write (create/update tickets)
 crescendo.integrations.oauth.providers.zendesk.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.zendesk.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.zendesk.authorize-url=https://{subdomain}.zendesk.com/oauth/authorizations/new
 crescendo.integrations.oauth.providers.zendesk.token-url=https://{subdomain}.zendesk.com/oauth/tokens
 crescendo.integrations.oauth.providers.zendesk.scopes=read write
 
-# Brevo
+# ─── Brevo (formerly Sendinblue) ──────────────────────────────────────────────
+# API keys: https://app.brevo.com/settings/keys/api
+# Note: Brevo does not offer a standard OAuth2 user-authorization flow.
+# Users should connect via API key. This section is a placeholder for potential future support.
 crescendo.integrations.oauth.providers.brevo.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.brevo.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.brevo.authorize-url=https://account.brevo.com/oauth2/authorize
 crescendo.integrations.oauth.providers.brevo.token-url=https://account.brevo.com/oauth2/token
 crescendo.integrations.oauth.providers.brevo.scopes=
 
-# Todoist
+# ─── Todoist ──────────────────────────────────────────────────────────────────
+# App registration: https://developer.todoist.com/appconsole.html
+# Redirect URI: https://api.crescendo.run/connections/oauth/todoist/callback
+# Scopes: data:read_write (create/update/delete tasks and projects), data:delete (optional)
 crescendo.integrations.oauth.providers.todoist.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.todoist.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.todoist.authorize-url=https://todoist.com/oauth/authorize
 crescendo.integrations.oauth.providers.todoist.token-url=https://todoist.com/oauth/access_token
 crescendo.integrations.oauth.providers.todoist.scopes=data:read_write
 
-# =====================================================================
-# 3. OTHER CONFIGURATIONS
-# =====================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# PLATFORM-MANAGED API KEYS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Keys for public/free-tier APIs used by AuthType.NONE apps.
+# Users don't need personal connections for these — the platform key is used.
+# Replace with your own keys for higher rate limits.
+crescendo.platform.weather-api-key=REPLACE_ME
+crescendo.platform.giphy-api-key=REPLACE_ME
+crescendo.platform.nasa-api-key=REPLACE_ME
+crescendo.platform.brandfetch-api-key=REPLACE_ME
+crescendo.platform.coingecko-api-key=REPLACE_ME
+crescendo.platform.marketstack-api-key=REPLACE_ME
 
-# SMTP relay for crescendo-email app (e.g. AWS SES, SendGrid, Mailgun)
-crescendo.email.smtp.host=REPLACE_ME
+# Job Search provider API keys
+crescendo.jobsearch.serpapi-key=REPLACE_ME
+crescendo.jobsearch.adzuna-app-id=REPLACE_ME
+crescendo.jobsearch.adzuna-api-key=REPLACE_ME
+crescendo.jobsearch.jooble-api-key=REPLACE_ME
+
+# ─── AI Provider API Keys (optional / admin-managed) ─────────────────────────
+# These are optional server-level keys. Users can also provide their own via Connections.
+# In production, manage these via the Admin Panel → Platform Keys, not this file.
+gemini.api.key=REPLACE_ME
+sarvam.api.key=REPLACE_ME
+
+# ─── Internal Python AI Service (optional) ────────────────────────────────────
+# Used by /api/v1/ai/workflow-drafts for natural-language workflow draft creation.
+# Spring Boot remains source of truth for auth, validation, persistence, and execution.
+crescendo.python-ai.base-url=
+crescendo.python-ai.service-token=
+
+# ─── Crescendo Email SMTP Relay ──────────────────────────────────────────────
+# Used by the crescendo-email internal app for workflow-triggered emails.
+# Brevo, AWS SES, SendGrid, Mailgun, etc.
+crescendo.email.smtp.host=smtp-relay.brevo.com
 crescendo.email.smtp.port=587
 crescendo.email.smtp.username=REPLACE_ME
 crescendo.email.smtp.password=REPLACE_ME
-
-# Base URL used for open/click tracking links injected into outgoing HTML emails
-app.tracking.base-url=${app.backend-url}
-
-# Server-level AI Fallback Keys
-# Only configure if you are paying the bill! Otherwise leave empty and users will BYOK
-gemini.api.key=REPLACE_ME_IF_USED
-sarvam.api.key=REPLACE_ME_IF_USED
-
-# JWT
-jwt.refresh.expiration=604800000
-jwt.access.expiration=3600000
-jwt.secret=REPLACE_ME_BASE64_KEY
-
-# CORS
-app.security.cors.allowed-origins=http://localhost:5173,https://app.crescendo.run
-
-# Redis Cache
-spring.cache.type=redis
-spring.data.redis.repositories.enabled=false

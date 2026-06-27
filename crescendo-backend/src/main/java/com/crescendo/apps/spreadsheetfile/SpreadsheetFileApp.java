@@ -4,23 +4,53 @@ import com.crescendo.app.App;
 import com.crescendo.apps.AppDefinition;
 import com.crescendo.enums.AuthType;
 import org.springframework.stereotype.Component;
-import java.util.*;
 
+import java.util.List;
+import java.util.Map;
+
+/**
+ * AppDefinition for Spreadsheet File.
+ */
 @Component
 public class SpreadsheetFileApp implements AppDefinition {
-    @Override public App toApp() {
-        return new App("spreadsheet-file", "Spreadsheet File", "Read and write CSV, XLS, XLSX, and simple ODS spreadsheet data",
-                "/icons/spreadsheet.svg", AuthType.NONE, List.of(), List.of(
-                Map.of("actionKey","read","name","Read Spreadsheet","description","Read CSV, XLS, XLSX, or ODS Base64 data into rows",
-                        "configSchema", List.of(
-                                Map.of("key","format","label","Format","type","select","required",true,"options",List.of(Map.of("value","csv","label","CSV"),Map.of("value","xls","label","XLS"),Map.of("value","xlsx","label","XLSX"),Map.of("value","ods","label","ODS"))),
-                                Map.of("key","base64","label","File Base64","type","textarea","required",true),
-                                Map.of("key","sheetName","label","Sheet Name","type","text","required",false))),
-                Map.of("actionKey","write","name","Write Spreadsheet","description","Write rows to CSV, XLS, XLSX, or ODS Base64 data",
-                        "configSchema", List.of(
-                                Map.of("key","format","label","Format","type","select","required",true,"options",List.of(Map.of("value","csv","label","CSV"),Map.of("value","xls","label","XLS"),Map.of("value","xlsx","label","XLSX"),Map.of("value","ods","label","ODS"))),
-                                Map.of("key","rows","label","Rows (JSON Array)","type","json","required",true),
-                                Map.of("key","sheetName","label","Sheet Name","type","text","required",false,"placeholder","Sheet1")))
-        )).credentialSchema(List.of()).category("core").helpUrl("");
+
+    @Override
+    public App toApp() {
+        return new App(
+                "spreadsheetFile",
+                "Spreadsheet File",
+                """
+                Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc.
+                
+                This integration provides operations for:
+                - **Read From File**: Read data from a spreadsheet file
+                - **Write to File**: Write data to a spreadsheet file
+                """,
+                "https://www.google.com/s2/favicons?domain=excel.com&sz=128", // Generic icon
+                AuthType.NONE,
+                List.of(),
+                List.of(
+                        Map.of(
+                                "actionKey", "spreadsheetFile:fromFile",
+                                "name", "Read From File",
+                                "description", "Read data from a spreadsheet file",
+                                "configSchema", List.of(
+                                        Map.of("key", "fileFormat", "label", "File Format", "type", "text", "default", "autodetect"),
+                                        Map.of("key", "binaryPropertyName", "label", "Input Binary Field", "type", "text", "required", true, "default", "data"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "spreadsheetFile:toFile",
+                                "name", "Write to File",
+                                "description", "Write data to a spreadsheet file",
+                                "configSchema", List.of(
+                                        Map.of("key", "fileFormat", "label", "File Format", "type", "text", "default", "csv"),
+                                        Map.of("key", "binaryPropertyName", "label", "Output Binary Field", "type", "text", "required", true, "default", "data"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
+                )
+        ).credentialSchema(List.of()).category("files-and-storage").internal(true);
     }
 }

@@ -6,7 +6,7 @@ import org.apache.commons.net.ftp.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 
-abstract class FtpSftpSupport implements ActionHandler {
+abstract class FtpSftpSupport {
     String cfg(ActionContext c, String k, String f) {
         Object v = c.configuration().get(k);
         return v == null || String.valueOf(v).isBlank() ? f : String.valueOf(v);
@@ -23,7 +23,11 @@ abstract class FtpSftpSupport implements ActionHandler {
 
     FTPClient ftp(ActionContext c) throws Exception {
         FTPClient f = new FTPClient();
+        int timeout = Integer.parseInt(cfg(c, "timeout", "10000"));
+        f.setConnectTimeout(timeout);
+        f.setDefaultTimeout(timeout);
         f.connect(cred(c, "host", ""), Integer.parseInt(cred(c, "port", "21")));
+        f.setSoTimeout(timeout);
         if (!f.login(cred(c, "username", ""), cred(c, "password", ""))) {
             throw new IOException("FTP login failed");
         }
@@ -45,9 +49,10 @@ abstract class FtpSftpSupport implements ActionHandler {
             s.setPassword(cred(c, "password", ""));
         }
         s.setConfig("StrictHostKeyChecking", "no");
-        s.connect(15000);
+        int timeout = Integer.parseInt(cfg(c, "timeout", "10000"));
+        s.connect(timeout);
         ChannelSftp ch = (ChannelSftp) s.openChannel("sftp");
-        ch.connect(15000);
+        ch.connect(timeout);
         return ch;
     }
 

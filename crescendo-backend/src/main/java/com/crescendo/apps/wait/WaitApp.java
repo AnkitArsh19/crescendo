@@ -8,30 +8,46 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * AppDefinition for Wait.
+ */
 @Component
 public class WaitApp implements AppDefinition {
+
     @Override
     public App toApp() {
-        return new App("wait", "Wait", "Pause workflow execution for a set amount of time",
-                "/icons/wait.svg", AuthType.NONE,
+        return new App(
+                "wait",
+                "Wait",
+                """
+                Wait before continue with execution.
+                
+                This integration provides operations for:
+                - **Wait**: Waits for a certain amount of time, until a specific date and time, or for a webhook call/form submission before continuing
+                """,
+                "/icons/wait.svg", // Generic icon
+                AuthType.NONE,
                 List.of(),
                 List.of(
-                    Map.of("actionKey", "pause", "name", "Pause Execution",
-                        "description", "Pause synchronously for short waits or suspend the run for longer waits",
-                        "configSchema", List.of(
-                            Map.of("key", "mode", "label", "Mode", "type", "select", "required", false,
-                                   "options", List.of(
-                                       Map.of("value", "duration", "label", "Duration"),
-                                       Map.of("value", "until", "label", "Until Date/Time")
-                                   ), "helpText", "How to calculate the wait"),
-                            Map.of("key", "seconds", "label", "Seconds", "type", "number", "required", false,
-                                   "placeholder", "300", "helpText", "Duration to wait in seconds. Used when Mode is Duration."),
-                            Map.of("key", "resumeAt", "label", "Resume At", "type", "text", "required", false,
-                                   "placeholder", "2026-06-19T15:30:00+05:30", "helpText", "Date/time to resume. Used when Mode is Until Date/Time."),
-                            Map.of("key", "timezone", "label", "Timezone", "type", "text", "required", false,
-                                   "placeholder", "Asia/Kolkata", "helpText", "Used for date-only or local date/time values")
-                        ))
+                        Map.of(
+                                "actionKey", "wait:wait",
+                                "name", "Wait",
+                                "description", "Wait before continue with execution",
+                                "configSchema", List.of(
+                                        Map.of("key", "resume", "label", "Resume", "type", "text", "default", "timeInterval"),
+                                        Map.of("key", "amount", "label", "Amount", "type", "number", "default", 1),
+                                        Map.of("key", "unit", "label", "Unit", "type", "text", "default", "hours"),
+                                        Map.of("key", "dateTime", "label", "Date and Time", "type", "text"),
+                                        Map.of("key", "incomingAuthentication", "label", "Authentication", "type", "text", "default", "none"),
+                                        Map.of("key", "limitWaitTime", "label", "Limit Wait Time", "type", "boolean", "default", false),
+                                        Map.of("key", "limitType", "label", "Limit Type", "type", "text", "default", "afterTimeInterval"),
+                                        Map.of("key", "resumeAmount", "label", "Resume Amount", "type", "number", "default", 1),
+                                        Map.of("key", "resumeUnit", "label", "Resume Unit", "type", "text", "default", "hours"),
+                                        Map.of("key", "maxDateAndTime", "label", "Max Date and Time", "type", "text"),
+                                        Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("logic-and-flow");
     }
 }

@@ -30,7 +30,25 @@ public class GoogleSheetsApp implements AppDefinition {
                 "required", false,
                 "helpText", "Optionally limit trigger to changes in a specific column");
 
-        return new App("google-sheets", "Google Sheets", "Read, write, and watch spreadsheet data",
+        return new App("google-sheets", "Google Sheets", """
+                Google Sheets is a cloud-based spreadsheet application. The Crescendo Google Sheets app allows you to read, write, and watch your spreadsheet data automatically.
+
+                **What you can do with Google Sheets in Crescendo:**
+                - Add new rows for incoming form submissions or webhook data
+                - Trigger workflows when a specific cell or row is updated
+                - Read data from a sheet to populate emails or Slack messages
+                - Sync your spreadsheets with databases like Notion or Airtable
+
+                **Actions available:**
+                - Create Spreadsheet Row — append new data to a sheet
+                - Update Spreadsheet Row — modify existing data
+                - Read/Find Rows — query your spreadsheet
+                - Clear Cells / Create Spreadsheet — manage your files
+
+                **Who should use this:** Operations teams tracking data, marketers collecting leads, and anyone using spreadsheets as a lightweight database.
+
+                **Authentication:** OAuth 2.0 (connect your Google account).
+                """,
                 "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png", AuthType.OAUTH2,
 
                 // ═══ TRIGGERS ═══
@@ -70,7 +88,7 @@ public class GoogleSheetsApp implements AppDefinition {
                 // ═══ ACTIONS ═══
                 List.of(
                     Map.of(
-                        "actionKey", "append-row",
+                        "actionKey", "appendRow",
                         "name", "Create Spreadsheet Row",
                         "description", "Add a new row to the end of a spreadsheet",
                         "configSchema", List.of(
@@ -81,7 +99,7 @@ public class GoogleSheetsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "update-row",
+                        "actionKey", "updateRow",
                         "name", "Update Spreadsheet Row",
                         "description", "Update an existing row by row number",
                         "configSchema", List.of(
@@ -96,7 +114,7 @@ public class GoogleSheetsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "read-rows",
+                        "actionKey", "readRows",
                         "name", "Read Rows",
                         "description", "Read rows from a spreadsheet range",
                         "configSchema", List.of(
@@ -108,7 +126,7 @@ public class GoogleSheetsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "find-row",
+                        "actionKey", "findRow",
                         "name", "Find Spreadsheet Row",
                         "description", "Search for a row by column value",
                         "configSchema", List.of(
@@ -121,11 +139,18 @@ public class GoogleSheetsApp implements AppDefinition {
                             Map.of("key", "searchValue", "label", "Search Value",
                                    "type", "text", "required", true,
                                    "placeholder", "alice@example.com",
-                                   "helpText", "The value to search for in the column")
+                                   "helpText", "The value to search for in the column"),
+                            Map.of("key", "returnAllMatches", "label", "Return All Matches",
+                                   "type", "select", "required", false,
+                                   "options", List.of(
+                                       Map.of("label", "No", "value", "false"),
+                                       Map.of("label", "Yes", "value", "true")
+                                   ),
+                                   "helpText", "Whether to return all matching rows instead of just the first one")
                         )
                     ),
                     Map.of(
-                        "actionKey", "delete-row",
+                        "actionKey", "deleteRow",
                         "name", "Delete Spreadsheet Row",
                         "description", "Delete a row from a worksheet by row number",
                         "configSchema", List.of(
@@ -137,7 +162,7 @@ public class GoogleSheetsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "clear-cells",
+                        "actionKey", "clearCells",
                         "name", "Clear Spreadsheet Cells",
                         "description", "Clear cell contents in a range without deleting rows",
                         "configSchema", List.of(
@@ -149,7 +174,7 @@ public class GoogleSheetsApp implements AppDefinition {
                         )
                     ),
                     Map.of(
-                        "actionKey", "create-spreadsheet",
+                        "actionKey", "create",
                         "name", "Create Spreadsheet",
                         "description", "Create a new Google Sheets spreadsheet",
                         "configSchema", List.of(

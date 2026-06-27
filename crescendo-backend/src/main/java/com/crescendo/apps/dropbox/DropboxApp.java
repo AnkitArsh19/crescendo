@@ -12,7 +12,25 @@ import java.util.Map;
 public class DropboxApp implements AppDefinition {
     @Override
     public App toApp() {
-        return new App("dropbox", "Dropbox", "List, upload, download, share, search, and manage Dropbox files",
+        return new App("dropbox", "Dropbox", """
+                Dropbox is a file hosting service that offers cloud storage and file synchronization. The Crescendo Dropbox app lets you list, upload, download, share, and manage your files automatically.
+
+                **What you can do with Dropbox in Crescendo:**
+                - Back up website databases or logs to a secure Dropbox folder
+                - Create shareable links automatically for newly uploaded client deliverables
+                - Sync files between Dropbox and Google Drive
+                - Trigger an approval workflow when a new contract PDF is uploaded
+
+                **Actions available:**
+                - Upload File — save a document to a specific path
+                - Download File — retrieve file contents
+                - Create Shared Link — generate a public URL for a file
+                - Search Files — find files by name or extension
+
+                **Who should use this:** Video editors sharing large files, accounting firms managing secure documents, and teams requiring automated backups.
+
+                **Authentication:** OAuth 2.0 (connect your Dropbox account).
+                """,
                 "https://www.google.com/s2/favicons?domain=dropbox.com&sz=128", AuthType.OAUTH2,
                 List.of(),
                 List.of(

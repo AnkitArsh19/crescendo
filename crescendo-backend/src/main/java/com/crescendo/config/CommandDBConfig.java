@@ -45,7 +45,11 @@ import java.util.HashMap;
                 "com.crescendo.webhook",
                 "com.crescendo.security.mfa",
                 "com.crescendo.admin",
-                "com.crescendo.logbook.outbox"
+                "com.crescendo.settings.oauth",
+                "com.crescendo.logbook.outbox",
+                "com.crescendo.publicapi.audit",
+                "com.crescendo.publicapi.oauth",
+                "com.crescendo.publicapi.oauth.persistence"
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "commandTransactionManager"
@@ -129,8 +133,12 @@ public class CommandDBConfig {
                                 "com.crescendo.auth.token.email",
                                 "com.crescendo.auth.token.password",
                                 "com.crescendo.emailservice.domain",
+                                "com.crescendo.settings.oauth",
                                 "com.crescendo.admin",
-                                "com.crescendo.logbook.outbox"
+                                "com.crescendo.logbook.outbox",
+                                "com.crescendo.publicapi.audit",
+                                "com.crescendo.publicapi.oauth",
+                                "com.crescendo.publicapi.oauth.persistence"
                         )
                         .properties(props)
                         .build();

@@ -485,7 +485,8 @@ public class Connections_commandService {
                 c.getName(),
                 c.getStatus().name(),
                 c.getCreatedAt(),
-                c.getUpdatedAt()
+                c.getUpdatedAt(),
+                c.getGrantedScopes()
         );
     }
 }
