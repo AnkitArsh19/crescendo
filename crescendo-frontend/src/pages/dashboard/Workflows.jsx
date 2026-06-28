@@ -14,9 +14,11 @@ import {
     HiOutlineShare,
     HiOutlineCheck,
     HiOutlineClipboardCopy,
+    HiOutlineSparkles,
 } from 'react-icons/hi';
 import useWorkflowStore from '../../store/workflowStore';
 import useToastStore from '../../store/toastStore';
+import NLWorkflowModal from './NLWorkflowModal';
 import './Workflows.css';
 
 const fadeIn = {
@@ -56,6 +58,7 @@ export default function Workflows() {
     const [menuOpen, setMenuOpen] = useState(null);
     const [deleting, setDeleting] = useState(null);
     const [toggling, setToggling] = useState(null);
+    const [showAiModal, setShowAiModal] = useState(false);
 
     // Multi-select state
     const [selectMode, setSelectMode] = useState(false);
@@ -158,8 +161,8 @@ export default function Workflows() {
     }, [menuOpen]);
 
     return (
+        <>
         <div className="wf-page">
-            {/* Header */}
             <div className="wf-header">
                 <div>
                     <h1 className="wf-title">Workflows</h1>
@@ -178,6 +181,13 @@ export default function Workflows() {
                             {selectMode ? 'Cancel' : 'Select'}
                         </button>
                     )}
+                    <button
+                        className="wf-ai-btn"
+                        onClick={() => setShowAiModal(true)}
+                        type="button"
+                    >
+                        <HiOutlineSparkles /> Build with AI
+                    </button>
                     <Link to="/dashboard/workflows/new" className="wf-create-btn">
                         <HiPlus /> New Workflow
                     </Link>
@@ -421,5 +431,10 @@ export default function Workflows() {
                 )}
             </AnimatePresence>
         </div>
+
+        {showAiModal && (
+            <NLWorkflowModal onClose={() => setShowAiModal(false)} />
+        )}
+        </>
     );
 }

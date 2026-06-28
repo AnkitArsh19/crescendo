@@ -1,0 +1,306 @@
+/* ─── Overlay ─────────────────────────────────────────────────────────────── */
+.nlwf-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+/* ─── Modal panel ─────────────────────────────────────────────────────────── */
+.nlwf-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 560px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* ─── Header ──────────────────────────────────────────────────────────────── */
+.nlwf-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.nlwf-header-text h2 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.nlwf-header-text p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.nlwf-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+.nlwf-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+/* ─── Prompt area ─────────────────────────────────────────────────────────── */
+.nlwf-prompt-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.nlwf-textarea {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.55;
+}
+.nlwf-textarea:focus {
+    border-color: var(--text-accent);
+}
+.nlwf-textarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* ─── Examples ────────────────────────────────────────────────────────────── */
+.nlwf-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 10px;
+}
+
+.nlwf-example-chip {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.nlwf-example-chip:hover {
+    border-color: var(--text-accent);
+    color: var(--text-accent);
+}
+
+/* ─── Draft preview ───────────────────────────────────────────────────────── */
+.nlwf-draft {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.nlwf-draft-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.nlwf-draft-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nlwf-step-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.nlwf-step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--text-accent);
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nlwf-step-label {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.nlwf-step-app {
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+/* ─── Error ───────────────────────────────────────────────────────────────── */
+.nlwf-error {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #f87171;
+}
+
+.nlwf-unavailable {
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #fbbf24;
+}
+
+/* ─── Footer actions ──────────────────────────────────────────────────────── */
+.nlwf-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.nlwf-cancel-btn {
+    background: none;
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.nlwf-cancel-btn:hover {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+.nlwf-generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--text-accent);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+}
+.nlwf-generate-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+.nlwf-generate-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.nlwf-create-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+}
+.nlwf-create-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+.nlwf-create-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ─── Spinner ─────────────────────────────────────────────────────────────── */
+.nlwf-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: nlwf-spin 0.7s linear infinite;
+}
+@keyframes nlwf-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ─── AI badge button in Workflows header ─────────────────────────────────── */
+.wf-ai-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: transparent;
+    color: var(--text-accent);
+    border: 1px solid var(--text-accent);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+    white-space: nowrap;
+}
+.wf-ai-btn:hover {
+    background: rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+}
