@@ -14,7 +14,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -54,14 +53,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     private static final String LIVE_KEY_PREFIX = "re_live_";
     private static final int LEGACY_LOOKUP_PREFIX_LENGTH = 8;
     private static final int LIVE_LOOKUP_PREFIX_LENGTH = 16;
-    private static final Duration RATE_LIMIT_WINDOW = Duration.ofMinutes(1);
-    private static final String RATE_LIMIT_KEY_PREFIX = "crescendo:ratelimit:apikey:";
+    private static final String RATE_LIMIT_NAMESPACE = "apikey";
     public static final String API_KEY_ID_ATTRIBUTE = "crescendo.apiKeyId";
 
     private final ApiKey_commandRepository apiKeyRepo;
     private final User_commandRepository userRepo;
     private final UserCredentialRepository credentialRepo;
-    private final StringRedisTemplate redisTemplate;
+    private final RateLimitingService rateLimitingService;
     private final ApiKeyUsageLogRepository usageLogRepo;
     private final ApiKey_queryRepository apiKeyQueryRepo;
 
@@ -71,13 +69,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     public ApiKeyAuthenticationFilter(ApiKey_commandRepository apiKeyRepo,
                                       User_commandRepository userRepo,
                                       UserCredentialRepository credentialRepo,
-                                      StringRedisTemplate redisTemplate,
+                                      RateLimitingService rateLimitingService,
                                       ApiKeyUsageLogRepository usageLogRepo,
                                       ApiKey_queryRepository apiKeyQueryRepo) {
         this.apiKeyRepo = apiKeyRepo;
         this.userRepo = userRepo;
         this.credentialRepo = credentialRepo;
-        this.redisTemplate = redisTemplate;
+        this.rateLimitingService = rateLimitingService;
         this.usageLogRepo = usageLogRepo;
         this.apiKeyQueryRepo = apiKeyQueryRepo;
     }
@@ -126,8 +124,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Rate limit per API key
-        if (isRateLimited(apiKey.getId().toString(), apiKey.getRateLimitPerMinute())) {
+        // Rate limit per API key via the shared RateLimitingService
+        if (rateLimitingService.isRateLimited(RATE_LIMIT_NAMESPACE, apiKey.getId().toString(),
+                apiKey.getRateLimitPerMinute(), Duration.ofMinutes(1))) {
             sendError(response, 429, "Rate limit exceeded");
             return;
         }
@@ -167,17 +166,6 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             });
             audit(request, response, apiKey);
         }
-    }
-
-    /// Sliding-window rate limiter using Redis INCR + EXPIRE.
-    /// Returns true if the key has exceeded RATE_LIMIT_MAX requests within the current window.
-    private boolean isRateLimited(String apiKeyId, int maxPerMinute) {
-        String key = RATE_LIMIT_KEY_PREFIX + apiKeyId;
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1) {
-            redisTemplate.expire(key, RATE_LIMIT_WINDOW);
-        }
-        return count != null && count > Math.max(1, maxPerMinute);
     }
 
     private boolean isPublicApiPath(HttpServletRequest request) {

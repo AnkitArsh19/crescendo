@@ -50,6 +50,9 @@ public class Workflow_query {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "version")
+    private Long version = 0L;
+
     @Column(name = "step_count")
     private int step_count;
 
@@ -133,5 +136,13 @@ public class Workflow_query {
 
     public void setStep_count(int step_count) {
         this.step_count = step_count;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 
 from groq import Groq
 
+from app.catalog_sync import app_state
 from app.schemas.workflow import WorkflowDraftResponse, WorkflowSpec
 
 logger = logging.getLogger(__name__)
@@ -54,13 +55,13 @@ RULES:
        }
      ]
    }
-3. Use realistic, specific app names (e.g. "Gmail", "Slack", "Google Sheets").
-4. Use snake_case for trigger_type and action_type (e.g. "new_email", "post_message").
-5. Populate "config" with sensible default keys for that integration
-   (e.g. Gmail new_email → {"label": "INBOX"}, Slack post_message → {"channel": "#general"}).
-6. If the user mentions apps that are NOT in their connected apps list, still use them
-   but keep configs minimal.
-7. Choose a concise, descriptive workflow_name.
+3. CRITICAL: For app_name, trigger_type, and action_type, you MUST ONLY use the exact keys provided in the "AVAILABLE APPS, TRIGGERS, AND ACTIONS" catalog below. Do not invent your own!
+   - Use the `appKey` for `app_name`
+   - Use one of the `Triggers` keys for `trigger_type`
+   - Use one of the `Actions` keys for `action_type`
+4. Populate "config" with sensible default keys for that integration.
+5. If the user mentions apps that are NOT in their connected apps list, still use them (from the catalog) but keep configs minimal.
+6. Choose a concise, descriptive workflow_name.
 """
 
 
@@ -79,6 +80,14 @@ def _build_system_prompt(context: Dict[str, Any]) -> str:
         parts.append(
             f"\nEXISTING WORKFLOW NAMES (avoid duplicates): {', '.join(existing_workflows)}"
         )
+        
+    app_catalog = app_state.get("catalog", [])
+    if app_catalog:
+        parts.append("\nAVAILABLE APPS, TRIGGERS, AND ACTIONS (You MUST use these exact keys):")
+        for app in app_catalog:
+            parts.append(f"- App: '{app.get('appKey')}' ({app.get('name')})")
+            parts.append(f"  Triggers: {app.get('triggers', [])}")
+            parts.append(f"  Actions: {app.get('actions', [])}")
 
     # Forward any other context keys as free-form notes
     extra_keys = {k: v for k, v in context.items()
@@ -131,6 +140,8 @@ def plan_workflow(
     if not raw_text:
         return WorkflowDraftResponse(success=False, error="AI returned an empty response.")
 
+    logger.info(f"Raw JSON from LLM: {raw_text}")
+
     # Parse and validate against WorkflowSpec
     try:
         spec_data = json.loads(raw_text)
@@ -139,5 +150,6 @@ def plan_workflow(
         logger.error("Failed to parse AI response for user %s: %s\nRaw: %s", user_id, exc, raw_text)
         return WorkflowDraftResponse(success=False, error=f"AI returned an unparseable response: {exc}")
 
+    logger.info("Successfully generated AI workflow spec: %s", workflow_spec.model_dump_json(indent=2))
     logger.info("Workflow draft created for user %s: %s", user_id, workflow_spec.workflow_name)
     return WorkflowDraftResponse(success=True, workflow_spec=workflow_spec)

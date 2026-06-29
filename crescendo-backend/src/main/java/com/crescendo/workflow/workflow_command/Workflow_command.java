@@ -62,6 +62,10 @@ public class Workflow_command {
     @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
     public Workflow_command() {
     }
 
@@ -172,5 +176,9 @@ public class Workflow_command {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

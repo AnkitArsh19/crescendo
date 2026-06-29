@@ -7,5 +7,11 @@ export default defineConfig({
   server: {
     host: true, // Listen on all network interfaces (needed for tunnels)
     allowedHosts: ['app.crescendo.run'] // Allow access from your custom domain
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.js'],
+    globals: true,
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/*.spec.js']
   }
 })

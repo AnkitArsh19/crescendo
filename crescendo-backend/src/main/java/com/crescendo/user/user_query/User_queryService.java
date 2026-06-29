@@ -116,8 +116,8 @@ public class User_queryService {
     private UserDto.ActiveSessionResponse toActiveSession(UserSession session, UUID currentSessionId) {
         return new UserDto.ActiveSessionResponse(
                 session.getId().toString(),
-                session.getUserAgent(),
-                session.getClientIp(),
+                session.getUserAgent() != null ? session.getUserAgent().value() : null,
+                session.getClientIp() != null ? session.getClientIp().value() : null,
                 session.getDeviceLabel(),
                 session.getId().equals(currentSessionId),
                 session.getCreatedAt(),

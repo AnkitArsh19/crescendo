@@ -11,19 +11,19 @@ import java.util.regex.Pattern;
 @Embeddable
 public record ActionKey(String value) {
 
-    private static final Pattern ACTION_KEY_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]{1,119}$");
+    private static final Pattern ACTION_KEY_PATTERN = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_-]{1,119}$");
     private static final int MAX_LENGTH = 120;
 
     public ActionKey {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Action key cannot be null or blank");
         }
-        value = value.trim().toLowerCase();
+        value = value.trim();
         if (value.length() > MAX_LENGTH) {
             throw new IllegalArgumentException("Action key cannot exceed " + MAX_LENGTH + " characters");
         }
         if (!ACTION_KEY_PATTERN.matcher(value).matches()) {
-            throw new IllegalArgumentException("Action key must start with a letter and contain only lowercase letters, numbers, underscores, and hyphens");
+            throw new IllegalArgumentException("Action key must start with a letter and contain only letters, numbers, underscores, and hyphens");
         }
     }
 

@@ -93,6 +93,7 @@ public class Workflow_queryService {
                 w.isActive(),
                 w.getStatus().name(),
                 w.getStep_count(),
+                w.getVersion(),
                 w.getCreatedAt(),
                 w.getUpdatedAt(),
                 w.getLastRunAt()
@@ -106,6 +107,7 @@ public class Workflow_queryService {
                 w.getDescription(),
                 w.isActive(),
                 w.getStatus().name(),
+                w.getVersion(),
                 steps,
                 w.getCreatedAt(),
                 w.getUpdatedAt(),

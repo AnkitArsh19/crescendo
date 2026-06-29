@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/axios';
+import { getDeviceMetadata } from '../utils/deviceFingerprint';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -59,7 +60,8 @@ const useAuthStore = create((set, get) => ({
 
   login: async (email, password, rememberMe = false) => {
     try {
-      const response = await api.post('/auth/login', { email, password, rememberMe });
+      const { deviceId, deviceLabel } = getDeviceMetadata();
+      const response = await api.post('/auth/login', { email, password, rememberMe, deviceId, deviceLabel });
       
       if (response.status === 202) {
         // MFA Required
@@ -68,7 +70,7 @@ const useAuthStore = create((set, get) => ({
 
       // Complete success
       const { accessToken, accessExpiresAt } = response.data;
-      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, ...userData } = response.data;
+      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
       
       set({ 
         user: userData, 
@@ -110,11 +112,12 @@ const useAuthStore = create((set, get) => ({
 
   register: async (email, username, password) => {
     try {
-      const response = await api.post('/auth/register', { email, username, password });
+      const { deviceId, deviceLabel } = getDeviceMetadata();
+      const response = await api.post('/auth/register', { email, username, password, deviceId, deviceLabel });
       
       // Response includes tokens
       const { accessToken, accessExpiresAt } = response.data;
-      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, ...userData } = response.data;
+      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
       
       set({ 
         user: userData, 

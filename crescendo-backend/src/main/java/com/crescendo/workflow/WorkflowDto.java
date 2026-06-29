@@ -77,6 +77,7 @@ public class WorkflowDto {
             boolean isActive,
             String status,
             int stepCount,
+            Long revision,
             Instant createdAt,
             Instant updatedAt,
             Instant lastRunAt
@@ -89,6 +90,7 @@ public class WorkflowDto {
             String description,
             boolean isActive,
             String status,
+            Long revision,
             List<StepResponse> steps,
             Instant createdAt,
             Instant updatedAt,
@@ -167,7 +169,7 @@ public class WorkflowDto {
     public record WorkflowGraphRequest(
             @Size(max = 255) String name,
             @Size(max = 500) String description,
-            String revision,
+            Long revision,
             List<GraphStepRequest> steps,
             List<String> deletedStepIds
     ) {}
@@ -187,7 +189,7 @@ public class WorkflowDto {
 
     public record WorkflowGraphResponse(
             String id,
-            String revision,
+            Long revision,
             List<GraphStepResponse> savedSteps
     ) {}
 
