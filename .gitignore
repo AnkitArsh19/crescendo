@@ -5,6 +5,11 @@
 .ui-ux-pro-max-skill/
 graphify-out/
 
+### Environment Variables ###
+**/.env
+**/.env.*
+!**/.env.example
+
 ### Application Properties ###
 **/application*.properties
 !**/application*.properties.example
