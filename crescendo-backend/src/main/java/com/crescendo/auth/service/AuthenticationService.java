@@ -90,7 +90,7 @@ public class AuthenticationService {
      * Registers a new user with a local (email + password) credential and auto-logs them in.
      * Sends an email verification link after account creation.
      */
-    public AuthDto.RegisterResponse register(AuthDto.RegisterRequest req, String userAgent) {
+    public AuthDto.RegisterResponse register(AuthDto.RegisterRequest req, String userAgent, String clientIp) {
         // Reject if email already belongs to an account — prevents silent overwrite of OAuth-only accounts.
         if (userRepo.findByEmailIgnoreCase(req.email()).isPresent())
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
@@ -109,7 +109,7 @@ public class AuthenticationService {
         eventPublisher.publish(new UserRegisteredEvent(user.getId(), user.getEmailId(), user.getUserName()));
 
         // Auto-login immediately after registration — no need for a separate login step.
-        TokenPair tokens = issueTokens(user, userAgent);
+        TokenPair tokens = issueTokens(user, userAgent, clientIp, req.deviceId(), req.deviceLabel(), false);
         return new AuthDto.RegisterResponse(
                 user.getId().toString(), user.getEmailId(), user.getUserName(),
                 user.getRole().name(), List.of(AuthProvider.LOCAL.name()), true,
@@ -167,7 +167,7 @@ public class AuthenticationService {
         eventPublisher.publish(new UserLoggedInEvent(user.getId(), user.getEmailId(), provider));
 
         Optional<UserCredential> cred = credentialRepo.findByUser_Id(user.getId());
-        TokenPair tokens = issueTokens(user, userAgent);
+        TokenPair tokens = issueTokens(user, userAgent, null, null, null, false);
         return buildLoginResponse(user, cred.orElse(null), tokens);
     }
 
@@ -191,15 +191,11 @@ public class AuthenticationService {
      * Second half of the login flow: issue tokens for a user whose identity has already been verified.
      * Reused after MFA challenge passes, after OAuth login, and after registration auto-login.
      */
-    public AuthDto.LoginResponse issueLoginResponse(User_command user, String userAgent) {
-        return issueLoginResponse(user, userAgent, false);
-    }
-
-    public AuthDto.LoginResponse issueLoginResponse(User_command user, String userAgent, boolean rememberMe) {
+    public AuthDto.LoginResponse issueLoginResponse(User_command user, String userAgent, String clientIp, String deviceId, String deviceLabel, boolean rememberMe) {
         eventPublisher.publish(new UserLoggedInEvent(user.getId(), user.getEmailId(), AuthProvider.LOCAL));
 
         Optional<UserCredential> cred = credentialRepo.findByUser_Id(user.getId());
-        TokenPair tokens = issueTokens(user, userAgent, rememberMe);
+        TokenPair tokens = issueTokens(user, userAgent, clientIp, deviceId, deviceLabel, rememberMe);
         return buildLoginResponse(user, cred.orElse(null), tokens);
     }
 
@@ -208,8 +204,8 @@ public class AuthenticationService {
      * Validates and rotates the refresh token, returning a new access token (and optionally a new refresh).
      * Rotation is controlled by the jwt.refresh.rotate property (default true).
      */
-    public AuthDto.AccessTokenResponse refreshTokens(String rawRefreshToken, String userAgent) {
-        TokenPair pair = jwtService.refresh(rawRefreshToken, userAgent)
+    public AuthDto.AccessTokenResponse refreshTokens(String rawRefreshToken, String userAgent, String clientIp) {
+        TokenPair pair = jwtService.refresh(rawRefreshToken, userAgent, clientIp)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token"));
         return new AuthDto.AccessTokenResponse(
                 pair.accessToken(), pair.accessExpiresAt(),
@@ -333,14 +329,10 @@ public class AuthenticationService {
     }
 
     /// Issues a fresh TokenPair using AppUserDetails built from the user + optional credential.
-    private TokenPair issueTokens(User_command user, String userAgent) {
-        return issueTokens(user, userAgent, false);
-    }
-
-    private TokenPair issueTokens(User_command user, String userAgent, boolean rememberMe) {
+    private TokenPair issueTokens(User_command user, String userAgent, String clientIp, String deviceId, String deviceLabel, boolean rememberMe) {
         Optional<UserCredential> cred = credentialRepo.findByUser_Id(user.getId());
         AppUserDetails principal = AppUserDetails.from(user, cred);
-        return jwtService.issueTokenPair(user, principal, userAgent, rememberMe);
+        return jwtService.issueTokenPair(user, principal, userAgent, clientIp, deviceId, deviceLabel, rememberMe);
     }
 
     /// Builds a LoginResponse from a user, credential (maybe null for OAuth-only), and already-issued tokens.

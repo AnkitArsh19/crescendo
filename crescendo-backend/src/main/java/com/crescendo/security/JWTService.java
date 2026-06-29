@@ -1,5 +1,9 @@
 package com.crescendo.security;
 
+import com.crescendo.auth.domain_event.SuspiciousSessionIpEvent;
+import com.crescendo.auth.domain_event.UserSessionCreatedEvent;
+import com.crescendo.shared.domain.event.DomainEventPublisher;
+import com.crescendo.shared.domain.valueobject.IpAddress;
 import com.crescendo.user.user_command.User_command;
 import com.crescendo.user.user_command.user_session.UserSession;
 import com.crescendo.user.user_command.user_session.UserSessionRepository;
@@ -24,6 +28,7 @@ import java.util.function.Function;
 public class JWTService {
 
     private final UserSessionRepository userSessionRepository;
+    private final DomainEventPublisher eventPublisher;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${jwt.secret}")
@@ -38,8 +43,9 @@ public class JWTService {
     @Value("${jwt.refresh.rotate:true}")
     private boolean rotateOnRefresh;
 
-    public JWTService(UserSessionRepository userSessionRepository) {
+    public JWTService(UserSessionRepository userSessionRepository, DomainEventPublisher eventPublisher) {
         this.userSessionRepository = userSessionRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /// Issue a fresh access + refresh token pair for first-time login (no device fingerprint known).
@@ -59,9 +65,10 @@ public class JWTService {
     /// Overload that also records full device fingerprint (IP, device ID, human-readable label).
     /// Used when the client sends device metadata alongside the login request.
     public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent,
-                                    String clientIp, String deviceId, String deviceLabel) {
+                                    String clientIp, String deviceId, String deviceLabel, boolean rememberMe) {
         Instant now = Instant.now();
-        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now);
+        Long ttl = rememberMe ? 2_592_000_000L : null;
+        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now, ttl);
         String access = buildAccessToken(principal, refreshIssue.sessionId(), now);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
@@ -71,11 +78,24 @@ public class JWTService {
     /// Also implements refresh token reuse detection — if a previously revoked (but not yet expired)
     /// token is presented again, ALL sessions for that user are revoked immediately (breach response).
     @Transactional
-    public Optional<TokenPair> refresh(String presentedRefreshToken, String userAgent) {
+    public Optional<TokenPair> refresh(String presentedRefreshToken, String userAgent, String clientIp) {
         String hash = hashRefresh(presentedRefreshToken);
         Instant now = Instant.now();
         Optional<TokenPair> active = userSessionRepository.findActiveByHash(hash, now).map(session -> {
             session.setLastUsedAt(now);
+            
+            // Anomaly Detection: Compare original clientIp with new clientIp
+            IpAddress newIp = IpAddress.of(clientIp);
+            if (session.getClientIp() != null && session.getClientIp().isSuspiciouslyDifferentFrom(newIp)) {
+                eventPublisher.publish(new SuspiciousSessionIpEvent(
+                        session.getUser().getId(),
+                        session.getId(),
+                        session.getClientIp().value(),
+                        newIp != null ? newIp.value() : "unknown"
+                ));
+            }
+            session.setLastIp(newIp);
+            
             User_command user = session.getUser();
             AppUserDetails principal = AppUserDetails.from(user, Optional.empty());
 
@@ -85,7 +105,12 @@ public class JWTService {
 
             if (rotateOnRefresh) {
                 session.setRevokedAt(now);
-                RefreshIssue ri = createRefreshSession(user, userAgent, session.getLastIp(), session.getDeviceId(), session.getDeviceLabel(), session.getClientIp(), now);
+                RefreshIssue ri = createRefreshSession(user, userAgent, 
+                        session.getLastIp() != null ? session.getLastIp().value() : null, 
+                        session.getDeviceId() != null ? session.getDeviceId().value() : null, 
+                        session.getDeviceLabel(), 
+                        session.getClientIp() != null ? session.getClientIp().value() : null, 
+                        now, null);
                 outRefresh = ri.plainToken();
                 refreshExpires = ri.expiresAt();
                 newAccess = buildAccessToken(principal, ri.sessionId(), now);
@@ -174,12 +199,6 @@ public class JWTService {
 
     private RefreshIssue createRefreshSession(User_command user, String userAgent,
                                               String clientIp, String deviceId, String deviceLabel, String originalClientIp,
-                                              Instant now) {
-        return createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, originalClientIp, now, null);
-    }
-
-    private RefreshIssue createRefreshSession(User_command user, String userAgent,
-                                              String clientIp, String deviceId, String deviceLabel, String originalClientIp,
                                               Instant now, Long customTtlMs) {
         String raw = randomToken();
         String hash = hashRefresh(raw);
@@ -188,9 +207,14 @@ public class JWTService {
         UserSession session = new UserSession(sessionId, user, hash, expires);
         session.applyFingerprint(userAgent, clientIp, deviceId, deviceLabel);
         if (originalClientIp != null) {
-            session.setClientIp(originalClientIp);
+            session.setClientIp(IpAddress.of(originalClientIp));
         }
         userSessionRepository.save(session);
+
+        // Publish a domain event so subscribers (security alerts, session limits, analytics)
+        // can react to new session creation without coupling to JWTService directly.
+        eventPublisher.publish(new UserSessionCreatedEvent(user.getId(), sessionId, clientIp, deviceLabel));
+
         return new RefreshIssue(sessionId.toString(), raw, expires);
     }
 

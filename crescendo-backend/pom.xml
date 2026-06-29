@@ -138,6 +138,18 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>1.21.4</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>1.21.4</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>com.google.zxing</groupId>
 			<artifactId>core</artifactId>
 			<version>3.5.4</version>

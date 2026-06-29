@@ -79,7 +79,7 @@ public class Workflow_commandService {
 
         UUID workflowId = UUID.randomUUID();
         Workflow_command workflow = new Workflow_command(workflowId, req.name(), req.description(), user, false);
-        workflowRepo.save(workflow);
+        workflowRepo.saveAndFlush(workflow);
 
         // Sync to query database
         projectWorkflowToQuery(workflow);
@@ -101,7 +101,7 @@ public class Workflow_commandService {
         UUID workflowId = UUID.randomUUID();
         Workflow_command workflow = new Workflow_command(workflowId, req.name(), req.description(),
                 GuestSessionId.of(guestSessionId), false);
-        workflowRepo.save(workflow);
+        workflowRepo.saveAndFlush(workflow);
 
         // Sync to query database
         projectWorkflowToQuery(workflow);
@@ -131,7 +131,7 @@ public class Workflow_commandService {
         }
 
         // Sync to query database
-        publishWorkflow(workflowId, req);
+        publishWorkflow(workflow, req);
     }
 
     /**
@@ -140,19 +140,24 @@ public class Workflow_commandService {
     public WorkflowDto.WorkflowGraphResponse saveGraph(UUID userId, UUID workflowId, WorkflowDto.WorkflowGraphRequest req) {
         Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
 
-        if (req.revision() != null && !req.revision().isBlank()) {
-            if (workflow.getUpdatedAt() != null && !req.revision().equals(workflow.getUpdatedAt().toString())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow has been modified by another session. Please refresh.");
-            }
+        if (req.revision() != null && !req.revision().equals(workflow.getVersion())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow has been modified by another session. Please refresh.");
         }
 
-        // We will update the updatedAt timestamp to act as a new revision
+        // Force a version increment by modifying a field (or rely on Hibernate if steps are mapped properly)
+        // Since steps are saved via StepsCommandService, we update the workflow's modified status manually
+        // However, with @Version, if we don't modify the entity, version doesn't increment!
+        // Wait, just setting a dummy field or relying on save() is needed?
+        // Actually, we can just let it be, but wait, steps are child entities? No, steps are handled separately!
+        // We need to explicitly bump the version if we only modify steps.
+        // I will just use workflowRepo.save(workflow) but wait, does it bump version if no fields changed?
+        // No, Hibernate only bumps version if the entity is dirty.
+        // We can manually bump it by updating the description, or we can just keep updatedAt as a standard field.
         workflow.setUpdatedAt(java.time.Instant.now());
 
         if (req.name() != null || req.description() != null) {
             if (req.name() != null) workflow.setName(req.name());
             if (req.description() != null) workflow.setDescription(req.description());
-            publishWorkflow(workflowId, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
         }
 
         // 1. Process deletions
@@ -221,7 +226,9 @@ public class Workflow_commandService {
             }
         }
 
-        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getUpdatedAt().toString(), savedSteps);
+        publishWorkflow(workflow, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps);
     }
 
     /**
@@ -298,7 +305,7 @@ public class Workflow_commandService {
         if (req.name() != null) workflow.setName(req.name());
         if (req.description() != null) workflow.setDescription(req.description());
 
-        publishWorkflow(workflowId, req);
+        publishWorkflow(workflow, req);
     }
 
     /**
@@ -310,7 +317,6 @@ public class Workflow_commandService {
         if (req.name() != null || req.description() != null) {
             if (req.name() != null) workflow.setName(req.name());
             if (req.description() != null) workflow.setDescription(req.description());
-            publishWorkflow(workflowId, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
         }
 
         if (req.deletedStepIds() != null) {
@@ -368,19 +374,25 @@ public class Workflow_commandService {
             }
         }
 
-        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), req.revision(), savedSteps);
+        publishWorkflow(workflow, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps);
     }
 
-    private void publishWorkflow(UUID workflowId, WorkflowDto.UpdateWorkflowRequest req) {
-        Workflow_query queryWorkflow = workflowQueryRepo.findById(workflowId).orElse(null);
+    private void publishWorkflow(Workflow_command workflow, WorkflowDto.UpdateWorkflowRequest req) {
+        // Force flush to increment @Version
+        workflow = workflowRepo.saveAndFlush(workflow);
+
+        Workflow_query queryWorkflow = workflowQueryRepo.findById(workflow.getId()).orElse(null);
         if (queryWorkflow != null) {
             if (req.name() != null) queryWorkflow.setName(req.name());
             if (req.description() != null) queryWorkflow.setDescription(req.description());
+            queryWorkflow.setVersion(workflow.getVersion());
             // Persist the mutation — without this the query DB name/description stays stale
             workflowQueryRepo.save(queryWorkflow);
         }
 
-        eventPublisher.publish(new WorkflowUpdatedEvent(workflowId));
+        eventPublisher.publish(new WorkflowUpdatedEvent(workflow.getId()));
     }
 
     /**
@@ -415,6 +427,7 @@ public class Workflow_commandService {
                 WorkflowStatus.NEVER_RUN,
                 0
         );
+        q.setVersion(workflow.getVersion());
         workflowQueryRepo.save(q);
     }
 
@@ -564,9 +577,10 @@ public class Workflow_commandService {
                 w.isActive(),
                 status.name(),
                 stepCount,
+                w.getVersion(),
                 w.getCreatedAt(),
                 w.getUpdatedAt(),
-                null // lastRunAt — set by LogbookEventListener on run completion
+                null // lastRunAt
         );
     }
 }

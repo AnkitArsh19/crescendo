@@ -5,6 +5,7 @@ import com.crescendo.logbook.LogbookDto;
 import com.crescendo.logbook.workflow_run.WorkflowRun;
 import com.crescendo.logbook.workflow_run.WorkflowRunRepository;
 import com.crescendo.logbook.domain_event.StepRunCompletedEvent;
+import com.crescendo.security.DataSanitizationService;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
@@ -30,13 +31,16 @@ public class StepRunService {
     private final StepRunRepository stepRunRepo;
     private final WorkflowRunRepository workflowRunRepo;
     private final DomainEventPublisher eventPublisher;
+    private final DataSanitizationService sanitizationService;
 
     public StepRunService(StepRunRepository stepRunRepo,
                            WorkflowRunRepository workflowRunRepo,
-                           DomainEventPublisher eventPublisher) {
+                           DomainEventPublisher eventPublisher,
+                           DataSanitizationService sanitizationService) {
         this.stepRunRepo = stepRunRepo;
         this.workflowRunRepo = workflowRunRepo;
         this.eventPublisher = eventPublisher;
+        this.sanitizationService = sanitizationService;
     }
 
     /**
@@ -46,9 +50,12 @@ public class StepRunService {
                                                     UUID stepId, Map<String, Object> inputData) {
         findOwnedRun(userId, workflowRunId);
 
+        // Sanitize input before it is persisted — prevents PII/secrets leaking into logs.
+        Map<String, Object> safeInput = sanitizationService.sanitize(inputData);
+
         UUID stepRunId = UUID.randomUUID();
         StepRun stepRun = new StepRun(stepRunId, workflowRunId, stepId,
-                inputData, StepRunStatus.RUNNING);
+                safeInput, StepRunStatus.RUNNING);
         stepRunRepo.save(stepRun);
 
         return toResponse(stepRun);
@@ -65,8 +72,9 @@ public class StepRunService {
                     "Step run must be RUNNING to complete, currently " + stepRun.getStatus());
         }
 
+        // Sanitize output before it is persisted — prevents secrets from downstream steps leaking.
         stepRun.setStatus(StepRunStatus.SUCCESS);
-        stepRun.setOutputData(outputData);
+        stepRun.setOutputData(sanitizationService.sanitize(outputData));
         stepRun.setCompletedAt(Instant.now());
 
         eventPublisher.publish(

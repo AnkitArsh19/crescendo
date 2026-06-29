@@ -69,7 +69,7 @@ public class DistributedLockService {
      */
     private static final RedisScript<Long> EXTEND_SCRIPT = RedisScript.of(
             "if redis.call('get', KEYS[1]) == ARGV[1] then " +
-            "  return redis.call('pexpire', KEYS[1], ARGV[2]) " +
+            "  return redis.call('pexpire', KEYS[1], tonumber(ARGV[2])) " +
             "else " +
             "  return 0 " +
             "end",
@@ -151,7 +151,7 @@ public class DistributedLockService {
         String redisKey = LOCK_PREFIX + key;
 
         Long result = redisTemplate.execute(
-                EXTEND_SCRIPT, List.of(redisKey), token, String.valueOf(ttlMillis));
+                EXTEND_SCRIPT, List.of(redisKey), token, ttlMillis);
 
         if (result != null && result == 1L) {
             logger.debug("Extended distributed lock: key={}, newTtl={}ms", key, ttlMillis);

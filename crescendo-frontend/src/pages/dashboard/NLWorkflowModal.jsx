@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiX, HiOutlineLightningBolt, HiOutlineSparkles, HiOutlineCheckCircle } from 'react-icons/hi';
+import { HiX, HiOutlineLightningBolt, HiOutlineSparkles } from 'react-icons/hi';
 import { aiApi } from '../../api/aiApi';
 import { workflowApi } from '../../api/workflowApi';
 import useToastStore from '../../store/toastStore';
@@ -17,87 +17,96 @@ const EXAMPLES = [
  * NLWorkflowModal — Natural Language Workflow Builder
  *
  * Opens from the Workflows page. User types a plain-English description,
- * the backend proxies it to the Python AI service, and the returned draft
- * is previewed before being saved as a real workflow.
+ * the backend proxies it to the Python AI service. Once generated,
+ * it immediately creates the workflow and redirects to the canvas.
  */
 export default function NLWorkflowModal({ onClose }) {
     const navigate = useNavigate();
-    const { success: toastSuccess, error: toastError } = useToastStore();
+    const addToast = useToastStore(state => state.addToast);
+    const toastSuccess = (msg) => addToast(msg, 'success');
+    const toastError = (msg) => addToast(msg, 'error');
 
     const [prompt, setPrompt] = useState('');
-    const [draft, setDraft] = useState(null);       // { name, steps: [...] }
     const [generating, setGenerating] = useState(false);
-    const [creating, setCreating] = useState(false);
     const [error, setError] = useState(null);
     const [unavailable, setUnavailable] = useState(false);
 
-    // ── Generate draft from AI ───────────────────────────────────────────────
+    // ── Generate & Create Workflow from AI ────────────────────────────────────
     async function handleGenerate() {
         if (!prompt.trim()) return;
         setGenerating(true);
         setError(null);
         setUnavailable(false);
-        setDraft(null);
 
         try {
+            // 1. Fetch draft from AI
             const data = await aiApi.createWorkflowDraft(prompt.trim());
-            setDraft(data.workflow);
-        } catch (err) {
-            if (err.response?.status === 503) {
-                setUnavailable(true);
-            } else {
-                const msg = err.response?.data?.message || 'Failed to generate workflow. Please try again.';
-                setError(msg);
-                toastError(msg);
+            const spec = data.workflow_spec;
+            if (!spec) {
+                throw new Error("No workflow generated. Try rephrasing your prompt.");
             }
-        } finally {
-            setGenerating(false);
-        }
-    }
 
-    // ── Create workflow from draft ───────────────────────────────────────────
-    async function handleCreate() {
-        if (!draft) return;
-        setCreating(true);
-        try {
-            // 1. Create the empty workflow
-            const created = await workflowApi.create({ name: draft.name });
+            // 2. Create the empty workflow
+            const created = await workflowApi.create({ name: spec.workflow_name || 'AI Generated Workflow' });
 
-            // 2. Format and save the steps
-            if (draft.steps && draft.steps.length > 0) {
-                const graphSteps = [];
-                let parentStepId = null;
+            // 3. Format and save the steps
+            const graphSteps = [];
+            let parentStepId = null;
 
-                for (let i = 0; i < draft.steps.length; i++) {
-                    const step = draft.steps[i];
+            // Trigger
+            if (spec.trigger) {
+                const clientId = crypto.randomUUID();
+                graphSteps.push({
+                    clientId,
+                    type: 'TRIGGER',
+                    name: spec.trigger.trigger_type,
+                    actionKey: spec.trigger.trigger_type,
+                    appKey: spec.trigger.app_name,
+                    parentStepId: null,
+                    configuration: spec.trigger.config || {}
+                });
+                parentStepId = clientId;
+            }
+
+            // Actions
+            if (spec.actions && spec.actions.length > 0) {
+                for (let i = 0; i < spec.actions.length; i++) {
+                    const action = spec.actions[i];
                     const clientId = crypto.randomUUID();
                     graphSteps.push({
                         clientId,
-                        type: i === 0 ? 'TRIGGER' : 'ACTION',
-                        name: step.label || step.actionKey,
-                        actionKey: step.actionKey,
-                        appKey: step.appKey,
-                        parentStepId,
-                        configuration: step.config || {}
+                        type: 'ACTION',
+                        name: action.action_type,
+                        actionKey: action.action_type,
+                        appKey: action.app_name,
+                        parentStepId: null, // Linear steps do not use parentStepId in this engine
+                        configuration: action.config || {}
                     });
-                    parentStepId = clientId;
                 }
+            }
 
+            if (graphSteps.length > 0) {
                 await workflowApi.updateGraph(created.id, {
-                    revision: null,
+                    revision: created.revision,
                     steps: graphSteps,
                     deletedStepIds: []
                 });
             }
 
-            toastSuccess(`"${draft.name}" created — configure the steps on the canvas.`);
+            toastSuccess(`"${created.name}" created — configure the steps on the canvas.`);
             onClose();
             navigate(`/dashboard/workflows/${created.id}`);
+
         } catch (err) {
-            const msg = err.response?.data?.message || 'Failed to create workflow.';
-            toastError(msg);
+            if (err.response?.status === 503) {
+                setUnavailable(true);
+            } else {
+                const msg = err.response?.data?.message || err.message || 'Failed to generate workflow. Please try again.';
+                setError(msg);
+                toastError(msg);
+            }
         } finally {
-            setCreating(false);
+            setGenerating(false);
         }
     }
 
@@ -170,81 +179,30 @@ export default function NLWorkflowModal({ onClose }) {
                     </div>
                 )}
 
-                {/* Draft preview */}
-                {draft && (
-                    <div className="nlwf-draft">
-                        <div className="nlwf-draft-title">
-                            <HiOutlineCheckCircle style={{ color: '#22c55e' }} />
-                            {draft.name}
-                        </div>
-                        <div className="nlwf-draft-steps">
-                            {(draft.steps || []).map((step, i) => (
-                                <div key={i} className="nlwf-step-row">
-                                    <span className="nlwf-step-num">{i + 1}</span>
-                                    <span className="nlwf-step-label">{step.label || step.actionKey}</span>
-                                    {step.appKey && (
-                                        <span className="nlwf-step-app">· {step.appKey}</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* Footer actions */}
                 <div className="nlwf-actions">
                     <button className="nlwf-cancel-btn" onClick={onClose} type="button">
                         Cancel
                     </button>
 
-                    {!draft ? (
-                        <button
-                            className="nlwf-generate-btn"
-                            onClick={handleGenerate}
-                            disabled={!prompt.trim() || generating}
-                            type="button"
-                        >
-                            {generating ? (
-                                <>
-                                    <span className="nlwf-spinner" />
-                                    Generating…
-                                </>
-                            ) : (
-                                <>
-                                    <HiOutlineLightningBolt />
-                                    Generate
-                                </>
-                            )}
-                        </button>
-                    ) : (
-                        <>
-                            <button
-                                className="nlwf-cancel-btn"
-                                onClick={() => setDraft(null)}
-                                type="button"
-                            >
-                                ← Retry
-                            </button>
-                            <button
-                                className="nlwf-create-btn"
-                                onClick={handleCreate}
-                                disabled={creating}
-                                type="button"
-                            >
-                                {creating ? (
-                                    <>
-                                        <span className="nlwf-spinner" style={{ borderTopColor: '#fff' }} />
-                                        Creating…
-                                    </>
-                                ) : (
-                                    <>
-                                        <HiOutlineCheckCircle />
-                                        Create Workflow
-                                    </>
-                                )}
-                            </button>
-                        </>
-                    )}
+                    <button
+                        className="nlwf-generate-btn"
+                        onClick={handleGenerate}
+                        disabled={!prompt.trim() || generating}
+                        type="button"
+                    >
+                        {generating ? (
+                            <>
+                                <span className="nlwf-spinner" />
+                                Generating & Creating…
+                            </>
+                        ) : (
+                            <>
+                                <HiOutlineLightningBolt />
+                                Generate
+                            </>
+                        )}
+                    </button>
                 </div>
 
             </div>

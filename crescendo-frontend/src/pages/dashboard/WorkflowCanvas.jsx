@@ -196,6 +196,9 @@ export default function WorkflowCanvas() {
                 // Fetch workflow metadata
                 const wf = await workflowApi.get(routeWorkflowId);
                 setWorkflowName(wf.name);
+                
+                // Initialize draft store with current revision to enable OCC
+                draftRef.current?.reset(wf.revision);
 
                 // Always fetch steps from the dedicated API for reliability
                 let steps = [];

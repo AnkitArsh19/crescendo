@@ -16,7 +16,9 @@ public class AuthDto {
     public record LoginRequest(
             @Email @NotBlank String email,
             @NotBlank String password,
-            boolean rememberMe
+            boolean rememberMe,
+            String deviceId,
+            String deviceLabel
     ) {}
 
     /** Returned after successful login (password or OAuth) or initial registration auto-login. */
@@ -38,7 +40,9 @@ public class AuthDto {
     public record RegisterRequest(
             @Email @NotBlank String email,
             @NotBlank @Size(min = 1, max = 100) String username,
-            @NotBlank @Size(min = 6) String password
+            @NotBlank @Size(min = 6) String password,
+            String deviceId,
+            String deviceLabel
     ) {}
 
     /** Returned after successful registration (and optional auto-login issuing tokens). */

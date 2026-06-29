@@ -75,7 +75,7 @@ public class AuthenticationController {
             HttpServletRequest servReq,
             HttpServletResponse servRes) {
 
-        AuthDto.RegisterResponse resp = authService.register(req, userAgent(servReq));
+        AuthDto.RegisterResponse resp = authService.register(req, userAgent(servReq), clientIp(servReq));
         // Set refresh token in HttpOnly cookie so JS cannot read it.
         setRefreshCookie(servRes, resp.refreshToken(), resp.refreshExpiresAt());
         return ResponseEntity.status(HttpStatus.CREATED).body(resp);
@@ -104,7 +104,7 @@ public class AuthenticationController {
                     .body(new AuthDto.MfaRequiredResponse(true));
         }
 
-        AuthDto.LoginResponse resp = authService.issueLoginResponse(user, userAgent(servReq), req.rememberMe());
+        AuthDto.LoginResponse resp = authService.issueLoginResponse(user, userAgent(servReq), clientIp(servReq), req.deviceId(), req.deviceLabel(), req.rememberMe());
         setRefreshCookie(servRes, resp.refreshToken(), resp.refreshExpiresAt());
         return ResponseEntity.ok(resp);
     }
@@ -127,7 +127,7 @@ public class AuthenticationController {
         if (rawToken == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No refresh token provided");
 
-        AuthDto.AccessTokenResponse resp = authService.refreshTokens(rawToken, userAgent(servReq));
+        AuthDto.AccessTokenResponse resp = authService.refreshTokens(rawToken, userAgent(servReq), clientIp(servReq));
 
         // If a new refresh token was rotated in, update the cookie too.
         if (resp.refreshToken() != null) {
@@ -239,5 +239,14 @@ public class AuthenticationController {
     /// AppUserDetails is always the principal type when a valid JWT is present.
     private UUID currentUserId(Authentication auth) {
         return ((AppUserDetails) auth.getPrincipal()).getId();
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        // Simple extraction for the controller; production environments might check X-Forwarded-For if configured.
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
