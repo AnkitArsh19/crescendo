@@ -1,6 +1,10 @@
 package com.crescendo.emailservice.domain;
 
 import com.crescendo.enums.DomainStatus;
+import com.crescendo.enums.AllowedEmailType;
+import com.crescendo.enums.CredentialSource;
+import com.crescendo.enums.DomainSendReadiness;
+import com.crescendo.enums.WarmingStatus;
 import com.crescendo.shared.domain.valueobject.DomainName;
 import com.crescendo.user.user_command.User_command;
 import jakarta.persistence.*;
@@ -44,6 +48,37 @@ public class Domain {
     @Column(name = "status", nullable = false, length = 20)
     private DomainStatus status;
 
+    @Column(name = "spf_verified", nullable = false)
+    private boolean spfVerified = false;
+
+    @Column(name = "dkim_verified", nullable = false)
+    private boolean dkimVerified = false;
+
+    @Column(name = "dmarc_verified", nullable = false)
+    private boolean dmarcVerified = false;
+
+    @Column(name = "daily_send_cap", nullable = false)
+    private int dailySendCap = 50;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "warming_status", nullable = false, length = 20)
+    private WarmingStatus warmingStatus = WarmingStatus.WARMING_UP;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "send_readiness", nullable = false, length = 30)
+    private DomainSendReadiness sendReadiness = DomainSendReadiness.UNVERIFIED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "allowed_email_type", nullable = false, length = 30)
+    private AllowedEmailType allowedEmailType = AllowedEmailType.TRANSACTIONAL_ONLY;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "credential_source", nullable = false, length = 20)
+    private CredentialSource credentialSource = CredentialSource.PLATFORM;
+
+    @Column(name = "email_provider_connection_id")
+    private UUID emailProviderConnectionId;
+
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
@@ -60,6 +95,20 @@ public class Domain {
         this.domainName = domainName;
         this.verificationTokens = verificationTokens;
         this.status = status;
+        this.spfVerified = false;
+        this.dkimVerified = false;
+        this.dmarcVerified = false;
+        this.dailySendCap = 50;
+        this.warmingStatus = WarmingStatus.WARMING_UP;
+        this.sendReadiness = DomainSendReadiness.UNVERIFIED;
+    }
+
+    public Domain(UUID id, User_command user, DomainName domainName, List<String> verificationTokens, DomainStatus status,
+                  AllowedEmailType allowedEmailType, CredentialSource credentialSource, UUID emailProviderConnectionId) {
+        this(id, user, domainName, verificationTokens, status);
+        this.allowedEmailType = allowedEmailType;
+        this.credentialSource = credentialSource;
+        this.emailProviderConnectionId = emailProviderConnectionId;
     }
 
     /**
@@ -69,70 +118,68 @@ public class Domain {
         this(id, user, DomainName.of(domainName), verificationTokens, status);
     }
 
-    public UUID getId() {
-        return id;
+    public void updateReadiness() {
+        if (!spfVerified || !dkimVerified || !dmarcVerified) {
+            this.sendReadiness = DomainSendReadiness.PARTIALLY_VERIFIED;
+        } else if (this.warmingStatus == WarmingStatus.PAUSED) {
+            this.sendReadiness = DomainSendReadiness.SUSPENDED;
+        } else {
+            this.sendReadiness = DomainSendReadiness.READY;
+        }
+        
+        if (this.status == DomainStatus.PENDING) {
+            this.sendReadiness = DomainSendReadiness.UNVERIFIED;
+        }
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+    // Getters and setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
-    public User_command getUser() {
-        return user;
-    }
+    public User_command getUser() { return user; }
+    public void setUser(User_command user) { this.user = user; }
 
-    public void setUser(User_command user) {
-        this.user = user;
-    }
+    public DomainName getDomainNameVO() { return domainName; }
+    public String getDomainName() { return domainName != null ? domainName.value() : null; }
+    public void setDomainName(DomainName domainName) { this.domainName = domainName; }
+    public void setDomainName(String domainName) { this.domainName = DomainName.of(domainName); }
 
-    public DomainName getDomainNameVO() {
-        return domainName;
-    }
+    public List<String> getVerificationTokens() { return verificationTokens; }
+    public void setVerificationTokens(List<String> verificationTokens) { this.verificationTokens = verificationTokens; }
 
-    /**
-     * Returns raw domain name string for compatibility.
-     */
-    public String getDomainName() {
-        return domainName != null ? domainName.value() : null;
-    }
+    public DomainStatus getStatus() { return status; }
+    public void setStatus(DomainStatus status) { this.status = status; this.updateReadiness(); }
 
-    public void setDomainName(DomainName domainName) {
-        this.domainName = domainName;
-    }
+    public boolean isSpfVerified() { return spfVerified; }
+    public void setSpfVerified(boolean spfVerified) { this.spfVerified = spfVerified; this.updateReadiness(); }
 
-    public void setDomainName(String domainName) {
-        this.domainName = DomainName.of(domainName);
-    }
+    public boolean isDkimVerified() { return dkimVerified; }
+    public void setDkimVerified(boolean dkimVerified) { this.dkimVerified = dkimVerified; this.updateReadiness(); }
 
-    public List<String> getVerificationTokens() {
-        return verificationTokens;
-    }
+    public boolean isDmarcVerified() { return dmarcVerified; }
+    public void setDmarcVerified(boolean dmarcVerified) { this.dmarcVerified = dmarcVerified; this.updateReadiness(); }
 
-    public void setVerificationTokens(List<String> verificationTokens) {
-        this.verificationTokens = verificationTokens;
-    }
+    public int getDailySendCap() { return dailySendCap; }
+    public void setDailySendCap(int dailySendCap) { this.dailySendCap = dailySendCap; }
 
-    public DomainStatus getStatus() {
-        return status;
-    }
+    public WarmingStatus getWarmingStatus() { return warmingStatus; }
+    public void setWarmingStatus(WarmingStatus warmingStatus) { this.warmingStatus = warmingStatus; this.updateReadiness(); }
 
-    public void setStatus(DomainStatus status) {
-        this.status = status;
-    }
+    public DomainSendReadiness getSendReadiness() { return sendReadiness; }
+    public void setSendReadiness(DomainSendReadiness sendReadiness) { this.sendReadiness = sendReadiness; }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+    public AllowedEmailType getAllowedEmailType() { return allowedEmailType; }
+    public void setAllowedEmailType(AllowedEmailType allowedEmailType) { this.allowedEmailType = allowedEmailType; }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+    public CredentialSource getCredentialSource() { return credentialSource; }
+    public void setCredentialSource(CredentialSource credentialSource) { this.credentialSource = credentialSource; }
 
-    public Instant getVerifiedAt() {
-        return verifiedAt;
-    }
+    public UUID getEmailProviderConnectionId() { return emailProviderConnectionId; }
+    public void setEmailProviderConnectionId(UUID emailProviderConnectionId) { this.emailProviderConnectionId = emailProviderConnectionId; }
 
-    public void setVerifiedAt(Instant verifiedAt) {
-        this.verifiedAt = verifiedAt;
-    }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Instant getVerifiedAt() { return verifiedAt; }
+    public void setVerifiedAt(Instant verifiedAt) { this.verifiedAt = verifiedAt; }
 }

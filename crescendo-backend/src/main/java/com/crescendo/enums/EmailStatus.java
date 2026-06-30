@@ -9,5 +9,6 @@ public enum EmailStatus {
     DELIVERED,    // Confirmed delivered to recipient
     FAILED,       // Failed to send
     BOUNCED,      // Email bounced back
-    SUPPRESSED    // Recipient is on the suppression list — email was not queued
+    SUPPRESSED,   // Recipient is on the suppression list — email was not queued
+    COMPLAINED    // Recipient marked the email as spam
 }

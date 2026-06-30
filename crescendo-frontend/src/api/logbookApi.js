@@ -28,6 +28,8 @@ export const workflowRunApi = {
 export const allRunsApi = {
   list: (page = 0, size = 20) =>
     api.get('/runs', { params: { page, size } }).then((r) => r.data),
+  stats: () =>
+    api.get('/runs/stats/all').then((r) => r.data),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

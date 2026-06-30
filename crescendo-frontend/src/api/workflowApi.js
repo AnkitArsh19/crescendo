@@ -35,8 +35,11 @@ export const workflowApi = {
   bulkDeactivate: (ids) =>
     api.post('/workflows/bulk/deactivate', { ids }),
 
-  getShared: (ids) =>
-    api.get('/shared/workflows', { params: { ids: ids.join(',') } }).then((r) => r.data),
+  createSharedTemplate: (data) =>
+    api.post('/shared/templates', data, { headers: { 'Content-Type': 'application/json' } }).then((r) => r.data),
+
+  getSharedTemplate: (shareId) =>
+    api.get(`/shared/templates/${shareId}`).then((r) => r.data),
 
   importWorkflow: (data) =>
     api.post('/workflows/import', data).then((r) => r.data),

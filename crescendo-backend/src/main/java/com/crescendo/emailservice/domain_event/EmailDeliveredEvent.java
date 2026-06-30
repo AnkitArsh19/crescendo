@@ -9,7 +9,12 @@ import java.util.UUID;
  */
 public class EmailDeliveredEvent extends BaseDomainEvent {
 
-    public EmailDeliveredEvent(UUID emailId) {
+    private final UUID domainId;
+
+    public EmailDeliveredEvent(UUID emailId, UUID domainId) {
         super(emailId);
+        this.domainId = domainId;
     }
+
+    public UUID getDomainId() { return domainId; }
 }

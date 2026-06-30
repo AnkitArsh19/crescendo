@@ -11,7 +11,10 @@ public final class DomainDto {
     private DomainDto() {}
 
     public record AddDomainRequest(
-            @NotBlank String domainName
+            @NotBlank String domainName,
+            com.crescendo.enums.AllowedEmailType allowedEmailType,
+            com.crescendo.enums.CredentialSource credentialSource,
+            UUID emailProviderConnectionId
     ) {}
 
     public record DomainResponse(
@@ -20,7 +23,18 @@ public final class DomainDto {
             String status,
             List<DnsRecord> requiredDnsRecords,
             Instant createdAt,
-            Instant verifiedAt
+            Instant verifiedAt,
+            boolean spfVerified,
+            boolean dkimVerified,
+            boolean dmarcVerified,
+            int dailySendCap,
+            String warmingStatus,
+            String sendReadiness,
+            String allowedEmailType,
+            String credentialSource,
+            UUID emailProviderConnectionId,
+            String healthStatus,
+            List<String> warnings
     ) {}
 
     /// DNS record the user must add to verify ownership. Presented in the response

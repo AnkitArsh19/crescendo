@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineKey, HiOutlineX, HiOutlineClipboardCopy, HiOutlineExclamation, HiOutlineRefresh } from 'react-icons/hi';
 import { apiKeysApi } from '../../api/emailServiceApi';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import './Settings.css';
 
 export default function ApiKeysSettings() {
@@ -10,6 +11,7 @@ export default function ApiKeysSettings() {
   const [showCreate, setShowCreate] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [newKey, setNewKey] = useState(null); // shown once after creation
+  const [confirmRotate, setConfirmRotate] = useState(null);
 
   const fetchKeys = async () => {
     setLoading(true);
@@ -32,12 +34,17 @@ export default function ApiKeysSettings() {
   };
 
   const handleRotate = async (id) => {
-    if (!window.confirm('Rotate this key? The current key will remain valid for 24 hours.')) return;
+    setConfirmRotate(id);
+  };
+
+  const confirmRotateKey = async () => {
+    if (!confirmRotate) return;
     try {
-      const data = await apiKeysApi.rotate(id);
+      const data = await apiKeysApi.rotate(confirmRotate);
       setNewKey(data.plainKey);
       await fetchKeys();
     } catch { /* silent */ }
+    setConfirmRotate(null);
   };
 
   return (
@@ -137,7 +144,7 @@ export default function ApiKeysSettings() {
       {/* Revoke Confirmation */}
       <AnimatePresence>
         {revokeTarget && (
-          <ConfirmModal
+          <InlineConfirmModal
             title="Revoke API Key"
             message="This will immediately invalidate this key. Any applications using it will lose access."
             confirmLabel="Revoke"
@@ -146,6 +153,15 @@ export default function ApiKeysSettings() {
           />
         )}
       </AnimatePresence>
+
+      <InlineConfirmModal
+        open={!!confirmRotate}
+        onClose={() => setConfirmRotate(null)}
+        title="Rotate API Key?"
+        description="The current key will remain valid for 24 hours. A new key will be generated immediately."
+        onConfirm={confirmRotateKey}
+        confirmText="Rotate Key"
+      />
     </motion.div>
   );
 }
@@ -248,7 +264,7 @@ function CreateKeyModal({ onClose, onCreated }) {
   );
 }
 
-function ConfirmModal({ title, message, confirmLabel, onCancel, onConfirm }) {
+function InlineConfirmModal({ title, message, confirmLabel, onCancel, onConfirm }) {
   const [loading, setLoading] = useState(false);
   const handleConfirm = async () => { setLoading(true); await onConfirm(); setLoading(false); };
 

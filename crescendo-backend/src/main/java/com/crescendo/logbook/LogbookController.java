@@ -114,6 +114,21 @@ public class LogbookController {
         return ResponseEntity.ok(runQueryService.listAllRunsPaged(userId(auth), pageable));
     }
 
+    @GetMapping("/runs/stats/all")
+    public ResponseEntity<LogbookDto.WorkflowRunStatsResponse> getAllRunStats(Authentication auth) {
+        return ResponseEntity.ok(runQueryService.getAllRunStats(userId(auth)));
+    }
+
+    @GetMapping("/runs/search")
+    public ResponseEntity<List<LogbookDto.WorkflowRunSummaryResponse>> searchRuns(
+            @RequestParam String q,
+            Authentication auth) {
+        if (q == null || q.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(runQueryService.searchRuns(userId(auth), q.trim()));
+    }
+
     // -------------------------------------------------------------------------
     // STEP RUNS
     // -------------------------------------------------------------------------

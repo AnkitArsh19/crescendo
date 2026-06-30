@@ -67,7 +67,9 @@ export default function EmailLogs() {
                         <div><span className="email-detail-label">To</span><span>{email.to}</span></div>
                         <div><span className="email-detail-label">Provider</span><span>{email.provider || '—'}</span></div>
                         <div><span className="email-detail-label">Message ID</span><code>{email.providerMessageId || '—'}</code></div>
-                        {email.error && <div><span className="email-detail-label">Error</span><span className="email-detail-error">{email.error}</span></div>}
+                        {email.error && <div><span className="email-detail-label">Raw Error</span><span className="email-detail-error">{email.error}</span></div>}
+                        {email.bounceCategory && <div><span className="email-detail-label">Bounce Category</span><span>{email.bounceCategory}</span></div>}
+                        {email.bounceReason && <div><span className="email-detail-label">Bounce Reason</span><span style={{ color: 'var(--alert-red)' }}>{email.bounceReason}</span></div>}
                         {email.sentAt && <div><span className="email-detail-label">Sent At</span><span>{new Date(email.sentAt).toLocaleString()}</span></div>}
                       </div>
                     </motion.div>

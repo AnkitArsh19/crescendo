@@ -96,7 +96,7 @@ public class EmailSendService {
 
         // 3. Suppression check — create log and return without queuing
         if (suppressionService.isSuppressed(userId, req.to())) {
-            EmailLog suppressed = new EmailLog(emailId, userId, apiKeyId, req.from(), req.to(), subject, EmailStatus.SUPPRESSED);
+            EmailLog suppressed = new EmailLog(emailId, userId, apiKeyId, req.from(), req.to(), subject, EmailStatus.SUPPRESSED, req.emailType());
             if (req.templateId() != null) suppressed.setTemplateId(req.templateId());
             emailLogRepo.save(suppressed);
             logger.info("[email-send] Email {} suppressed for to={}", emailId, req.to());
@@ -116,7 +116,7 @@ public class EmailSendService {
                 : null;
 
         // 7. Save log as PENDING and enqueue
-        EmailLog log = new EmailLog(emailId, userId, apiKeyId, req.from(), req.to(), subject, EmailStatus.PENDING);
+        EmailLog log = new EmailLog(emailId, userId, apiKeyId, req.from(), req.to(), subject, EmailStatus.PENDING, req.emailType());
         if (req.templateId() != null) log.setTemplateId(req.templateId());
         emailLogRepo.save(log);
 

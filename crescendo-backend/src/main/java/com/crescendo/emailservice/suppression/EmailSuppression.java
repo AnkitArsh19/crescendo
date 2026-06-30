@@ -10,9 +10,11 @@ import java.util.UUID;
  * Records an email address that must not receive emails from a given user/account.
  *
  * Suppression reasons:
- *   BOUNCED      — automatically added when an email hard-bounces
- *   UNSUBSCRIBED — added when recipient clicks the List-Unsubscribe link
- *   MANUAL       — manually added via the management API
+ *   HARD_BOUNCE            — automatically added when an email hard-bounces
+ *   SOFT_BOUNCE_THRESHOLD  — automatically added when an email soft-bounces >= 3 times
+ *   UNSUBSCRIBED           — added when recipient clicks the List-Unsubscribe link
+ *   MANUAL                 — manually added via the management API
+ *   COMPLAINED             — added when recipient marks email as spam
  *
  * All addresses are stored normalized (lowercase, trimmed) so lookups are case-insensitive.
  */
@@ -37,6 +39,9 @@ public class EmailSuppression {
     @Column(nullable = false, length = 30)
     private String reason;
 
+    @Column(name = "consecutive_soft_bounces", nullable = false)
+    private int consecutiveSoftBounces = 0;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -56,5 +61,8 @@ public class EmailSuppression {
     public UUID getUserId() { return userId; }
     public String getNormalizedEmail() { return normalizedEmail; }
     public String getReason() { return reason; }
+    public void setReason(String reason) { this.reason = reason; }
+    public int getConsecutiveSoftBounces() { return consecutiveSoftBounces; }
+    public void setConsecutiveSoftBounces(int consecutiveSoftBounces) { this.consecutiveSoftBounces = consecutiveSoftBounces; }
     public Instant getCreatedAt() { return createdAt; }
 }

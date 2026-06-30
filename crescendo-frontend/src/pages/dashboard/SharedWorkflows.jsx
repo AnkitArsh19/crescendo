@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     HiOutlineLightningBolt,
@@ -21,38 +21,27 @@ export default function SharedWorkflows() {
     const [importing, setImporting] = useState(false);
     const [imported, setImported] = useState([]); // list of imported workflow names
 
+    const { shareId } = useParams();
+
     useEffect(() => {
-        const hash = window.location.hash;
-        const match = hash.match(/ids=([^&]+)/);
-        if (!match) {
-            setError('Invalid share link — no workflow IDs found.');
-            setLoading(false);
+        if (shareId) {
+            workflowApi.getSharedTemplate(shareId)
+                .then((data) => {
+                    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+                    if (!parsedData || parsedData.length === 0) {
+                        setError('No workflows found in this share link.');
+                    } else {
+                        setWorkflows(parsedData);
+                    }
+                })
+                .catch(() => setError('Share link expired or invalid.'))
+                .finally(() => setLoading(false));
             return;
         }
 
-        try {
-            const decoded = atob(match[1]);
-            const ids = decoded.split(',').filter(Boolean);
-            if (ids.length === 0) {
-                setError('Invalid share link — empty ID list.');
-                setLoading(false);
-                return;
-            }
-
-            workflowApi.getShared(ids)
-                .then((data) => {
-                    if (data.length === 0) {
-                        setError('No workflows found for this share link.');
-                    }
-                    setWorkflows(data);
-                })
-                .catch(() => setError('Failed to load shared workflows.'))
-                .finally(() => setLoading(false));
-        } catch {
-            setError('Invalid share link — could not decode.');
-            setLoading(false);
-        }
-    }, []);
+        setError('Invalid share link — no workflow data found.');
+        setLoading(false);
+    }, [shareId]);
 
     const currentWorkflow = workflows[currentIndex];
     const isLast = currentIndex >= workflows.length - 1;

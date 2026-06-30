@@ -52,6 +52,7 @@ Crescendo is organized as a full-stack monorepo:
 
 - `crescendo-backend`: Spring Boot automation engine and APIs
 - `crescendo-frontend`: React + Vite workflow builder and management UI
+- `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
 - Root docs and references: architecture notes, production issues, integration guides
 
 Execution flow (simplified):
@@ -119,14 +120,14 @@ Engineering focus areas:
 
 ### Built-in transactional email platform
 
-Crescendo also includes a transactional email subsystem being built alongside automation features, with a product direction similar to developer-first email platforms.
+Crescendo includes a production-grade transactional email subsystem designed to guarantee deliverability at scale and strictly enforce legal compliance, utilizing a 5-layer architecture akin to enterprise ESPs:
 
-- API-key based email sending
-- Async email queue processing via Redis streams
-- Template-driven email workflows
-- Domain verification model
-- Provider abstraction for delivery backends
-- Delivery status lifecycle tracking
+1. **Identity & Usage-Type Binding:** Strict enforcement of SPF, DKIM, and DMARC verification. Root domains can be used (e.g., `company.com`), but they are strictly bound to an `AllowedEmailType` (e.g., `TRANSACTIONAL_ONLY`). The system automatically blocks marketing sends from transactional domains to protect the sender's core reputation.
+2. **Multi-Provider BYOK (Bring Your Own Key):** Users can seamlessly connect their own SendGrid (or SES/Postmark) credentials to bypass platform shared IPs and retain their own domain reputation, with automatic fallback to platform sending if the connection fails.
+3. **Warming & Rate Governance:** A scheduled daily job that evaluates rolling 48-hour windows of bounces and complaints. New domains start at a strict 50 emails/day cap and exponentially double until maturity, with automatic downgrades if reputation spikes occur.
+4. **The Send Decision Gate & Content Heuristics:** A centralized chokepoint (`SendEligibilityService`) that validates domain readiness, daily caps, and usage-type bindings. Additionally, a **draft-time heuristic engine** checks marketing emails for spam triggers (low text-to-image ratio, missing plain text, spam phrases) to protect users before they send.
+5. **Provider Abstraction & Idempotency:** An `EmailProvider` interface allows swapping delivery backends. It passes internal idempotency keys to the provider to prevent duplicate sends on network timeouts. It also automatically injects RFC 8058 compliant `List-Unsubscribe` headers and footers to all marketing emails to ensure absolute legal compliance.
+6. **Feedback Ingestion & Suppression Portability:** Integrated webhooks capture delivery, bounce, and spam complaint payloads, translating opaque provider errors into plain-language feedback. The platform distinguishes between *hard bounces* and *soft bounces*, and supports multipart CSV and JSON bulk imports so users can migrate suppression lists without friction.
 
 This email system is part of the core platform roadmap, not an afterthought.
 
@@ -196,6 +197,13 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - Workflow execution modeled as a rooted tree to support branching logic (e.g. If, Switch conditions)
 - Recursive sequence execution that isolates unexecuted branch state
 - Fine-grained suspend and resume execution that maintains sub-branch execution context
+
+### 13. Native Postgres Search & Async Batched Rollups
+
+- Eliminated the need for Elasticsearch or Datadog by implementing high-performance search and metrics natively.
+- **Async Rollups**: Solved heavy write-throughput and hot-row contention for time-series data using a Redis Stream consumer that flushes batched metrics every 5 seconds.
+- **Postgres Search**: Utilized `tsvector` and `pg_trgm` extensions to achieve highly efficient, relevance-ranked full-text search across millions of logs.
+- Why Postgres serves the purpose: No data synchronization delays, no split-brain schema issues, and significant operational simplicity compared to managing a separate ELK stack.
 
 ## Reliability and production-style concerns addressed
 

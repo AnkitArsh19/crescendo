@@ -58,6 +58,17 @@ public class CrescendoEmailSendHandler implements ActionHandler {
             return ActionResult.failure("Email action requires 'from' in step configuration");
         }
 
+        String emailTypeStr = resolveString(config, "emailType", input);
+        if (emailTypeStr == null || emailTypeStr.isBlank()) {
+            return ActionResult.failure("Email action requires 'emailType' in step configuration");
+        }
+        com.crescendo.enums.EmailType emailType;
+        try {
+            emailType = com.crescendo.enums.EmailType.valueOf(emailTypeStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ActionResult.failure("Invalid emailType, must be TRANSACTIONAL or MARKETING");
+        }
+
         String subject;
         String htmlBody;
         String textBody;
@@ -98,7 +109,7 @@ public class CrescendoEmailSendHandler implements ActionHandler {
         UUID appKeyId = new UUID(0, 0);
         UUID userId = resolveUserId(context.credentials());
 
-        EmailLog log = new EmailLog(emailId, userId, appKeyId, from, to, subject, EmailStatus.PENDING);
+        EmailLog log = new EmailLog(emailId, userId, appKeyId, from, to, subject, EmailStatus.PENDING, emailType);
         if (templateId != null) {
             log.setTemplateId(templateId);
         }

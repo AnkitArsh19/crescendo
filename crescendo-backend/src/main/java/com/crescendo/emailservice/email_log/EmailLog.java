@@ -1,6 +1,7 @@
 package com.crescendo.emailservice.email_log;
 
 import com.crescendo.enums.EmailStatus;
+import com.crescendo.enums.EmailType;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
@@ -46,6 +47,10 @@ public class EmailLog {
     @Column(name = "status", nullable = false, length = 20)
     private EmailStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "email_type", nullable = false, length = 20)
+    private EmailType emailType;
+
     @Column(name = "providerMessageId", length = 255)
     private String providerMessageId;
 
@@ -77,7 +82,7 @@ public class EmailLog {
     public EmailLog() {
     }
 
-    public EmailLog(UUID id, UUID userId, UUID appKeyId, String fromAddress, String toAddress, String subject, EmailStatus status) {
+    public EmailLog(UUID id, UUID userId, UUID appKeyId, String fromAddress, String toAddress, String subject, EmailStatus status, EmailType emailType) {
         this.id = id;
         this.userId = userId;
         this.appKeyId = appKeyId;
@@ -85,6 +90,7 @@ public class EmailLog {
         this.toAddress = toAddress;
         this.subject = subject;
         this.status = status;
+        this.emailType = emailType;
     }
 
     public UUID getId() {
@@ -142,6 +148,9 @@ public class EmailLog {
     public void setStatus(EmailStatus status) {
         this.status = status;
     }
+
+    public EmailType getEmailType() { return emailType; }
+    public void setEmailType(EmailType emailType) { this.emailType = emailType; }
 
     public String getProviderMessageId() {
         return providerMessageId;

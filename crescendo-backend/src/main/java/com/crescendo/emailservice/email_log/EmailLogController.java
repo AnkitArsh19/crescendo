@@ -58,7 +58,28 @@ public class EmailLogController {
         return ResponseEntity.ok(toResponse(log));
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<EmailLogDto.EmailLogResponse>> searchEmails(
+            @RequestParam String q,
+            Authentication auth) {
+        if (q == null || q.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        UUID userId = userId(auth);
+        List<EmailLog> logs = emailLogRepo.searchByQuery(userId, q.trim());
+        return ResponseEntity.ok(logs.stream().map(this::toResponse).toList());
+    }
+
     private EmailLogDto.EmailLogResponse toResponse(EmailLog log) {
+        String errorMessage = log.getError();
+        if (log.getStatus() == com.crescendo.enums.EmailStatus.BOUNCED) {
+            errorMessage = "This address does not exist or is permanently unavailable. It has been removed from your list.";
+        } else if (log.getStatus() == com.crescendo.enums.EmailStatus.COMPLAINED) {
+            errorMessage = "The recipient marked this email as spam.";
+        } else if (errorMessage != null && errorMessage.toLowerCase().contains("soft bounce")) {
+            errorMessage = "Temporary delivery issue (e.g., inbox full). We will retry, but repeated failures will result in suppression.";
+        }
+
         return new EmailLogDto.EmailLogResponse(
                 log.getId(),
                 log.getToAddress(),
@@ -67,7 +88,7 @@ public class EmailLogController {
                 log.getStatus().name(),
                 log.getProvider(),
                 log.getProviderMessageId(),
-                log.getError(),
+                errorMessage,
                 log.getTemplateId(),
                 log.getCreatedAt(),
                 log.getSentAt(),

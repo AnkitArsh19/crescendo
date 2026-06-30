@@ -71,8 +71,11 @@ public class DomainCommandService {
 
         String token = generateToken();
         UUID domainId = UUID.randomUUID();
+        
+        com.crescendo.enums.AllowedEmailType type = req.allowedEmailType() != null ? req.allowedEmailType() : com.crescendo.enums.AllowedEmailType.TRANSACTIONAL_ONLY;
+        com.crescendo.enums.CredentialSource source = req.credentialSource() != null ? req.credentialSource() : com.crescendo.enums.CredentialSource.PLATFORM;
 
-        Domain domain = new Domain(domainId, user, domainName, List.of(token), DomainStatus.PENDING);
+        Domain domain = new Domain(domainId, user, domainName, List.of(token), DomainStatus.PENDING, type, source, req.emailProviderConnectionId());
         domainRepo.save(domain);
 
         eventPublisher.publish(new DomainAddedEvent(domainId, userId, domainName.value()));
@@ -88,17 +91,22 @@ public class DomainCommandService {
         Domain domain = domainRepo.findByIdAndUser_Id(domainId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Domain not found"));
 
-        if (domain.getStatus() == DomainStatus.VERIFIED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domain already verified");
-        }
-
-        boolean verified = dnsService.verifyDomainTxtRecord(
+        boolean ownershipVerified = domain.getStatus() == DomainStatus.VERIFIED || dnsService.verifyDomainTxtRecord(
                 domain.getDomainName(), domain.getVerificationTokens());
 
-        if (verified) {
-            domain.setStatus(DomainStatus.VERIFIED);
-            domain.setVerifiedAt(Instant.now());
-            eventPublisher.publish(new DomainVerifiedEvent(domainId, domain.getDomainName()));
+        if (ownershipVerified) {
+            String domainToCheck = domain.getDomainName();
+            domain.setSpfVerified(dnsService.verifySpf(domainToCheck));
+            domain.setDkimVerified(dnsService.verifyDkim("crescendo", domainToCheck));
+            domain.setDmarcVerified(dnsService.verifyDmarc(domainToCheck));
+
+            if (domain.getStatus() != DomainStatus.VERIFIED) {
+                domain.setStatus(DomainStatus.VERIFIED);
+                domain.setVerifiedAt(Instant.now());
+                eventPublisher.publish(new DomainVerifiedEvent(domainId, domain.getDomainName()));
+            } else {
+                domain.updateReadiness();
+            }
         } else {
             domain.setStatus(DomainStatus.FAILED);
         }
@@ -124,13 +132,38 @@ public class DomainCommandService {
     }
 
     static DomainDto.DomainResponse toResponse(Domain domain) {
-        List<DomainDto.DnsRecord> dnsRecords = domain.getVerificationTokens().stream()
-                .map(token -> new DomainDto.DnsRecord(
-                        "TXT",
-                        DnsVerificationService.TXT_RECORD_PREFIX + domain.getDomainName(),
-                        DnsVerificationService.TOKEN_VALUE_PREFIX + token
-                ))
-                .toList();
+        String exactDomain = domain.getDomainName();
+        List<DomainDto.DnsRecord> dnsRecords = new java.util.ArrayList<>();
+        
+        // Root domain ownership verification
+        domain.getVerificationTokens().forEach(token -> {
+            dnsRecords.add(new DomainDto.DnsRecord(
+                    "TXT",
+                    DnsVerificationService.TXT_RECORD_PREFIX + exactDomain,
+                    DnsVerificationService.TOKEN_VALUE_PREFIX + token
+            ));
+        });
+
+        // Exact Domain SPF
+        dnsRecords.add(new DomainDto.DnsRecord(
+                "TXT",
+                exactDomain,
+                "v=spf1 include:spf.crescendo.run ~all"
+        ));
+
+        // Exact Domain DKIM
+        dnsRecords.add(new DomainDto.DnsRecord(
+                "TXT",
+                "crescendo._domainkey." + exactDomain,
+                "v=DKIM1; k=rsa; p=YOUR_PUBLIC_KEY" // Placeholder
+        ));
+
+        // Exact Domain DMARC
+        dnsRecords.add(new DomainDto.DnsRecord(
+                "TXT",
+                "_dmarc." + exactDomain,
+                "v=DMARC1; p=none;"
+        ));
 
         return new DomainDto.DomainResponse(
                 domain.getId(),
@@ -138,7 +171,18 @@ public class DomainCommandService {
                 domain.getStatus().name(),
                 dnsRecords,
                 domain.getCreatedAt(),
-                domain.getVerifiedAt()
+                domain.getVerifiedAt(),
+                domain.isSpfVerified(),
+                domain.isDkimVerified(),
+                domain.isDmarcVerified(),
+                domain.getDailySendCap(),
+                domain.getWarmingStatus().name(),
+                domain.getSendReadiness().name(),
+                domain.getAllowedEmailType().name(),
+                domain.getCredentialSource().name(),
+                domain.getEmailProviderConnectionId(),
+                "GREEN",
+                java.util.Collections.emptyList()
         );
     }
 }

@@ -397,4 +397,63 @@
     background: rgba(128, 128, 128, 0.1);
     color: var(--text-tertiary);
     border: 1px solid var(--border-primary);
+
+    /* ── Workflow Stats ── */
+    .dash-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr) 2fr;
+        gap: 16px;
+    }
+
+    @media (max-width: 800px) {
+        .dash-stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 500px) {
+        .dash-stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .dash-stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+        transition: all var(--transition-fast);
+    }
+
+    .dash-stat-card:hover {
+        border-color: var(--border-hover);
+        background: var(--bg-card-hover);
+        transform: translateY(-2px);
+    }
+
+    .dash-stat-val {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .dash-stat-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .dash-stat-chart {
+        background: var(--bg-card);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }

@@ -9,12 +9,15 @@ import java.util.UUID;
  */
 public class EmailBouncedEvent extends BaseDomainEvent {
 
+    private final UUID domainId;
     private final String bounceReason;
 
-    public EmailBouncedEvent(UUID emailId, String bounceReason) {
+    public EmailBouncedEvent(UUID emailId, UUID domainId, String bounceReason) {
         super(emailId);
+        this.domainId = domainId;
         this.bounceReason = bounceReason;
     }
 
+    public UUID getDomainId() { return domainId; }
     public String getBounceReason() { return bounceReason; }
 }

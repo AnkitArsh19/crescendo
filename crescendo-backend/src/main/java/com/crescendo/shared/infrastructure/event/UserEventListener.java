@@ -43,15 +43,18 @@ public class UserEventListener {
     private final User_commandRepository userCommandRepo;
     private final UserCredentialRepository credentialRepo;
     private final UserIdentityRepository identityRepo;
+    private final com.crescendo.emailservice.NotificationService notificationService;
 
     public UserEventListener(User_queryRepository userQueryRepo,
                              User_commandRepository userCommandRepo,
                              UserCredentialRepository credentialRepo,
-                             UserIdentityRepository identityRepo) {
+                             UserIdentityRepository identityRepo,
+                             com.crescendo.emailservice.NotificationService notificationService) {
         this.userQueryRepo = userQueryRepo;
         this.userCommandRepo = userCommandRepo;
         this.credentialRepo = credentialRepo;
         this.identityRepo = identityRepo;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -84,6 +87,7 @@ public class UserEventListener {
         userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
             q.setEmailVerified(true);
             userQueryRepo.save(q);
+            notificationService.sendWelcomeEmail(event.getEmail(), q.getUserName());
         });
     }
 
@@ -107,7 +111,10 @@ public class UserEventListener {
     public void onAccountDeleted(UserAccountDeletedEvent event) {
         logger.info("Account deleted: userId={}", event.aggregateId());
 
-        userQueryRepo.deleteById(event.aggregateId());
+        userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
+            notificationService.sendDeleteAccountEmail(q.getEmailId());
+            userQueryRepo.deleteById(event.aggregateId());
+        });
     }
 
     @TransactionalEventListener
@@ -119,12 +126,18 @@ public class UserEventListener {
     @CacheEvict(value = "users", key = "#event.aggregateId()")
     public void onMFAEnabled(MFAEnabledEvent event) {
         logger.info("MFA enabled: userId={}", event.aggregateId());
+        userCommandRepo.findById(event.aggregateId()).ifPresent(q -> {
+            notificationService.sendTotpEnabledEmail(q.getEmailId());
+        });
     }
 
     @TransactionalEventListener
     @CacheEvict(value = "users", key = "#event.aggregateId()")
     public void onMFADisabled(MFADisabledEvent event) {
         logger.info("MFA disabled: userId={}", event.aggregateId());
+        userCommandRepo.findById(event.aggregateId()).ifPresent(q -> {
+            notificationService.sendTotpDisabledEmail(q.getEmailId());
+        });
     }
 
     @Transactional
@@ -139,6 +152,16 @@ public class UserEventListener {
     @TransactionalEventListener
     public void onUserLoggedIn(UserLoggedInEvent event) {
         logger.info("User logged in: userId={}, provider={}", event.aggregateId(), event.getProvider());
+    }
+
+    @TransactionalEventListener
+    public void onSessionCreated(com.crescendo.auth.domain_event.UserSessionCreatedEvent event) {
+        logger.info("User session created: userId={}, device={}", event.aggregateId(), event.getDeviceLabel());
+        userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
+            String device = event.getDeviceLabel() != null ? event.getDeviceLabel() : "Unknown Device";
+            String location = event.getClientIp() != null ? "IP: " + event.getClientIp() : "Unknown Location";
+            notificationService.sendLoginAlertEmail(q.getEmailId(), device, location);
+        });
     }
 
     @Transactional
@@ -158,12 +181,16 @@ public class UserEventListener {
         userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
             q.setHasLocalCredential(true);
             userQueryRepo.save(q);
+            notificationService.sendPasswordChangedEmail(q.getEmailId());
         });
     }
 
     @TransactionalEventListener
     public void onPasswordChanged(UserPasswordChangedEvent event) {
         logger.info("Password changed: userId={}", event.aggregateId());
+        userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
+            notificationService.sendPasswordChangedEmail(q.getEmailId());
+        });
     }
 
     /**

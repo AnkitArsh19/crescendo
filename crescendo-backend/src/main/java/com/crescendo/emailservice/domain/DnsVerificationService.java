@@ -49,6 +49,41 @@ public class DnsVerificationService {
         return false;
     }
 
+    public boolean verifySpf(String subDomain) {
+        List<String> txtRecords = lookupTxtRecords(subDomain);
+        for (String record : txtRecords) {
+            String cleaned = record.replace("\"", "").trim();
+            if (cleaned.startsWith("v=spf1 ") && cleaned.contains("include:spf.crescendo.run")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean verifyDkim(String selector, String subDomain) {
+        String lookupHost = selector + "._domainkey." + subDomain;
+        List<String> txtRecords = lookupTxtRecords(lookupHost);
+        for (String record : txtRecords) {
+            String cleaned = record.replace("\"", "").trim();
+            if (cleaned.startsWith("v=DKIM1")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean verifyDmarc(String subDomain) {
+        String lookupHost = "_dmarc." + subDomain;
+        List<String> txtRecords = lookupTxtRecords(lookupHost);
+        for (String record : txtRecords) {
+            String cleaned = record.replace("\"", "").trim();
+            if (cleaned.startsWith("v=DMARC1")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// Performs a DNS TXT lookup over the system resolver.
     /// Returns an empty list if the name has no TXT records or if the lookup fails.
     List<String> lookupTxtRecords(String hostname) {

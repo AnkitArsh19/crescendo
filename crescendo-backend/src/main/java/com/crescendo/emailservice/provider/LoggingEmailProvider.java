@@ -2,7 +2,7 @@ package com.crescendo.emailservice.provider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -11,11 +11,10 @@ import java.util.UUID;
  * Fallback email provider used in development when no SMTP server is configured.
  * Logs the email to the console instead of sending it.
  *
- * Activated automatically when {@code SmtpEmailProvider} is absent
- * (i.e., {@code spring.mail.host} is not set).
+ * Activated automatically when `crescendo.email.provider` is either not set or set to `logging`.
  */
 @Component
-@ConditionalOnMissingBean(SmtpEmailProvider.class)
+@ConditionalOnProperty(name = "crescendo.email.provider", havingValue = "logging", matchIfMissing = true)
 public class LoggingEmailProvider implements EmailProvider {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingEmailProvider.class);

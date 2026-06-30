@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlineUpload } from 'react-icons/hi';
 import { suppressionsApi } from '../../../api/suppressionsApi';
 import '../../settings/Settings.css';
 
@@ -12,6 +12,22 @@ export default function SuppressionsPage() {
     const [showAdd, setShowAdd] = useState(false);
     const [email, setEmail] = useState('');
     const [saving, setSaving] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImporting(true);
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            await suppressionsApi.import(formData);
+            fetchData(); // Refresh list after import
+        } catch { /* */ }
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -58,9 +74,15 @@ export default function SuppressionsPage() {
                     <h2 className="settings-section-title">Suppressions</h2>
                     <p className="settings-section-desc">Email addresses that will not receive any emails. Bounced addresses are auto-added.</p>
                 </div>
-                <button className="settings-btn settings-btn-primary" onClick={() => setShowAdd(true)}>
-                    <HiOutlinePlus /> Add Suppression
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <input type="file" accept=".csv,.json" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
+                    <button className="settings-btn settings-btn-secondary" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+                        <HiOutlineUpload /> {importing ? 'Importing...' : 'Import CSV'}
+                    </button>
+                    <button className="settings-btn settings-btn-primary" onClick={() => setShowAdd(true)}>
+                        <HiOutlinePlus /> Add Suppression
+                    </button>
+                </div>
             </div>
 
             {list.length === 0 ? (
