@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -18,7 +18,9 @@ import {
     HiOutlineDocumentText,
 } from 'react-icons/hi';
 import { SiSlack, SiGmail, SiGithub, SiPostgresql, SiDiscord } from 'react-icons/si';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useWorkflowStore from '../../store/workflowStore';
+import { allRunsApi } from '../../api/logbookApi';
 import './Dashboard.css';
 
 const templates = [
@@ -107,11 +109,22 @@ function formatRelative(dateStr) {
 
 export default function Dashboard() {
     const { workflows, fetchWorkflows } = useWorkflowStore();
+    const [stats, setStats] = useState(null);
     const recent = workflows.slice(0, 5);
 
     useEffect(() => {
         fetchWorkflows();
+        allRunsApi.stats().then(setStats).catch(() => {});
     }, [fetchWorkflows]);
+
+    const statsData = stats ? [
+        { name: 'Success', value: stats.success },
+        { name: 'Failed', value: stats.failed },
+        { name: 'Running', value: stats.running },
+        { name: 'Pending', value: stats.pending }
+    ].filter(d => d.value > 0) : [];
+
+    const MONO_COLORS = ['var(--text-primary)', 'var(--text-secondary)', 'var(--border-color)', 'var(--bg-card-hover)'];
 
     return (
         <div className="dash-home">
@@ -136,6 +149,55 @@ export default function Dashboard() {
                     </button>
                 </Link>
             </motion.div>
+
+            {/* ── Workflow Stats ── */}
+            {stats && stats.total > 0 && (
+                <div className="dash-section">
+                    <div className="dash-section-head">
+                        <span className="dash-section-title">Execution Overview</span>
+                    </div>
+                    <div className="dash-stats-grid">
+                        <motion.div className="dash-stat-card" custom={1} variants={fadeIn} initial="hidden" animate="visible">
+                            <div className="dash-stat-val">{stats.total.toLocaleString()}</div>
+                            <div className="dash-stat-label">Total Runs</div>
+                        </motion.div>
+                        <motion.div className="dash-stat-card" custom={2} variants={fadeIn} initial="hidden" animate="visible">
+                            <div className="dash-stat-val">{stats.success.toLocaleString()}</div>
+                            <div className="dash-stat-label">Successful</div>
+                        </motion.div>
+                        <motion.div className="dash-stat-card" custom={3} variants={fadeIn} initial="hidden" animate="visible">
+                            <div className="dash-stat-val">{stats.failed.toLocaleString()}</div>
+                            <div className="dash-stat-label">Failed</div>
+                        </motion.div>
+                        <motion.div className="dash-stat-chart" custom={4} variants={fadeIn} initial="hidden" animate="visible">
+                            <ResponsiveContainer width="100%" height={120}>
+                                <PieChart>
+                                    <Pie
+                                        data={statsData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={30}
+                                        outerRadius={50}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                        stroke="var(--bg-card)"
+                                        strokeWidth={2}
+                                        animationDuration={1500}
+                                    >
+                                        {statsData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={MONO_COLORS[index % MONO_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip 
+                                        contentStyle={{ background: 'rgba(10,10,10,0.7)', backdropFilter: 'blur(8px)', border: '1px solid var(--border-color)', borderRadius: '8px' }}
+                                        itemStyle={{ color: 'var(--text-primary)' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </motion.div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Templates ── */}
             <div className="dash-section">

@@ -19,6 +19,7 @@ import {
 import useWorkflowStore from '../../store/workflowStore';
 import useToastStore from '../../store/toastStore';
 import NLWorkflowModal from './NLWorkflowModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import './Workflows.css';
 
 const fadeIn = {
@@ -40,10 +41,34 @@ function formatRelative(dateStr) {
     return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function generateShareLink(ids) {
-    const encoded = btoa(ids.join(','));
+async function generateShareLink(ids) {
+    const { workflowApi } = await import('../../api/workflowApi');
+    const selectedIds = Array.from(ids);
+    
+    const workflowsData = await Promise.all(selectedIds.map(id => workflowApi.get(id)));
+    
+    const payload = workflowsData.map(wf => ({
+        name: wf.name,
+        description: wf.description,
+        steps: (wf.steps || []).map(s => ({
+            name: s.name,
+            type: s.type,
+            appKey: s.appKey,
+            actionKey: s.actionKey,
+            parentStepId: s.parentStepId,
+            branchKey: s.branchKey,
+            order: s.order,
+            configuration: s.configuration
+        }))
+    }));
+
+    const jsonStr = JSON.stringify(payload);
+    
+    // Send to backend to get short ID
+    const { shareId } = await workflowApi.createSharedTemplate(jsonStr);
+    
     const origin = window.location.origin;
-    return `${origin}/shared#ids=${encoded}`;
+    return `${origin}/shared/${shareId}`;
 }
 
 export default function Workflows() {
@@ -63,7 +88,8 @@ export default function Workflows() {
     // Multi-select state
     const [selectMode, setSelectMode] = useState(false);
     const [selected, setSelected] = useState(new Set());
-    const [bulkAction, setBulkAction] = useState(null); // 'activating' | 'deactivating'
+    const [bulkAction, setBulkAction] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(false); // 'activating' | 'deactivating'
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
@@ -130,8 +156,12 @@ export default function Workflows() {
     };
 
     const handleBulkDelete = async () => {
+        setConfirmDelete(true);
+    };
+
+    const confirmBulkDelete = async () => {
         const count = selected.size;
-        if (!window.confirm(`Delete ${count} workflow${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+        setConfirmDelete(false);
         setBulkAction('deleting');
         try {
             await Promise.all([...selected].map((id) => deleteWorkflow(id)));
@@ -142,12 +172,16 @@ export default function Workflows() {
         }
     };
 
-    const handleShare = (ids) => {
-        const link = generateShareLink(ids);
-        navigator.clipboard.writeText(link).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
+    const handleShare = async (ids) => {
+        try {
+            const link = await generateShareLink(ids);
+            navigator.clipboard.writeText(link).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            });
+        } catch (error) {
+            useToastStore.getState().addToast('Failed to generate share link', 'error');
+        }
     };
 
     const handleShareSelected = () => handleShare([...selected]);
@@ -435,6 +469,15 @@ export default function Workflows() {
         {showAiModal && (
             <NLWorkflowModal onClose={() => setShowAiModal(false)} />
         )}
+        <ConfirmModal
+            open={confirmDelete}
+            onClose={() => setConfirmDelete(false)}
+            title="Delete Workflows"
+            description={`Delete ${selected.size} workflow${selected.size !== 1 ? 's' : ''}? This cannot be undone.`}
+            onConfirm={confirmBulkDelete}
+            confirmText="Delete"
+            isDestructive={true}
+        />
         </>
     );
 }

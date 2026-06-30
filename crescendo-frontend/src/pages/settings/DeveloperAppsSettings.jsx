@@ -9,6 +9,7 @@ import {
 } from 'react-icons/hi';
 import { developerAppsApi } from '../../api/developerApi';
 import useToastStore from '../../store/toastStore';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import './Settings.css';
 
 const AVAILABLE_SCOPES = [
@@ -31,6 +32,7 @@ export default function DeveloperAppsSettings() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [secret, setSecret] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
   const addToast = useToastStore((state) => state.addToast);
 
   const load = async () => {
@@ -47,25 +49,48 @@ export default function DeveloperAppsSettings() {
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rotateSecret = async (application) => {
-    if (!window.confirm(`Rotate the secret for ${application.name}? Existing tokens will be revoked.`)) return;
-    try {
-      const result = await developerAppsApi.rotateSecret(application.id);
-      setSecret({ label: `${application.name} client secret`, value: result.clientSecret });
-    } catch (error) {
-      addToast(error.response?.data?.message || 'Failed to rotate secret', 'error');
-    }
+    setConfirmAction({
+      title: 'Rotate Secret?',
+      description: `Rotate the secret for ${application.name}? Existing tokens will be revoked.`,
+      confirmText: 'Rotate',
+      onConfirm: async () => {
+        setConfirmAction(null);
+        try {
+          const result = await developerAppsApi.rotateSecret(application.id);
+          setSecret({ label: `${application.name} client secret`, value: result.clientSecret });
+        } catch (error) {
+          addToast(error.response?.data?.message || 'Failed to rotate secret', 'error');
+        }
+      }
+    });
   };
 
   const deactivate = async (application) => {
-    if (!window.confirm(`Deactivate ${application.name} and revoke its tokens?`)) return;
-    await developerAppsApi.deactivate(application.id);
-    await load();
+    setConfirmAction({
+      title: 'Deactivate Application?',
+      description: `Deactivate ${application.name} and revoke its tokens?`,
+      confirmText: 'Deactivate',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        await developerAppsApi.deactivate(application.id);
+        await load();
+      }
+    });
   };
 
   const remove = async (application) => {
-    if (!window.confirm(`Permanently delete ${application.name}?`)) return;
-    await developerAppsApi.delete(application.id);
-    await load();
+    setConfirmAction({
+      title: 'Delete Application?',
+      description: `Permanently delete ${application.name}?`,
+      confirmText: 'Delete',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        await developerAppsApi.delete(application.id);
+        await load();
+      }
+    });
   };
 
   return (
@@ -137,6 +162,16 @@ export default function DeveloperAppsSettings() {
           }}
         />
       )}
+
+      <ConfirmModal
+        open={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction?.title}
+        description={confirmAction?.description}
+        onConfirm={confirmAction?.onConfirm}
+        confirmText={confirmAction?.confirmText}
+        isDestructive={confirmAction?.isDestructive}
+      />
     </div>
   );
 }

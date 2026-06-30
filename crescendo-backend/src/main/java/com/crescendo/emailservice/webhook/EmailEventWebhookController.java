@@ -5,7 +5,9 @@ import com.crescendo.emailservice.domain_event.EmailDeliveredEvent;
 import com.crescendo.emailservice.email_log.EmailLog;
 import com.crescendo.emailservice.email_log.EmailLogRepository;
 import com.crescendo.emailservice.suppression.EmailSuppressionService;
-import com.crescendo.enums.EmailStatus;
+import com.crescendo.emailservice.domain_event.EmailComplainedEvent;
+import com.crescendo.emailservice.domain.Domain;
+import com.crescendo.emailservice.domain.DomainRepository;
 import com.crescendo.shared.infrastructure.event.RedisDomainEventPublisher;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -45,6 +47,7 @@ public class EmailEventWebhookController {
     private static final Logger logger = LoggerFactory.getLogger(EmailEventWebhookController.class);
 
     private final EmailLogRepository emailLogRepo;
+    private final DomainRepository domainRepo;
     private final RedisDomainEventPublisher eventPublisher;
     private final EmailSuppressionService suppressionService;
     private final ObjectMapper objectMapper;
@@ -53,10 +56,12 @@ public class EmailEventWebhookController {
     private String webhookSecret;
 
     public EmailEventWebhookController(EmailLogRepository emailLogRepo,
+                                       DomainRepository domainRepo,
                                        RedisDomainEventPublisher eventPublisher,
                                        EmailSuppressionService suppressionService,
                                        ObjectMapper objectMapper) {
         this.emailLogRepo = emailLogRepo;
+        this.domainRepo = domainRepo;
         this.eventPublisher = eventPublisher;
         this.suppressionService = suppressionService;
         this.objectMapper = objectMapper;
@@ -117,33 +122,52 @@ public class EmailEventWebhookController {
         }
 
         EmailLog log = logOpt.get();
+        UUID domainId = resolveDomainId(log.getFromAddress(), log.getUserId());
 
         switch (type.toLowerCase()) {
             case "delivered" -> {
-                if (log.getStatus() == EmailStatus.SENT) {
-                    log.setStatus(EmailStatus.DELIVERED);
+                if (log.getStatus() == com.crescendo.enums.EmailStatus.SENT) {
+                    log.setStatus(com.crescendo.enums.EmailStatus.DELIVERED);
                     emailLogRepo.save(log);
-                    eventPublisher.publish(new EmailDeliveredEvent(log.getId()));
+                    eventPublisher.publish(new EmailDeliveredEvent(log.getId(), domainId));
+                    suppressionService.recordDelivery(log.getUserId(), log.getToAddress());
                     logger.info("[email-webhook] Email {} marked as DELIVERED", log.getId());
                 }
             }
-            case "bounced" -> {
-                if (log.getStatus() == EmailStatus.SENT || log.getStatus() == EmailStatus.DELIVERED) {
-                    log.setStatus(EmailStatus.BOUNCED);
-                    log.setError(reason != null ? truncate(reason, 2000) : "Bounced (no reason provided)");
+            case "hard_bounce", "bounced" -> {
+                if (log.getStatus() == com.crescendo.enums.EmailStatus.SENT || log.getStatus() == com.crescendo.enums.EmailStatus.DELIVERED) {
+                    log.setStatus(com.crescendo.enums.EmailStatus.BOUNCED);
+                    log.setError(reason != null ? truncate(reason, 2000) : "Hard bounce");
                     emailLogRepo.save(log);
-                    eventPublisher.publish(new EmailBouncedEvent(log.getId(), log.getError()));
-                    // Auto-suppress bounced addresses so they are skipped on future sends
-                    suppressionService.suppress(log.getUserId(), log.getToAddress(), "BOUNCED");
-                    logger.info("[email-webhook] Email {} marked as BOUNCED: {}", log.getId(), log.getError());
+                    eventPublisher.publish(new EmailBouncedEvent(log.getId(), domainId, log.getError()));
+                    suppressionService.handleHardBounce(log.getUserId(), log.getToAddress(), null);
+                    logger.info("[email-webhook] Email {} marked as HARD_BOUNCED: {}", log.getId(), log.getError());
+                }
+            }
+            case "soft_bounce" -> {
+                if (log.getStatus() == com.crescendo.enums.EmailStatus.SENT || log.getStatus() == com.crescendo.enums.EmailStatus.DELIVERED) {
+                    log.setError(reason != null ? truncate(reason, 2000) : "Soft bounce");
+                    emailLogRepo.save(log);
+                    suppressionService.handleSoftBounce(log.getUserId(), log.getToAddress(), null);
+                    logger.info("[email-webhook] Email {} recorded SOFT_BOUNCE: {}", log.getId(), log.getError());
                 }
             }
             case "failed" -> {
-                if (log.getStatus() != EmailStatus.FAILED) {
-                    log.setStatus(EmailStatus.FAILED);
+                if (log.getStatus() != com.crescendo.enums.EmailStatus.FAILED) {
+                    log.setStatus(com.crescendo.enums.EmailStatus.FAILED);
                     log.setError(reason != null ? truncate(reason, 2000) : "Failed (no reason provided)");
                     emailLogRepo.save(log);
                     logger.info("[email-webhook] Email {} marked as FAILED: {}", log.getId(), log.getError());
+                }
+            }
+            case "complaint", "spam" -> {
+                if (log.getStatus() == com.crescendo.enums.EmailStatus.SENT || log.getStatus() == com.crescendo.enums.EmailStatus.DELIVERED) {
+                    log.setStatus(com.crescendo.enums.EmailStatus.COMPLAINED);
+                    log.setError(reason != null ? truncate(reason, 2000) : "Marked as spam by recipient");
+                    emailLogRepo.save(log);
+                    eventPublisher.publish(new EmailComplainedEvent(log.getId(), domainId, log.getError()));
+                    suppressionService.handleComplaint(log.getUserId(), log.getToAddress(), null);
+                    logger.warn("[email-webhook] Email {} resulted in COMPLAINT from {}", log.getId(), log.getToAddress());
                 }
             }
             default -> {
@@ -157,6 +181,14 @@ public class EmailEventWebhookController {
 
     private String truncate(String value, int maxLen) {
         return value.length() <= maxLen ? value : value.substring(0, maxLen);
+    }
+
+    private UUID resolveDomainId(String fromAddress, UUID userId) {
+        if (fromAddress == null || !fromAddress.contains("@")) return null;
+        String domainName = fromAddress.split("@")[1];
+        return domainRepo.findByDomainNameAndUserId(domainName, userId)
+                .map(Domain::getId)
+                .orElse(null);
     }
 
     /**

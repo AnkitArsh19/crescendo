@@ -26,20 +26,11 @@ export const apiKeysApi = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const domainsApi = {
-  list: () =>
-    api.get('/settings/domains').then((r) => r.data),
-
-  get: (id) =>
-    api.get(`/settings/domains/${id}`).then((r) => r.data),
-
-  add: (data) =>
-    api.post('/settings/domains', data).then((r) => r.data),
-
-  verify: (id) =>
-    api.post(`/settings/domains/${id}/verify`).then((r) => r.data),
-
-  delete: (id) =>
-    api.delete(`/settings/domains/${id}`),
+  list: () => api.get('/settings/domains').then(res => res.data),
+  add: (data) => api.post('/settings/domains', data).then(res => res.data),
+  verify: (id) => api.post(`/settings/domains/${id}/verify`).then(res => res.data),
+  delete: (id) => api.delete(`/settings/domains/${id}`).then(res => res.data),
+  getDomainConnectUrl: (id) => api.get(`/settings/domains/${id}/domain-connect`).then(res => res.data)
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,4 +67,7 @@ export const emailsApi = {
 
   send: (data) =>
     api.post('/api/v1/emails', data).then((r) => r.data),
+
+  checkSpamScore: (data) =>
+    api.post('/api/email/check-content', data).then((r) => r.data),
 };

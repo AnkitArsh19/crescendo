@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineGlobe, HiOutlineX, HiOutlineClipboardCopy, HiOutlineRefresh, HiOutlineCheck } from 'react-icons/hi';
+import { connectionsApi } from '../../api/connectionsApi';
 import { domainsApi } from '../../api/emailServiceApi';
 import './Settings.css';
+import { HiExclamationCircle } from 'react-icons/hi';
 
 const DOMAIN_STATUS = {
   PENDING:  { label: 'Pending',  className: 'ds-pending' },
@@ -15,6 +17,7 @@ export default function DomainsSettings() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [verifying, setVerifying] = useState(null);
+  const [connecting, setConnecting] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchDomains = async () => {
@@ -32,6 +35,19 @@ export default function DomainsSettings() {
       setDomains(domains.map((d) => d.id === id ? updated : d));
     } catch { /* */ }
     setVerifying(null);
+  };
+
+  const handleConnect = async (id) => {
+    setConnecting(id);
+    try {
+      const { url } = await domainsApi.getDomainConnectUrl(id);
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error) {
+      alert(error.response?.data?.error || 'Failed to connect automatically.');
+    }
+    setConnecting(null);
   };
 
   const handleDelete = async () => {
@@ -72,14 +88,32 @@ export default function DomainsSettings() {
                   <div className="domain-card-icon"><HiOutlineGlobe /></div>
                   <div className="domain-card-info">
                     <h3>{d.domainName}</h3>
-                    <span className={`domain-status ${statusMeta.className}`}>{statusMeta.label}</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                      <span className={`domain-status ${statusMeta.className}`}>{statusMeta.label}</span>
+                      {d.healthStatus && (
+                        <span className={`domain-status ds-${d.healthStatus.toLowerCase()}`} style={{ fontWeight: 'bold' }}>
+                          Health: {d.healthStatus}
+                        </span>
+                      )}
+                      {d.warnings && d.warnings.length > 0 && (
+                        <div className="settings-warning-icon" title={d.warnings.join('\n')}>
+                          <HiExclamationCircle style={{ color: 'var(--alert-red)' }} />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="domain-card-actions">
                     {d.status !== 'VERIFIED' && (
-                      <button className="settings-btn-secondary" onClick={() => handleVerify(d.id)} disabled={verifying === d.id}>
-                        {verifying === d.id ? <HiOutlineRefresh className="spin" /> : <HiOutlineCheck />}
-                        {verifying === d.id ? 'Verifying...' : 'Verify'}
-                      </button>
+                      <>
+                        <button className="settings-btn-primary" onClick={() => handleConnect(d.id)} disabled={connecting === d.id}>
+                          {connecting === d.id ? <HiOutlineRefresh className="spin" /> : <HiOutlineCheck />}
+                          {connecting === d.id ? 'Connecting...' : 'Connect Automatically'}
+                        </button>
+                        <button className="settings-btn-secondary" onClick={() => handleVerify(d.id)} disabled={verifying === d.id}>
+                          {verifying === d.id ? <HiOutlineRefresh className="spin" /> : <HiOutlineCheck />}
+                          {verifying === d.id ? 'Verifying...' : 'Verify'}
+                        </button>
+                      </>
                     )}
                     <button className="settings-icon-btn settings-danger-icon" onClick={() => setDeleteTarget(d.id)}>
                       <HiOutlineTrash />
@@ -145,15 +179,30 @@ export default function DomainsSettings() {
 
 function AddDomainModal({ onClose, onAdded }) {
   const [domainName, setDomainName] = useState('');
+  const [allowedEmailType, setAllowedEmailType] = useState('TRANSACTIONAL_ONLY');
+  const [emailProviderConnectionId, setEmailProviderConnectionId] = useState('');
+  const [connections, setConnections] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
+
+  useEffect(() => {
+    connectionsApi.list().then(conns => {
+      // Filter for providers that support email sending (e.g. SendGrid, Postmark)
+      setConnections(conns.filter(c => c.appKey === 'sendgrid' || c.appKey === 'postmark'));
+    }).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!domainName.trim()) { setErr('Domain name required'); return; }
     setSubmitting(true); setErr('');
     try {
-      const data = await domainsApi.add({ domainName: domainName.trim() });
+      const payload = {
+        domainName: domainName.trim(),
+        allowedEmailType: allowedEmailType,
+        emailProviderConnectionId: emailProviderConnectionId || null
+      };
+      const data = await domainsApi.add(payload);
       onAdded(data);
     } catch (error) {
       setErr(error.response?.data?.message || 'Failed to add domain');
@@ -167,11 +216,28 @@ function AddDomainModal({ onClose, onAdded }) {
           <h2>Add Domain</h2>
           <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
         </div>
-        <div className="conn-modal-body">
+        <div className="conn-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {err && <div className="conn-modal-error">{err}</div>}
           <label className="conn-form-label">
             Domain Name
             <input className="conn-form-input" value={domainName} onChange={(e) => setDomainName(e.target.value)} placeholder="mail.example.com" autoFocus />
+          </label>
+          <label className="conn-form-label">
+            Usage Type
+            <select className="conn-form-input" value={allowedEmailType} onChange={(e) => setAllowedEmailType(e.target.value)}>
+              <option value="TRANSACTIONAL_ONLY">Transactional Only (Recommended)</option>
+              <option value="MARKETING_AND_BULK">Marketing and Bulk</option>
+              <option value="BOTH">Both</option>
+            </select>
+          </label>
+          <label className="conn-form-label">
+            Email Provider (BYOK) - Optional
+            <select className="conn-form-input" value={emailProviderConnectionId} onChange={(e) => setEmailProviderConnectionId(e.target.value)}>
+              <option value="">Crescendo Shared Infrastructure (Default)</option>
+              {connections.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.appKey})</option>
+              ))}
+            </select>
           </label>
         </div>
         <div className="conn-modal-footer">

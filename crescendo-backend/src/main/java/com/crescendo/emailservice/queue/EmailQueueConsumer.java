@@ -44,15 +44,18 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
     private final EmailProvider emailProvider;
     private final DistributedLockService lockService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final com.crescendo.emailservice.email_send.SendEligibilityService eligibilityService;
 
     public EmailQueueConsumer(EmailLogRepository emailLogRepo,
                               EmailProvider emailProvider,
                               DistributedLockService lockService,
-                              RedisTemplate<String, Object> redisTemplate) {
+                              RedisTemplate<String, Object> redisTemplate,
+                              com.crescendo.emailservice.email_send.SendEligibilityService eligibilityService) {
         this.emailLogRepo = emailLogRepo;
         this.emailProvider = emailProvider;
         this.lockService = lockService;
         this.redisTemplate = redisTemplate;
+        this.eligibilityService = eligibilityService;
     }
 
     @Override
@@ -107,7 +110,17 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
             return;
         }
 
-        EmailMessage emailMessage = new EmailMessage(to, from, subject, htmlBody, textBody, listUnsubscribeHeader);
+        var eligibility = eligibilityService.checkEligibility(log.getUserId(), from, to, log.getEmailType());
+        if (!eligibility.eligible()) {
+            logger.warn("[email-queue] Email {} is not eligible to send: {}", emailId, eligibility.reason());
+            EmailStatus failStatus = eligibility.suggestedStatus().equals("SUPPRESSED") ? EmailStatus.SUPPRESSED : EmailStatus.FAILED;
+            log.setStatus(failStatus);
+            log.setError(eligibility.reason());
+            emailLogRepo.save(log);
+            return;
+        }
+
+        EmailMessage emailMessage = new EmailMessage(to, from, subject, htmlBody, textBody, listUnsubscribeHeader, log.getEmailType(), log.getId().toString());
 
         try {
             EmailSendResult result = emailProvider.send(emailMessage);

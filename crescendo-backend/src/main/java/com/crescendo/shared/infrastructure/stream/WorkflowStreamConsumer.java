@@ -2,11 +2,13 @@ package com.crescendo.shared.infrastructure.stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.crescendo.emailservice.metrics.DomainMetricsRollupService;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Redis Stream consumer for workflow and step domain events.
@@ -25,6 +27,12 @@ import java.util.Map;
 public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<String, Object, Object>> {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowStreamConsumer.class);
+
+    private final DomainMetricsRollupService rollupService;
+
+    public WorkflowStreamConsumer(DomainMetricsRollupService rollupService) {
+        this.rollupService = rollupService;
+    }
 
     @Override
     public void onMessage(MapRecord<String, Object, Object> message) {
@@ -58,6 +66,12 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
             case "StepRunCompletedEvent" ->
                     logger.info("[stream] Step run completed: stepRunId={}, status={}",
                             aggregateId, unquote(String.valueOf(raw.getOrDefault("status", "unknown"))));
+            case "EmailDeliveredEvent", "EmailBouncedEvent", "EmailComplainedEvent" -> {
+                String domainIdStr = unquote(String.valueOf(raw.getOrDefault("domainId", "")));
+                if (domainIdStr != null && !domainIdStr.isEmpty() && !domainIdStr.equals("null")) {
+                    rollupService.recordEvent(UUID.fromString(domainIdStr), eventType);
+                }
+            }
             default ->
                     logger.warn("[stream] Unknown workflow event type: {}", eventType);
         }

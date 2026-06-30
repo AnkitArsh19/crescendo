@@ -1,7 +1,5 @@
 package com.crescendo.ai;
 
-import com.crescendo.app.AppService;
-import com.crescendo.app.AppDto;
 import com.crescendo.security.AppUserDetails;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -20,10 +18,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static com.crescendo.publicapi.PublicApiScopes.AI_BUILD;
 import static com.crescendo.security.AuthenticatedUser.userId;
@@ -48,15 +44,12 @@ public class WorkflowDraftController {
 
     private final String pythonBaseUrl;
     private final String pythonServiceToken;
-    private final AppService appService;
 
     public WorkflowDraftController(
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
-            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
-            AppService appService) {
+            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken) {
         this.pythonBaseUrl = pythonBaseUrl;
         this.pythonServiceToken = pythonServiceToken;
-        this.appService = appService;
     }
 
     @PostMapping("/workflow-drafts")

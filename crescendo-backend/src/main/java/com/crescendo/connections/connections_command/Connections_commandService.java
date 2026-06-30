@@ -51,6 +51,7 @@ public class Connections_commandService {
     private final ConnectionCredentialsCryptoService cryptoService;
     private final DomainEventPublisher eventPublisher;
     private final OAuthTokenRefreshService tokenRefreshService;
+    private final com.crescendo.emailservice.domain.DomainRepository domainRepository;
     private final RestClient restClient;
 
     public Connections_commandService(Connections_commandRepository connectionRepo,
@@ -59,7 +60,8 @@ public class Connections_commandService {
                                      AppRepository appRepository,
                                      ConnectionCredentialsCryptoService cryptoService,
                                      DomainEventPublisher eventPublisher,
-                                     OAuthTokenRefreshService tokenRefreshService) {
+                                     OAuthTokenRefreshService tokenRefreshService,
+                                     com.crescendo.emailservice.domain.DomainRepository domainRepository) {
         this.connectionRepo = connectionRepo;
         this.connectionQueryRepo = connectionQueryRepo;
         this.userRepo = userRepo;
@@ -67,6 +69,7 @@ public class Connections_commandService {
         this.cryptoService = cryptoService;
         this.eventPublisher = eventPublisher;
         this.tokenRefreshService = tokenRefreshService;
+        this.domainRepository = domainRepository;
         this.restClient = RestClient.create();
     }
 
@@ -143,6 +146,10 @@ public class Connections_commandService {
      */
     public void deleteConnection(UUID userId, UUID connectionId) {
         Connections_command connection = findOwnedConnection(userId, connectionId);
+
+        if (domainRepository.existsByEmailProviderConnectionId(connectionId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete connection because it is currently used as a personal email provider by one or more verified domains.");
+        }
 
         connectionRepo.delete(connection);
         connectionQueryRepo.deleteById(connectionId);

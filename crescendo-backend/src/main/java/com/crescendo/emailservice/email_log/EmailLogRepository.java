@@ -40,4 +40,13 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, UUID> {
 
     @Query("SELECT SUM(e.clickCount) FROM EmailLog e WHERE e.userId = :userId")
     Long totalClickCount(@Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(e) FROM EmailLog e WHERE e.userId = :userId AND e.fromAddress LIKE %:domain AND e.createdAt >= :since")
+    long countTotalSendsSince(@Param("userId") UUID userId, @Param("domain") String domain, @Param("since") Instant since);
+
+    @Query("SELECT COUNT(e) FROM EmailLog e WHERE e.userId = :userId AND e.fromAddress LIKE %:domain AND e.status = :status AND e.createdAt >= :since")
+    long countStatusSince(@Param("userId") UUID userId, @Param("domain") String domain, @Param("status") EmailStatus status, @Param("since") Instant since);
+
+    @Query(value = "SELECT * FROM email_log WHERE \"userId\" = :userId AND search_vector @@ plainto_tsquery('english', :query) ORDER BY created_at DESC LIMIT 50", nativeQuery = true)
+    List<EmailLog> searchByQuery(@Param("userId") UUID userId, @Param("query") String query);
 }

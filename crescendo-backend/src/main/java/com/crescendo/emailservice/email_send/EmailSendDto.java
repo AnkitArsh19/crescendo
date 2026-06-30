@@ -19,7 +19,8 @@ public final class EmailSendDto {
             String htmlBody,
             String textBody,
             UUID templateId,
-            Map<String, Object> templateData
+            Map<String, Object> templateData,
+            @jakarta.validation.constraints.NotNull com.crescendo.enums.EmailType emailType
     ) {}
 
     public record SendEmailResponse(

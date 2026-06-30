@@ -523,9 +523,6 @@ crescendo.python-ai.base-url=
 crescendo.python-ai.service-token=
 
 # ─── Crescendo Email SMTP Relay ──────────────────────────────────────────────
-# Used by the crescendo-email internal app for workflow-triggered emails.
-# Brevo, AWS SES, SendGrid, Mailgun, etc.
-crescendo.email.smtp.host=smtp-relay.brevo.com
-crescendo.email.smtp.port=587
-crescendo.email.smtp.username=REPLACE_ME
-crescendo.email.smtp.password=REPLACE_ME
+# Used by the crescendo-email internal app for API configuration for crescendo-email app (Brevo)
+crescendo.email.provider=brevo
+brevo.api.key=xkeysib-REPLACE_ME_WITH_YOUR_API_KEY

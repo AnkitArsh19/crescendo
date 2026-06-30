@@ -110,7 +110,8 @@ public class BroadcastService {
                         template.getSubject(),   // placeholder — template overrides
                         null, null,
                         broadcast.getTemplateId(),
-                        templateData
+                        templateData,
+                        com.crescendo.enums.EmailType.MARKETING
                 );
 
                 emailSendService.sendEmail(userId, DASHBOARD_API_KEY_ID, req);

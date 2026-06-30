@@ -1026,7 +1026,7 @@ export default function WorkflowCanvas() {
                                     appKey: app.appKey,
                                     app: app.appKey,
                                     appName: app.name,
-                                    iconUrl: app.iconUrl || null,
+                                    iconUrl: app.logoUrl || `/icons/${app.appKey}.svg`,
                                     label: app.name,
                                     credentialSource: credentialSource || 'PERSONAL',
                                 });
@@ -1037,7 +1037,7 @@ export default function WorkflowCanvas() {
                                     appKey: app.appKey,
                                     app: app.appKey,
                                     appName: app.name,
-                                    iconUrl: app.iconUrl || null,
+                                    iconUrl: app.logoUrl || `/icons/${app.appKey}.svg`,
                                     label: app.name,
                                     connectionId: null,
                                     credentialSource: credentialSource || 'PERSONAL',

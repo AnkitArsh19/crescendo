@@ -45,8 +45,16 @@ function WorkflowNode({ data, selected, type }) {
             <div className="wf-node__header">
                 {/* App icon */}
                 <div className={`wf-node__icon ${isConfigured ? 'wf-node__icon--configured' : ''}`}>
-                    {data.iconUrl ? (
-                        <img src={data.iconUrl} alt="" className="wf-node__app-img" />
+                    {(data.iconUrl || data.appKey) ? (
+                        <>
+                            <img 
+                                src={data.iconUrl || `/icons/${data.appKey}.svg`} 
+                                alt="" 
+                                className="wf-node__app-img app-logo-img"
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                            />
+                            {isTrigger ? <HiOutlineLightningBolt style={{ display: 'none' }} /> : <HiOutlineCog style={{ display: 'none' }} />}
+                        </>
                     ) : isTrigger ? (
                         <HiOutlineLightningBolt />
                     ) : (

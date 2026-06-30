@@ -2,7 +2,7 @@ package com.crescendo.emailservice;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,11 +15,10 @@ import org.springframework.stereotype.Component;
  *   [DEV] Password reset token for alice@example.com : <token>
  *   [DEV] Email verification token for alice@example.com : <token>
  *
- * When a real EmailService is wired, replace the calls to this class with it
- * and delete (or disable) this file.
+ * Activated automatically when no EmailProvider bean is present.
  */
 @Component
-@Profile("local")
+@ConditionalOnMissingBean(com.crescendo.emailservice.provider.EmailProvider.class)
 public class DevNotificationService implements NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(DevNotificationService.class);
@@ -54,5 +53,35 @@ public class DevNotificationService implements NotificationService {
         log.warn("╠══════════════════════════════════════════════════════════════════╣");
         log.warn("║  API:  POST /auth/verify-email?token=<token>                     ║");
         log.warn("╚══════════════════════════════════════════════════════════════════╝");
+    }
+
+    @Override
+    public void sendWelcomeEmail(String email, String name) {
+        log.info("[DEV] Welcome email sent to: {} (Name: {})", email, name);
+    }
+
+    @Override
+    public void sendDeleteAccountEmail(String email) {
+        log.info("[DEV] Delete account email sent to: {}", email);
+    }
+
+    @Override
+    public void sendPasswordChangedEmail(String email) {
+        log.info("[DEV] Password changed email sent to: {}", email);
+    }
+
+    @Override
+    public void sendTotpEnabledEmail(String email) {
+        log.info("[DEV] TOTP Enabled email sent to: {}", email);
+    }
+
+    @Override
+    public void sendTotpDisabledEmail(String email) {
+        log.info("[DEV] TOTP Disabled email sent to: {}", email);
+    }
+
+    @Override
+    public void sendLoginAlertEmail(String email, String device, String location) {
+        log.info("[DEV] Login alert email sent to: {} (Device: {}, Location: {})", email, device, location);
     }
 }

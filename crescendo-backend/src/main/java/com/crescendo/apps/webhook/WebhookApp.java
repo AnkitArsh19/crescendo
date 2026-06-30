@@ -15,7 +15,7 @@ public class WebhookApp implements AppDefinition {
                 Webhooks allow you to connect external applications that aren't natively supported. The Crescendo Webhook app lets you receive incoming data payloads from any service or send POST requests outward.
 
                 **What you can do with Webhooks in Crescendo:**
-                - Trigger a workflow when a payment gateway (like Stripe or Razorpay) sends an event
+                - Trigger a workflow when a payment gateway (like Razorpay) sends an event
                 - Process form submissions from your website or landing page
                 - Send data to external services securely
                 - Act as an intermediary to transform payloads between two systems

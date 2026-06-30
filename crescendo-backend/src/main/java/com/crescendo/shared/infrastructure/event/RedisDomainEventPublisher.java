@@ -152,6 +152,17 @@ public class RedisDomainEventPublisher {
         data.put("eventType", event.eventType());
         data.put("aggregateId", event.aggregateId().toString());
         data.put("occurredAt", event.occurredAt().toString());
+
+        if (event instanceof com.crescendo.emailservice.domain_event.EmailDeliveredEvent e) {
+            data.put("domainId", e.getDomainId() != null ? e.getDomainId().toString() : "");
+        } else if (event instanceof com.crescendo.emailservice.domain_event.EmailBouncedEvent e) {
+            data.put("domainId", e.getDomainId() != null ? e.getDomainId().toString() : "");
+            data.put("bounceReason", e.getBounceReason());
+        } else if (event instanceof com.crescendo.emailservice.domain_event.EmailComplainedEvent e) {
+            data.put("domainId", e.getDomainId() != null ? e.getDomainId().toString() : "");
+            data.put("complaintReason", e.getComplaintReason());
+        }
+
         return data;
     }
 }

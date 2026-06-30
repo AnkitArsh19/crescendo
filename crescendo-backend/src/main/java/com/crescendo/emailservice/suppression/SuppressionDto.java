@@ -14,6 +14,10 @@ public final class SuppressionDto {
             @NotBlank @Email String email
     ) {}
 
+    public record ImportSuppressionsRequest(
+            java.util.List<String> emails
+    ) {}
+
     public record SuppressionResponse(
             UUID id,
             String email,

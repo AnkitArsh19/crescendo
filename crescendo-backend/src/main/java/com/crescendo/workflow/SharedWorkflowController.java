@@ -1,26 +1,22 @@
 package com.crescendo.workflow;
 
-import com.crescendo.steps.steps_query.Steps_queryService;
-import com.crescendo.workflow.workflow_query.Workflow_query;
-import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
+import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Public (unauthenticated) endpoint for previewing shared workflows.
- *
- * When a user shares workflows via link, the link encodes workflow IDs.
- * This endpoint returns workflow details with steps (name, type, appKey,
- * actionKey, config, order) but WITHOUT connectionId — recipients must
- * connect their own accounts after importing.
  *
  * Rate-limiting and max ID count (20) prevent enumeration attacks.
  */
@@ -28,65 +24,46 @@ import java.util.UUID;
 @RequestMapping("/shared")
 public class SharedWorkflowController {
 
-    private static final int MAX_SHARED_IDS = 20;
+    private final StringRedisTemplate redisTemplate;
 
-    private final Workflow_queryRepository workflowQueryRepo;
-    private final Steps_queryService stepsQueryService;
+    public SharedWorkflowController(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
-    public SharedWorkflowController(Workflow_queryRepository workflowQueryRepo,
-                                     Steps_queryService stepsQueryService) {
-        this.workflowQueryRepo = workflowQueryRepo;
-        this.stepsQueryService = stepsQueryService;
+    // ─────────────────────────────────────────────────────────────────────────────
+    // NEW TEMPLATE STORAGE ENDPOINTS
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * POST /shared/templates
+     * Generates a unique share link for the provided JSON payload.
+     * The payload is stored in Redis with a 30-day TTL.
+     */
+    @PostMapping("/templates")
+    public ResponseEntity<Map<String, String>> createSharedTemplate(@RequestBody String payload) {
+        // payload is the raw JSON string array sent from frontend
+        String shareId = UUID.randomUUID().toString();
+        String key = "shared_template:" + shareId;
+        
+        // Store in Redis with 30-day expiration
+        redisTemplate.opsForValue().set(key, payload, Duration.ofDays(30));
+        
+        return ResponseEntity.ok(Map.of("shareId", shareId));
     }
 
     /**
-     * GET /shared/workflows?ids=uuid1,uuid2,...
-     * Returns shared workflow previews with sanitized step data (no connectionId).
+     * GET /shared/templates/{shareId}
+     * Retrieves the JSON payload for a share link.
      */
-    @GetMapping("/workflows")
-    public ResponseEntity<List<WorkflowDto.SharedWorkflowResponse>> getSharedWorkflows(
-            @RequestParam List<UUID> ids) {
-
-        if (ids == null || ids.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one workflow ID is required");
+    @GetMapping(value = "/templates/{shareId}", produces = "application/json")
+    public ResponseEntity<String> getSharedTemplate(@PathVariable String shareId) {
+        String key = "shared_template:" + shareId;
+        String payload = redisTemplate.opsForValue().get(key);
+        
+        if (payload == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Share link expired or invalid");
         }
-        if (ids.size() > MAX_SHARED_IDS) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum " + MAX_SHARED_IDS + " workflows can be shared at once");
-        }
-
-        List<Workflow_query> workflows = workflowQueryRepo.findAllByIdIn(ids);
-
-        List<WorkflowDto.SharedWorkflowResponse> responses = workflows.stream()
-                .map(this::toSharedResponse)
-                .toList();
-
-        return ResponseEntity.ok(responses);
-    }
-
-    /// Maps a query-side workflow + its steps to the shared response DTO.
-    /// Steps include full config but strip connectionId.
-    private WorkflowDto.SharedWorkflowResponse toSharedResponse(Workflow_query workflow) {
-        List<WorkflowDto.StepResponse> rawSteps = stepsQueryService.loadSteps(workflow.getId());
-
-        List<WorkflowDto.SharedStepResponse> sharedSteps = rawSteps.stream()
-                .map(s -> new WorkflowDto.SharedStepResponse(
-                        s.id(),
-                        s.name(),
-                        s.type(),
-                        s.order(),
-                        s.appKey(),
-                        s.actionKey(),
-                        s.parentStepId(),
-                        s.branchKey(),
-                        s.configuration()
-                ))
-                .toList();
-
-        return new WorkflowDto.SharedWorkflowResponse(
-                workflow.getId().toString(),
-                workflow.getName(),
-                workflow.getDescription(),
-                sharedSteps
-        );
+        
+        return ResponseEntity.ok(payload);
     }
 }

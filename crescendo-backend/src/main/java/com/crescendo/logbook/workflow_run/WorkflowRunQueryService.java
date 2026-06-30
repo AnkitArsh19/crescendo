@@ -103,6 +103,29 @@ public class WorkflowRunQueryService {
         return new LogbookDto.WorkflowRunStatsResponse(total, success, failed, running, pending);
     }
 
+    /**
+     * Returns aggregated run statistics across all workflows owned by the user.
+     */
+    public LogbookDto.WorkflowRunStatsResponse getAllRunStats(UUID userId) {
+        long total = runRepo.countByUserId(userId);
+        long success = runRepo.countByUserIdAndStatus(userId, WorkflowRunStatus.SUCCESS);
+        long failed = runRepo.countByUserIdAndStatus(userId, WorkflowRunStatus.FAILED);
+        long running = runRepo.countByUserIdAndStatus(userId, WorkflowRunStatus.RUNNING);
+        long pending = runRepo.countByUserIdAndStatus(userId, WorkflowRunStatus.PENDING);
+
+        return new LogbookDto.WorkflowRunStatsResponse(total, success, failed, running, pending);
+    }
+
+    /**
+     * Searches across all runs for the user using full-text search.
+     */
+    public List<LogbookDto.WorkflowRunSummaryResponse> searchRuns(UUID userId, String query) {
+        return runRepo.searchByQuery(userId, query)
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
     // -------------------------------------------------------------------------
     // DTO MAPPERS
     // -------------------------------------------------------------------------

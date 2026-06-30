@@ -60,6 +60,9 @@ import BroadcastsPage from './pages/dashboard/email/BroadcastsPage';
 import EmailMetrics from './pages/dashboard/email/EmailMetrics';
 import SuppressionsPage from './pages/dashboard/email/SuppressionsPage';
 
+// Docs
+import DocsPage from './pages/docs/DocsPage';
+
 function LandingPage() {
   return (
     <>
@@ -85,6 +88,16 @@ function App() {
     checkAuth();
   }, [checkAuth]);
 
+  // Handle docs subdomain routing
+  const isDocsSubdomain = window.location.hostname.startsWith('docs.');
+  if (isDocsSubdomain) {
+    return (
+      <Routes>
+        <Route path="/*" element={<DocsPage />} />
+      </Routes>
+    );
+  }
+
   return (
     <>
     <ToastProvider />
@@ -93,9 +106,10 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/developer" element={<DeveloperProfile />} />
 
-      {/* Legal */}
+      {/* Legal & Docs */}
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/docs/*" element={<DocsPage />} />
 
       {/* Auth */}
       <Route element={<AuthLayout />}>
@@ -117,6 +131,9 @@ function App() {
         <Route path="/oauth/authorize" element={<OAuthAuthorizePage />} />
         {/* Shared workflow import — inside ProtectedRoute but outside DashboardLayout */}
         <Route path="/shared" element={<DashboardLayout />}>
+          <Route index element={<SharedWorkflows />} />
+        </Route>
+        <Route path="/shared/:shareId" element={<DashboardLayout />}>
           <Route index element={<SharedWorkflows />} />
         </Route>
         <Route path="/dashboard" element={<DashboardLayout />}>

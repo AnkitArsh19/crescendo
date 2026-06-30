@@ -1,0 +1,47 @@
+.confirm-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.confirm-modal-cancel {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-modal-cancel:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+}
+
+.confirm-modal-confirm {
+    padding: 8px 16px;
+    background: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.confirm-modal-confirm:hover {
+    background: var(--primary-hover);
+}
+
+.confirm-modal-confirm.destructive {
+    background: var(--danger-color);
+}
+
+.confirm-modal-confirm.destructive:hover {
+    background: var(--danger-hover);
+}

@@ -438,10 +438,15 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
             const [fileName, setFileName] = useState(
                 value && typeof value === 'object' ? value.name : (value ? 'File selected' : '')
             );
+            const [isDragging, setIsDragging] = useState(false);
 
             const handleFileChange = (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                processFile(file);
+            };
+
+            const processFile = (file) => {
                 setFileName(file.name);
                 const reader = new FileReader();
                 reader.onload = () => {
@@ -455,11 +460,35 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                 reader.readAsDataURL(file);
             };
 
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                setIsDragging(true);
+            };
+
+            const handleDragLeave = (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) {
+                    processFile(file);
+                }
+            };
+
             const acceptStr = field.accept || '*/*';
             const maxSizeMB = field.maxSizeMB || 25;
 
             return (
-                <div className="cpb-file-upload">
+                <div 
+                    className={`cpb-file-upload ${isDragging ? 'dragging' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -469,28 +498,40 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                     />
                     {fileName ? (
                         <div className="cpb-file-selected">
-                            <span className="cpb-file-name">{fileName}</span>
+                            <div className="cpb-file-icon"><HiUpload /></div>
+                            <div className="cpb-file-info">
+                                <span className="cpb-file-name">{fileName}</span>
+                                <span className="cpb-file-meta">Selected for upload</span>
+                            </div>
                             <button
                                 type="button"
                                 className="cpb-file-remove"
-                                onClick={() => { setFileName(''); onChange(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                onClick={(e) => { 
+                                    e.stopPropagation();
+                                    setFileName(''); 
+                                    onChange(null); 
+                                    if (fileInputRef.current) fileInputRef.current.value = ''; 
+                                }}
                             >
                                 <HiX />
                             </button>
                         </div>
                     ) : (
-                        <button
-                            type="button"
-                            className="cpb-file-btn"
+                        <div 
+                            className="cpb-file-dropzone"
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            <HiUpload style={{ fontSize: '1rem' }} />
-                            <span>Choose file</span>
-                        </button>
+                            <div className="cpb-file-dropzone-icon">
+                                <HiUpload />
+                            </div>
+                            <div className="cpb-file-dropzone-text">
+                                <span>Click to upload</span> or drag and drop
+                            </div>
+                            <div className="cpb-file-dropzone-hint">
+                                Max {maxSizeMB}MB · {acceptStr === '*/*' ? 'Any file type' : acceptStr}
+                            </div>
+                        </div>
                     )}
-                    <span className="cpb-help" style={{ marginTop: '4px' }}>
-                        Max {maxSizeMB}MB · {acceptStr === '*/*' ? 'Any file type' : acceptStr}
-                    </span>
                 </div>
             );
         }
@@ -792,11 +833,12 @@ export default function ConfigPanelBody({
                                 onClick={onOpenAppBrowser}
                             >
                                 <div className="cpb-app-select-icon">
-                                    {data.iconUrl ? (
-                                        <img src={data.iconUrl} alt={data.appName || ''} />
+                                    {data.appKey ? (
+                                        <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt={data.appName || ''} className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
                                     ) : (
                                         <HiOutlineBolt />
                                     )}
+                                    <HiOutlineBolt style={{ display: 'none' }} />
                                 </div>
                                 <div className="cpb-app-select-text">
                                     <div className="cpb-app-select-name">
@@ -849,9 +891,15 @@ export default function ConfigPanelBody({
                                     const conn = selectedConnections.find(c => c.id === data.connectionId);
                                     return (
                                         <div className="cpb-account-card">
-                                            <div className="cpb-account-info">
-                                                <span className="cpb-account-name">{conn?.accountEmail || conn?.accountDisplayName || conn?.name || data.appName}</span>
-                                                {conn?.name && <span className="cpb-account-hint">{conn.name}</span>}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <div className="cpb-app-select-icon" style={{ width: '24px', height: '24px' }}>
+                                                    <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                                    <HiOutlineBolt style={{ display: 'none' }} />
+                                                </div>
+                                                <div className="cpb-account-info">
+                                                    <span className="cpb-account-name">{conn?.accountEmail || conn?.accountDisplayName || conn?.name || data.appName}</span>
+                                                    {conn?.name && <span className="cpb-account-hint">{conn.name}</span>}
+                                                </div>
                                             </div>
                                             <button type="button" className="cpb-account-change" onClick={() => {
                                                 updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });

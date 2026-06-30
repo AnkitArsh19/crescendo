@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import static com.crescendo.security.AuthenticatedUser.userId;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -26,11 +27,14 @@ public class DomainController {
 
     private final DomainCommandService commandService;
     private final DomainQueryService queryService;
+    private final DomainConnectService domainConnectService;
 
     public DomainController(DomainCommandService commandService,
-                            DomainQueryService queryService) {
+                            DomainQueryService queryService,
+                            DomainConnectService domainConnectService) {
         this.commandService = commandService;
         this.queryService = queryService;
+        this.domainConnectService = domainConnectService;
     }
 
     @PostMapping
@@ -67,6 +71,19 @@ public class DomainController {
             Authentication auth) {
         commandService.deleteDomain(userId(auth), domainId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Gets the Domain Connect synchronous redirect URL for a specific domain.
+     * Returns 404 if the domain is not found, or a specific message if Domain Connect is unsupported.
+     */
+    @GetMapping("/{id}/domain-connect")
+    public ResponseEntity<?> getDomainConnectUrl(@PathVariable UUID id, Authentication auth) {
+        var domainDto = queryService.getDomain(userId(auth), id);
+        return domainConnectService.buildSyncUrl(domainDto.domainName())
+                .map(url -> ResponseEntity.ok().body(Map.of("url", url)))
+                .orElseGet(() -> ResponseEntity.badRequest()
+                        .body(Map.of("error", "Domain Connect is not supported by the DNS provider for this domain.")));
     }
 
 }

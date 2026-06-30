@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { metricsApi } from '../../../api/metricsApi';
 import '../../settings/Settings.css';
+import './EmailMetrics.css';
 
 const periods = [
     { label: '7 days', value: 7 },
@@ -9,6 +11,30 @@ const periods = [
     { label: '30 days', value: 30 },
     { label: '90 days', value: 90 },
 ];
+
+const MONO_COLORS = [
+    'var(--text-primary)',
+    'var(--text-secondary)',
+    'var(--border-color)',
+    'var(--bg-card-hover)'
+];
+
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="recharts-custom-tooltip">
+                <p className="recharts-tooltip-label">{label}</p>
+                {payload.map((entry, index) => (
+                    <div key={index} className="recharts-tooltip-item">
+                        <span className="recharts-tooltip-name">{entry.name}</span>
+                        <span className="recharts-tooltip-value">{entry.value.toLocaleString()}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    return null;
+};
 
 export default function EmailMetrics() {
     const [metrics, setMetrics] = useState(null);
@@ -36,16 +62,27 @@ export default function EmailMetrics() {
             if (!byDate[date]) byDate[date] = { date };
             byDate[date][status] = (byDate[date][status] || 0) + count;
         });
-        return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+        
+        return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)).map(d => {
+            const dateLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return {
+                ...d,
+                displayDate: dateLabel,
+                Total: (d.SENT || 0) + (d.DELIVERED || 0) + (d.FAILED || 0) + (d.BOUNCED || 0)
+            };
+        });
     }, [daily]);
 
-    // Find max for bar chart scaling
-    const maxDaily = useMemo(() => {
-        return Math.max(1, ...chartData.map(d => {
-            const total = (d.SENT || 0) + (d.DELIVERED || 0) + (d.FAILED || 0) + (d.BOUNCED || 0);
-            return total;
-        }));
-    }, [chartData]);
+    const breakdownData = useMemo(() => {
+        return [
+            { name: 'Delivered', value: summary.delivered || 0 },
+            { name: 'Sent', value: summary.sent || 0 },
+            { name: 'Pending', value: summary.pending || 0 },
+            { name: 'Failed', value: summary.failed || 0 },
+            { name: 'Bounced', value: summary.bounced || 0 },
+            { name: 'Suppressed', value: summary.suppressed || 0 },
+        ].filter(s => s.value > 0);
+    }, [summary]);
 
     const statCards = [
         { label: 'Total', value: summary.total || 0 },
@@ -74,7 +111,7 @@ export default function EmailMetrics() {
     }
 
     return (
-        <>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
             {/* Period selector */}
             <div className="settings-section-header">
                 <div>
@@ -110,63 +147,69 @@ export default function EmailMetrics() {
                 ))}
             </div>
 
-            {/* Daily Volume Bar Chart */}
-            {chartData.length > 0 && (
-                <div className="metrics-chart-section">
-                    <h3 className="metrics-chart-title">Daily Volume</h3>
-                    <div className="metrics-bar-chart">
-                        {chartData.map((d, i) => {
-                            const total = (d.SENT || 0) + (d.DELIVERED || 0) + (d.FAILED || 0) + (d.BOUNCED || 0);
-                            const pct = (total / maxDaily) * 100;
-                            const dateLabel = new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                            return (
-                                <div key={i} className="metrics-bar-col" title={`${dateLabel}: ${total} emails`}>
-                                    <div className="metrics-bar-track">
-                                        <motion.div
-                                            className="metrics-bar-fill"
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${pct}%` }}
-                                            transition={{ delay: i * 0.02, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                                        />
-                                    </div>
-                                    <span className="metrics-bar-label">{dateLabel}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* Status Breakdown */}
-            <div className="metrics-chart-section">
-                <h3 className="metrics-chart-title">Status Breakdown</h3>
-                <div className="metrics-breakdown">
-                    {[
-                        { label: 'Delivered', value: summary.delivered || 0 },
-                        { label: 'Sent', value: summary.sent || 0 },
-                        { label: 'Pending', value: summary.pending || 0 },
-                        { label: 'Failed', value: summary.failed || 0 },
-                        { label: 'Bounced', value: summary.bounced || 0 },
-                        { label: 'Suppressed', value: summary.suppressed || 0 },
-                    ].filter(s => s.value > 0).map((s) => {
-                        const pct = summary.total > 0 ? Math.round((s.value / summary.total) * 100) : 0;
-                        return (
-                            <div key={s.label} className="metrics-breakdown-row">
-                                <span className="metrics-breakdown-label">{s.label}</span>
-                                <div className="metrics-breakdown-bar-track">
-                                    <motion.div
-                                        className="metrics-breakdown-bar"
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${pct}%` }}
-                                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            <div className="metrics-charts-grid">
+                {/* Daily Volume Area Chart */}
+                {chartData.length > 0 && (
+                    <div className="metrics-chart-section full-width">
+                        <h3 className="metrics-chart-title">Daily Volume</h3>
+                        <div className="recharts-wrapper">
+                            <ResponsiveContainer width="100%" height={300}>
+                                <AreaChart data={chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--text-primary)" stopOpacity={0.1}/>
+                                            <stop offset="95%" stopColor="var(--text-primary)" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="displayDate" stroke="var(--border-color)" tick={{fill: 'var(--text-secondary)', fontSize: 12}} dy={10} axisLine={false} tickLine={false} />
+                                    <YAxis stroke="var(--border-color)" tick={{fill: 'var(--text-secondary)', fontSize: 12}} dx={-10} axisLine={false} tickLine={false} />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="Total" 
+                                        stroke="var(--text-primary)" 
+                                        strokeWidth={2}
+                                        fillOpacity={1} 
+                                        fill="url(#colorTotal)" 
+                                        animationDuration={1500}
                                     />
-                                </div>
-                                <span className="metrics-breakdown-value">{s.value.toLocaleString()} ({pct}%)</span>
-                            </div>
-                        );
-                    })}
-                </div>
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* Status Breakdown Donut Chart */}
+                {breakdownData.length > 0 && (
+                    <div className="metrics-chart-section">
+                        <h3 className="metrics-chart-title">Status Breakdown</h3>
+                        <div className="recharts-wrapper">
+                            <ResponsiveContainer width="100%" height={260}>
+                                <PieChart>
+                                    <Pie
+                                        data={breakdownData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={90}
+                                        paddingAngle={2}
+                                        dataKey="value"
+                                        stroke="var(--bg-card)"
+                                        strokeWidth={2}
+                                        animationDuration={1500}
+                                    >
+                                        {breakdownData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={MONO_COLORS[index % MONO_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px', color: 'var(--text-secondary)' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
             </div>
-        </>
+        </motion.div>
     );
 }

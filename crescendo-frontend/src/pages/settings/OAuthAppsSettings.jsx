@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { oauthAppsApi, appCatalogApi } from '../../api/appCatalogApi';
 import useToastStore from '../../store/toastStore';
 import { HiOutlineKey, HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import './Settings.css'; // Inheriting shared setting styles
 
 export default function OAuthAppsSettings() {
@@ -10,6 +11,7 @@ export default function OAuthAppsSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editingApp, setEditingApp] = useState(null); // { providerKey, clientId, clientSecret, scopes }
+    const [confirmDelete, setConfirmDelete] = useState(null);
     const addToast = useToastStore(state => state.addToast);
 
     useEffect(() => {
@@ -33,14 +35,19 @@ export default function OAuthAppsSettings() {
     };
 
     const handleDelete = async (providerKey) => {
-        if (!window.confirm('Are you sure you want to delete this OAuth app configuration? Current connections might stop working.')) return;
+        setConfirmDelete(providerKey);
+    };
+
+    const confirmDeleteApp = async () => {
+        if (!confirmDelete) return;
         try {
-            await oauthAppsApi.delete(providerKey);
+            await oauthAppsApi.delete(confirmDelete);
             addToast('Configuration deleted', 'success');
             fetchData();
         } catch (error) {
             addToast('Failed to delete configuration', 'error');
         }
+        setConfirmDelete(null);
     };
 
     const handleSave = async (e) => {
@@ -177,6 +184,16 @@ export default function OAuthAppsSettings() {
                     )}
                 </div>
             )}
+
+            <ConfirmModal
+                open={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                title="Delete Configuration?"
+                description="Are you sure you want to delete this OAuth app configuration? Current connections might stop working."
+                onConfirm={confirmDeleteApp}
+                confirmText="Delete"
+                isDestructive={true}
+            />
         </div>
     );
 }

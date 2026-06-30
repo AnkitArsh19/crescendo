@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineTemplate, HiOutlineX } from 'react-icons/hi';
-import { templatesApi } from '../../api/emailServiceApi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineTemplate, HiOutlineX, HiOutlineShieldCheck } from 'react-icons/hi';
+import { templatesApi, emailsApi } from '../../api/emailServiceApi';
 import './Settings.css';
 
 export default function TemplatesSettings() {
@@ -109,9 +109,23 @@ function TemplateEditorModal({ template, onClose, onSaved }) {
   const [htmlBody, setHtmlBody] = useState(template?.htmlBody || '');
   const [textBody, setTextBody] = useState(template?.textBody || '');
   const [submitting, setSubmitting] = useState(false);
+  const [checkingSpam, setCheckingSpam] = useState(false);
+  const [spamResult, setSpamResult] = useState(null);
   const [err, setErr] = useState('');
 
   const isNew = !template;
+
+  const handleCheckSpam = async () => {
+    if (!subject && !htmlBody && !textBody) return;
+    setCheckingSpam(true);
+    setSpamResult(null);
+    try {
+      const result = await emailsApi.checkSpamScore({ subject, htmlBody, textBody });
+      setSpamResult(result);
+    } catch (error) {
+      setErr(error.response?.data?.message || 'Failed to check spam score');
+    } finally { setCheckingSpam(false); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -141,8 +155,21 @@ function TemplateEditorModal({ template, onClose, onSaved }) {
           <h2>{isNew ? 'Create Template' : 'Edit Template'}</h2>
           <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
         </div>
-        <div className="conn-modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div className="conn-modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {err && <div className="conn-modal-error">{err}</div>}
+          
+          {spamResult && (
+            <div className={`settings-alert ${spamResult.warnings?.length > 0 ? 'settings-alert-warning' : 'settings-alert-success'}`}>
+              <strong>Spam Check Result (Score: {spamResult.score})</strong>
+              {spamResult.warnings?.length > 0 ? (
+                <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
+                  {spamResult.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              ) : (
+                <p style={{ margin: '4px 0 0 0' }}>Looks good! No major spam triggers detected.</p>
+              )}
+            </div>
+          )}
 
           <label className="conn-form-label">
             Template Name
@@ -164,11 +191,18 @@ function TemplateEditorModal({ template, onClose, onSaved }) {
             <textarea className="conn-form-textarea" value={textBody} onChange={(e) => setTextBody(e.target.value)} placeholder="Hello {{name}}, welcome aboard!" rows={3} />
           </label>
         </div>
-        <div className="conn-modal-footer">
-          <button type="button" className="conn-btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="conn-btn-primary" disabled={submitting}>
-            {submitting ? 'Saving...' : (isNew ? 'Create' : 'Save Changes')}
-          </button>
+        <div className="conn-modal-footer" style={{ justifyContent: 'space-between' }}>
+          <div>
+            <button type="button" className="settings-btn-secondary" onClick={handleCheckSpam} disabled={checkingSpam}>
+              <HiOutlineShieldCheck /> {checkingSpam ? 'Checking...' : 'Check Spam Score'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="conn-btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="conn-btn-primary" disabled={submitting}>
+              {submitting ? 'Saving...' : (isNew ? 'Create' : 'Save Changes')}
+            </button>
+          </div>
         </div>
       </motion.form>
     </motion.div>
