@@ -52,6 +52,7 @@ Crescendo is organized as a full-stack monorepo:
 
 - `crescendo-backend`: Spring Boot automation engine and APIs
 - `crescendo-frontend`: React + Vite workflow builder and management UI
+- `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder via Groq/LLaMA
 - `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
 - Root docs and references: architecture notes, production issues, integration guides
 
@@ -130,6 +131,19 @@ Crescendo includes a production-grade transactional email subsystem designed to 
 6. **Feedback Ingestion & Suppression Portability:** Integrated webhooks capture delivery, bounce, and spam complaint payloads, translating opaque provider errors into plain-language feedback. The platform distinguishes between *hard bounces* and *soft bounces*, and supports multipart CSV and JSON bulk imports so users can migrate suppression lists without friction.
 
 This email system is part of the core platform roadmap, not an afterthought.
+
+### Natural Language Workflow Builder (AI-ML)
+
+Crescendo features a robust natural language-to-workflow pipeline (`crescendo-aiml`) designed to translate conversational user intents into fully executable workflows.
+
+Rather than relying on a fragile single-shot LLM call, the AI-ML service implements a sophisticated multi-stage resolution architecture:
+
+1. **Intent Classification & Clarification:** Rapid initial processing to determine if a prompt is actionable or requires clarifying questions back to the user.
+2. **App & Action Resolution:** The model (e.g. LLaMA-3.3-70B) resolves the user's intent against Crescendo's live, dynamic app catalog, picking the exact trigger and actions needed.
+3. **Configuration Inference:** Per-step configuration generation mapped precisely to the required schemas for the chosen actions.
+4. **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog (`appKeys`, `actionKeys`), completely eliminating integration hallucinations before they reach the execution engine.
+5. **Prompt Injection Defense:** Strict XML delimiting of user input to protect the system prompt and maintain workflow generation integrity.
+6. **Graceful Error Propagation:** Robust failure boundaries that ensure AI limitations or ambiguities fail gracefully and surface back to the user interface appropriately.
 
 ## Design patterns and architectural patterns implemented
 
