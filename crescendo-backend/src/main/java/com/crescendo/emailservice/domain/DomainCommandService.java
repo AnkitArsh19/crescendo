@@ -34,16 +34,19 @@ public class DomainCommandService {
     private final User_commandRepository userRepo;
     private final DnsVerificationService dnsService;
     private final DomainEventPublisher eventPublisher;
+    private final com.crescendo.emailservice.provider.EmailProviderResolver emailProviderResolver;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public DomainCommandService(DomainRepository domainRepo,
                                 User_commandRepository userRepo,
                                 DnsVerificationService dnsService,
-                                DomainEventPublisher eventPublisher) {
+                                DomainEventPublisher eventPublisher,
+                                com.crescendo.emailservice.provider.EmailProviderResolver emailProviderResolver) {
         this.domainRepo = domainRepo;
         this.userRepo = userRepo;
         this.dnsService = dnsService;
         this.eventPublisher = eventPublisher;
+        this.emailProviderResolver = emailProviderResolver;
     }
 
     /**
@@ -104,6 +107,15 @@ public class DomainCommandService {
                 domain.setStatus(DomainStatus.VERIFIED);
                 domain.setVerifiedAt(Instant.now());
                 eventPublisher.publish(new DomainVerifiedEvent(domainId, domain.getDomainName()));
+
+                // Claim domain: if any other user had this domain registered or verified, mark theirs as failed.
+                List<Domain> otherDomains = domainRepo.findByDomainName(domainToCheck);
+                for (Domain other : otherDomains) {
+                    if (!other.getId().equals(domain.getId())) {
+                        other.setStatus(DomainStatus.FAILED);
+                        domainRepo.save(other);
+                    }
+                }
             } else {
                 domain.updateReadiness();
             }
@@ -120,7 +132,126 @@ public class DomainCommandService {
     public void deleteDomain(UUID userId, UUID domainId) {
         Domain domain = domainRepo.findByIdAndUser_Id(domainId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Domain not found"));
+        
+        if (domain.getEmailProviderConnectionId() != null) {
+            throw new IllegalStateException("Cannot delete a domain that is currently bound to an email provider connection.");
+        }
+        
         domainRepo.delete(domain);
+    }
+
+    public DomainDto.DomainResponse patchDomain(UUID userId, UUID domainId, DomainDto.PatchDomainRequest req) {
+        Domain domain = domainRepo.findByIdAndUser_Id(domainId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Domain not found"));
+
+        if (req.trackingEnabled() != null) domain.setTrackingEnabled(req.trackingEnabled());
+        if (req.unsubscribeLogoUrl() != null) domain.setUnsubscribeLogoUrl(req.unsubscribeLogoUrl());
+        if (req.unsubscribePrimaryColor() != null) domain.setUnsubscribePrimaryColor(req.unsubscribePrimaryColor());
+        if (req.unsubscribeCopy() != null) domain.setUnsubscribeCopy(req.unsubscribeCopy());
+        if (req.bimiLogoUrl() != null) domain.setBimiLogoUrl(req.bimiLogoUrl());
+        if (req.bimiVmcUrl() != null) domain.setBimiVmcUrl(req.bimiVmcUrl());
+
+        return toResponse(domain);
+    }
+
+    /**
+     * Initiates a domain ownership claim.
+     */
+    public void initiateClaim(UUID userId, UUID domainId, DomainDto.ClaimDomainRequest req) {
+        Domain domain = domainRepo.findByIdAndUser_Id(domainId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Domain not found"));
+
+        if (domain.getStatus() != DomainStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domain must be in PENDING state to initiate claim");
+        }
+
+        if ("DNS".equalsIgnoreCase(req.method())) {
+            // DNS method doesn't need to do anything as the token is already in verificationTokens
+            return;
+        } else if ("EMAIL".equalsIgnoreCase(req.method())) {
+            String email = req.emailAddress();
+            if (email == null || email.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "emailAddress is required for EMAIL method");
+            }
+            
+            String domainNameStr = domain.getDomainName().toLowerCase();
+            String emailLower = email.toLowerCase();
+            
+            if (!emailLower.endsWith("@" + domainNameStr)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email must belong to the domain");
+            }
+            
+            String prefix = emailLower.substring(0, emailLower.indexOf("@"));
+            if (!List.of("admin", "postmaster", "hostmaster", "webmaster").contains(prefix)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email must be a standard administrative address (admin, postmaster, etc.)");
+            }
+            
+            String token = generateToken();
+            List<String> tokens = new java.util.ArrayList<>(domain.getVerificationTokens());
+            tokens.add(token);
+            domain.setVerificationTokens(tokens);
+            domainRepo.save(domain);
+            
+            com.crescendo.emailservice.provider.EmailProvider provider = emailProviderResolver.resolve(null);
+            String html = "<p>You have requested to claim the domain <strong>" + domainNameStr + "</strong> on Crescendo.</p>" +
+                          "<p>Your claim token is: <strong>" + token + "</strong></p>" +
+                          "<p>Enter this token in your Crescendo dashboard to complete the domain transfer.</p>";
+                          
+            com.crescendo.emailservice.provider.EmailMessage msg = new com.crescendo.emailservice.provider.EmailMessage(
+                    email,
+                    "noreply@crescendo.run",
+                    "Claim Domain Ownership - Crescendo",
+                    html,
+                    null
+            );
+            
+            provider.send(msg);
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid method. Must be DNS or EMAIL");
+        }
+    }
+
+    /**
+     * Completes a domain ownership claim.
+     */
+    public DomainDto.DomainResponse completeClaim(UUID userId, UUID domainId, DomainDto.CompleteClaimRequest req) {
+        Domain domain = domainRepo.findByIdAndUser_Id(domainId, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Domain not found"));
+
+        if (domain.getStatus() != DomainStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Domain must be in PENDING state to complete claim");
+        }
+
+        // If a token is provided, it's the EMAIL method
+        if (req != null && req.token() != null && !req.token().isBlank()) {
+            if (!domain.getVerificationTokens().contains(req.token())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid claim token");
+            }
+            
+            // Bypass DNS verification since they proved ownership via admin email
+            domain.setSpfVerified(dnsService.verifySpf(domain.getDomainName()));
+            domain.setDkimVerified(dnsService.verifyDkim("crescendo", domain.getDomainName()));
+            domain.setDmarcVerified(dnsService.verifyDmarc(domain.getDomainName()));
+            
+            domain.setStatus(DomainStatus.VERIFIED);
+            domain.setVerifiedAt(Instant.now());
+            eventPublisher.publish(new DomainVerifiedEvent(domainId, domain.getDomainName()));
+
+            // Claim domain: if any other user had this domain registered or verified, mark theirs as failed.
+            List<Domain> otherDomains = domainRepo.findByDomainName(domain.getDomainName());
+            for (Domain other : otherDomains) {
+                if (!other.getId().equals(domain.getId())) {
+                    other.setStatus(DomainStatus.FAILED);
+                    domainRepo.save(other);
+                }
+            }
+            
+            domain.updateReadiness();
+            return toResponse(domain);
+        } else {
+            // DNS method delegates to the existing verifyDomain logic
+            return verifyDomain(userId, domainId);
+        }
     }
 
     // INTERNAL
@@ -165,6 +296,16 @@ public class DomainCommandService {
                 "v=DMARC1; p=none;"
         ));
 
+        // BIMI
+        if (domain.getBimiLogoUrl() != null && !domain.getBimiLogoUrl().isBlank() && 
+            domain.getBimiVmcUrl() != null && !domain.getBimiVmcUrl().isBlank()) {
+            dnsRecords.add(new DomainDto.DnsRecord(
+                    "TXT",
+                    "default._bimi." + exactDomain,
+                    "v=BIMI1; l=" + domain.getBimiLogoUrl() + "; a=" + domain.getBimiVmcUrl() + ";"
+            ));
+        }
+
         return new DomainDto.DomainResponse(
                 domain.getId(),
                 domain.getDomainName(),
@@ -182,7 +323,13 @@ public class DomainCommandService {
                 domain.getCredentialSource().name(),
                 domain.getEmailProviderConnectionId(),
                 "GREEN",
-                java.util.Collections.emptyList()
+                java.util.Collections.emptyList(),
+                domain.isTrackingEnabled(),
+                domain.getUnsubscribeLogoUrl(),
+                domain.getUnsubscribePrimaryColor(),
+                domain.getUnsubscribeCopy(),
+                domain.getBimiLogoUrl(),
+                domain.getBimiVmcUrl()
         );
     }
 }

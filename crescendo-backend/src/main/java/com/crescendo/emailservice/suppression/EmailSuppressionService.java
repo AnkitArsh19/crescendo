@@ -19,11 +19,14 @@ public class EmailSuppressionService {
 
     private final EmailSuppressionRepository suppressionRepo;
     private final EmailLogRepository emailLogRepo;
+    private final String appSecret;
 
     public EmailSuppressionService(EmailSuppressionRepository suppressionRepo,
-                                   EmailLogRepository emailLogRepo) {
+                                   EmailLogRepository emailLogRepo,
+                                   @org.springframework.beans.factory.annotation.Value("${app.secret:changeit}") String appSecret) {
         this.suppressionRepo = suppressionRepo;
         this.emailLogRepo = emailLogRepo;
+        this.appSecret = appSecret;
     }
 
     /**
@@ -121,5 +124,46 @@ public class EmailSuppressionService {
             suppress(log.getUserId(), log.getToAddress(), "UNSUBSCRIBED");
             return true;
         }).orElse(false);
+    }
+
+    public String generateUnsubscribeToken(UUID emailLogId) {
+        String data = emailLogId.toString();
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKeySpec = new javax.crypto.spec.SecretKeySpec(appSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hmacData = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String signature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(hmacData);
+            return data + "." + signature;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate unsubscribe token", e);
+        }
+    }
+
+    public UUID verifyUnsubscribeToken(String token) {
+        if (token == null || !token.contains(".")) {
+            return null;
+        }
+        String[] parts = token.split("\\.");
+        if (parts.length != 2) {
+            return null;
+        }
+        String data = parts[0];
+        String providedSignature = parts[1];
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKeySpec = new javax.crypto.spec.SecretKeySpec(appSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            byte[] hmacData = mac.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String expectedSignature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(hmacData);
+            
+            // Constant-time string comparison to prevent timing attacks
+            if (java.security.MessageDigest.isEqual(providedSignature.getBytes(java.nio.charset.StandardCharsets.UTF_8), expectedSignature.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                return UUID.fromString(data);
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
     }
 }

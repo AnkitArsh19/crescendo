@@ -3,6 +3,8 @@ package com.crescendo.publicapi;
 import com.crescendo.connections.ConnectionsDto;
 import com.crescendo.connections.connections_command.Connections_commandService;
 import com.crescendo.connections.connections_query.Connections_queryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,15 +23,10 @@ import java.util.UUID;
  *
  * Connections store credentials for third-party apps (OAuth tokens, API keys, etc.)
  * used by workflow steps. Credentials are write-only — never returned in responses.
- *
- *   POST   /api/v1/connections           — create a new connection
- *   GET    /api/v1/connections           — list all connections (metadata only)
- *   GET    /api/v1/connections/{id}      — get connection detail (metadata only)
- *   PATCH  /api/v1/connections/{id}      — update name / credentials
- *   DELETE /api/v1/connections/{id}      — delete connection
  */
 @RestController
 @RequestMapping("/api/v1/connections")
+@Tag(name = "Connections", description = "Public API for managing third-party app credentials")
 public class PublicConnectionController {
 
     private final Connections_commandService commandService;
@@ -42,6 +39,7 @@ public class PublicConnectionController {
     }
 
     @PostMapping
+    @Operation(summary = "Create connection", description = "Creates a new connection for a third-party app. Requires connection:write scope.")
     public ResponseEntity<ConnectionsDto.ConnectionResponse> createConnection(
             @Valid @RequestBody ConnectionsDto.CreateConnectionRequest req,
             Authentication auth) {
@@ -51,12 +49,14 @@ public class PublicConnectionController {
     }
 
     @GetMapping
+    @Operation(summary = "List connections", description = "Lists all connections. Requires connection:read scope.")
     public ResponseEntity<List<ConnectionsDto.ConnectionResponse>> listConnections(Authentication auth) {
         require(auth, CONNECTION_READ);
         return ResponseEntity.ok(queryService.listConnections(userId(auth)));
     }
 
     @GetMapping("/{connectionId}")
+    @Operation(summary = "Get connection details", description = "Gets metadata for a specific connection. Credentials are never returned. Requires connection:read scope.")
     public ResponseEntity<ConnectionsDto.ConnectionResponse> getConnection(
             @PathVariable UUID connectionId,
             Authentication auth) {
@@ -65,6 +65,7 @@ public class PublicConnectionController {
     }
 
     @PatchMapping("/{connectionId}")
+    @Operation(summary = "Update connection", description = "Updates a connection's name or credentials. Requires connection:write scope.")
     public ResponseEntity<Void> updateConnection(
             @PathVariable UUID connectionId,
             @Valid @RequestBody ConnectionsDto.UpdateConnectionRequest req,
@@ -75,6 +76,7 @@ public class PublicConnectionController {
     }
 
     @DeleteMapping("/{connectionId}")
+    @Operation(summary = "Delete connection", description = "Deletes a connection. Requires connection:write scope.")
     public ResponseEntity<Void> deleteConnection(
             @PathVariable UUID connectionId,
             Authentication auth) {
@@ -82,5 +84,4 @@ public class PublicConnectionController {
         commandService.deleteConnection(userId(auth), connectionId);
         return ResponseEntity.noContent().build();
     }
-
 }

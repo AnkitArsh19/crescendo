@@ -1,32 +1,40 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext, useParams, useBeforeUnload } from 'react-router-dom';
-import { workflowApi, stepApi, resourceApi, stepTestApi } from '../../api/workflowApi';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
+import { workflowClient } from '../../api/workflowClient';
 import useWorkflowStore from '../../store/workflowStore';
 import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
-import { parseConfigSchema, toPersistedConfig, stepsToGraph, makeEdge } from '../../workflow/workflowGraphSerializer';
+import {
+    stepsToGraph,
+    makeEdge,
+    orderedNodesFromGraph,
+    validateGraphForSave,
+} from '../../workflow/workflowGraphSerializer';
 import { createDraftStore } from '../../workflow/workflowDraftStore';
 import { createSaveCoordinator } from '../../workflow/workflowSaveCoordinator';
 import {
     ReactFlow,
     Background,
     Controls,
-    addEdge,
+    MiniMap,
     useNodesState,
     useEdgesState,
     MarkerType,
     BackgroundVariant,
+    ConnectionLineType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     HiOutlineSave,
     HiOutlinePlay,
     HiOutlineReply,
+    HiRefresh,
     HiOutlinePencil,
     HiCheck,
     HiPlus,
@@ -35,14 +43,23 @@ import {
     HiOutlineDuplicate,
     HiOutlineSwitchVertical,
     HiOutlineSwitchHorizontal,
+    HiOutlineShare,
+    HiOutlineArrowsExpand,
     HiSun,
     HiMoon,
     HiMenuAlt2,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
+import DeleteableEdge from './nodes/DeleteableEdge';
 import './WorkflowCanvas.css';
 
 const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode };
+// edgeTypes registered after removeEdge is defined (passed via data.onDelete)
+
+const NODE_GAP_X = 330;
+const NODE_GAP_Y = 210;
+const BRANCH_GAP_X = 260;
+const BRANCH_GAP_Y = 150;
 
 const makeDefaultNodes = (vertical) => [
     {
@@ -61,7 +78,123 @@ const makeDefaultNodes = (vertical) => [
 
 
 
-const makeDefaultEdge = (vertical) => makeEdge('1', '2', vertical);
+const makeDefaultEdge = () => makeEdge('1', '2');
+
+const layoutGraph = (inputNodes, inputEdges, vertical) => {
+    if (inputNodes.length === 0) return [];
+
+    const byId = new Map(inputNodes.map((node) => [node.id, node]));
+    const children = new Map();
+    for (const edge of inputEdges || []) {
+        if (!byId.has(edge.source) || !byId.has(edge.target)) continue;
+        children.set(edge.source, [...(children.get(edge.source) || []), edge.target]);
+    }
+
+    const compareByCurrentPosition = (leftId, rightId) => {
+        const left = byId.get(leftId);
+        const right = byId.get(rightId);
+        const leftAxis = vertical ? left?.position.x : left?.position.y;
+        const rightAxis = vertical ? right?.position.x : right?.position.y;
+        return ((leftAxis || 0) - (rightAxis || 0)) || String(leftId).localeCompare(String(rightId));
+    };
+    const trigger = inputNodes.find((node) => node.type === 'trigger');
+    const reachable = new Set();
+    const markReachable = (id) => {
+        if (reachable.has(id)) return;
+        reachable.add(id);
+        for (const childId of children.get(id) || []) markReachable(childId);
+    };
+    if (trigger) markReachable(trigger.id);
+
+    // Longest-path layers give every merge a stable column/row after all of
+    // its parents, unlike tree recursion which visits a merge more than once.
+    const degree = new Map();
+    const depth = new Map();
+    for (const id of reachable) degree.set(id, 0);
+    for (const edge of inputEdges || []) {
+        if (reachable.has(edge.source) && reachable.has(edge.target)) {
+            degree.set(edge.target, (degree.get(edge.target) || 0) + 1);
+        }
+    }
+    if (trigger) depth.set(trigger.id, 0);
+    const queue = [...reachable]
+        .filter((id) => id === trigger?.id || (degree.get(id) || 0) === 0)
+        .sort(compareByCurrentPosition);
+    while (queue.length > 0) {
+        const id = queue.shift();
+        const currentDepth = depth.get(id) || 0;
+        for (const childId of (children.get(id) || []).sort(compareByCurrentPosition)) {
+            if (!reachable.has(childId)) continue;
+            depth.set(childId, Math.max(depth.get(childId) || 0, currentDepth + 1));
+            const remaining = (degree.get(childId) || 0) - 1;
+            degree.set(childId, remaining);
+            if (remaining === 0) {
+                queue.push(childId);
+                queue.sort(compareByCurrentPosition);
+            }
+        }
+    }
+
+    const layers = new Map();
+    for (const id of reachable) {
+        const nodeDepth = depth.get(id) || 0;
+        layers.set(nodeDepth, [...(layers.get(nodeDepth) || []), id]);
+    }
+    for (const ids of layers.values()) ids.sort(compareByCurrentPosition);
+
+    const maxDepth = Math.max(0, ...layers.keys());
+    const orphanIds = inputNodes.filter((node) => !reachable.has(node.id))
+        .map((node) => node.id)
+        .sort(compareByCurrentPosition);
+    const positions = new Map();
+    for (const [nodeDepth, ids] of layers) {
+        ids.forEach((id, lane) => {
+            positions.set(id, vertical
+                ? { x: 250 + lane * BRANCH_GAP_X, y: 60 + nodeDepth * NODE_GAP_Y }
+                : { x: 120 + nodeDepth * NODE_GAP_X, y: 160 + lane * BRANCH_GAP_Y });
+        });
+    }
+    orphanIds.forEach((id, lane) => {
+        positions.set(id, vertical
+            ? { x: 250 + lane * BRANCH_GAP_X, y: 60 + (maxDepth + 1) * NODE_GAP_Y }
+            : { x: 120 + (maxDepth + 1) * NODE_GAP_X, y: 160 + lane * BRANCH_GAP_Y });
+    });
+
+    return inputNodes.map((node) => ({
+        ...node,
+        position: positions.get(node.id) || node.position,
+        data: { ...node.data, _vertical: vertical },
+    }));
+};
+
+const reindexNodes = (inputNodes, inputEdges) => {
+    const orderedIds = orderedNodesFromGraph(inputNodes, inputEdges).map((n) => n.id);
+    const indexById = new Map(orderedIds.map((id, idx) => [id, idx + 1]));
+    // Compute reachable set from trigger for orphan detection
+    const triggerNode = inputNodes.find((n) => n.type === 'trigger');
+    const reachable = new Set();
+    if (triggerNode) {
+        const adj = new Map();
+        for (const e of inputEdges || []) {
+            if (!adj.has(e.source)) adj.set(e.source, []);
+            adj.get(e.source).push(e.target);
+        }
+        const dfs = (id) => {
+            if (reachable.has(id)) return;
+            reachable.add(id);
+            for (const child of adj.get(id) || []) dfs(child);
+        };
+        dfs(triggerNode.id);
+    }
+    return inputNodes.map((node) => ({
+        ...node,
+        data: {
+            ...node.data,
+            stepIndex: indexById.get(node.id) || node.data.stepIndex,
+            isOrphaned: node.type !== 'trigger' && !reachable.has(node.id),
+        },
+    }));
+};
 
 /* Hardcoded app/trigger/action lists removed — all data comes from appCatalogApi and appDetailsByKey */
 
@@ -85,14 +218,13 @@ export default function WorkflowCanvas() {
     const [savedAt, setSavedAt] = useState(null);
     const [saveError, setSaveError] = useState(null);
     const [isDirty, setIsDirty] = useState(false);
-    const autosaveTimerRef = useRef(null);
-    const lastAutosaveSignatureRef = useRef('');
 
     // ── Undo history ──
     // Each entry: { nodes, edges }. Max 50 entries.
     const historyRef = useRef([]);
     const historyIndexRef = useRef(-1);
     const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
     // Prevent history pushes during undo/redo restores
     const isRestoringRef = useRef(false);
 
@@ -119,6 +251,8 @@ export default function WorkflowCanvas() {
 
     // ── Right-click context menu ──
     const [contextMenu, setContextMenu] = useState(null);
+    const [lastSelectedNodeId, setLastSelectedNodeId] = useState(null);
+    const [showSplitMenu, setShowSplitMenu] = useState(false);
 
     const ensureAppDetail = useCallback(async (appKey) => {
         if (!appKey || stateRefs.current.appDetailsByKey[appKey]) return;
@@ -128,13 +262,25 @@ export default function WorkflowCanvas() {
         } catch {
             // Non-fatal; UI will show fallback labels.
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const stateRefs = useRef({ nodes, workflowId, workflowName, catalogApps, appDetailsByKey });
+    const stateRefs = useRef({ nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey });
     useEffect(() => {
-        stateRefs.current = { nodes, workflowId, workflowName, catalogApps, appDetailsByKey };
-    }, [nodes, workflowId, workflowName, catalogApps, appDetailsByKey]);
+        stateRefs.current = { nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey };
+    }, [nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey]);
+
+    // `_isNew` is a short-lived presentation flag, never workflow data.
+    useEffect(() => {
+        if (!nodes.some((node) => node.data?._isNew)) return undefined;
+        const timer = setTimeout(() => {
+            setNodes((current) => current.map((node) => {
+                if (!node.data?._isNew) return node;
+                const { _isNew, ...data } = node.data;
+                return { ...node, data };
+            }));
+        }, 260);
+        return () => clearTimeout(timer);
+    }, [nodes, setNodes]);
 
     const draftRef = useRef(null);
     if (!draftRef.current) draftRef.current = createDraftStore();
@@ -143,6 +289,7 @@ export default function WorkflowCanvas() {
     useEffect(() => {
         saveCoordinatorRef.current = createSaveCoordinator({
             getNodes: () => stateRefs.current.nodes,
+            getEdges: () => stateRefs.current.edges,
             getWorkflowId: () => stateRefs.current.workflowId,
             getWorkflowName: () => stateRefs.current.workflowName,
             getCatalogApps: () => stateRefs.current.catalogApps,
@@ -193,44 +340,42 @@ export default function WorkflowCanvas() {
 
         (async () => {
             try {
-                // Fetch workflow metadata
-                const wf = await workflowApi.get(routeWorkflowId);
+                // Fetch workflow metadata (response includes edges[] for DAG topology)
+                const wf = await workflowClient.get(routeWorkflowId);
                 setWorkflowName(wf.name);
-                
+
                 // Initialize draft store with current revision to enable OCC
                 draftRef.current?.reset(wf.revision);
 
                 // Always fetch steps from the dedicated API for reliability
                 let steps = [];
                 try {
-                    steps = await stepApi.list(routeWorkflowId);
+                    steps = await workflowClient.steps.list(routeWorkflowId);
                 } catch {
-                    // Fallback to embedded steps
+                    // Fallback to embedded steps if dedicated API fails
                     steps = Array.isArray(wf.steps) ? wf.steps : [];
                 }
 
                 if (steps.length > 0) {
-                    const { nodes: loadedNodes, edges: loadedEdges } = stepsToGraph(steps, vertical);
-                    setNodes(loadedNodes);
+                    // Use backend edges for accurate DAG topology (supports branching + merging)
+                    const backendEdges = Array.isArray(wf.edges) ? wf.edges : [];
+                    const { nodes: loadedNodes, edges: loadedEdges } = stepsToGraph(steps, backendEdges, vertical);
+                    setNodes(layoutGraph(reindexNodes(loadedNodes, loadedEdges), loadedEdges, vertical));
                     setEdges(loadedEdges);
 
-                    // Bump nodeId to avoid collisions
+                    // Bump nodeId counter to avoid collisions with loaded node IDs
                     nodeId = Math.max(nodeId, loadedNodes.length + 10);
 
-                    // Pre-fetch app details for every step so the config panel
-                    // can render trigger/action options and configSchema immediately
-                    // without waiting for the user to open the panel first.
+                    // Pre-fetch app details so the config panel renders immediately
                     const uniqueAppKeys = [...new Set(steps.map((s) => s.appKey).filter(Boolean))];
                     await Promise.all(uniqueAppKeys.map((appKey) => ensureAppDetail(appKey)));
-
-
                 } else {
-                    // Workflow exists but has no steps yet — show default placeholder nodes
+                    // Workflow exists but has no steps yet - show default placeholder nodes
                     setNodes(makeDefaultNodes(vertical));
-                    setEdges([makeDefaultEdge(vertical)]);
+                    setEdges([makeDefaultEdge()]);
                 }
             } catch {
-                // If loading fails completely, show default nodes
+                // If loading fails completely, show default nodes so canvas is not blank
             } finally {
                 setIsLoadingWorkflow(false);
             }
@@ -239,7 +384,7 @@ export default function WorkflowCanvas() {
     }, [routeWorkflowId]);
 
     // Handle naming modal — just set name and close. Workflow is created on first save.
-    // IMPORTANT: do NOT call workflowApi.create() here — it would create a duplicate
+    // IMPORTANT: do NOT create here — an autosave could otherwise create a duplicate
     // workflow if autosave fires before the state update propagates.
     const handleCreateWorkflow = () => {
         const name = nameInput.trim() || 'Untitled';
@@ -258,6 +403,8 @@ export default function WorkflowCanvas() {
             nodes: JSON.parse(JSON.stringify(currentNodes)),
             edges: JSON.parse(JSON.stringify(currentEdges)),
         };
+        const current = historyRef.current[historyIndexRef.current];
+        if (current && JSON.stringify(current) === JSON.stringify(snapshot)) return;
         // Truncate redo stack
         const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
         newHistory.push(snapshot);
@@ -266,6 +413,7 @@ export default function WorkflowCanvas() {
         historyRef.current = newHistory;
         historyIndexRef.current = newHistory.length - 1;
         setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(false);
         setIsDirty(true);
         saveCoordinatorRef.current?.saveAuto();
     }, []);
@@ -279,6 +427,7 @@ export default function WorkflowCanvas() {
         setNodes(snapshot.nodes);
         setEdges(snapshot.edges);
         setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
         // Re-sync configNode if it still exists
         setConfigNode((prev) => {
             if (!prev) return null;
@@ -289,17 +438,75 @@ export default function WorkflowCanvas() {
         useToastStore.getState().addToast('Undone', 'info', 1500);
     }, [setNodes, setEdges]);
 
-    // ── Keyboard shortcut: Ctrl/Cmd+Z → undo ──
+    const handleRedo = useCallback(() => {
+        if (historyIndexRef.current >= historyRef.current.length - 1) return;
+        historyIndexRef.current += 1;
+        const snapshot = historyRef.current[historyIndexRef.current];
+        if (!snapshot) return;
+        isRestoringRef.current = true;
+        setNodes(snapshot.nodes);
+        setEdges(snapshot.edges);
+        setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+        setConfigNode((prev) => {
+            if (!prev) return null;
+            return snapshot.nodes.find((node) => node.id === prev.id) || null;
+        });
+        setTimeout(() => { isRestoringRef.current = false; }, 0);
+        useToastStore.getState().addToast('Redone', 'info', 1500);
+    }, [setNodes, setEdges]);
+
+
+    const fitWorkflow = useCallback(() => {
+        reactFlowInstance?.fitView({
+            padding: 0.24,
+            minZoom: 0.35,
+            maxZoom: 1.1,
+            duration: 280,
+        });
+    }, [reactFlowInstance]);
+
+    // Auto-fit once after workflow finishes loading
+    const hasFittedRef = useRef(false);
+    useEffect(() => {
+        if (!isLoadingWorkflow && !hasFittedRef.current && reactFlowInstance && nodes.length > 0) {
+            hasFittedRef.current = true;
+            setTimeout(() => fitWorkflow(), 120);
+        }
+    }, [isLoadingWorkflow, reactFlowInstance, nodes.length, fitWorkflow]);
+
+    // ── Keyboard shortcuts ──
     useEffect(() => {
         const handler = (e) => {
+            // Skip shortcuts when user is typing in an input/textarea
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName)) return;
+            // Ctrl/Cmd+Z → undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 handleUndo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                handleRedo();
+                return;
+            }
+            // Ctrl/Cmd+S → save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+                return;
+            }
+            // F → fit workflow to view
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                fitWorkflow();
+                return;
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [handleUndo]);
+    }, [handleUndo, handleRedo, handleSave, fitWorkflow]);
 
     const historyTimeoutRef = useRef(null);
 
@@ -336,25 +543,9 @@ export default function WorkflowCanvas() {
         setIsRunning(true);
         setSaveError(null);
 
-        // Pre-validate: check trigger-first model before even trying to save
-        if (nodes.length === 0) {
-            useToastStore.getState().addToast('Add at least one trigger and one action before running.', 'error');
-            setIsRunning(false);
-            return;
-        }
-        if (nodes[0].type !== 'trigger') {
-            useToastStore.getState().addToast('The first step must be a trigger.', 'error');
-            setIsRunning(false);
-            return;
-        }
-        const triggerCount = nodes.filter(n => n.type === 'trigger').length;
-        if (triggerCount > 1) {
-            useToastStore.getState().addToast('Only one trigger is allowed per workflow. Remove duplicate triggers.', 'error');
-            setIsRunning(false);
-            return;
-        }
-        if (nodes.length < 2) {
-            useToastStore.getState().addToast('Add at least one action step after the trigger.', 'error');
+        const graphError = validateGraphForSave(nodes, edges);
+        if (graphError) {
+            useToastStore.getState().addToast(graphError, 'error');
             setIsRunning(false);
             return;
         }
@@ -375,7 +566,7 @@ export default function WorkflowCanvas() {
         } finally {
             setIsRunning(false);
         }
-    }, [isRunning, handleSave, storeActivateWorkflow, nodes]);
+    }, [isRunning, storeActivateWorkflow, nodes, edges]);
 
 
 
@@ -385,79 +576,239 @@ export default function WorkflowCanvas() {
         if (!workflowName.trim()) setWorkflowName('Untitled');
     };
 
-    // Connect edges
+    const wouldCreateCycle = useCallback((sourceId, targetId, currentEdges) => {
+        const adjacency = new Map();
+        for (const edge of currentEdges) {
+            if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+            adjacency.get(edge.source).push(edge.target);
+        }
+        if (!adjacency.has(sourceId)) adjacency.set(sourceId, []);
+        adjacency.get(sourceId).push(targetId);
+        const visit = (id, seen = new Set()) => {
+            if (id === sourceId && seen.size > 0) return true;
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return (adjacency.get(id) || []).some((next) => visit(next, new Set(seen)));
+        };
+        return visit(targetId);
+    }, []);
+
+    const isValidConnection = useCallback((connection) => {
+        if (!connection?.source || !connection?.target) return false;
+        if (connection.source === connection.target) return false;
+        if (connection.sourceHandle && connection.sourceHandle !== 'out') return false;
+        if (connection.targetHandle && connection.targetHandle !== 'in') return false;
+        const { nodes: curNodes, edges: curEdges } = stateRefs.current;
+        const source = curNodes.find((n) => n.id === connection.source);
+        const target = curNodes.find((n) => n.id === connection.target);
+        // Never connect into the trigger
+        if (!source || !target || target.type === 'trigger') return false;
+        // No duplicate edges (same source→target pair)
+        if (curEdges.some((e) => e.source === connection.source && e.target === connection.target)) return false;
+        // DAG: multiple incoming allowed (merge points) — only prevent cycles
+        return !wouldCreateCycle(connection.source, connection.target, curEdges);
+    }, [wouldCreateCycle]);
+
+    // Connect edges — use stateRefs to avoid stale closure on nodes/edges
     const onConnect = useCallback(
-        (params) =>
-            setEdges((eds) => {
-                const newEdges = addEdge(
-                    {
-                        ...params,
-                        sourceHandle: params.sourceHandle || 'out',
-                        targetHandle: params.targetHandle || 'in',
-                        type: vertical ? 'smoothstep' : 'default',
-                        animated: true,
-                        style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--text-tertiary)' },
-                    },
-                    eds
+        (params) => {
+            if (!isValidConnection(params)) {
+                useToastStore.getState().addToast(
+                    'Connection rejected — cannot connect into trigger or create a cycle.',
+                    'error'
                 );
-                pushHistory(nodes, newEdges);
-                return newEdges;
-            }),
-        [setEdges, vertical, pushHistory, nodes]
+                return;
+            }
+            const curNodes = stateRefs.current.nodes;
+            const curEdges = stateRefs.current.edges;
+            const newEdges = [...curEdges, makeEdge(params.source, params.target, params.sourceHandle, params.targetHandle)];
+            const reindexed = reindexNodes(curNodes, newEdges);
+            const laidOut = layoutGraph(reindexed, newEdges, vertical);
+            setNodes(laidOut);
+            setEdges(newEdges);
+            pushHistory(laidOut, newEdges);
+        },
+        [setEdges, setNodes, vertical, pushHistory, isValidConnection]
     );
 
-    // Add a blank action node — auto-connects to last node when called without position
+    const commitGraph = useCallback((nextNodes, nextEdges, { relayout = true } = {}) => {
+        const validIds = new Set(nextNodes.map((node) => node.id));
+        const seenPairs = new Set();
+        const cleanEdges = nextEdges
+            .filter((edge) => validIds.has(edge.source) && validIds.has(edge.target) && edge.source !== edge.target)
+            .filter((edge) => {
+                const key = `${edge.source}:${edge.target}`;
+                if (seenPairs.has(key)) return false;
+                seenPairs.add(key);
+                return true;
+            })
+            .map((edge) => makeEdge(edge.source, edge.target, edge.sourceHandle, edge.targetHandle));
+        const reindexed = reindexNodes(nextNodes, cleanEdges);
+        const laidOut = relayout ? layoutGraph(reindexed, cleanEdges, vertical) : reindexed;
+        setNodes(laidOut);
+        setEdges(cleanEdges);
+        pushHistory(laidOut, cleanEdges);
+        saveCoordinatorRef.current?.saveAuto();
+        return { nodes: laidOut, edges: cleanEdges };
+    }, [setNodes, setEdges, pushHistory, vertical]);
+
+    const removeEdge = useCallback((edgeId) => {
+        const nextEdges = edges.filter((e) => e.id !== edgeId);
+        commitGraph(nodes, nextEdges);
+    }, [commitGraph, nodes, edges]);
+
+    const insertActionOnEdge = useCallback((edgeId) => {
+        const edge = edges.find((candidate) => candidate.id === edgeId);
+        if (!edge) return;
+        const source = nodes.find((node) => node.id === edge.source);
+        const target = nodes.find((node) => node.id === edge.target);
+        const id = String(nodeId++);
+        const inserted = {
+            id,
+            type: 'action',
+            position: {
+                x: ((source?.position.x || 0) + (target?.position.x || 0)) / 2,
+                y: ((source?.position.y || 0) + (target?.position.y || 0)) / 2,
+            },
+            data: {
+                label: 'New Action',
+                stepIndex: nodes.length + 1,
+                _vertical: vertical,
+                _isNew: true,
+            },
+        };
+        const retained = edges.filter((candidate) => candidate.id !== edgeId);
+        commitGraph(
+            [...nodes, inserted],
+            [
+                ...retained,
+                makeEdge(edge.source, id, edge.sourceHandle, 'in'),
+                makeEdge(id, edge.target, 'out', edge.targetHandle),
+            ],
+        );
+        setConfigNode(inserted);
+    }, [nodes, edges, vertical, commitGraph]);
+
+    // Keep custom edge callbacks fresh without recreating every edge component.
+    const removeEdgeRef = useRef(null);
+    const insertEdgeRef = useRef(null);
+    removeEdgeRef.current = removeEdge;
+    insertEdgeRef.current = insertActionOnEdge;
+    const edgeTypes = useMemo(() => ({
+        deleteable: (props) => (
+            <DeleteableEdge
+                {...props}
+                data={{
+                    ...props.data,
+                    onDelete: (id) => removeEdgeRef.current(id),
+                    onInsert: (id) => insertEdgeRef.current(id),
+                }}
+            />
+        ),
+    }), []);
+
+    // Add a blank action node — auto-connects to selected/context node, otherwise the last graph node.
     const addActionNode = useCallback(
-        (position) => {
+        (position, sourceId = null, { openConfig = false } = {}) => {
             const id = String(nodeId++);
-            let lastNodeId = null;
-            let updatedNodes = null;
-            setNodes((nds) => {
-                // Find the last node in the chain to auto-position and auto-connect
-                const lastNode = nds.length > 0 ? nds[nds.length - 1] : null;
-                lastNodeId = lastNode?.id || null;
-                const newNode = {
-                    id,
-                    type: 'action',
-                    position: position || {
-                        // In vertical mode, keep same X as other nodes (250) for straight edges
-                        x: vertical ? 250 : (lastNode ? lastNode.position.x + 330 : 250),
-                        y: lastNode ? lastNode.position.y + (vertical ? 220 : 0) : 200,
-                    },
-                    data: { label: 'New Action', stepIndex: nds.length + 1, _vertical: vertical },
-                };
-                updatedNodes = [...nds, newNode];
-                return updatedNodes;
-            });
-            // Auto-connect to the last node if no explicit position was given
-            if (!position && lastNodeId) {
-                setEdges((eds) => {
-                    const newEdges = [...eds, makeEdge(lastNodeId, id, vertical)];
-                    if (updatedNodes) pushHistory(updatedNodes, newEdges);
-                    return newEdges;
-                });
-            }
+            const ordered = orderedNodesFromGraph(nodes, edges);
+            const fallbackSource = ordered[ordered.length - 1]?.id || nodes[nodes.length - 1]?.id || null;
+            const parentId = sourceId || configNode?.id || fallbackSource;
+            const parent = nodes.find((n) => n.id === parentId) || ordered[ordered.length - 1] || null;
+            const newNode = {
+                id,
+                type: 'action',
+                position: position || {
+                    x: parent ? parent.position.x + (vertical ? 0 : NODE_GAP_X) : 250,
+                    y: parent ? parent.position.y + (vertical ? NODE_GAP_Y : 0) : 200,
+                },
+                data: {
+                    label: 'New Action',
+                    stepIndex: nodes.length + 1,
+                    _vertical: vertical,
+                    _isNew: true,
+                },
+            };
+            const nextNodes = [...nodes, newNode];
+            const nextEdges = parentId ? [...edges, makeEdge(parentId, id)] : edges;
+            commitGraph(nextNodes, nextEdges, { relayout: !position });
+            if (openConfig) setConfigNode(newNode);
             return id;
         },
-        [setNodes, setEdges, vertical, pushHistory]
+        [nodes, edges, vertical, configNode, commitGraph]
     );
 
     // Add branch from a node
     const addBranch = useCallback(
         (sourceId) => {
-            const sourceNode = nodes.find((n) => n.id === sourceId);
+            const sourceNode = stateRefs.current.nodes.find((n) => n.id === sourceId);
             if (!sourceNode) return;
-            const newId = addActionNode({
-                x: sourceNode.position.x + (vertical ? 220 : 0),
-                y: sourceNode.position.y + (vertical ? 200 : 180),
-            });
-            setEdges((eds) => [
-                ...eds,
-                makeEdge(sourceId, newId, vertical),
-            ]);
+            addActionNode(null, sourceId, { openConfig: true });
         },
-        [nodes, addActionNode, setEdges, vertical]
+        [addActionNode]
+    );
+
+    const splitNode = useCallback((sourceId, requestedCount) => {
+        const count = Math.max(2, Math.min(4, Number(requestedCount) || 2));
+        const source = nodes.find((node) => node.id === sourceId);
+        if (!source) return;
+
+        const splitNodes = Array.from({ length: count }, (_, index) => {
+            const lane = index - ((count - 1) / 2);
+            const id = String(nodeId++);
+            return {
+                id,
+                type: 'action',
+                position: vertical
+                    ? { x: source.position.x + lane * BRANCH_GAP_X, y: source.position.y + NODE_GAP_Y }
+                    : { x: source.position.x + NODE_GAP_X, y: source.position.y + lane * BRANCH_GAP_Y },
+                data: {
+                    label: 'New Action',
+                    stepIndex: nodes.length + index + 1,
+                    _vertical: vertical,
+                    _isNew: true,
+                },
+            };
+        });
+        const splitEdges = splitNodes.map((node) => makeEdge(sourceId, node.id));
+        commitGraph([...nodes, ...splitNodes], [...edges, ...splitEdges]);
+        useToastStore.getState().addToast(`Created ${count} branches.`, 'success', 1800);
+    }, [nodes, edges, vertical, commitGraph]);
+
+    // Duplicate an action node (trigger cannot be duplicated)
+    const duplicateNode = useCallback(
+        (id) => {
+            const original = stateRefs.current.nodes.find((n) => n.id === id);
+            if (!original || original.type === 'trigger') {
+                useToastStore.getState().addToast('Only action nodes can be duplicated.', 'info');
+                return;
+            }
+            const newId = String(nodeId++);
+            const curNodes = stateRefs.current.nodes;
+            const curEdges = stateRefs.current.edges;
+            const clone = {
+                ...original,
+                id: newId,
+                position: {
+                    x: original.position.x + (vertical ? 0 : 40),
+                    y: original.position.y + (vertical ? 40 : 40),
+                },
+                data: {
+                    ...original.data,
+                    _backendId: undefined,
+                    stepIndex: curNodes.length + 1,
+                    _isNew: true,
+                },
+                selected: false,
+            };
+            const nextNodes = [...curNodes, clone];
+            // A duplicate is a new branch from the original, preserving its own
+            // configuration without silently replacing any existing route.
+            const nextEdges = [...curEdges, makeEdge(id, newId)];
+            commitGraph(nextNodes, nextEdges);
+            useToastStore.getState().addToast('Node duplicated.', 'success', 1500);
+        },
+        [vertical, commitGraph]
     );
 
     // Clear trigger node — reset its data without removing the node
@@ -503,25 +854,27 @@ export default function WorkflowCanvas() {
             if (nodeToDelete?.data?._backendId) {
                 draftRef.current?.markDeleted(nodeToDelete.data._backendId);
             }
-            setNodes((nds) => {
-                const remaining = nds.filter((n) => n.id !== id);
-                if (remaining.length === 0) {
-                    const defaults = makeDefaultNodes(vertical);
-                    pushHistory(defaults, [makeDefaultEdge(vertical)]);
-                    return defaults;
-                }
-                const reindexed = remaining.map((n, idx) => ({
-                    ...n,
-                    data: { ...n.data, stepIndex: idx + 1, _vertical: vertical },
-                }));
-                pushHistory(reindexed, edges.filter((e) => e.source !== id && e.target !== id));
-                return reindexed;
-            });
-            setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+            const incoming = edges.filter((e) => e.target === id);
+            const outgoing = edges.filter((e) => e.source === id);
+            const remaining = nodes.filter((n) => n.id !== id);
+            if (remaining.length === 0) {
+                commitGraph(makeDefaultNodes(vertical), [makeDefaultEdge()]);
+            } else {
+                const baseEdges = edges.filter((e) => e.source !== id && e.target !== id);
+                // Preserve the DAG when deleting an intermediate/merge node:
+                // every parent remains connected to every downstream child.
+                const reconnected = incoming.flatMap((parent) => outgoing
+                    .filter((child) => parent.source !== child.target)
+                    .filter((child) => !baseEdges.some((existing) =>
+                        existing.source === parent.source && existing.target === child.target))
+                    .map((child) => makeEdge(parent.source, child.target)));
+                commitGraph(remaining, [...baseEdges, ...reconnected]);
+            }
             if (configNode?.id === id) setConfigNode(null);
+            if (lastSelectedNodeId === id) setLastSelectedNodeId(null);
             setContextMenu(null);
         },
-        [setNodes, setEdges, configNode, vertical, nodes, edges, pushHistory, clearTriggerNode]
+        [configNode, lastSelectedNodeId, vertical, nodes, edges, clearTriggerNode, commitGraph]
     );
 
     // Node click → open config panel (but NOT if clicking a handle)
@@ -530,6 +883,7 @@ export default function WorkflowCanvas() {
             // Don't open config panel if clicking on a handle
             const target = event.target;
             if (target.closest('.react-flow__handle')) return;
+            setLastSelectedNodeId(node.id);
             setConfigNode(node);
             setContextMenu(null);
         },
@@ -541,15 +895,28 @@ export default function WorkflowCanvas() {
         (event, node) => {
             const target = event.target;
             if (target.closest('.react-flow__handle')) return;
+            setLastSelectedNodeId(node.id);
             setConfigNode(node);
             setContextMenu(null);
         },
         []
     );
 
+    const onNodeDragStop = useCallback((event, draggedNode) => {
+        const curEdges = stateRefs.current.edges;
+        const movedNodes = stateRefs.current.nodes.map((node) => (
+            node.id === draggedNode.id
+                ? { ...node, position: draggedNode.position }
+                : node
+        ));
+        const reindexed = reindexNodes(movedNodes, curEdges);
+        setNodes(reindexed);
+        pushHistory(reindexed, curEdges);
+    }, [setNodes, pushHistory]);
+
     // Edge click → select the edge (allows deletion with backspace/delete)
     const onEdgeClick = useCallback(
-        (event, edge) => {
+        (event) => {
             event.stopPropagation();
             setContextMenu(null);
         },
@@ -560,9 +927,9 @@ export default function WorkflowCanvas() {
     const onEdgeDoubleClick = useCallback(
         (event, edge) => {
             event.stopPropagation();
-            setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+            removeEdge(edge.id);
         },
-        [setEdges]
+        [removeEdge]
     );
 
     // Right-click on node
@@ -575,6 +942,7 @@ export default function WorkflowCanvas() {
                 nodeId: node.id,
                 nodeType: node.type,
             });
+            setLastSelectedNodeId(node.id);
         },
         []
     );
@@ -582,35 +950,21 @@ export default function WorkflowCanvas() {
     // Click on pane → close everything
     const onPaneClick = useCallback(() => {
         setContextMenu(null);
+        setShowSplitMenu(false);
     }, []);
 
     // Orientation toggle
     const toggleOrientation = useCallback(() => {
         const nextVertical = !vertical;
         setVertical(nextVertical);
-        // Rearrange existing nodes and update _vertical in data
-        // In vertical mode all nodes share x=250 so edges go straight down
-        setNodes((nds) => {
-            const rearranged = nds.map((n, i) => ({
-                ...n,
-                position: {
-                    x: nextVertical ? 250 : 120 + i * 330,
-                    y: nextVertical ? 60 + i * 220 : 200,
-                },
-                data: { ...n.data, _vertical: nextVertical },
-            }));
-            return rearranged;
-        });
-        // Update Edge types — smoothstep for vertical (orthogonal), default (bezier) for horizontal
-        setEdges((eds) =>
-            eds.map((e) => ({
-                ...e,
-                type: nextVertical ? 'smoothstep' : 'default',
-                sourceHandle: 'out',
-                targetHandle: 'in',
-            }))
-        );
-    }, [vertical, setNodes, setEdges]);
+        const nextEdges = edges.map((edge) => makeEdge(edge.source, edge.target, edge.sourceHandle, edge.targetHandle));
+        const nextNodes = layoutGraph(nodes, nextEdges, nextVertical);
+        setNodes(nextNodes);
+        setEdges(nextEdges);
+        pushHistory(nextNodes, nextEdges);
+    }, [vertical, nodes, edges, setNodes, setEdges, pushHistory]);
+
+
 
     // Drag-and-drop blank action from Add button
     const onDragOver = useCallback((e) => {
@@ -823,15 +1177,60 @@ export default function WorkflowCanvas() {
                     >
                         <HiOutlineReply />
                     </button>
+                    <button
+                        className="canvas-tb-btn"
+                        title="Redo (Ctrl+Shift+Z)"
+                        onClick={handleRedo}
+                        disabled={!canRedo}
+                        data-tooltip="Redo"
+                    >
+                        <HiRefresh style={{ transform: 'scaleX(-1)' }} />
+                    </button>
                     <div className="canvas-tb-divider" />
                     <button
                         className="canvas-tb-btn"
                         title="Add Action Step"
                         data-tooltip="Add Step"
-                        onClick={() => addActionNode()}
+                        onClick={() => addActionNode(null, null, { openConfig: true })}
                     >
                         <HiPlus />
                     </button>
+                    <div className="canvas-split-control">
+                        <button
+                            className="canvas-tb-btn"
+                            title={lastSelectedNodeId ? 'Split selected step' : 'Select a step to split'}
+                            data-tooltip="Split"
+                            onClick={() => setShowSplitMenu((open) => !open)}
+                            disabled={!lastSelectedNodeId}
+                        >
+                            <HiOutlineShare />
+                        </button>
+                        <AnimatePresence>
+                            {showSplitMenu && lastSelectedNodeId && (
+                                <motion.div
+                                    className="canvas-toolbar-split-menu"
+                                    initial={{ opacity: 0, y: -4, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                                    transition={{ duration: 0.14 }}
+                                >
+                                    {[2, 3, 4].map((count) => (
+                                        <button
+                                            key={count}
+                                            className="canvas-toolbar-split-btn"
+                                            title={`Create ${count} branches`}
+                                            onClick={() => {
+                                                splitNode(lastSelectedNodeId, count);
+                                                setShowSplitMenu(false);
+                                            }}
+                                        >
+                                            {count}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                     <button
                         className="canvas-tb-btn"
                         title={vertical ? 'Switch to Horizontal Layout' : 'Switch to Vertical Layout'}
@@ -839,6 +1238,14 @@ export default function WorkflowCanvas() {
                         onClick={toggleOrientation}
                     >
                         {vertical ? <HiOutlineSwitchHorizontal /> : <HiOutlineSwitchVertical />}
+                    </button>
+                    <button
+                        className="canvas-tb-btn"
+                        title="Fit workflow to canvas (F)"
+                        data-tooltip="Fit view"
+                        onClick={fitWorkflow}
+                    >
+                        <HiOutlineArrowsExpand />
                     </button>
                     <div className="canvas-tb-divider" />
                     <button
@@ -881,7 +1288,7 @@ export default function WorkflowCanvas() {
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
                     onInit={setReactFlowInstance}
-                    onNodeDragStop={() => pushHistory(nodes, edges)}
+                    onNodeDragStop={onNodeDragStop}
                     onNodeClick={onNodeClick}
                     onNodeDoubleClick={onNodeDoubleClick}
                     onNodeContextMenu={onNodeContextMenu}
@@ -891,17 +1298,33 @@ export default function WorkflowCanvas() {
                     onDragOver={onDragOver}
                     onDrop={onDrop}
                     nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
                     defaultViewport={{ x: 200, y: 150, zoom: 0.75 }}
                     snapToGrid
                     snapGrid={[16, 16]}
                     proOptions={{ hideAttribution: true }}
-                    defaultEdgeOptions={{ animated: true }}
-                    connectionMode="loose"
-                    connectionRadius={30}
-                    deleteKeyCode={['Backspace', 'Delete']}
-                    edgesReconnectable
+                    defaultEdgeOptions={{
+                        animated: false,
+                        type: 'deleteable',
+                        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: 'var(--border-hover)' },
+                        style: { stroke: 'var(--border-secondary)', strokeWidth: 1.5 },
+                    }}
+                    connectionMode="strict"
+                    connectionLineType={ConnectionLineType.SmoothStep}
+                    isValidConnection={isValidConnection}
+                    connectionRadius={40}
+                    deleteKeyCode={null}
+                    edgesReconnectable={false}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={18} size={1.6} color="var(--dot-color-bright)" />
+                    <MiniMap
+                        position="bottom-right"
+                        pannable
+                        zoomable
+                        nodeStrokeWidth={2}
+                        nodeColor="var(--bg-elevated)"
+                        maskColor="rgba(15, 23, 42, 0.18)"
+                    />
                     <Controls showInteractive={false} position="bottom-left">
                         <button
                             className="react-flow__controls-button"
@@ -931,11 +1354,26 @@ export default function WorkflowCanvas() {
                                 className="canvas-ctx-item"
                                 onClick={() => { addBranch(contextMenu.nodeId); setContextMenu(null); }}
                             >
-                                <HiPlus /> Add Branch
+                                <HiPlus /> Add next step
                             </button>
+                            <div className="canvas-ctx-split">
+                                <span className="canvas-ctx-split-label"><HiOutlineShare /> Split into</span>
+                                <div className="canvas-ctx-split-options" role="group" aria-label="Number of branches">
+                                    {[2, 3, 4].map((count) => (
+                                        <button
+                                            key={count}
+                                            className="canvas-ctx-split-btn"
+                                            onClick={() => { splitNode(contextMenu.nodeId, count); setContextMenu(null); }}
+                                            title={`Create ${count} branches`}
+                                        >
+                                            {count}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <button
                                 className="canvas-ctx-item"
-                                onClick={() => { /* duplicate logic */ setContextMenu(null); }}
+                                onClick={() => { duplicateNode(contextMenu.nodeId); setContextMenu(null); }}
                             >
                                 <HiOutlineDuplicate /> Duplicate
                             </button>

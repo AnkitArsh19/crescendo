@@ -57,11 +57,38 @@ public class DomainController {
         return ResponseEntity.ok(queryService.getDomain(userId(auth), domainId));
     }
 
+    @PatchMapping("/{domainId}")
+    public ResponseEntity<DomainDto.DomainResponse> patchDomain(
+            @PathVariable UUID domainId,
+            @RequestBody DomainDto.PatchDomainRequest req,
+            Authentication auth) {
+        var resp = commandService.patchDomain(userId(auth), domainId, req);
+        return ResponseEntity.ok(resp);
+    }
+
     @PostMapping("/{domainId}/verify")
     public ResponseEntity<DomainDto.DomainResponse> verifyDomain(
             @PathVariable UUID domainId,
             Authentication auth) {
         var resp = commandService.verifyDomain(userId(auth), domainId);
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/{domainId}/claim")
+    public ResponseEntity<Void> initiateClaim(
+            @PathVariable UUID domainId,
+            @jakarta.validation.Valid @RequestBody DomainDto.ClaimDomainRequest req,
+            Authentication auth) {
+        commandService.initiateClaim(userId(auth), domainId, req);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/{domainId}/claim/complete")
+    public ResponseEntity<DomainDto.DomainResponse> completeClaim(
+            @PathVariable UUID domainId,
+            @RequestBody(required = false) DomainDto.CompleteClaimRequest req,
+            Authentication auth) {
+        var resp = commandService.completeClaim(userId(auth), domainId, req);
         return ResponseEntity.ok(resp);
     }
 

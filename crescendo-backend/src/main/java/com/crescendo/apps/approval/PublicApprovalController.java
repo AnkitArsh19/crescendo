@@ -1,13 +1,7 @@
 package com.crescendo.apps.approval;
 
-import com.crescendo.config.RedisStreamConfig;
-import com.crescendo.enums.WorkflowRunStatus;
-import com.crescendo.logbook.domain_event.WorkflowRunCompletedEvent;
-import com.crescendo.logbook.outbox.OutboxEvent;
-import com.crescendo.logbook.outbox.OutboxEventRepository;
 import com.crescendo.logbook.workflow_run.WorkflowRun;
 import com.crescendo.logbook.workflow_run.WorkflowRunRepository;
-import com.crescendo.shared.domain.event.DomainEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,28 +16,25 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/public/approvals")
 public class PublicApprovalController {
 
     private final WorkflowRunRepository runRepo;
-    private final OutboxEventRepository outboxRepo;
-    private final DomainEventPublisher eventPublisher;
+    private final com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService;
 
     public PublicApprovalController(WorkflowRunRepository runRepo,
-                                    OutboxEventRepository outboxRepo,
-                                    DomainEventPublisher eventPublisher) {
+                                    com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService) {
         this.runRepo = runRepo;
-        this.outboxRepo = outboxRepo;
-        this.eventPublisher = eventPublisher;
+        this.suspensionService = suspensionService;
     }
 
     @GetMapping("/{token}")
     @Transactional(readOnly = true)
     public Map<String, Object> getApproval(@PathVariable String token) {
-        WorkflowRun run = findRun(token);
+        WorkflowRun run = findRunByToken(token);
         Map<String, Object> approval = findApprovalOutput(run, token);
         return Map.of(
                 "available", true,
@@ -59,56 +50,34 @@ public class PublicApprovalController {
     @Transactional
     public ResponseEntity<Map<String, Object>> submitApproval(@PathVariable String token,
                                                               @RequestBody(required = false) Map<String, Object> body) {
-        WorkflowRun run = findRun(token);
-        Map<String, Object> state = run.getExecutionState() != null
-                ? new HashMap<>(run.getExecutionState())
-                : new HashMap<>();
-
-        String stateKey = findApprovalStateKey(state, token);
-        Map<String, Object> currentOutput = asMutableMap(state.get(stateKey));
-        if (currentOutput.isEmpty()) {
-            currentOutput.putAll(findApprovalOutput(run, token));
-        }
-
         Map<String, Object> responseBody = body != null ? new HashMap<>(body) : new HashMap<>();
         boolean approved = responseBody.get("approved") == null || Boolean.parseBoolean(String.valueOf(responseBody.get("approved")));
-        currentOutput.put("approved", approved);
-        currentOutput.put("approvalResponse", responseBody);
-        currentOutput.put("approvalRespondedAt", Instant.now().toString());
-        currentOutput.put("_approvalPending", false);
-        state.put(stateKey, currentOutput);
+        
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("approved", approved);
+        payload.put("approvalResponse", responseBody);
+        payload.put("approvalRespondedAt", Instant.now().toString());
+        payload.put("_approvalPending", false);
 
-        run.setExecutionState(state);
-        run.setResumeAt(null);
-        run.setResumeToken(null);
-
-        if (run.getResumeStepId() == null) {
-            run.setStatus(WorkflowRunStatus.SUCCESS);
-            run.setCompletedAt(Instant.now());
-            eventPublisher.publish(new WorkflowRunCompletedEvent(
-                    run.getId(), run.getWorkflowId(), run.getUserId(), WorkflowRunStatus.SUCCESS, null));
-        } else {
-            run.setStatus(WorkflowRunStatus.PENDING);
-            outboxRepo.save(new OutboxEvent(
-                    UUID.randomUUID(),
-                    RedisStreamConfig.STREAM_EXECUTION_QUEUE,
-                    buildExecutionPayload(run)
-            ));
+        boolean resumed = suspensionService.resume("approval:" + token, payload);
+        if (!resumed) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval not found or already submitted");
         }
 
         return ResponseEntity.accepted().body(Map.of(
                 "accepted", true,
-                "workflowRunId", run.getId().toString(),
                 "approved", approved
         ));
     }
 
-    private WorkflowRun findRun(String token) {
+    private WorkflowRun findRunByToken(String token) {
         if (token == null || token.isBlank()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval not found");
         }
-        return runRepo.findByResumeTokenAndStatus(token, WorkflowRunStatus.SUSPENDED)
+        com.crescendo.execution.suspension.WorkflowSuspension suspension = suspensionService.getWaitingSuspension("approval:" + token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Approval not found or already submitted"));
+        return runRepo.findById(suspension.getRunId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow run not found"));
     }
 
     private Map<String, Object> findApprovalOutput(WorkflowRun run, String token) {
@@ -116,36 +85,22 @@ public class PublicApprovalController {
         if (state == null) {
             return Map.of();
         }
-        String key = findApprovalStateKey(state, token);
-        return asMutableMap(state.get(key));
-    }
-
-    private String findApprovalStateKey(Map<String, Object> state, String token) {
-        for (Map.Entry<String, Object> entry : state.entrySet()) {
-            Map<String, Object> value = asMutableMap(entry.getValue());
-            if (token.equals(value.get("approvalToken"))) {
-                return entry.getKey();
+        
+        try {
+            for (Map.Entry<String, Object> entry : state.entrySet()) {
+                if (entry.getValue() instanceof Map<?, ?> valueMap) {
+                    if (token.equals(valueMap.get("approvalToken"))) {
+                        Map<String, Object> result = new HashMap<>();
+                        for (Map.Entry<?, ?> e : valueMap.entrySet()) {
+                            result.put(String.valueOf(e.getKey()), e.getValue());
+                        }
+                        return result;
+                    }
+                }
             }
+        } catch (Exception e) {
+            // ignore parsing errors
         }
-        return "_approval";
-    }
-
-    private Map<String, Object> asMutableMap(Object value) {
-        if (value instanceof Map<?, ?> raw) {
-            Map<String, Object> map = new HashMap<>();
-            for (Map.Entry<?, ?> entry : raw.entrySet()) {
-                map.put(String.valueOf(entry.getKey()), entry.getValue());
-            }
-            return map;
-        }
-        return new HashMap<>();
-    }
-
-    private Map<String, Object> buildExecutionPayload(WorkflowRun run) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("workflowRunId", run.getId().toString());
-        payload.put("workflowId", run.getWorkflowId().toString());
-        payload.put("userId", run.getUserId().toString());
-        return payload;
+        return Map.of();
     }
 }

@@ -16,6 +16,10 @@ import java.util.UUID;
 @IdClass(DomainMetricsQuery.DomainMetricsQueryId.class)
 public class DomainMetricsQuery {
 
+    /** Gmail/Yahoo bulk-sender thresholds — used as risk reference lines in the metrics dashboard. */
+    public static final double BOUNCE_RISK_THRESHOLD    = 0.04;  // 4%
+    public static final double COMPLAINT_RISK_THRESHOLD = 0.001; // 0.1%
+
     @Id
     @Column(name = "domainId", nullable = false)
     private UUID domainId;
@@ -27,8 +31,17 @@ public class DomainMetricsQuery {
     @Column(name = "sentCount", nullable = false)
     private long sentCount = 0;
 
-    @Column(name = "bounceCount", nullable = false)
-    private long bounceCount = 0;
+    /** Transient (soft) bounces — temporary delivery failures, e.g. mailbox full. */
+    @Column(name = "transientBounceCount", nullable = false)
+    private long transientBounceCount = 0;
+
+    /** Permanent (hard) bounces — undeliverable address, blacklisted domain. */
+    @Column(name = "permanentBounceCount", nullable = false)
+    private long permanentBounceCount = 0;
+
+    /** Bounce type could not be determined from provider response. */
+    @Column(name = "undeterminedBounceCount", nullable = false)
+    private long undeterminedBounceCount = 0;
 
     @Column(name = "spamCount", nullable = false)
     private long spamCount = 0;
@@ -50,15 +63,26 @@ public class DomainMetricsQuery {
     public long getSentCount() { return sentCount; }
     public void setSentCount(long sentCount) { this.sentCount = sentCount; }
 
-    public long getBounceCount() { return bounceCount; }
-    public void setBounceCount(long bounceCount) { this.bounceCount = bounceCount; }
+    public long getTransientBounceCount() { return transientBounceCount; }
+    public void setTransientBounceCount(long c) { this.transientBounceCount = c; }
+
+    public long getPermanentBounceCount() { return permanentBounceCount; }
+    public void setPermanentBounceCount(long c) { this.permanentBounceCount = c; }
+
+    public long getUndeterminedBounceCount() { return undeterminedBounceCount; }
+    public void setUndeterminedBounceCount(long c) { this.undeterminedBounceCount = c; }
+
+    /** Total bounces across all sub-types. */
+    public long getTotalBounceCount() { return transientBounceCount + permanentBounceCount + undeterminedBounceCount; }
 
     public long getSpamCount() { return spamCount; }
     public void setSpamCount(long spamCount) { this.spamCount = spamCount; }
 
-    public void incrementSent() { this.sentCount++; }
-    public void incrementBounce() { this.bounceCount++; }
-    public void incrementSpam() { this.spamCount++; }
+    public void incrementSent()                { this.sentCount++; }
+    public void incrementTransientBounce()     { this.transientBounceCount++; }
+    public void incrementPermanentBounce()     { this.permanentBounceCount++; }
+    public void incrementUndeterminedBounce()  { this.undeterminedBounceCount++; }
+    public void incrementSpam()                { this.spamCount++; }
 
     public static class DomainMetricsQueryId implements Serializable {
         private UUID domainId;

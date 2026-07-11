@@ -10,17 +10,25 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
 public class WorkflowActivationValidator {
 
     private final Steps_commandRepository stepsRepo;
+    private final WorkflowEdge_commandRepository edgeRepo;
     private final AppService appService;
 
-    public WorkflowActivationValidator(Steps_commandRepository stepsRepo, AppService appService) {
+    public WorkflowActivationValidator(Steps_commandRepository stepsRepo,
+                                       WorkflowEdge_commandRepository edgeRepo,
+                                       AppService appService) {
         this.stepsRepo = stepsRepo;
+        this.edgeRepo = edgeRepo;
         this.appService = appService;
     }
 
@@ -31,22 +39,52 @@ public class WorkflowActivationValidator {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Cannot activate a workflow with no steps. Add at least a trigger and one action.");
         }
-        if (steps.getFirst().getType() != StepType.TRIGGER) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "The first step must be a trigger.");
-        }
         long triggerCount = steps.stream().filter(s -> s.getType() == StepType.TRIGGER).count();
-        if (triggerCount > 1) {
+        if (triggerCount != 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A workflow can only have one trigger. Remove extra triggers before activating.");
-        }
-        if (steps.size() < 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A workflow needs at least a trigger and one action step.");
+                    "A workflow must have exactly one trigger.");
         }
 
-        for (int i = 0; i < steps.size(); i++) {
-            validateStep(steps.get(i), i);
+        Steps_command trigger = steps.stream()
+                .filter(s -> s.getType() == StepType.TRIGGER)
+                .findFirst()
+                .orElseThrow();
+        Map<UUID, Steps_command> stepsById = new HashMap<>();
+        for (Steps_command step : steps) stepsById.put(step.getId(), step);
+
+        List<WorkflowEdge_command> edges = edgeRepo.findByWorkflowId(workflowId);
+        if (edges.stream().anyMatch(edge -> edge.getTargetStepId().equals(trigger.getId()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "The trigger must be the root step and cannot have incoming connections.");
+        }
+
+        Map<UUID, List<UUID>> outgoing = new HashMap<>();
+        for (WorkflowEdge_command edge : edges) {
+            if (stepsById.containsKey(edge.getSourceStepId()) && stepsById.containsKey(edge.getTargetStepId())) {
+                outgoing.computeIfAbsent(edge.getSourceStepId(), ignored -> new ArrayList<>())
+                        .add(edge.getTargetStepId());
+            }
+        }
+        Set<UUID> reachable = new HashSet<>();
+        collectReachable(trigger.getId(), outgoing, reachable);
+        List<Steps_command> executableSteps = steps.stream()
+                .filter(step -> reachable.contains(step.getId()))
+                .toList();
+
+        if (executableSteps.stream().noneMatch(step -> step.getType() == StepType.ACTION)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Connect at least one action to the trigger before activating.");
+        }
+
+        for (int i = 0; i < executableSteps.size(); i++) {
+            validateStep(executableSteps.get(i), i);
+        }
+    }
+
+    private void collectReachable(UUID stepId, Map<UUID, List<UUID>> outgoing, Set<UUID> reachable) {
+        if (!reachable.add(stepId)) return;
+        for (UUID childId : outgoing.getOrDefault(stepId, List.of())) {
+            collectReachable(childId, outgoing, reachable);
         }
     }
 

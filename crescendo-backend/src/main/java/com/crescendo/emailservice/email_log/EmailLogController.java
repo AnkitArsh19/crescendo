@@ -1,6 +1,8 @@
 package com.crescendo.emailservice.email_log;
 
 import com.crescendo.security.ApiKeyAuthenticationFilter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
+import static com.crescendo.publicapi.PublicApiScopes.LOGS_READ;
+import static com.crescendo.publicapi.PublicApiScopes.require;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +26,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/v1/emails")
+@Tag(name = "Emails", description = "Public API for sending and tracking emails")
 public class EmailLogController {
 
     private final EmailLogRepository emailLogRepo;
@@ -31,6 +36,7 @@ public class EmailLogController {
     }
 
     @GetMapping
+    @Operation(summary = "List emails", operationId = "listEmails")
     public ResponseEntity<List<EmailLogDto.EmailLogResponse>> listEmails(
             Authentication auth,
             HttpServletRequest request) {
@@ -40,6 +46,7 @@ public class EmailLogController {
         UUID apiKeyId = resolveApiKeyId(request);
         List<EmailLog> logs;
         if (apiKeyId != null) {
+            require(auth, LOGS_READ);
             logs = emailLogRepo.findByAppKeyIdOrderByCreatedAtDesc(apiKeyId);
         } else {
             logs = emailLogRepo.findByUserIdOrderByCreatedAtDesc(userId);
@@ -49,9 +56,14 @@ public class EmailLogController {
     }
 
     @GetMapping("/{emailId}")
+    @Operation(summary = "Get email details", operationId = "getEmail")
     public ResponseEntity<EmailLogDto.EmailLogResponse> getEmail(
             @PathVariable UUID emailId,
+            HttpServletRequest request,
             Authentication auth) {
+        if (resolveApiKeyId(request) != null) {
+            require(auth, LOGS_READ);
+        }
         UUID userId = userId(auth);
         EmailLog log = emailLogRepo.findByIdAndUserId(emailId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email not found"));
@@ -59,9 +71,14 @@ public class EmailLogController {
     }
 
     @GetMapping("/search")
+    @Operation(summary = "Search emails", operationId = "searchEmails")
     public ResponseEntity<List<EmailLogDto.EmailLogResponse>> searchEmails(
             @RequestParam String q,
+            HttpServletRequest request,
             Authentication auth) {
+        if (resolveApiKeyId(request) != null) {
+            require(auth, LOGS_READ);
+        }
         if (q == null || q.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }

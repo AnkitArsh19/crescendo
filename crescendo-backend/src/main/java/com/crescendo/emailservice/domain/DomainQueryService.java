@@ -82,7 +82,9 @@ public class DomainQueryService {
                 base.createdAt(), base.verifiedAt(), base.spfVerified(), base.dkimVerified(),
                 base.dmarcVerified(), base.dailySendCap(), base.warmingStatus(), base.sendReadiness(),
                 base.allowedEmailType(), base.credentialSource(), base.emailProviderConnectionId(),
-                healthStatus, warnings
+                healthStatus, warnings,
+                base.trackingEnabled(), base.unsubscribeLogoUrl(), base.unsubscribePrimaryColor(),
+                base.unsubscribeCopy(), base.bimiLogoUrl(), base.bimiVmcUrl()
         );
     }
 }

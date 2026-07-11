@@ -4,6 +4,8 @@ import com.crescendo.logbook.LogbookDto;
 import com.crescendo.logbook.step_run.StepRunQueryService;
 import com.crescendo.logbook.workflow_run.WorkflowRunQueryService;
 import com.crescendo.logbook.workflow_run.WorkflowRunService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,22 +22,10 @@ import java.util.UUID;
 /**
  * Public developer API for polling workflow run status and step-by-step logs.
  * Accessible via API key (Bearer re_...) or JWT authentication.
- *
- * Workflow-scoped runs:
- *   GET    /api/v1/workflows/{workflowId}/runs                — list runs for a workflow
- *   GET    /api/v1/workflows/{workflowId}/runs/{runId}        — run detail with step runs
- *   POST   /api/v1/workflows/{workflowId}/runs/{runId}/cancel — cancel a pending/running run
- *   GET    /api/v1/workflows/{workflowId}/runs/stats          — aggregated run statistics
- *
- * Cross-workflow runs:
- *   GET    /api/v1/runs                                       — list all runs across workflows
- *
- * Step runs:
- *   GET    /api/v1/runs/{runId}/steps                         — list step runs for a run
- *   GET    /api/v1/runs/{runId}/steps/{stepRunId}             — step run detail
  */
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Workflow Runs", description = "Public API for polling execution status and logs")
 public class PublicRunController {
 
     private final WorkflowRunService runCommandService;
@@ -53,6 +43,7 @@ public class PublicRunController {
     // WORKFLOW-SCOPED RUNS
 
     @GetMapping("/workflows/{workflowId}/runs")
+    @Operation(summary = "List workflow runs", description = "Lists all execution runs for a specific workflow. Requires run:read scope.")
     public ResponseEntity<Page<LogbookDto.WorkflowRunSummaryResponse>> listRuns(
             @PathVariable UUID workflowId,
             @RequestParam(defaultValue = "0") int page,
@@ -65,6 +56,7 @@ public class PublicRunController {
     }
 
     @GetMapping("/workflows/{workflowId}/runs/{runId}")
+    @Operation(summary = "Get run details", description = "Gets execution details including step results for a specific run. Requires run:read scope.")
     public ResponseEntity<LogbookDto.WorkflowRunDetailResponse> getRunDetail(
             @PathVariable UUID workflowId,
             @PathVariable UUID runId,
@@ -74,6 +66,7 @@ public class PublicRunController {
     }
 
     @PostMapping("/workflows/{workflowId}/runs/{runId}/cancel")
+    @Operation(summary = "Cancel workflow run", description = "Cancels a pending or currently executing run. Requires run:cancel scope.")
     public ResponseEntity<Void> cancelRun(
             @PathVariable UUID workflowId,
             @PathVariable UUID runId,
@@ -84,6 +77,7 @@ public class PublicRunController {
     }
 
     @GetMapping("/workflows/{workflowId}/runs/stats")
+    @Operation(summary = "Get run statistics", description = "Gets aggregated execution statistics for a workflow. Requires run:read scope.")
     public ResponseEntity<LogbookDto.WorkflowRunStatsResponse> getRunStats(
             @PathVariable UUID workflowId,
             Authentication auth) {
@@ -94,6 +88,7 @@ public class PublicRunController {
     // CROSS-WORKFLOW RUNS
 
     @GetMapping("/runs")
+    @Operation(summary = "List all runs", description = "Lists execution runs across all workflows. Requires run:read scope.")
     public ResponseEntity<Page<LogbookDto.WorkflowRunSummaryResponse>> listAllRuns(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -107,6 +102,7 @@ public class PublicRunController {
     // STEP RUNS
 
     @GetMapping("/runs/{runId}/steps")
+    @Operation(summary = "List step runs", description = "Lists step execution details for a specific run. Requires run:read scope.")
     public ResponseEntity<List<LogbookDto.StepRunResponse>> listStepRuns(
             @PathVariable UUID runId,
             Authentication auth) {
@@ -115,6 +111,7 @@ public class PublicRunController {
     }
 
     @GetMapping("/runs/{runId}/steps/{stepRunId}")
+    @Operation(summary = "Get step run details", description = "Gets specific step execution details. Requires run:read scope.")
     public ResponseEntity<LogbookDto.StepRunResponse> getStepRun(
             @PathVariable UUID runId,
             @PathVariable UUID stepRunId,
@@ -122,5 +119,4 @@ public class PublicRunController {
         require(auth, RUN_READ);
         return ResponseEntity.ok(stepRunQueryService.getStepRun(userId(auth), stepRunId));
     }
-
 }

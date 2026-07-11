@@ -18,13 +18,18 @@ import java.util.UUID;
  *   CreateWorkflowRequest     — create a new workflow (name required, description optional)
  *   UpdateWorkflowRequest     — update workflow name and/or description
  *   WorkflowSummaryResponse   — list-view representation (no steps)
- *   WorkflowDetailResponse    — detail-view representation (includes steps)
+ *   WorkflowListResponse      — paginated list of workflows
+ *   WorkflowDetailResponse    — detail-view representation (includes steps + edges)
  *
  * Step operations:
  *   CreateStepRequest          — add a step to a workflow
  *   UpdateStepRequest          — modify an existing step
  *   ReorderStepRequest         — change a step's position in the workflow
  *   StepResponse               — read representation of a step
+ *
+ * Edge operations (DAG):
+ *   EdgeRequest                — a directed connection between two steps (uses clientIds during graph save)
+ *   EdgeResponse               — a saved edge returned from the backend
  */
 public class WorkflowDto {
 
@@ -40,6 +45,11 @@ public class WorkflowDto {
             @Size(max = 500) String description
     ) {}
 
+    public record WorkflowListResponse(
+            List<WorkflowSummaryResponse> data,
+            String nextCursor
+    ) {}
+
     //STEP REQUESTS
 
     public record CreateStepRequest(
@@ -48,8 +58,6 @@ public class WorkflowDto {
             @NotBlank String actionKey,
             @NotBlank String appKey,
             UUID connectionId,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -58,8 +66,6 @@ public class WorkflowDto {
             String actionKey,
             String appKey,
             UUID connectionId,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -83,7 +89,7 @@ public class WorkflowDto {
             Instant lastRunAt
     ) {}
 
-    /// Detail view used in single-workflow GET — includes ordered steps.
+    /// Detail view used in single-workflow GET — includes ordered steps and edges.
     public record WorkflowDetailResponse(
             String id,
             String name,
@@ -92,6 +98,7 @@ public class WorkflowDto {
             String status,
             Long revision,
             List<StepResponse> steps,
+            List<EdgeResponse> edges,
             Instant createdAt,
             Instant updatedAt,
             Instant lastRunAt
@@ -106,11 +113,28 @@ public class WorkflowDto {
             String appKey,
             String actionKey,
             UUID connectionId,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration,
             Instant createdAt,
             Instant updatedAt
+    ) {}
+
+    // EDGE DTOs
+
+    /// Edge request — uses clientIds so the frontend can reference nodes not yet persisted.
+    public record EdgeRequest(
+            @NotBlank String clientSourceId,
+            @NotBlank String clientTargetId,
+            String sourceHandle,
+            String targetHandle
+    ) {}
+
+    /// Edge response — returned by the backend after saving.
+    public record EdgeResponse(
+            String id,
+            String sourceStepId,
+            String targetStepId,
+            String sourceHandle,
+            String targetHandle
     ) {}
 
     // SHARED WORKFLOW RESPONSES (public — no connectionId)
@@ -132,8 +156,6 @@ public class WorkflowDto {
             BigDecimal order,
             String appKey,
             String actionKey,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -159,8 +181,6 @@ public class WorkflowDto {
             @NotBlank String actionKey,
             @NotBlank String appKey,
             BigDecimal order,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration
     ) {}
 
@@ -171,7 +191,8 @@ public class WorkflowDto {
             @Size(max = 500) String description,
             Long revision,
             List<GraphStepRequest> steps,
-            List<String> deletedStepIds
+            List<String> deletedStepIds,
+            List<EdgeRequest> edges
     ) {}
 
     public record GraphStepRequest(
@@ -182,15 +203,14 @@ public class WorkflowDto {
             @NotBlank String actionKey,
             @NotBlank String appKey,
             UUID connectionId,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration
     ) {}
 
     public record WorkflowGraphResponse(
             String id,
             Long revision,
-            List<GraphStepResponse> savedSteps
+            List<GraphStepResponse> savedSteps,
+            List<EdgeResponse> edges
     ) {}
 
     public record GraphStepResponse(

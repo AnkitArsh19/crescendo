@@ -154,14 +154,18 @@ export default function ApiKeysSettings() {
         )}
       </AnimatePresence>
 
-      <InlineConfirmModal
-        open={!!confirmRotate}
-        onClose={() => setConfirmRotate(null)}
-        title="Rotate API Key?"
-        description="The current key will remain valid for 24 hours. A new key will be generated immediately."
-        onConfirm={confirmRotateKey}
-        confirmText="Rotate Key"
-      />
+      {/* Rotate Confirmation */}
+      <AnimatePresence>
+        {confirmRotate && (
+          <InlineConfirmModal
+            title="Rotate API Key?"
+            message="The current key will remain valid for 24 hours. A new key will be generated immediately."
+            confirmLabel="Rotate Key"
+            onCancel={() => setConfirmRotate(null)}
+            onConfirm={confirmRotateKey}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -170,6 +174,8 @@ function CreateKeyModal({ onClose, onCreated }) {
   const scopeOptions = [
     'workflow:read', 'workflow:write', 'workflow:trigger', 'run:read', 'run:cancel',
     'connection:read', 'connection:write', 'email:send', 'app:read', 'ai:build',
+    'domain:read', 'domain:write', 'contact:read', 'contact:write',
+    'suppression:read', 'suppression:write', 'suppression:import'
   ];
   const [name, setName] = useState('');
   const [expiresInDays, setExpiresInDays] = useState(90);

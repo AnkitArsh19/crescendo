@@ -838,6 +838,36 @@
     color: var(--text-tertiary);
 }
 
+.template-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.template-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.template-status-badge.draft {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+}
+
+.template-status-badge.published {
+    background: rgba(52, 211, 153, 0.12);
+    color: #34d399;
+}
+
+
 /* ── Email Logs ──────────────────────────────────────────────────────── */
 
 .email-log-list {

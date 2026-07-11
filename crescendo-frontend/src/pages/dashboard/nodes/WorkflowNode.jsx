@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { HiOutlineLightningBolt, HiOutlineCog, HiCheck } from 'react-icons/hi';
+import { HiOutlineLightningBolt, HiOutlineCog, HiCheck, HiOutlineExclamation } from 'react-icons/hi';
 
 /**
  * WorkflowNode — unified node for both triggers and actions.
@@ -23,8 +23,11 @@ function WorkflowNode({ data, selected, type }) {
     const stepNumber = data.stepIndex != null ? data.stepIndex : null;
     const vertical = data._vertical || false;
 
-    // Only step 1 hides the IN handle — all other nodes get IN + OUT
-    const isFirstNode = data.stepIndex === 1;
+    const isOrphaned = !isTrigger && !!data.isOrphaned;
+
+    // The trigger is the sole entry point. Every action uses the same single
+    // input/output pair, so branching and merging stay visually predictable.
+    const hasInputHandle = !isTrigger;
 
     // Handle positions based on orientation
     const inPos = vertical ? Position.Top : Position.Left;
@@ -36,7 +39,7 @@ function WorkflowNode({ data, selected, type }) {
     }, []);
 
     return (
-        <div className={`wf-node ${isTrigger ? 'wf-node--trigger' : 'wf-node--action'} ${selected ? 'wf-node--selected' : ''} ${isConfigured ? 'wf-node--configured' : ''}`}>
+        <div className={`wf-node ${isTrigger ? 'wf-node--trigger' : 'wf-node--action'} ${selected ? 'wf-node--selected' : ''} ${isConfigured ? 'wf-node--configured' : ''} ${isOrphaned ? 'wf-node--orphaned' : ''} ${data._isNew ? 'wf-node--new' : ''}`}>
             {/* Step number badge */}
             {stepNumber != null && (
                 <span className="wf-node__step-badge">{stepNumber}</span>
@@ -74,8 +77,14 @@ function WorkflowNode({ data, selected, type }) {
                 </div>
             </div>
 
-            {/* Body — shows app name tag or hint */}
+            {/* Body — shows app name tag, hint, or orphan warning */}
             <div className="wf-node__body">
+                {isOrphaned && (
+                    <div className="wf-node__orphan-warning" title="This step is not connected to the trigger — it will be skipped during execution.">
+                        <HiOutlineExclamation className="wf-node__orphan-icon" />
+                        <span>Not connected to trigger</span>
+                    </div>
+                )}
                 {isConfigured ? (
                     <div className="wf-node__tags">
                         {appName && <span className="wf-node__tag">{appName}</span>}
@@ -87,7 +96,7 @@ function WorkflowNode({ data, selected, type }) {
             </div>
 
             {/* IN handle — only hidden for the first node (entry point) */}
-            {!isFirstNode && (
+            {hasInputHandle && (
                 <Handle
                     type="target"
                     position={inPos}

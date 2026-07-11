@@ -30,4 +30,27 @@ public final class EmailSendDto {
             String subject,
             String status
     ) {}
+
+    public record SendTemplatedRequest(
+            @NotBlank @Email String from,
+            @NotBlank @Email String to,
+            @jakarta.validation.constraints.NotNull UUID templateId,
+            Map<String, Object> templateData,
+            com.crescendo.enums.EmailType emailType
+    ) {}
+
+    public record SendBatchRequest(
+            @NotBlank @Email String from,
+            @NotBlank String subject,
+            String htmlBody,
+            String textBody,
+            UUID templateId,
+            Map<String, Object> templateData,
+            com.crescendo.enums.EmailType emailType,
+            @jakarta.validation.constraints.NotEmpty java.util.List<@Email String> to
+    ) {}
+
+    public record SendBatchResponse(
+            java.util.List<SendEmailResponse> emails
+    ) {}
 }

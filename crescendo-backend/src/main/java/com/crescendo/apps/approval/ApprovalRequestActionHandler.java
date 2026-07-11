@@ -19,14 +19,17 @@ public class ApprovalRequestActionHandler implements ActionHandler {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final String approvalBaseUrl;
+    private final com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService;
 
     public ApprovalRequestActionHandler(
-            @Value("${app.approval.base-url:${app.backend-url:http://localhost:8080}/public/approvals}") String approvalBaseUrl) {
+            @Value("${app.approval.base-url:${app.backend-url:http://localhost:8080}/public/approvals}") String approvalBaseUrl,
+            com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService) {
         this.approvalBaseUrl = trimTrailingSlash(approvalBaseUrl);
+        this.suspensionService = suspensionService;
     }
 
     @Override
-public ActionResult execute(ActionContext context) {
+    public ActionResult execute(ActionContext context) {
         Map<String, Object> output = new HashMap<>();
         if (context.inputData() != null) {
             output.putAll(context.inputData());
@@ -55,6 +58,8 @@ public ActionResult execute(ActionContext context) {
         output.put("successMessage", successMessage);
         output.put("approvalRequestedAt", Instant.now().toString());
         output.put("_approvalPending", true);
+
+        suspensionService.suspend(context.workflowRunId(), context.stepId(), "approval:" + token, token, null);
 
         throw new SuspendExecutionException(null, token, output, "Waiting for approval response");
     }

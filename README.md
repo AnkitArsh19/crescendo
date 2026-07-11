@@ -129,8 +129,27 @@ Crescendo includes a production-grade transactional email subsystem designed to 
 4. **The Send Decision Gate & Content Heuristics:** A centralized chokepoint (`SendEligibilityService`) that validates domain readiness, daily caps, and usage-type bindings. Additionally, a **draft-time heuristic engine** checks marketing emails for spam triggers (low text-to-image ratio, missing plain text, spam phrases) to protect users before they send.
 5. **Provider Abstraction & Idempotency:** An `EmailProvider` interface allows swapping delivery backends. It passes internal idempotency keys to the provider to prevent duplicate sends on network timeouts. It also automatically injects RFC 8058 compliant `List-Unsubscribe` headers and footers to all marketing emails to ensure absolute legal compliance.
 6. **Feedback Ingestion & Suppression Portability:** Integrated webhooks capture delivery, bounce, and spam complaint payloads, translating opaque provider errors into plain-language feedback. The platform distinguishes between *hard bounces* and *soft bounces*, and supports multipart CSV and JSON bulk imports so users can migrate suppression lists without friction.
+7. **Developer Experience & Tooling:** Crescendo offers zero-dependency native SDKs for Node.js (`@crescendo/email`) and Python (`crescendo`), along with auto-generated SDKs across six languages (Java, PHP, Go, Rust, Ruby, .NET) via an automated OpenAPI CI pipeline. It features a full CLI (`crescendo-cli`), an advanced React Email-powered `TemplateBlockEditor` for creating beautiful emails in the browser, and an MCP (Model Context Protocol) server for native AI-agent integration.
+8. **Domain Management & Claiming:** Robust domain control including tracking toggles, custom unsubscribe branding, BIMI record generation, and a secure Domain Claim mechanism to transfer ownership of verified domains between users without complex organizational structures.
 
 This email system is part of the core platform roadmap, not an afterthought.
+
+### 7. Public API Governance & Contract Stability
+
+To provide true Resend/Stripe-level parity, Crescendo exposes its email orchestration (Domains, Audiences, Suppressions) via a public REST API. The design deliberately prioritizes external developer experience and backwards compatibility:
+
+- **Isolated API Surface:** Public endpoints (`/api/v1/*`) are entirely decoupled from internal dashboard routes (`/settings/*`). This ensures internal UI changes never inadvertently break the public contract.
+- **Strict Idempotency:** A custom `IdempotencyFilter` caches `POST` responses for 24 hours. Crucially, if a client reuses an `Idempotency-Key` but changes the request payload, the API explicitly returns a `409 Conflict` (like Stripe) rather than silently serving the wrong cached response.
+- **Opaque Cursor Pagination:** All list endpoints return a `{ data: [...], has_more: boolean, next_cursor: string }` envelope. While the v1 implementation relies on simple offsets internally, the base64-encoded `next_cursor` hides this from the client. This allows the backend to transparently swap to O(1) keyset pagination as audience sizes scale to millions, with zero API breaking changes.
+- **Unified Error Shapes:** A scoped `@RestControllerAdvice` ensures any exception thrown in the `/api/v1/**` namespace is translated into a predictable `{ "type": "...", "message": "...", "status": 4xx }` shape.
+
+### 8. Universal SDK Ecosystem & Multi-Repo Architecture
+
+Great APIs require great client libraries. We provide an ecosystem of 8 officially supported SDKs, which are hosted in a separate dedicated repository: **[Crescendo SDKs (crescendo-sdk)](https://github.com/AnkitArsh19/crescendo-sdk)**.
+
+- **Hand-written DX:** For our most critical ecosystems (Node.js/TypeScript and Python), the SDKs are meticulously hand-crafted to provide a zero-dependency, highly idiomatic developer experience.
+- **Automated Generation at Scale:** For Java, Go, Rust, PHP, Ruby, and .NET, we utilize a fully automated `openapi-generator-cli` pipeline.
+- **Cross-Repo CI/CD:** To prevent the massive volume of auto-generated code (240,000+ lines) from bloating the backend git history, the architecture is strictly decoupled. When the Spring Boot backend CI detects an API surface change, it extracts the live `openapi.json` spec and securely pushes it directly into the `crescendo-sdk` repository. This triggers the SDK generation pipeline downstream, completely isolating the generated noise from the core engine while guaranteeing clients are always strictly up to date.
 
 ### Natural Language Workflow Builder (AI-ML)
 
@@ -206,11 +225,11 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - Reduces hardcoded action wiring in business flows
 - Makes new integration onboarding faster for contributors
 
-### 12. Directed Rooted Tree execution
+### 12. Directed Acyclic Graph (DAG) Execution
 
-- Workflow execution modeled as a rooted tree to support branching logic (e.g. If, Switch conditions)
-- Recursive sequence execution that isolates unexecuted branch state
-- Fine-grained suspend and resume execution that maintains sub-branch execution context
+- Workflow execution is modeled as a Directed Acyclic Graph (DAG) to natively support branching (If/Else, Switch) and merging logic.
+- Previously built on a strict "Directed Rooted Tree" model (where nodes could only have one parent), we migrated to a full edge-based DAG architecture to support convergence points (like `merge` actions) where multiple parallel branches meet.
+- The execution engine relies on Kahn's algorithm for topological sorting to ensure steps execute only after their dependencies are met, utilizing skip-aware JOIN semantics to handle conditional sub-branches elegantly.
 
 ### 13. Native Postgres Search & Async Batched Rollups
 

@@ -23,6 +23,9 @@ public interface DomainRepository extends JpaRepository<Domain, UUID> {
     @Query("SELECT d FROM Domain d WHERE d.domainName.value = :domainName AND d.status = :status")
     Optional<Domain> findByDomainNameAndStatus(String domainName, DomainStatus status);
 
+    @Query("SELECT d FROM Domain d WHERE d.domainName.value = :domainName")
+    List<Domain> findByDomainName(String domainName);
+
     List<Domain> findBySendReadiness(DomainSendReadiness readiness);
 
     boolean existsByEmailProviderConnectionId(UUID emailProviderConnectionId);

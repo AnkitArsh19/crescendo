@@ -20,6 +20,22 @@ public final class PublicApiScopes {
     public static final String EMAIL_SEND = "email:send";
     public static final String APP_READ = "app:read";
     public static final String AI_BUILD = "ai:build";
+    public static final String DOMAIN_READ = "domain:read";
+    public static final String DOMAIN_WRITE = "domain:write";
+    public static final String CONTACT_READ = "contact:read";
+    public static final String CONTACT_WRITE = "contact:write";
+    public static final String SUPPRESSION_READ = "suppression:read";
+    public static final String SUPPRESSION_WRITE = "suppression:write";
+    public static final String SUPPRESSION_IMPORT = "suppression:import";
+    public static final String TEMPLATE_READ = "template:read";
+    public static final String TEMPLATE_WRITE = "template:write";
+    public static final String WEBHOOK_READ = "webhook:read";
+    public static final String WEBHOOK_WRITE = "webhook:write";
+    public static final String LOGS_READ = "logs:read";
+    public static final String METRICS_READ = "metrics:read";
+    public static final String CUSTOM_EVENT_READ  = "customevent:read";
+    public static final String CUSTOM_EVENT_WRITE = "customevent:write";
+
 
     public static final Set<String> ALL = Set.of(
             WORKFLOW_READ,
@@ -31,8 +47,24 @@ public final class PublicApiScopes {
             CONNECTION_WRITE,
             EMAIL_SEND,
             APP_READ,
-            AI_BUILD
+            AI_BUILD,
+            DOMAIN_READ,
+            DOMAIN_WRITE,
+            CONTACT_READ,
+            CONTACT_WRITE,
+            SUPPRESSION_READ,
+            SUPPRESSION_WRITE,
+            SUPPRESSION_IMPORT,
+            TEMPLATE_READ,
+            TEMPLATE_WRITE,
+            WEBHOOK_READ,
+            WEBHOOK_WRITE,
+            LOGS_READ,
+            METRICS_READ,
+            CUSTOM_EVENT_READ,
+            CUSTOM_EVENT_WRITE
     );
+
 
     public static final List<String> DEFAULT_SCOPES = List.of(
             WORKFLOW_READ,

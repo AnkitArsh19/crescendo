@@ -5,8 +5,12 @@ import com.crescendo.enums.EmailType;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -17,10 +21,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "email_log",
     indexes = {
-        @Index(name = "idx_email_log_user", columnList = "userId"),
+        @Index(name = "idx_email_log_user",   columnList = "userId"),
         @Index(name = "idx_email_log_status", columnList = "status"),
-        @Index(name = "idx_email_log_sent_at", columnList = "sentAt"),
+        @Index(name = "idx_email_log_sent_at",columnList = "sentAt"),
         @Index(name = "idx_email_log_apikey", columnList = "appKeyId")
+        // GIN index for tags is created via native DDL:
+        // CREATE INDEX idx_email_log_tags ON email_log USING GIN (tags jsonb_path_ops);
     })
 public class EmailLog {
 
@@ -71,6 +77,16 @@ public class EmailLog {
 
     @Column(name = "clickCount", nullable = false)
     private int clickCount = 0;
+
+    /**
+     * Arbitrary key-value tags for filtering and correlation.
+     * Auto-populated by the workflow engine: workflowId, stepRunId.
+     * Stored as JSONB; add a GIN index for efficient tag-based queries:
+     *   CREATE INDEX idx_email_log_tags ON email_log USING GIN (tags jsonb_path_ops);
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "tags", columnDefinition = "jsonb")
+    private Map<String, String> tags = new HashMap<>();
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -208,4 +224,8 @@ public class EmailLog {
 
     public int getClickCount() { return clickCount; }
     public void setClickCount(int clickCount) { this.clickCount = clickCount; }
+
+    public Map<String, String> getTags() { return tags; }
+    public void setTags(Map<String, String> tags) { this.tags = tags != null ? tags : new HashMap<>(); }
+    public void addTag(String key, String value) { if (this.tags == null) this.tags = new HashMap<>(); this.tags.put(key, value); }
 }

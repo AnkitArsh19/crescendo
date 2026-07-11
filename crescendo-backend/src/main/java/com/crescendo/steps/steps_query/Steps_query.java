@@ -1,11 +1,7 @@
 package com.crescendo.steps.steps_query;
 
 import com.crescendo.enums.StepType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -20,8 +16,7 @@ import java.util.UUID;
 @Table(name = "steps_query",
     indexes = {
         @Index(name = "idx_steps_query_workflow", columnList = "workflowId"),
-        @Index(name = "idx_steps_query_order", columnList = "workflowId, step_order"),
-        @Index(name = "idx_steps_query_parent_branch", columnList = "workflowId, parentStepId, branchKey")
+        @Index(name = "idx_steps_query_order", columnList = "workflowId, step_order")
     })
 public class Steps_query {
 
@@ -58,12 +53,6 @@ public class Steps_query {
     @Column(name = "connectionId")
     private UUID connectionId;
 
-    @Column(name = "parentStepId")
-    private UUID parentStepId;
-
-    @Column(name = "branchKey", length = 120)
-    private String branchKey;
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "configuration", columnDefinition = "jsonb")
     private Map<String, Object> configuration;
@@ -71,7 +60,8 @@ public class Steps_query {
     public Steps_query() {
     }
 
-    public Steps_query(UUID id, UUID workflowId, String name, StepType type, BigDecimal order, String appKey, String actionKey, UUID connectionId, Map<String, Object> configuration) {
+    public Steps_query(UUID id, UUID workflowId, String name, StepType type, BigDecimal order,
+                       String appKey, String actionKey, UUID connectionId, Map<String, Object> configuration) {
         this.id = id;
         this.workflowId = workflowId;
         this.name = name;
@@ -83,97 +73,23 @@ public class Steps_query {
         this.configuration = configuration;
     }
 
-    public Steps_query(UUID id, UUID workflowId, String name, StepType type, BigDecimal order, String appKey, String actionKey, UUID connectionId, UUID parentStepId, String branchKey, Map<String, Object> configuration) {
-        this(id, workflowId, name, type, order, appKey, actionKey, connectionId, configuration);
-        this.parentStepId = parentStepId;
-        this.branchKey = branchKey;
-    }
+    public UUID getId() { return id; }
+    public UUID getWorkflowId() { return workflowId; }
+    public String getName() { return name; }
+    public StepType getType() { return type; }
+    public BigDecimal getOrder() { return order; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public String getAppKey() { return appKey; }
+    public String getActionKey() { return actionKey; }
+    public UUID getConnectionId() { return connectionId; }
+    public Map<String, Object> getConfiguration() { return configuration; }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getWorkflowId() {
-        return workflowId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public StepType getType() {
-        return type;
-    }
-
-    public BigDecimal getOrder() {
-        return order;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public String getAppKey() {
-        return appKey;
-    }
-
-    public String getActionKey() {
-        return actionKey;
-    }
-
-    public Map<String, Object> getConfiguration() {
-        return configuration;
-    }
-
-    public UUID getConnectionId() {
-        return connectionId;
-    }
-
-    public UUID getParentStepId() {
-        return parentStepId;
-    }
-
-    public String getBranchKey() {
-        return branchKey;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setType(StepType type) {
-        this.type = type;
-    }
-
-    public void setOrder(BigDecimal order) {
-        this.order = order;
-    }
-
-    public void setAppKey(String appKey) {
-        this.appKey = appKey;
-    }
-
-    public void setActionKey(String actionKey) {
-        this.actionKey = actionKey;
-    }
-
-    public void setConnectionId(UUID connectionId) {
-        this.connectionId = connectionId;
-    }
-
-    public void setParentStepId(UUID parentStepId) {
-        this.parentStepId = parentStepId;
-    }
-
-    public void setBranchKey(String branchKey) {
-        this.branchKey = branchKey;
-    }
-
-    public void setConfiguration(Map<String, Object> configuration) {
-        this.configuration = configuration;
-    }
+    public void setName(String name) { this.name = name; }
+    public void setType(StepType type) { this.type = type; }
+    public void setOrder(BigDecimal order) { this.order = order; }
+    public void setAppKey(String appKey) { this.appKey = appKey; }
+    public void setActionKey(String actionKey) { this.actionKey = actionKey; }
+    public void setConnectionId(UUID connectionId) { this.connectionId = connectionId; }
+    public void setConfiguration(Map<String, Object> configuration) { this.configuration = configuration; }
 }

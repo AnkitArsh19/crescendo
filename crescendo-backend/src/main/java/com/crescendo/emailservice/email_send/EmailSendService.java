@@ -5,7 +5,6 @@ import com.crescendo.emailservice.email_log.EmailLogRepository;
 import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_command;
 import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_commandRepository;
 import com.crescendo.emailservice.suppression.EmailSuppressionService;
-import com.crescendo.emailservice.tracking.TrackingInjector;
 import com.crescendo.enums.EmailStatus;
 import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.logbook.outbox.OutboxEvent;
@@ -58,6 +57,7 @@ public class EmailSendService {
         this.suppressionService = suppressionService;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public EmailSendDto.SendEmailResponse sendEmail(UUID userId, UUID apiKeyId,
                                                      EmailSendDto.SendEmailRequest req) {
         // 1. Resolve template
@@ -70,11 +70,16 @@ public class EmailSendService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "Template not found: " + req.templateId()));
 
+            if (template.getStatus() != com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_command.TemplateStatus.PUBLISHED || template.getPublishedVersionSnapshot() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template is not published: " + req.templateId());
+            }
+
             Map<String, Object> data = req.templateData() != null ? req.templateData() : Map.of();
-            subject = TemplateInterpolator.interpolate(template.getSubject(), data);
-            htmlBody = TemplateInterpolator.interpolate(template.getHTMLBody(), data);
-            textBody = template.getTextBody() != null
-                    ? TemplateInterpolator.interpolate(template.getTextBody(), data)
+            var snapshot = template.getPublishedVersionSnapshot();
+            subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
+            htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);
+            textBody = snapshot.textBody() != null
+                    ? TemplateInterpolator.interpolate(snapshot.textBody(), data)
                     : null;
         } else {
             subject = req.subject();
@@ -103,17 +108,7 @@ public class EmailSendService {
             return new EmailSendDto.SendEmailResponse(emailId, req.to(), req.from(), subject, EmailStatus.SUPPRESSED.name());
         }
 
-        // 4 & 5. Inject tracking into HTML (only when base URL is configured)
-        boolean trackingEnabled = trackingBaseUrl != null && !trackingBaseUrl.isBlank();
-        if (trackingEnabled && htmlBody != null) {
-            htmlBody = TrackingInjector.rewriteClickLinks(htmlBody, emailId, trackingBaseUrl);
-            htmlBody = TrackingInjector.injectOpenPixel(htmlBody, emailId, trackingBaseUrl);
-        }
-
-        // 6. Build List-Unsubscribe header
-        String listUnsubscribeHeader = trackingEnabled
-                ? "<" + trackingBaseUrl + "/unsubscribe?token=" + emailId + ">"
-                : null;
+        // 6. Build List-Unsubscribe header (moved to consumer)
 
         // 7. Save log as PENDING and enqueue
         EmailLog log = new EmailLog(emailId, userId, apiKeyId, req.from(), req.to(), subject, EmailStatus.PENDING, req.emailType());
@@ -129,7 +124,6 @@ public class EmailSendService {
         emailData.put("subject", subject);
         if (htmlBody != null) emailData.put("htmlBody", htmlBody);
         if (textBody != null) emailData.put("textBody", textBody);
-        if (listUnsubscribeHeader != null) emailData.put("listUnsubscribeHeader", listUnsubscribeHeader);
 
         Map<String, Object> outboxData = new HashMap<>(emailData);
         outboxRepo.save(new OutboxEvent(
@@ -141,5 +135,53 @@ public class EmailSendService {
         logger.info("[email-send] Enqueued email {} for user {} via API key {}", emailId, userId, apiKeyId);
 
         return new EmailSendDto.SendEmailResponse(emailId, req.to(), req.from(), subject, EmailStatus.PENDING.name());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public EmailSendDto.SendEmailResponse sendTemplated(UUID userId, UUID apiKeyId,
+                                                        EmailSendDto.SendTemplatedRequest req) {
+        EmailTemplate_command template = templateRepo.findByIdAndUserId(req.templateId(), userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Template not found: " + req.templateId()));
+
+        if (template.getStatus() != com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_command.TemplateStatus.PUBLISHED || template.getPublishedVersionSnapshot() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template is not published: " + req.templateId());
+        }
+
+        Map<String, Object> data = req.templateData() != null ? req.templateData() : Map.of();
+        var snapshot = template.getPublishedVersionSnapshot();
+        String subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
+        String htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);
+        String textBody = snapshot.textBody() != null
+                ? TemplateInterpolator.interpolate(snapshot.textBody(), data)
+                : null;
+
+        EmailSendDto.SendEmailRequest fullReq = new EmailSendDto.SendEmailRequest(
+                req.from(), req.to(), subject, htmlBody, textBody, req.templateId(), req.templateData(), 
+                req.emailType() != null ? req.emailType() : com.crescendo.enums.EmailType.TRANSACTIONAL
+        );
+        return sendEmail(userId, apiKeyId, fullReq);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public EmailSendDto.SendBatchResponse sendBatch(UUID userId, UUID apiKeyId,
+                                                    EmailSendDto.SendBatchRequest req) {
+        if (req.to() == null || req.to().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one recipient is required");
+        }
+        if (req.to().size() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum batch size is 100");
+        }
+
+        java.util.List<EmailSendDto.SendEmailResponse> responses = new java.util.ArrayList<>();
+        for (String to : req.to()) {
+            EmailSendDto.SendEmailRequest singleReq = new EmailSendDto.SendEmailRequest(
+                    req.from(), to, req.subject(), req.htmlBody(), req.textBody(), 
+                    req.templateId(), req.templateData(), 
+                    req.emailType() != null ? req.emailType() : com.crescendo.enums.EmailType.TRANSACTIONAL
+            );
+            responses.add(sendEmail(userId, apiKeyId, singleReq));
+        }
+        return new EmailSendDto.SendBatchResponse(responses);
     }
 }

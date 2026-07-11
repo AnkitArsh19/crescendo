@@ -106,43 +106,4 @@ public class SuppressionController {
             return ResponseEntity.badRequest().build();
         }
     }
-
-    /**
-     * Public one-click unsubscribe page. The token is the emailId (UUID) we sent
-     * in the List-Unsubscribe header, so no auth mechanism or guessable address is
-     * exposed in the URL.
-     */
-    @GetMapping(value = "/unsubscribe", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> unsubscribe(@RequestParam String token) {
-        try {
-            UUID emailId = UUID.fromString(token);
-            boolean found = suppressionService.unsubscribeByEmailLogId(emailId);
-            return ResponseEntity.ok(found ? CONFIRMED_HTML : NOT_FOUND_HTML);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("<p>Invalid unsubscribe link.</p>");
-        }
-    }
-
-    private static final String CONFIRMED_HTML = """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head><meta charset="UTF-8"><title>Unsubscribed</title>
-            <style>body{font-family:sans-serif;text-align:center;padding:80px;color:#222}
-            h2{color:#16a34a}</style></head>
-            <body>
-              <h2>You have been unsubscribed</h2>
-              <p>You will no longer receive emails from this sender.</p>
-            </body></html>
-            """;
-
-    private static final String NOT_FOUND_HTML = """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head><meta charset="UTF-8"><title>Link Not Found</title>
-            <style>body{font-family:sans-serif;text-align:center;padding:80px;color:#222}</style></head>
-            <body>
-              <h2>Link not found</h2>
-              <p>This unsubscribe link may have already been used or is invalid.</p>
-            </body></html>
-            """;
 }

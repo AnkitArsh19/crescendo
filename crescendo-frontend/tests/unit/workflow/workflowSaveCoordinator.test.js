@@ -11,6 +11,9 @@ vi.mock('../../../src/api/appCatalogApi', () => ({
 }));
 
 vi.mock('../../../src/workflow/workflowGraphSerializer', () => ({
+  orderedNodesFromGraph: vi.fn((nodes) => nodes),
+  validateGraphForSave: vi.fn(() => null),
+  edgesToPayload: vi.fn(() => []),
   validateNodeForSave: vi.fn(() => null), // Always valid
   nodeToStepPayload: vi.fn((node) => ({
     backendId: node.data?._backendId || null,
@@ -48,11 +51,13 @@ describe('workflowSaveCoordinator', () => {
     };
 
     nodes = [
-      { id: 'node-1', data: { appKey: 'testApp' } }
+      { id: 'node-1', type: 'trigger', data: { appKey: 'testApp' } },
+      { id: 'node-2', type: 'action', data: { appKey: 'testApp' } },
     ];
 
     callbacks = {
       getNodes: vi.fn(() => nodes),
+      getEdges: vi.fn(() => [{ id: 'edge-1', source: 'node-1', target: 'node-2' }]),
       getWorkflowId: vi.fn(() => 'test-workflow-id'),
       getWorkflowName: vi.fn(() => 'Test Workflow'),
       getCatalogApps: vi.fn(() => []),

@@ -32,40 +32,40 @@ public class SendEligibilityService {
         // 1. Suppression Check
         boolean isSuppressed = suppressionRepository.findByUserIdAndNormalizedEmail(userId, toAddress.toLowerCase().trim()).isPresent();
         if (isSuppressed) {
-            return new EligibilityResult(false, "SUPPRESSED", "Recipient is suppressed.");
+            return new EligibilityResult(false, "SUPPRESSED", "Recipient is suppressed.", null);
         }
 
         // Extract exact domain from fromAddress
         int atIndex = fromAddress.indexOf('@');
         if (atIndex == -1 || atIndex == fromAddress.length() - 1) {
-            return new EligibilityResult(false, "FAILED", "Invalid fromAddress format.");
+            return new EligibilityResult(false, "FAILED", "Invalid fromAddress format.", null);
         }
         String domainName = fromAddress.substring(atIndex + 1);
 
         // 2. Domain Readiness Check
         Domain domain = domainRepository.findByDomainNameAndUserId(domainName, userId).orElse(null);
         if (domain == null) {
-            return new EligibilityResult(false, "FAILED", "Domain not registered.");
+            return new EligibilityResult(false, "FAILED", "Domain not registered.", null);
         }
         
         if (domain.getSendReadiness() != DomainSendReadiness.READY) {
-            return new EligibilityResult(false, "FAILED", "Domain is not fully authenticated and READY.");
+            return new EligibilityResult(false, "FAILED", "Domain is not fully authenticated and READY.", null);
         }
 
         // 3. Rate Limit Check
         Instant startOfDay = Instant.now().truncatedTo(ChronoUnit.DAYS);
         long todaySends = emailLogRepository.countTotalSendsSince(userId, domainName, startOfDay);
         if (todaySends >= domain.getDailySendCap()) {
-            return new EligibilityResult(false, "FAILED", "Domain daily send cap reached.");
+            return new EligibilityResult(false, "FAILED", "Domain daily send cap reached.", null);
         }
 
         // 4. Usage-Type Enforcement
         if (emailType == EmailType.MARKETING && domain.getAllowedEmailType() == AllowedEmailType.TRANSACTIONAL_ONLY) {
-            return new EligibilityResult(false, "FAILED", "Domain is restricted to TRANSACTIONAL_ONLY but email is MARKETING.");
+            return new EligibilityResult(false, "FAILED", "Domain is restricted to TRANSACTIONAL_ONLY but email is MARKETING.", null);
         }
 
-        return new EligibilityResult(true, "OK", null);
+        return new EligibilityResult(true, "OK", null, domain);
     }
 
-    public record EligibilityResult(boolean eligible, String suggestedStatus, String reason) {}
+    public record EligibilityResult(boolean eligible, String suggestedStatus, String reason, Domain domain) {}
 }
