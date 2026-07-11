@@ -47,6 +47,7 @@ public class Workflow_commandService {
     private final DomainEventPublisher eventPublisher;
     private final Steps_commandService stepsCommandService;
     private final WorkflowActivationValidator activationValidator;
+    private final WorkflowEdgeService edgeService;
 
     public Workflow_commandService(Workflow_commandRepository workflowRepo,
                                    Workflow_queryRepository workflowQueryRepo,
@@ -54,7 +55,8 @@ public class Workflow_commandService {
                                    AccessControlService accessControl,
                                    DomainEventPublisher eventPublisher,
                                    Steps_commandService stepsCommandService,
-                                   WorkflowActivationValidator activationValidator) {
+                                   WorkflowActivationValidator activationValidator,
+                                   WorkflowEdgeService edgeService) {
         this.workflowRepo = workflowRepo;
         this.workflowQueryRepo = workflowQueryRepo;
         this.userRepo = userRepo;
@@ -62,6 +64,7 @@ public class Workflow_commandService {
         this.eventPublisher = eventPublisher;
         this.stepsCommandService = stepsCommandService;
         this.activationValidator = activationValidator;
+        this.edgeService = edgeService;
     }
 
     // WORKFLOW CRUD
@@ -173,30 +176,27 @@ public class Workflow_commandService {
             }
         }
 
-        // 2. Process upserts
+        // 2. Process upserts — build clientId → backendId map for edge resolution
         List<WorkflowDto.GraphStepResponse> savedSteps = new java.util.ArrayList<>();
+        Map<String, String> clientToBackend = new java.util.HashMap<>();
         if (req.steps() != null) {
-            // We'll trust the order in the list as the intended order.
             for (int i = 0; i < req.steps().size(); i++) {
                 WorkflowDto.GraphStepRequest stepReq = req.steps().get(i);
                 if (stepReq.backendId() != null && !stepReq.backendId().isBlank()) {
-                    // Update existing
+                    // Update existing step
                     stepsCommandService.updateStep(userId, workflowId, UUID.fromString(stepReq.backendId()),
                             new WorkflowDto.UpdateStepRequest(
                                     stepReq.name(),
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
-                                    stepReq.parentStepId(),
-                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
-                    stepsCommandService.setStepTreePosition(userId, workflowId, UUID.fromString(stepReq.backendId()),
-                            stepReq.parentStepId(), stepReq.branchKey());
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
+                    clientToBackend.put(stepReq.clientId(), stepReq.backendId());
                 } else {
-                    // Create new
+                    // Create new step
                     WorkflowDto.StepResponse created = stepsCommandService.addStep(userId, workflowId,
                             new WorkflowDto.CreateStepRequest(
                                     stepReq.name(),
@@ -204,21 +204,15 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
-                                    stepReq.parentStepId(),
-                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), created.id()));
+                    clientToBackend.put(stepReq.clientId(), created.id());
                 }
             }
 
-            // 3. Reorder steps to match the requested order
-            // Since we iterate through them in order, we can simply reorder them
-            // wait, we can just assign new order values.
-            // Since `addStep` assigns maxOrder + 1, and `updateStep` doesn't change order,
-            // we should reorder them if they are not in the correct order.
-            // A simple approach: use reorderStep for each step in the list.
+            // Reorder steps to match the canvas order (layout hint — not used by engine)
             for (int i = 0; i < savedSteps.size(); i++) {
                 WorkflowDto.GraphStepResponse saved = savedSteps.get(i);
                 stepsCommandService.reorderStep(userId, workflowId, UUID.fromString(saved.backendId()),
@@ -226,9 +220,20 @@ public class Workflow_commandService {
             }
         }
 
+        // 3. Replace edges atomically (delete all, re-insert from request)
+        List<WorkflowEdgeService.EdgeSpec> edgeSpecs = resolveEdgeSpecs(req.edges(), clientToBackend);
+        edgeService.replaceAllEdges(workflowId, edgeSpecs);
+
         publishWorkflow(workflow, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
 
-        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps);
+        // Load saved edges to return to frontend
+        List<WorkflowDto.EdgeResponse> savedEdges = edgeSpecs.stream()
+                .map(s -> new WorkflowDto.EdgeResponse(null,
+                        s.sourceStepId().toString(), s.targetStepId().toString(),
+                        s.sourceHandle(), s.targetHandle()))
+                .toList();
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps, savedEdges);
     }
 
     /**
@@ -239,14 +244,13 @@ public class Workflow_commandService {
     public void deleteWorkflow(UUID userId, UUID workflowId) {
         Workflow_command workflow = findOwnedWorkflow(userId, workflowId);
 
-        // Deactivate before deletion
         workflow.setActive(false);
         workflow.setDeletedAt(Instant.now());
 
-        // Cascade soft-delete steps + conditions + query projections
+        // Cascade: delete all edges, then soft-delete all steps + conditions + query projections
+        edgeService.deleteAllEdgesForWorkflow(workflowId);
         stepsCommandService.softDeleteAllForWorkflow(workflowId);
 
-        // Remove workflow from query database
         workflowQueryRepo.deleteById(workflowId);
 
         eventPublisher.publish(new WorkflowDeletedEvent(workflowId));
@@ -332,6 +336,7 @@ public class Workflow_commandService {
         }
 
         List<WorkflowDto.GraphStepResponse> savedSteps = new java.util.ArrayList<>();
+        Map<String, String> clientToBackend = new java.util.HashMap<>();
         if (req.steps() != null) {
             for (int i = 0; i < req.steps().size(); i++) {
                 WorkflowDto.GraphStepRequest stepReq = req.steps().get(i);
@@ -342,14 +347,11 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
-                                    stepReq.parentStepId(),
-                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
-                    stepsCommandService.setGuestStepTreePosition(guestSessionId, workflowId, UUID.fromString(stepReq.backendId()),
-                            stepReq.parentStepId(), stepReq.branchKey());
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
+                    clientToBackend.put(stepReq.clientId(), stepReq.backendId());
                 } else {
                     WorkflowDto.StepResponse created = stepsCommandService.addGuestStep(guestSessionId, workflowId,
                             new WorkflowDto.CreateStepRequest(
@@ -358,12 +360,11 @@ public class Workflow_commandService {
                                     stepReq.actionKey(),
                                     stepReq.appKey(),
                                     stepReq.connectionId(),
-                                    stepReq.parentStepId(),
-                                    stepReq.branchKey(),
                                     stepReq.configuration()
                             )
                     );
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), created.id()));
+                    clientToBackend.put(stepReq.clientId(), created.id());
                 }
             }
 
@@ -374,9 +375,19 @@ public class Workflow_commandService {
             }
         }
 
+        // Replace edges atomically
+        List<WorkflowEdgeService.EdgeSpec> edgeSpecs = resolveEdgeSpecs(req.edges(), clientToBackend);
+        edgeService.replaceAllEdges(workflowId, edgeSpecs);
+
         publishWorkflow(workflow, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
 
-        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps);
+        List<WorkflowDto.EdgeResponse> savedEdges = edgeSpecs.stream()
+                .map(s -> new WorkflowDto.EdgeResponse(null,
+                        s.sourceStepId().toString(), s.targetStepId().toString(),
+                        s.sourceHandle(), s.targetHandle()))
+                .toList();
+
+        return new WorkflowDto.WorkflowGraphResponse(workflowId.toString(), workflow.getVersion(), savedSteps, savedEdges);
     }
 
     private void publishWorkflow(Workflow_command workflow, WorkflowDto.UpdateWorkflowRequest req) {
@@ -404,16 +415,38 @@ public class Workflow_commandService {
         workflow.setActive(false);
         workflow.setDeletedAt(Instant.now());
 
-        // Cascade soft-delete steps + conditions + query projections
+        edgeService.deleteAllEdgesForWorkflow(workflowId);
         stepsCommandService.softDeleteAllForWorkflow(workflowId);
 
-        // Remove workflow from query database
         workflowQueryRepo.deleteById(workflowId);
 
         eventPublisher.publish(new WorkflowDeletedEvent(workflowId));
     }
 
     // QUERY-SIDE PROJECTION
+
+    /**
+     * Resolves edge requests from client IDs to backend UUIDs and builds EdgeSpec list.
+     * If edges is null or empty, returns empty list.
+     */
+    private List<WorkflowEdgeService.EdgeSpec> resolveEdgeSpecs(
+            List<WorkflowDto.EdgeRequest> edges, Map<String, String> clientToBackend) {
+        if (edges == null || edges.isEmpty()) return List.of();
+        List<WorkflowEdgeService.EdgeSpec> specs = new java.util.ArrayList<>();
+        for (WorkflowDto.EdgeRequest edge : edges) {
+            String srcId = clientToBackend.getOrDefault(edge.clientSourceId(), edge.clientSourceId());
+            String tgtId = clientToBackend.getOrDefault(edge.clientTargetId(), edge.clientTargetId());
+            try {
+                specs.add(new WorkflowEdgeService.EdgeSpec(
+                        UUID.fromString(srcId), UUID.fromString(tgtId),
+                        edge.sourceHandle(), edge.targetHandle()));
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Edge references unknown step: " + edge.clientSourceId() + " → " + edge.clientTargetId());
+            }
+        }
+        return specs;
+    }
 
     /// Creates or replaces the query-side workflow row from the command-side entity.
     private void projectWorkflowToQuery(Workflow_command workflow) {
@@ -504,8 +537,6 @@ public class Workflow_commandService {
                                 stepReq.actionKey(),
                                 stepReq.appKey(),
                                 null, // no connectionId — user connects later
-                                null,
-                                null,
                                 stepReq.configuration()
                         ));
                 UUID createdId = UUID.fromString(created.id());
@@ -515,15 +546,14 @@ public class Workflow_commandService {
                 }
             }
 
-            for (int i = 0; i < req.steps().size(); i++) {
-                WorkflowDto.ImportStepRequest stepReq = req.steps().get(i);
-                UUID parentStepId = null;
-                if (stepReq.parentStepId() != null) {
-                    parentStepId = importedStepIdsBySourceId.get(stepReq.parentStepId().toString());
-                }
-                if (parentStepId != null || stepReq.branchKey() != null) {
-                    stepsCommandService.setStepTreePosition(userId, workflowId, importedStepIdsByIndex.get(i),
-                            parentStepId, stepReq.branchKey());
+            // Re-create edges as a linear chain based on import order
+            for (int i = 1; i < req.steps().size(); i++) {
+                UUID sourceId = importedStepIdsByIndex.get(i - 1);
+                UUID targetId = importedStepIdsByIndex.get(i);
+                if (sourceId != null && targetId != null) {
+                    try {
+                        edgeService.createEdge(workflowId, sourceId, targetId, null, null);
+                    } catch (Exception ignored) { /* skip if duplicate or cycle */ }
                 }
             }
         }

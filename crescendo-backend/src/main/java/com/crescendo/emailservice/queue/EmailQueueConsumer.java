@@ -3,7 +3,7 @@ package com.crescendo.emailservice.queue;
 import com.crescendo.emailservice.email_log.EmailLog;
 import com.crescendo.emailservice.email_log.EmailLogRepository;
 import com.crescendo.emailservice.provider.EmailMessage;
-import com.crescendo.emailservice.provider.EmailProvider;
+import com.crescendo.emailservice.provider.EmailProviderResolver;
 import com.crescendo.emailservice.provider.EmailSendResult;
 import com.crescendo.enums.EmailStatus;
 import com.crescendo.config.RedisStreamConfig;
@@ -41,21 +41,27 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
     private static final Logger logger = LoggerFactory.getLogger(EmailQueueConsumer.class);
 
     private final EmailLogRepository emailLogRepo;
-    private final EmailProvider emailProvider;
+    private final EmailProviderResolver emailProviderResolver;
     private final DistributedLockService lockService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final com.crescendo.emailservice.email_send.SendEligibilityService eligibilityService;
+    private final com.crescendo.emailservice.suppression.EmailSuppressionService suppressionService;
+    private final String trackingBaseUrl;
 
     public EmailQueueConsumer(EmailLogRepository emailLogRepo,
-                              EmailProvider emailProvider,
+                              EmailProviderResolver emailProviderResolver,
                               DistributedLockService lockService,
                               RedisTemplate<String, Object> redisTemplate,
-                              com.crescendo.emailservice.email_send.SendEligibilityService eligibilityService) {
+                              com.crescendo.emailservice.email_send.SendEligibilityService eligibilityService,
+                              com.crescendo.emailservice.suppression.EmailSuppressionService suppressionService,
+                              @org.springframework.beans.factory.annotation.Value("${app.tracking.base-url:}") String trackingBaseUrl) {
         this.emailLogRepo = emailLogRepo;
-        this.emailProvider = emailProvider;
+        this.emailProviderResolver = emailProviderResolver;
         this.lockService = lockService;
         this.redisTemplate = redisTemplate;
         this.eligibilityService = eligibilityService;
+        this.suppressionService = suppressionService;
+        this.trackingBaseUrl = trackingBaseUrl;
     }
 
     @Override
@@ -120,8 +126,21 @@ public class EmailQueueConsumer implements StreamListener<String, MapRecord<Stri
             return;
         }
 
-        EmailMessage emailMessage = new EmailMessage(to, from, subject, htmlBody, textBody, listUnsubscribeHeader, log.getEmailType(), log.getId().toString());
+        boolean trackingEnabled = eligibility.domain() != null && eligibility.domain().isTrackingEnabled()
+                && trackingBaseUrl != null && !trackingBaseUrl.isBlank();
 
+        if (trackingEnabled && htmlBody != null) {
+            htmlBody = com.crescendo.emailservice.tracking.TrackingInjector.rewriteClickLinks(htmlBody, id, trackingBaseUrl);
+            htmlBody = com.crescendo.emailservice.tracking.TrackingInjector.injectOpenPixel(htmlBody, id, trackingBaseUrl);
+        }
+
+        String secureToken = suppressionService.generateUnsubscribeToken(id);
+        String finalUnsubscribeHeader = listUnsubscribeHeader != null ? listUnsubscribeHeader :
+                (trackingEnabled ? "<" + trackingBaseUrl + "/unsubscribe?token=" + secureToken + ">" : null);
+
+        EmailMessage emailMessage = new EmailMessage(to, from, subject, htmlBody, textBody, finalUnsubscribeHeader, log.getEmailType(), log.getId().toString());
+
+        com.crescendo.emailservice.provider.EmailProvider emailProvider = emailProviderResolver.resolve(eligibility.domain());
         try {
             EmailSendResult result = emailProvider.send(emailMessage);
 

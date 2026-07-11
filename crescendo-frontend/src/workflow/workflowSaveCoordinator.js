@@ -34,7 +34,13 @@
 
 import { workflowClient } from '../api/workflowClient';
 import { appCatalogApi } from '../api/appCatalogApi';
-import { validateNodeForSave, nodeToStepPayload } from './workflowGraphSerializer';
+import {
+    edgesToPayload,
+    orderedNodesFromGraph,
+    validateGraphForSave,
+    validateNodeForSave,
+    nodeToStepPayload,
+} from './workflowGraphSerializer';
 import useToastStore from '../store/toastStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,6 +53,7 @@ import useToastStore from '../store/toastStore';
  *
  * @param {{
  *   getNodes:           () => Array,       // current React Flow nodes
+ *   getEdges:           () => Array,       // current React Flow edges
  *   getWorkflowId:      () => string|null, // current persisted workflow ID
  *   getWorkflowName:    () => string,
  *   getCatalogApps:     () => Array,
@@ -63,6 +70,7 @@ import useToastStore from '../store/toastStore';
 export function createSaveCoordinator(callbacks) {
     const {
         getNodes,
+        getEdges = () => [],
         getWorkflowId,
         getWorkflowName,
         getCatalogApps,
@@ -88,12 +96,19 @@ export function createSaveCoordinator(callbacks) {
         const missing = [...new Set(
             nodes.map((n) => n.data?.appKey).filter((k) => k && !appDetailsByKey[k])
         )];
-        await Promise.all(missing.map((key) =>
-            appCatalogApi.get(key).then((detail) => {
-                // The callback mutates the parent's appDetailsByKey ref
+        const loaded = await Promise.all(missing.map(async (key) => {
+            try {
+                const detail = await appCatalogApi.get(key);
                 callbacks.onAppDetailLoaded?.(key, detail);
-            }).catch(() => {})
-        ));
+                return [key, detail];
+            } catch {
+                return null;
+            }
+        }));
+        return {
+            ...appDetailsByKey,
+            ...Object.fromEntries(loaded.filter(Boolean)),
+        };
     }
 
 
@@ -133,9 +148,10 @@ export function createSaveCoordinator(callbacks) {
 
         onSaveStart();
 
-        const nodes = getNodes();
+        const nodes = orderedNodesFromGraph(getNodes(), getEdges());
+        const edges = getEdges();
         const catalogApps = getCatalogApps();
-        const appDetailsByKey = getAppDetailsByKey();
+        let appDetailsByKey = getAppDetailsByKey();
 
         // --- Structural validation ---
         if (nodes.length === 0) {
@@ -143,6 +159,18 @@ export function createSaveCoordinator(callbacks) {
             onSaveError(msg);
             useToastStore.getState().addToast(msg, 'error');
             return null;
+        }
+        const graphError = validateGraphForSave(nodes, edges);
+        if (graphError) {
+            onSaveError(graphError);
+            useToastStore.getState().addToast(graphError, 'error');
+            return null;
+        }
+
+        try {
+            appDetailsByKey = await ensureAppDetails(nodes);
+        } catch {
+            // Backend validation remains authoritative if a catalog detail is unavailable.
         }
 
         for (let idx = 0; idx < nodes.length; idx++) {
@@ -157,8 +185,6 @@ export function createSaveCoordinator(callbacks) {
         // --- Execute save ---
         inflightPromise = (async () => {
             try {
-                await ensureAppDetails(nodes);
-
                 const id = await ensureWorkflow(nodes);
                 if (!id) return null;
 
@@ -179,10 +205,13 @@ export function createSaveCoordinator(callbacks) {
                     };
                 }).filter(Boolean);
 
+                const edgePayloads = edgesToPayload(edges);
+
                 const resp = await workflowClient.updateGraph(id, {
                     name: (getWorkflowName() || '').trim() || 'Untitled',
                     revision: serverRevision,
                     steps,
+                    edges: edgePayloads,
                     deletedStepIds: [...deletedBackendIds]
                 });
 
@@ -223,19 +252,21 @@ export function createSaveCoordinator(callbacks) {
     // ─────────────────────────────────────────────────────────────────────────
 
     async function _runAutoSave() {
-        const nodes = getNodes();
-        // Find the longest configured prefix
+        const nodes = orderedNodesFromGraph(getNodes(), getEdges());
+        const edges = getEdges();
         const catalogApps = getCatalogApps();
-        const appDetailsByKey = getAppDetailsByKey();
+        let appDetailsByKey = getAppDetailsByKey();
 
-        const configuredNodes = [];
-        for (let i = 0; i < nodes.length; i++) {
-            const err = validateNodeForSave(nodes[i], i, catalogApps, appDetailsByKey);
-            if (err) break;
-            configuredNodes.push(nodes[i]);
+        // Graph save replaces every server edge. A partial autosave would delete
+        // connections that happen to touch an unfinished node, so it is all-or-nothing.
+        if (validateGraphForSave(nodes, edges)) return;
+        try {
+            appDetailsByKey = await ensureAppDetails(nodes);
+        } catch {
+            return;
         }
-
-        if (configuredNodes.length === 0 && !getWorkflowId()) return;
+        if (nodes.some((node, index) =>
+            validateNodeForSave(node, index, catalogApps, appDetailsByKey))) return;
 
         if (inflightPromise) {
             // Another save in flight — queue one follow-up
@@ -245,11 +276,10 @@ export function createSaveCoordinator(callbacks) {
 
         inflightPromise = (async () => {
             try {
-                await ensureAppDetails(configuredNodes);
-                const id = await ensureWorkflow(configuredNodes);
+                const id = await ensureWorkflow(nodes);
                 if (!id) return;
 
-                const steps = configuredNodes.map(node => {
+                const steps = nodes.map(node => {
                     const payload = nodeToStepPayload(node, appDetailsByKey);
                     if (!payload) return null;
                     return {
@@ -264,17 +294,20 @@ export function createSaveCoordinator(callbacks) {
                     };
                 }).filter(Boolean);
 
+                const edgePayloads = edgesToPayload(edges);
+
                 const { serverRevision } = draft.getDelta();
 
                 const resp = await workflowClient.updateGraph(id, {
                     name: (getWorkflowName() || '').trim() || 'Untitled',
                     revision: serverRevision,
                     steps,
+                    edges: edgePayloads,
                     deletedStepIds: [] // IMPORTANT: autosave NEVER deletes steps.
                 });
 
                 for (const saved of resp.savedSteps) {
-                    const node = configuredNodes.find(n => n.id === saved.clientId);
+                    const node = nodes.find(n => n.id === saved.clientId);
                     if (node && !node.data._backendId) {
                         onNodeSaved(saved.clientId, saved.backendId);
                     }

@@ -1,65 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
 import { 
     HiOutlineBookOpen, 
     HiOutlineLightningBolt, 
     HiOutlineViewGrid, 
     HiOutlineCode,
     HiOutlineMenu,
-    HiOutlineX
+    HiOutlineX,
+    HiOutlineShieldCheck
 } from 'react-icons/hi';
 import './DocsPage.css';
 
-// Import raw markdown
-import gettingStartedMd from './content/getting-started.md?raw';
-import naturalLanguageMd from './content/natural-language.md?raw';
-import appsIntegrationsMd from './content/apps-integrations.md?raw';
-import publicApiMd from './content/public-api.md?raw';
+import DocsSearch from './DocsSearch';
+import MarkdownRenderer from './MarkdownRenderer';
+import OpenApiRenderer from './OpenApiRenderer';
 
-const SECTIONS = [
-    { id: 'getting-started', title: 'Getting Started', icon: <HiOutlineBookOpen />, content: gettingStartedMd },
-    { id: 'natural-language', title: 'AI Builder', icon: <HiOutlineLightningBolt />, content: naturalLanguageMd },
-    { id: 'apps-integrations', title: 'Apps & Integrations', icon: <HiOutlineViewGrid />, content: appsIntegrationsMd },
-    { id: 'public-api', title: 'Public API', icon: <HiOutlineCode />, content: publicApiMd },
+// Import raw markdown content
+import gettingStartedMd from './content/getting-started.md?raw';
+import authenticationMd from './content/authentication.md?raw';
+import governanceMd from './content/api-governance.md?raw';
+
+// We index this for Fuse.js
+const CONTENT_INDEX = [
+    { title: 'Getting Started', path: '/docs', contentSnippet: gettingStartedMd },
+    { title: 'Authentication', path: '/docs/authentication', contentSnippet: authenticationMd },
+    { title: 'API Governance', path: '/docs/api-governance', contentSnippet: governanceMd },
+    { title: 'Workflows API', path: '/docs/api/workflows', contentSnippet: 'Manage and trigger workflows programmatically.' },
+    { title: 'Connections API', path: '/docs/api/connections', contentSnippet: 'Manage third-party app credentials.' },
+    { title: 'Domains API', path: '/docs/api/domains', contentSnippet: 'Manage email sender domains and DNS.' },
+    { title: 'Audiences API', path: '/docs/api/audiences', contentSnippet: 'Manage contacts and audiences.' },
+    { title: 'Suppressions API', path: '/docs/api/suppressions', contentSnippet: 'Manage suppressed emails and bounces.' },
 ];
 
-function MarkdownRenderer({ content }) {
-    return (
-        <motion.div 
-            className="docs-markdown-body"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-        >
-            <ReactMarkdown
-                components={{
-                    blockquote: ({ node, ...props }) => {
-                        const str = props.children[1]?.props?.children?.[0] || '';
-                        let type = 'info';
-                        let cleanStr = str;
-                        if (str.includes('[!TIP]')) { type = 'tip'; cleanStr = str.replace('[!TIP]', ''); }
-                        if (str.includes('[!WARNING]')) { type = 'warning'; cleanStr = str.replace('[!WARNING]', ''); }
-                        if (str.includes('[!CAUTION]')) { type = 'caution'; cleanStr = str.replace('[!CAUTION]', ''); }
-                        if (str.includes('[!IMPORTANT]')) { type = 'important'; cleanStr = str.replace('[!IMPORTANT]', ''); }
-                        if (str.includes('[!NOTE]')) { type = 'note'; cleanStr = str.replace('[!NOTE]', ''); }
-                        
-                        return (
-                            <div className={`docs-alert docs-alert-${type}`}>
-                                {cleanStr}
-                                {props.children.slice(2)}
-                            </div>
-                        );
-                    }
-                }}
-            >
-                {content}
-            </ReactMarkdown>
-        </motion.div>
-    );
-}
+const NAV_GROUPS = [
+    {
+        title: 'Guides',
+        items: [
+            { id: '', title: 'Getting Started', icon: <HiOutlineBookOpen />, type: 'md', content: gettingStartedMd },
+            { id: 'authentication', title: 'Authentication', icon: <HiOutlineShieldCheck />, type: 'md', content: authenticationMd },
+            { id: 'api-governance', title: 'API Governance', icon: <HiOutlineLightningBolt />, type: 'md', content: governanceMd },
+        ]
+    },
+    {
+        title: 'API Reference',
+        items: [
+            { id: 'api/workflows', title: 'Workflows', icon: <HiOutlineCode />, type: 'openapi', tag: 'Workflows' },
+            { id: 'api/runs', title: 'Workflow Runs', icon: <HiOutlineCode />, type: 'openapi', tag: 'Workflow Runs' },
+            { id: 'api/connections', title: 'Connections', icon: <HiOutlineCode />, type: 'openapi', tag: 'Connections' },
+            { id: 'api/domains', title: 'Domains', icon: <HiOutlineCode />, type: 'openapi', tag: 'Domains' },
+            { id: 'api/audiences', title: 'Audiences (Contacts)', icon: <HiOutlineCode />, type: 'openapi', tag: 'Audiences (Contacts)' },
+            { id: 'api/suppressions', title: 'Suppressions', icon: <HiOutlineCode />, type: 'openapi', tag: 'Suppressions' },
+            { id: 'api/apps', title: 'App Catalog', icon: <HiOutlineViewGrid />, type: 'openapi', tag: 'App Catalog' },
+        ]
+    }
+];
 
 function DocsSidebar({ isOpen, setIsOpen }) {
     const location = useLocation();
@@ -76,46 +70,67 @@ function DocsSidebar({ isOpen, setIsOpen }) {
                         <HiOutlineX />
                     </button>
                 </div>
+                
                 <nav className="docs-sidebar-nav">
-                    {SECTIONS.map(section => {
-                        const path = `/docs/${section.id}`;
-                        // If it's subdomain, path is just `/${section.id}`
-                        // But since we use React Router, we just let it handle relative or exact paths.
-                        // Actually, wait, if we are on docs.crescendo.com, the base path is `/`. If we are on crescendo.com/docs, the base is `/docs`.
-                        // Let's use relative links if possible or infer from base.
-                        // For now we'll hardcode based on location.
-                        const isSubdomain = window.location.hostname.startsWith('docs.');
-                        const linkPath = isSubdomain ? `/${section.id}` : `/docs/${section.id}`;
-                        const isActive = location.pathname.includes(section.id);
-                        
-                        return (
-                            <Link 
-                                key={section.id} 
-                                to={linkPath} 
-                                className={`docs-nav-link ${isActive ? 'active' : ''}`}
-                                onClick={() => setIsOpen(false)}
-                            >
-                                {section.icon} {section.title}
-                            </Link>
-                        );
-                    })}
+                    {NAV_GROUPS.map((group, idx) => (
+                        <div key={idx} className="docs-nav-group">
+                            <div className="docs-nav-group-title">{group.title}</div>
+                            {group.items.map(item => {
+                                const linkPath = `/docs${item.id ? '/' + item.id : ''}`;
+                                const isActive = location.pathname === linkPath || (item.id === '' && location.pathname === '/docs/');
+                                
+                                return (
+                                    <Link 
+                                        key={item.id} 
+                                        to={linkPath} 
+                                        className={`docs-nav-link ${isActive ? 'active' : ''}`}
+                                        onClick={() => setIsOpen(false)}
+                                    >
+                                        {item.icon} {item.title}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ))}
                 </nav>
             </aside>
         </>
     );
 }
 
+// Extract h2 and h3 from markdown for TOC
+function extractToc(markdown) {
+    if (!markdown) return [];
+    const lines = markdown.split('\n');
+    const toc = [];
+    lines.forEach(line => {
+        const h2 = line.match(/^##\s+(.+)$/);
+        if (h2) toc.push({ level: 2, text: h2[1] });
+        const h3 = line.match(/^###\s+(.+)$/);
+        if (h3) toc.push({ level: 3, text: h3[1] });
+    });
+    return toc;
+}
+
 export default function DocsPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
 
-    // Check if we're on the root path to redirect to the first section
-    const isSubdomain = window.location.hostname.startsWith('docs.');
-    const rootPath = isSubdomain ? '/' : '/docs';
-    
+    // Determine current content for TOC
+    let currentToc = [];
+    for (const group of NAV_GROUPS) {
+        for (const item of group.items) {
+            const linkPath = `/docs${item.id ? '/' + item.id : ''}`;
+            if (location.pathname === linkPath && item.type === 'md') {
+                currentToc = extractToc(item.content);
+            }
+        }
+    }
+
     return (
         <div className="docs-layout">
             <DocsSidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+            
             <div className="docs-main">
                 <header className="docs-header-mobile">
                     <button className="docs-menu-btn" onClick={() => setSidebarOpen(true)}>
@@ -123,21 +138,57 @@ export default function DocsPage() {
                     </button>
                     <div className="docs-logo-mobile">Crescendo Docs</div>
                 </header>
+
+                <div className="docs-topbar">
+                    <DocsSearch contentIndex={CONTENT_INDEX} />
+                </div>
                 
-                <main className="docs-content-container">
-                    <AnimatePresence mode="wait">
+                <div className="docs-content-wrapper">
+                    <main className="docs-markdown-body">
                         <Routes location={location} key={location.pathname}>
-                            <Route path="/" element={<Navigate to="getting-started" replace />} />
-                            {SECTIONS.map(sec => (
-                                <Route 
-                                    key={sec.id} 
-                                    path={sec.id} 
-                                    element={<MarkdownRenderer content={sec.content} />} 
-                                />
-                            ))}
+                            {NAV_GROUPS.flatMap(g => g.items).map(sec => {
+                                const path = sec.id;
+                                if (sec.type === 'md') {
+                                    return (
+                                        <Route 
+                                            key={sec.id} 
+                                            path={path} 
+                                            element={<MarkdownRenderer content={sec.content} />} 
+                                        />
+                                    );
+                                } else {
+                                    return (
+                                        <Route 
+                                            key={sec.id} 
+                                            path={path} 
+                                            element={<OpenApiRenderer targetTag={sec.tag} />} 
+                                        />
+                                    );
+                                }
+                            })}
                         </Routes>
-                    </AnimatePresence>
-                </main>
+                    </main>
+
+                    {/* Right Table of Contents */}
+                    <aside className="docs-toc">
+                        <h4>On this page</h4>
+                        {currentToc.length > 0 ? (
+                            <ul>
+                                {currentToc.map((item, idx) => (
+                                    <li key={idx} style={{ paddingLeft: item.level === 3 ? '1rem' : '0' }}>
+                                        <a href={`#${item.text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                                            {item.text}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                Overview
+                            </p>
+                        )}
+                    </aside>
+                </div>
             </div>
         </div>
     );

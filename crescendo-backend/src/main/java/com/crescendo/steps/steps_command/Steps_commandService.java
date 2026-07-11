@@ -16,6 +16,7 @@ import com.crescendo.steps.steps_query.Steps_queryRepository;
 import com.crescendo.workflow.WorkflowDto;
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
+import com.crescendo.workflow.workflow_command.WorkflowEdgeService;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,7 @@ public class Steps_commandService {
     private final AccessControlService accessControl;
     private final DomainEventPublisher eventPublisher;
     private final StepDefinitionValidator stepValidator;
+    private final WorkflowEdgeService edgeService;
 
     public Steps_commandService(Steps_commandRepository stepRepo,
                                 Steps_queryRepository stepQueryRepo,
@@ -57,7 +59,8 @@ public class Steps_commandService {
                                 StepConditionRepository conditionRepo,
                                 AccessControlService accessControl,
                                 DomainEventPublisher eventPublisher,
-                                StepDefinitionValidator stepValidator) {
+                                StepDefinitionValidator stepValidator,
+                                WorkflowEdgeService edgeService) {
         this.stepRepo = stepRepo;
         this.stepQueryRepo = stepQueryRepo;
         this.workflowRepo = workflowRepo;
@@ -66,6 +69,7 @@ public class Steps_commandService {
         this.accessControl = accessControl;
         this.eventPublisher = eventPublisher;
         this.stepValidator = stepValidator;
+        this.edgeService = edgeService;
     }
 
     // =====================================================================
@@ -263,7 +267,6 @@ public class Steps_commandService {
         Steps_command step = new Steps_command(
                 stepId, workflow, req.name(), req.type(), order.value(),
                 req.actionKey(), req.appKey(), req.connectionId(), req.configuration());
-        applyTreePosition(step, workflowId, req.parentStepId(), req.branchKey());
         stepRepo.save(step);
 
         projectStepToQuery(step, workflowId);
@@ -286,9 +289,6 @@ public class Steps_commandService {
         if (req.actionKey() != null) step.setActionKey(req.actionKey());
         if (req.appKey() != null) step.setAppKey(req.appKey());
         if (req.connectionId() != null) step.setConnectionId(req.connectionId());
-        if (req.parentStepId() != null || req.branchKey() != null) {
-            applyTreePosition(step, step.getWorkflow().getId(), req.parentStepId(), req.branchKey());
-        }
         if (req.configuration() != null) step.setConfiguration(req.configuration());
         eventPublisher.publish(new StepUpdatedEvent(step.getId(), step.getWorkflow().getId()));
     }
@@ -300,35 +300,8 @@ public class Steps_commandService {
             if (req.appKey() != null) queryStep.setAppKey(req.appKey());
             if (req.actionKey() != null) queryStep.setActionKey(req.actionKey());
             if (req.connectionId() != null) queryStep.setConnectionId(req.connectionId());
-            if (req.parentStepId() != null || req.branchKey() != null) {
-                queryStep.setParentStepId(req.parentStepId());
-                queryStep.setBranchKey(normalizeBranchKey(req.branchKey()));
-            }
             if (req.configuration() != null) queryStep.setConfiguration(req.configuration());
             // Persist the mutation — without this the query DB stays stale
-            stepQueryRepo.save(queryStep);
-        }
-    }
-
-    public void setStepTreePosition(UUID userId, UUID workflowId, UUID stepId, UUID parentStepId, String branchKey) {
-        findOwnedWorkflow(userId, workflowId);
-        Steps_command step = findActiveStep(stepId, workflowId);
-        applyTreePosition(step, workflowId, parentStepId, branchKey);
-        syncTreePositionToQuery(stepId, parentStepId, branchKey);
-    }
-
-    public void setGuestStepTreePosition(String guestSessionId, UUID workflowId, UUID stepId, UUID parentStepId, String branchKey) {
-        findGuestOwnedWorkflow(guestSessionId, workflowId);
-        Steps_command step = findActiveStep(stepId, workflowId);
-        applyTreePosition(step, workflowId, parentStepId, branchKey);
-        syncTreePositionToQuery(stepId, parentStepId, branchKey);
-    }
-
-    private void syncTreePositionToQuery(UUID stepId, UUID parentStepId, String branchKey) {
-        Steps_query queryStep = stepQueryRepo.findById(stepId).orElse(null);
-        if (queryStep != null) {
-            queryStep.setParentStepId(parentStepId);
-            queryStep.setBranchKey(normalizeBranchKey(branchKey));
             stepQueryRepo.save(queryStep);
         }
     }
@@ -342,6 +315,8 @@ public class Steps_commandService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found in this workflow");
         }
         conditionRepo.deleteByStepId(stepId);
+        // Cascade: remove all edges connected to this step
+        edgeService.deleteEdgesForStep(stepId);
         step.setDeletedAt(Instant.now());
         stepQueryRepo.deleteById(stepId);
         updateQueryStepCount(workflowId);
@@ -398,7 +373,7 @@ public class Steps_commandService {
         Steps_query q = new Steps_query(
                 step.getId(), workflowId, step.getName(), step.getType(),
                 step.getOrder(), step.getAppKey(), step.getActionKey(), step.getConnectionId(),
-                step.getParentStepId(), step.getBranchKey(), step.getConfiguration());
+                step.getConfiguration());
         stepQueryRepo.save(q);
     }
 
@@ -455,28 +430,6 @@ public class Steps_commandService {
         return existing.getLast().getOrderVO().nextWhole();
     }
 
-    private void applyTreePosition(Steps_command step, UUID workflowId, UUID parentStepId, String branchKey) {
-        if (parentStepId != null) {
-            if (parentStepId.equals(step.getId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A step cannot be its own parent");
-            }
-            Steps_command parent = findActiveStep(parentStepId, workflowId);
-            if (parent.getType() == StepType.TRIGGER) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trigger steps cannot own branches");
-            }
-        }
-        String normalizedBranchKey = normalizeBranchKey(branchKey);
-        if (parentStepId == null && normalizedBranchKey != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "branchKey requires a parentStepId");
-        }
-        step.setParentStepId(parentStepId);
-        step.setBranchKey(normalizedBranchKey);
-    }
-
-    private String normalizeBranchKey(String branchKey) {
-        return branchKey == null || branchKey.isBlank() ? null : branchKey.trim();
-    }
-
     // =====================================================================
     // DTO MAPPERS
     // =====================================================================
@@ -490,8 +443,6 @@ public class Steps_commandService {
                 step.getAppKey(),
                 step.getActionKey(),
                 step.getConnectionId(),
-                step.getParentStepId(),
-                step.getBranchKey(),
                 step.getConfiguration(),
                 step.getCreatedAt(),
                 step.getUpdatedAt()

@@ -21,6 +21,7 @@ import java.util.List;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
 
+@io.swagger.v3.oas.annotations.Hidden
 @RestController
 @RequestMapping("/settings/developer-apps")
 @PreAuthorize("@accessControl.isFullAccess()")

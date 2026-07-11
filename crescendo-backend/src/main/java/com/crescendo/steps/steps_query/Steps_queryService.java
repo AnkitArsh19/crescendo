@@ -3,8 +3,6 @@ package com.crescendo.steps.steps_query;
 import com.crescendo.steps.StepsDto;
 import com.crescendo.steps.step_condition.StepCondition;
 import com.crescendo.steps.step_condition.StepConditionRepository;
-import com.crescendo.steps.steps_command.Steps_command;
-import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.workflow.WorkflowDto;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
 import org.springframework.http.HttpStatus;
@@ -27,16 +25,13 @@ import java.util.UUID;
 public class Steps_queryService {
 
     private final Steps_queryRepository stepQueryRepo;
-    private final Steps_commandRepository stepCommandRepo;
     private final Workflow_queryRepository workflowQueryRepo;
     private final StepConditionRepository conditionRepo;
 
     public Steps_queryService(Steps_queryRepository stepQueryRepo,
-                              Steps_commandRepository stepCommandRepo,
                               Workflow_queryRepository workflowQueryRepo,
                               StepConditionRepository conditionRepo) {
         this.stepQueryRepo = stepQueryRepo;
-        this.stepCommandRepo = stepCommandRepo;
         this.workflowQueryRepo = workflowQueryRepo;
         this.conditionRepo = conditionRepo;
     }
@@ -126,10 +121,10 @@ public class Steps_queryService {
     // =====================================================================
 
     private StepsDto.StepDetailResponse loadStepDetail(UUID stepId, UUID workflowId) {
-        Steps_command step = stepCommandRepo.findByIdAndDeletedAtIsNull(stepId)
+        Steps_query step = stepQueryRepo.findById(stepId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found"));
 
-        if (!step.getWorkflow().getId().equals(workflowId)) {
+        if (!step.getWorkflowId().equals(workflowId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found in this workflow");
         }
 
@@ -143,8 +138,6 @@ public class Steps_queryService {
                 step.getAppKey(),
                 step.getActionKey(),
                 step.getConnectionId(),
-                step.getParentStepId(),
-                step.getBranchKey(),
                 step.getConfiguration(),
                 conditions,
                 step.getCreatedAt(),
@@ -170,10 +163,10 @@ public class Steps_queryService {
     }
 
     private void verifyStepBelongsToWorkflow(UUID stepId, UUID workflowId) {
-        Steps_command step = stepCommandRepo.findByIdAndDeletedAtIsNull(stepId)
+        Steps_query step = stepQueryRepo.findById(stepId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found"));
 
-        if (!step.getWorkflow().getId().equals(workflowId)) {
+        if (!step.getWorkflowId().equals(workflowId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Step not found in this workflow");
         }
     }
@@ -191,8 +184,6 @@ public class Steps_queryService {
                 step.getAppKey(),
                 step.getActionKey(),
                 step.getConnectionId(),
-                step.getParentStepId(),
-                step.getBranchKey(),
                 step.getConfiguration(),
                 step.getCreatedAt(),
                 step.getUpdatedAt()

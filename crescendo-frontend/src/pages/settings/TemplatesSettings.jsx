@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineTemplate, HiOutlineX, HiOutlineShieldCheck } from 'react-icons/hi';
-import { templatesApi, emailsApi } from '../../api/emailServiceApi';
+import {
+  HiOutlinePlus, HiOutlineTrash, HiOutlinePencil,
+  HiOutlineTemplate, HiOutlineX, HiOutlineUpload,
+  HiOutlineBadgeCheck, HiOutlineDocumentText,
+} from 'react-icons/hi';
+import { templatesApi } from '../../api/emailServiceApi';
+import TemplateBlockEditor from './TemplateBlockEditor';
 import './Settings.css';
 
 export default function TemplatesSettings() {
@@ -9,6 +14,8 @@ export default function TemplatesSettings() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null | 'new' | template object
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [cloneModal, setCloneModal] = useState(false);
+  const [broadcastId, setBroadcastId] = useState('');
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -27,16 +34,34 @@ export default function TemplatesSettings() {
     setDeleteTarget(null);
   };
 
+  const handleCloneFromBroadcast = async () => {
+    if (!broadcastId.trim()) return;
+    try {
+      const saved = await templatesApi.cloneFromBroadcast(broadcastId.trim());
+      setTemplates(prev => [saved, ...prev]);
+      setCloneModal(false);
+      setBroadcastId('');
+      setEditing(saved);
+    } catch { /* */ }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div className="settings-section-header">
         <div>
           <h2 className="settings-section-title">Email Templates</h2>
-          <p className="settings-section-desc">Create reusable templates with <code>{'{{variable}}'}</code> interpolation.</p>
+          <p className="settings-section-desc">
+            Create reusable templates with <code>{'{{variable}}'}</code> interpolation. Draft templates must be published before use.
+          </p>
         </div>
-        <button className="settings-btn-primary" onClick={() => setEditing('new')}>
-          <HiOutlinePlus /> Create Template
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="settings-btn-secondary" onClick={() => setCloneModal(true)}>
+            <HiOutlineUpload /> Clone from Broadcast
+          </button>
+          <button className="settings-btn-primary" onClick={() => setEditing('new')}>
+            <HiOutlinePlus /> New Template
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -44,7 +69,7 @@ export default function TemplatesSettings() {
       ) : templates.length === 0 ? (
         <div className="settings-empty">
           <HiOutlineTemplate className="settings-empty-icon" />
-          <p>No templates yet. Create one to streamline your emails.</p>
+          <p>No templates yet. Create one to build beautiful, reusable email content.</p>
         </div>
       ) : (
         <div className="template-grid">
@@ -58,27 +83,34 @@ export default function TemplatesSettings() {
                 </div>
               </div>
               <p className="template-subject">{t.subject}</p>
-              <span className="template-date">
-                Updated {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString()}
-              </span>
+              <div className="template-card-footer">
+                <span className={`template-status-badge ${t.status === 'PUBLISHED' ? 'published' : 'draft'}`}>
+                  {t.status === 'PUBLISHED' ? <HiOutlineBadgeCheck /> : <HiOutlineDocumentText />}
+                  {t.status}
+                </span>
+                <span className="template-date">
+                  {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </motion.div>
           ))}
         </div>
       )}
 
-      {/* Template Editor Modal */}
+      {/* Full-screen Template Block Editor */}
       <AnimatePresence>
         {editing && (
-          <TemplateEditorModal
+          <TemplateBlockEditor
             template={editing === 'new' ? null : editing}
             onClose={() => setEditing(null)}
             onSaved={(saved) => {
               if (editing === 'new') {
-                setTemplates([...templates, saved]);
+                setTemplates(prev => [saved, ...prev]);
               } else {
-                setTemplates(templates.map((t) => t.id === saved.id ? saved : t));
+                setTemplates(prev => prev.map((t) => t.id === saved.id ? saved : t));
               }
-              setEditing(null);
+              // Keep the editor open with the updated saved template (for publish flow)
+              setEditing(saved);
             }}
           />
         )}
@@ -90,7 +122,7 @@ export default function TemplatesSettings() {
           <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteTarget(null)}>
             <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()}>
               <div className="conn-modal-header"><h2>Delete Template</h2></div>
-              <div className="conn-modal-body"><p style={{ color: 'var(--text-secondary)' }}>This template will be permanently removed.</p></div>
+              <div className="conn-modal-body"><p style={{ color: 'var(--text-secondary)' }}>This template will be permanently removed. Emails already sent are unaffected.</p></div>
               <div className="conn-modal-footer">
                 <button className="conn-btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
                 <button className="conn-btn-danger" onClick={handleDelete}>Delete</button>
@@ -99,112 +131,31 @@ export default function TemplatesSettings() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
-  );
-}
 
-function TemplateEditorModal({ template, onClose, onSaved }) {
-  const [name, setName] = useState(template?.name || '');
-  const [subject, setSubject] = useState(template?.subject || '');
-  const [htmlBody, setHtmlBody] = useState(template?.htmlBody || '');
-  const [textBody, setTextBody] = useState(template?.textBody || '');
-  const [submitting, setSubmitting] = useState(false);
-  const [checkingSpam, setCheckingSpam] = useState(false);
-  const [spamResult, setSpamResult] = useState(null);
-  const [err, setErr] = useState('');
-
-  const isNew = !template;
-
-  const handleCheckSpam = async () => {
-    if (!subject && !htmlBody && !textBody) return;
-    setCheckingSpam(true);
-    setSpamResult(null);
-    try {
-      const result = await emailsApi.checkSpamScore({ subject, htmlBody, textBody });
-      setSpamResult(result);
-    } catch (error) {
-      setErr(error.response?.data?.message || 'Failed to check spam score');
-    } finally { setCheckingSpam(false); }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim() || !subject.trim()) { setErr('Name and subject are required'); return; }
-    setSubmitting(true); setErr('');
-    try {
-      const payload = { name: name.trim(), subject: subject.trim(), htmlBody, textBody };
-      const saved = isNew
-        ? await templatesApi.create(payload)
-        : await templatesApi.update(template.id, payload);
-      onSaved(saved);
-    } catch (error) {
-      setErr(error.response?.data?.message || 'Failed to save template');
-    } finally { setSubmitting(false); }
-  };
-
-  return (
-    <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.form
-        className="conn-modal"
-        style={{ maxWidth: 600 }}
-        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={handleSubmit}
-      >
-        <div className="conn-modal-header">
-          <h2>{isNew ? 'Create Template' : 'Edit Template'}</h2>
-          <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
-        </div>
-        <div className="conn-modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {err && <div className="conn-modal-error">{err}</div>}
-          
-          {spamResult && (
-            <div className={`settings-alert ${spamResult.warnings?.length > 0 ? 'settings-alert-warning' : 'settings-alert-success'}`}>
-              <strong>Spam Check Result (Score: {spamResult.score})</strong>
-              {spamResult.warnings?.length > 0 ? (
-                <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
-                  {spamResult.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
-              ) : (
-                <p style={{ margin: '4px 0 0 0' }}>Looks good! No major spam triggers detected.</p>
-              )}
-            </div>
-          )}
-
-          <label className="conn-form-label">
-            Template Name
-            <input className="conn-form-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Welcome Email" />
-          </label>
-
-          <label className="conn-form-label">
-            Subject
-            <input className="conn-form-input" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Welcome to {{appName}}" />
-          </label>
-
-          <label className="conn-form-label">
-            HTML Body
-            <textarea className="conn-form-textarea" value={htmlBody} onChange={(e) => setHtmlBody(e.target.value)} placeholder="<h1>Hello {{name}}</h1>" rows={6} />
-          </label>
-
-          <label className="conn-form-label">
-            Text Body
-            <textarea className="conn-form-textarea" value={textBody} onChange={(e) => setTextBody(e.target.value)} placeholder="Hello {{name}}, welcome aboard!" rows={3} />
-          </label>
-        </div>
-        <div className="conn-modal-footer" style={{ justifyContent: 'space-between' }}>
-          <div>
-            <button type="button" className="settings-btn-secondary" onClick={handleCheckSpam} disabled={checkingSpam}>
-              <HiOutlineShieldCheck /> {checkingSpam ? 'Checking...' : 'Check Spam Score'}
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" className="conn-btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="conn-btn-primary" disabled={submitting}>
-              {submitting ? 'Saving...' : (isNew ? 'Create' : 'Save Changes')}
-            </button>
-          </div>
-        </div>
-      </motion.form>
+      {/* Clone from Broadcast modal */}
+      <AnimatePresence>
+        {cloneModal && (
+          <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCloneModal(false)}>
+            <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()}>
+              <div className="conn-modal-header">
+                <h2>Clone from Broadcast</h2>
+                <button className="conn-modal-close" onClick={() => setCloneModal(false)}><HiOutlineX /></button>
+              </div>
+              <div className="conn-modal-body">
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Paste the ID of an existing broadcast to copy its HTML content into a new draft template.</p>
+                <label className="conn-form-label">
+                  Broadcast ID
+                  <input className="conn-form-input" value={broadcastId} onChange={e => setBroadcastId(e.target.value)} placeholder="e.g., 3fa85f64-5717-4562-b3fc-2c963f66afa6" />
+                </label>
+              </div>
+              <div className="conn-modal-footer">
+                <button className="conn-btn-secondary" onClick={() => setCloneModal(false)}>Cancel</button>
+                <button className="conn-btn-primary" onClick={handleCloneFromBroadcast} disabled={!broadcastId.trim()}>Clone</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

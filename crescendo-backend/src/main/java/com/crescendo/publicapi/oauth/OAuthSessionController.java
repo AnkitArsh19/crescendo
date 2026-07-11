@@ -19,6 +19,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 
+@io.swagger.v3.oas.annotations.Hidden
 @RestController
 public class OAuthSessionController {
     private static final int SESSION_TTL_SECONDS = 10 * 60;

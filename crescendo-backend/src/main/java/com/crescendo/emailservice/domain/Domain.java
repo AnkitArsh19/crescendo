@@ -79,6 +79,24 @@ public class Domain {
     @Column(name = "email_provider_connection_id")
     private UUID emailProviderConnectionId;
 
+    @Column(name = "tracking_enabled", nullable = false)
+    private boolean trackingEnabled = true;
+
+    @Column(name = "unsubscribe_logo_url", length = 1000)
+    private String unsubscribeLogoUrl;
+
+    @Column(name = "unsubscribe_primary_color", length = 20)
+    private String unsubscribePrimaryColor;
+
+    @Column(name = "unsubscribe_copy", length = 500)
+    private String unsubscribeCopy;
+
+    @Column(name = "bimi_logo_url", length = 1000)
+    private String bimiLogoUrl;
+
+    @Column(name = "bimi_vmc_url", length = 1000)
+    private String bimiVmcUrl;
+
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
     private Instant createdAt;
@@ -176,6 +194,24 @@ public class Domain {
 
     public UUID getEmailProviderConnectionId() { return emailProviderConnectionId; }
     public void setEmailProviderConnectionId(UUID emailProviderConnectionId) { this.emailProviderConnectionId = emailProviderConnectionId; }
+
+    public boolean isTrackingEnabled() { return trackingEnabled; }
+    public void setTrackingEnabled(boolean trackingEnabled) { this.trackingEnabled = trackingEnabled; }
+
+    public String getUnsubscribeLogoUrl() { return unsubscribeLogoUrl; }
+    public void setUnsubscribeLogoUrl(String unsubscribeLogoUrl) { this.unsubscribeLogoUrl = unsubscribeLogoUrl; }
+
+    public String getUnsubscribePrimaryColor() { return unsubscribePrimaryColor; }
+    public void setUnsubscribePrimaryColor(String unsubscribePrimaryColor) { this.unsubscribePrimaryColor = unsubscribePrimaryColor; }
+
+    public String getUnsubscribeCopy() { return unsubscribeCopy; }
+    public void setUnsubscribeCopy(String unsubscribeCopy) { this.unsubscribeCopy = unsubscribeCopy; }
+
+    public String getBimiLogoUrl() { return bimiLogoUrl; }
+    public void setBimiLogoUrl(String bimiLogoUrl) { this.bimiLogoUrl = bimiLogoUrl; }
+
+    public String getBimiVmcUrl() { return bimiVmcUrl; }
+    public void setBimiVmcUrl(String bimiVmcUrl) { this.bimiVmcUrl = bimiVmcUrl; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

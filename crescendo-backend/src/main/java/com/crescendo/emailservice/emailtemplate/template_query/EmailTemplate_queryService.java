@@ -45,9 +45,19 @@ public class EmailTemplate_queryService {
     }
 
     private EmailTemplateDto.TemplateResponse toResponse(EmailTemplate_query t) {
+        var snap = t.getPublishedVersionSnapshot();
         return new EmailTemplateDto.TemplateResponse(
-                t.getId(), t.getName(), t.getSubject(),
-                t.getHTMLBody(), t.getTextBody(),
-                t.getCreatedAt(), t.getUpdatedAt());
+                t.getId(),
+                t.getName(),
+                t.getSubject(),
+                t.getHTMLBody(),
+                t.getTextBody(),
+                t.getStatus().name(),
+                t.getVariables() != null ? t.getVariables() : List.of(),
+                snap != null,
+                snap != null ? snap.publishedAt() : null,
+                t.getCreatedAt(),
+                t.getUpdatedAt()
+        );
     }
 }

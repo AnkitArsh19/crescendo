@@ -72,4 +72,40 @@ public class EmailTemplateController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Publish a draft template.
+     * Validates all {{VAR}} references, freezes a snapshot, flips status to PUBLISHED.
+     */
+    @PostMapping("/{templateId}/publish")
+    public ResponseEntity<EmailTemplateDto.TemplateResponse> publishTemplate(
+            @PathVariable UUID templateId,
+            Authentication auth) {
+        var resp = commandService.publishTemplate(userId(auth), templateId);
+        return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * Send a test email using the template's current draft content.
+     * Does not require the template to be published. Tagged isTest=true in email logs.
+     */
+    @PostMapping("/{templateId}/test-send")
+    public ResponseEntity<EmailTemplateDto.TestSendResponse> testSend(
+            @PathVariable UUID templateId,
+            @Valid @RequestBody EmailTemplateDto.TestSendRequest req,
+            Authentication auth) {
+        var resp = commandService.testSend(userId(auth), templateId, req);
+        return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * Clone a broadcast's template content into a new draft template.
+     */
+    @PostMapping("/clone-from-broadcast/{broadcastId}")
+    public ResponseEntity<EmailTemplateDto.TemplateResponse> cloneFromBroadcast(
+            @PathVariable UUID broadcastId,
+            Authentication auth) {
+        var resp = commandService.cloneFromBroadcast(userId(auth), broadcastId);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(resp);
+    }
+
 }

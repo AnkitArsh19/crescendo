@@ -7,6 +7,7 @@ import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,9 +30,18 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
     private static final Logger logger = LoggerFactory.getLogger(WorkflowStreamConsumer.class);
 
     private final DomainMetricsRollupService rollupService;
+    private final com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService;
+    private final com.crescendo.emailservice.outboundwebhook.WebhookDispatchService webhookDispatchService;
+    private final com.crescendo.emailservice.email_log.EmailLogRepository emailLogRepo;
 
-    public WorkflowStreamConsumer(DomainMetricsRollupService rollupService) {
+    public WorkflowStreamConsumer(DomainMetricsRollupService rollupService,
+                                  com.crescendo.execution.suspension.WorkflowSuspensionService suspensionService,
+                                  com.crescendo.emailservice.outboundwebhook.WebhookDispatchService webhookDispatchService,
+                                  com.crescendo.emailservice.email_log.EmailLogRepository emailLogRepo) {
         this.rollupService = rollupService;
+        this.suspensionService = suspensionService;
+        this.webhookDispatchService = webhookDispatchService;
+        this.emailLogRepo = emailLogRepo;
     }
 
     @Override
@@ -66,10 +76,45 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
             case "StepRunCompletedEvent" ->
                     logger.info("[stream] Step run completed: stepRunId={}, status={}",
                             aggregateId, unquote(String.valueOf(raw.getOrDefault("status", "unknown"))));
-            case "EmailDeliveredEvent", "EmailBouncedEvent", "EmailComplainedEvent" -> {
-                String domainIdStr = unquote(String.valueOf(raw.getOrDefault("domainId", "")));
-                if (domainIdStr != null && !domainIdStr.isEmpty() && !domainIdStr.equals("null")) {
-                    rollupService.recordEvent(UUID.fromString(domainIdStr), eventType);
+            case "EmailDeliveredEvent", "EmailBouncedEvent", "EmailComplainedEvent", 
+                 "EmailOpenedEvent", "EmailClickedEvent", "EmailSentEvent", "EmailQueuedEvent", "EmailFailedEvent" -> {
+                
+                // Rollup for delivery/bounce/complaint
+                if (eventType.equals("EmailDeliveredEvent") || eventType.equals("EmailBouncedEvent") || eventType.equals("EmailComplainedEvent")) {
+                    String domainIdStr = unquote(String.valueOf(raw.getOrDefault("domainId", "")));
+                    if (domainIdStr != null && !domainIdStr.isEmpty() && !domainIdStr.equals("null")) {
+                        rollupService.recordEvent(UUID.fromString(domainIdStr), eventType);
+                    }
+                }
+                
+                String eventName = switch (eventType) {
+                    case "EmailDeliveredEvent" -> "delivered";
+                    case "EmailBouncedEvent" -> "bounced";
+                    default -> null;
+                };
+                if (eventName != null && suspensionService != null) {
+                    suspensionService.resume("crescendomail:" + aggregateId + ":" + eventName, Map.of(
+                            "emailId", aggregateId,
+                            "event", eventName,
+                            "timestamp", Instant.now().toString()
+                    ));
+                }
+
+                // Webhook dispatch
+                if (webhookDispatchService != null && emailLogRepo != null) {
+                    try {
+                        UUID logId = UUID.fromString(aggregateId);
+                        emailLogRepo.findById(logId).ifPresent(log -> {
+                            Map<String, Object> payload = new java.util.HashMap<>();
+                            for (Map.Entry<Object, Object> e : raw.entrySet()) {
+                                payload.put(String.valueOf(e.getKey()), e.getValue());
+                            }
+                            payload.put("recipient", log.getToAddress());
+                            webhookDispatchService.dispatch(log.getUserId(), eventType, payload);
+                        });
+                    } catch (Exception e) {
+                        logger.warn("[stream] Failed to parse UUID for emailLog {}", aggregateId);
+                    }
                 }
             }
             default ->

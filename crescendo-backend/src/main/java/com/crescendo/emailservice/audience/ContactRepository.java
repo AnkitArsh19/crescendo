@@ -16,6 +16,8 @@ public interface ContactRepository extends JpaRepository<Contact, UUID> {
 
     Optional<Contact> findByIdAndUserId(UUID id, UUID userId);
 
+    Optional<Contact> findByUserIdAndEmail(UUID userId, String email);
+
     boolean existsByUserIdAndEmail(UUID userId, String email);
 
     long countByUserId(UUID userId);

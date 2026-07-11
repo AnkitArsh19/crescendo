@@ -129,7 +129,9 @@ public class SecurityConfig {
                                                                                                // callbacks
                         .requestMatchers("/public/forms/**", "/public/approvals/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/t/**").permitAll() // open/click tracking pixel & redirect
-                        .requestMatchers(HttpMethod.GET, "/unsubscribe").permitAll() // one-click unsubscribe page
+                        .requestMatchers(HttpMethod.GET, "/unsubscribe").permitAll() // legacy path — keep for old links
+                        .requestMatchers(HttpMethod.GET, "/api/v1/unsubscribe").permitAll() // signed-token unsubscribe page
+                        .requestMatchers(HttpMethod.POST, "/api/v1/unsubscribe").permitAll() // RFC 8058 one-click unsubscribe
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/connections/oauth/*/callback").permitAll() // integration
                                                                                                       // OAuth callback
@@ -140,6 +142,7 @@ public class SecurityConfig {
                                                                                                        // apps have
                                                                                                        // platform keys
                         .requestMatchers(HttpMethod.GET, "/internal/catalog/**").permitAll() // AI microservice catalog polling
+                        .requestMatchers("/api-docs/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // OpenAPI docs
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 // OAuth2 login: Spring handles the redirect to Google/GitHub and the callback.

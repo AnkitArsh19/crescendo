@@ -144,6 +144,160 @@ export function nodeToStepPayload(node, appDetailsByKey) {
     };
 }
 
+export function orderedNodesFromGraph(nodes, edges) {
+    const root = nodes.find((n) => n.type === 'trigger') || nodes[0];
+    if (!root) return [];
+
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const children = new Map();
+    const incoming = new Map();
+    for (const edge of edges || []) {
+        if (!byId.has(edge.source) || !byId.has(edge.target)) continue;
+        if (!children.has(edge.source)) children.set(edge.source, []);
+        children.get(edge.source).push(edge.target);
+        incoming.set(edge.target, (incoming.get(edge.target) || 0) + 1);
+    }
+
+    const compareNodes = (leftId, rightId) => {
+        const left = byId.get(leftId);
+        const right = byId.get(rightId);
+        return ((left?.position.y || 0) - (right?.position.y || 0))
+            || ((left?.position.x || 0) - (right?.position.x || 0))
+            || String(leftId).localeCompare(String(rightId));
+    };
+
+    // Only the trigger-reachable component is execution ordered. Orphans are
+    // appended as layout-only nodes; the engine deliberately skips them.
+    const reachable = new Set();
+    const markReachable = (id) => {
+        if (reachable.has(id)) return;
+        reachable.add(id);
+        for (const childId of children.get(id) || []) markReachable(childId);
+    };
+    markReachable(root.id);
+
+    const reachableIncoming = new Map();
+    for (const id of reachable) reachableIncoming.set(id, 0);
+    for (const edge of edges || []) {
+        if (reachable.has(edge.source) && reachable.has(edge.target)) {
+            reachableIncoming.set(edge.target, (reachableIncoming.get(edge.target) || 0) + 1);
+        }
+    }
+
+    const queue = [...reachable]
+        .filter((id) => id === root.id || (reachableIncoming.get(id) || 0) === 0)
+        .sort(compareNodes);
+    const ordered = [];
+    const emitted = new Set();
+    while (queue.length > 0) {
+        const id = queue.shift();
+        if (emitted.has(id)) continue;
+        emitted.add(id);
+        const node = byId.get(id);
+        if (node) ordered.push(node);
+
+        for (const childId of (children.get(id) || []).sort(compareNodes)) {
+            if (!reachable.has(childId)) continue;
+            const nextIncoming = (reachableIncoming.get(childId) || 0) - 1;
+            reachableIncoming.set(childId, nextIncoming);
+            if (nextIncoming === 0) {
+                queue.push(childId);
+                queue.sort(compareNodes);
+            }
+        }
+    }
+
+    // A cyclic graph is invalid and blocked elsewhere. Still return every node
+    // deterministically so the canvas remains renderable while a user repairs it.
+    for (const id of [...reachable].sort(compareNodes)) {
+        if (!emitted.has(id) && byId.has(id)) ordered.push(byId.get(id));
+    }
+    for (const node of nodes.filter((n) => !reachable.has(n.id)).sort((a, b) =>
+        (a.position.x - b.position.x) || (a.position.y - b.position.y) || String(a.id).localeCompare(String(b.id)))) {
+        ordered.push(node);
+    }
+    return ordered;
+}
+
+/**
+ * Converts React Flow edges to backend EdgeRequest format.
+ * Client IDs are intentional: one graph-save request may create nodes and
+ * edges together, and the backend resolves them after step upserts.
+ *
+ * @param {Array} edges — React Flow edges
+ * @returns {Array<{clientSourceId, clientTargetId, sourceHandle, targetHandle}>}
+ */
+export function edgesToPayload(edges) {
+    return (edges || []).map((e) => ({
+        clientSourceId: e.source,
+        clientTargetId: e.target,
+        sourceHandle: e.sourceHandle || null,
+        targetHandle: e.targetHandle || null,
+    }));
+}
+
+export function validateGraphForSave(nodes, edges) {
+    const triggerNodes = nodes.filter((n) => n.type === 'trigger');
+    if (triggerNodes.length !== 1) return 'Workflow must have exactly one trigger.';
+    const trigger = triggerNodes[0];
+    if (nodes.length < 2) return 'Add at least one action after the trigger.';
+
+    const ids = new Set(nodes.map((n) => n.id));
+    const adjacency = new Map();
+    const incoming = new Map();
+    const pairs = new Set();
+    for (const edge of edges || []) {
+        if (!ids.has(edge.source) || !ids.has(edge.target)) return 'Workflow has a broken connection.';
+        if (edge.source === edge.target) return 'A step cannot connect to itself.';
+        const target = nodes.find((n) => n.id === edge.target);
+        if (target?.type === 'trigger') return 'Nothing can connect into the trigger.';
+        const pair = `${edge.source}:${edge.target}`;
+        if (pairs.has(pair)) return 'This connection already exists.';
+        pairs.add(pair);
+        // DAG: multiple incoming edges allowed (merge points)
+        if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+        adjacency.get(edge.source).push(edge.target);
+        incoming.set(edge.target, (incoming.get(edge.target) || 0) + 1);
+    }
+
+    if ((incoming.get(trigger.id) || 0) > 0) {
+        return 'The trigger must be the root step.';
+    }
+
+    // Every non-trigger node must be reachable from the trigger
+    const reachable = new Set();
+    const dfsReach = (id) => {
+        if (reachable.has(id)) return;
+        reachable.add(id);
+        for (const child of adjacency.get(id) || []) dfsReach(child);
+    };
+    dfsReach(trigger.id);
+    if (![...reachable].some((id) => id !== trigger.id)) {
+        return 'Connect at least one action to the trigger.';
+    }
+
+    // Cycle detection covers orphan components too. The backend rejects cycles,
+    // but doing it here makes the correction immediate on the canvas.
+    const visiting = new Set();
+    const visited = new Set();
+    const visit = (id) => {
+        if (visiting.has(id)) return true;
+        if (visited.has(id)) return false;
+        visiting.add(id);
+        for (const child of adjacency.get(id) || []) {
+            if (visit(child)) return true;
+        }
+        visiting.delete(id);
+        visited.add(id);
+        return false;
+    };
+    if (nodes.some((node) => visit(node.id))) return 'Workflow connections cannot contain a cycle.';
+    return null;
+}
+
+// graphInfoForNode removed — topology is now sent as explicit edges[].
+// The backend no longer uses parentStepId / branchKey.
+
 /**
  * Validates a node as fully configured for a strict save.
  * Returns an error string if invalid, or null if valid.
@@ -204,7 +358,7 @@ export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
  * @param {boolean} vertical   — layout orientation
  * @returns {{ nodes: Array, edges: Array }}
  */
-export function stepsToGraph(steps, vertical = false) {
+export function stepsToGraph(steps, backendEdges = [], vertical = false) {
     const sorted = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     const nodes = sorted.map((s, idx) => ({
@@ -232,7 +386,17 @@ export function stepsToGraph(steps, vertical = false) {
         },
     }));
 
-    const edges = nodes.slice(0, -1).map((n, idx) => makeEdge(n.id, nodes[idx + 1].id, vertical));
+    // Build edges from backend edge data (preferred), fall back to linear chain
+    let edges;
+    if (backendEdges && backendEdges.length > 0) {
+        const nodeIds = new Set(nodes.map((n) => n.id));
+        edges = backendEdges
+            .filter((e) => nodeIds.has(e.sourceStepId) && nodeIds.has(e.targetStepId))
+            .map((e) => makeEdge(e.sourceStepId, e.targetStepId, e.sourceHandle, e.targetHandle));
+    } else {
+        // Fallback: linear chain (no edges returned by backend yet)
+        edges = nodes.slice(0, -1).map((n, idx) => makeEdge(n.id, nodes[idx + 1].id));
+    }
 
     return { nodes, edges };
 }
@@ -240,15 +404,15 @@ export function stepsToGraph(steps, vertical = false) {
 /**
  * Creates a single React Flow edge between two node IDs.
  */
-export function makeEdge(sourceId, targetId, vertical = false) {
+export function makeEdge(sourceId, targetId, sourceHandle, targetHandle) {
     return {
         id: `e${sourceId}-${targetId}`,
         source: sourceId,
         target: targetId,
-        sourceHandle: 'out',
-        targetHandle: 'in',
-        type: vertical ? 'smoothstep' : 'default',
-        animated: true,
+        sourceHandle: sourceHandle || 'out',
+        targetHandle: targetHandle || 'in',
+        type: 'deleteable',
+        animated: false,
         style: { stroke: 'var(--border-secondary)', strokeWidth: 2 },
         markerEnd: {
             type: 'arrowclosed',

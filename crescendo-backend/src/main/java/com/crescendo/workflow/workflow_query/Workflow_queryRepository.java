@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,20 @@ public interface Workflow_queryRepository extends JpaRepository<Workflow_query, 
 
     /// All workflows for a registered user, newest first.
     List<Workflow_query> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    @Query(value = "SELECT * FROM workflow_query w WHERE w.\"userId\" = :userId " +
+            "AND (:status IS NULL OR " +
+            "     (:status = 'ACTIVE' AND w.is_active = true) OR " +
+            "     (:status = 'INACTIVE' AND w.is_active = false) OR " +
+            "     (w.status = :status)) " +
+            "AND (cast(:cursorTime as timestamp) IS NULL OR w.created_at < cast(:cursorTime as timestamp) OR (w.created_at = cast(:cursorTime as timestamp) AND w.id < cast(:cursorId as uuid))) " +
+            "ORDER BY w.created_at DESC, w.id DESC " +
+            "LIMIT :limit", nativeQuery = true)
+    List<Workflow_query> findPaginatedByUserId(@Param("userId") UUID userId,
+                                               @Param("status") String status,
+                                               @Param("cursorTime") Instant cursorTime,
+                                               @Param("cursorId") UUID cursorId,
+                                               @Param("limit") int limit);
 
     /// All workflows for a guest session, newest first.
     List<Workflow_query> findAllByGuestSessionIdOrderByCreatedAtDesc(String guestSessionId);

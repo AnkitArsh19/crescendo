@@ -17,6 +17,24 @@ public final class DomainDto {
             UUID emailProviderConnectionId
     ) {}
 
+    public record ClaimDomainRequest(
+            @NotBlank String method, // "DNS" or "EMAIL"
+            String emailAddress      // Optional, required if method = "EMAIL"
+    ) {}
+
+    public record CompleteClaimRequest(
+            String token
+    ) {}
+
+    public record PatchDomainRequest(
+            Boolean trackingEnabled,
+            String unsubscribeLogoUrl,
+            String unsubscribePrimaryColor,
+            String unsubscribeCopy,
+            String bimiLogoUrl,
+            String bimiVmcUrl
+    ) {}
+
     public record DomainResponse(
             UUID id,
             String domainName,
@@ -34,7 +52,13 @@ public final class DomainDto {
             String credentialSource,
             UUID emailProviderConnectionId,
             String healthStatus,
-            List<String> warnings
+            List<String> warnings,
+            boolean trackingEnabled,
+            String unsubscribeLogoUrl,
+            String unsubscribePrimaryColor,
+            String unsubscribeCopy,
+            String bimiLogoUrl,
+            String bimiVmcUrl
     ) {}
 
     /// DNS record the user must add to verify ownership. Presented in the response

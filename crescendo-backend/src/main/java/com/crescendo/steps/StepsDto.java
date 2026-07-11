@@ -59,8 +59,6 @@ public class StepsDto {
             String appKey,
             String actionKey,
             UUID connectionId,
-            UUID parentStepId,
-            String branchKey,
             Map<String, Object> configuration,
             List<ConditionResponse> conditions,
             Instant createdAt,

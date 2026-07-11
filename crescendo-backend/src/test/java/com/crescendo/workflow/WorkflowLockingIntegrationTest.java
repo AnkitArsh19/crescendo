@@ -65,6 +65,7 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
                 "Updated Desc",
                 99L, // Different from actual version
                 Collections.emptyList(),
+                Collections.emptyList(),
                 Collections.emptyList()
         );
 
@@ -81,6 +82,7 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
                 "Updated Name",
                 "Updated Desc",
                 0L, // Matches actual version
+                Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList()
         );

@@ -33,7 +33,8 @@ import java.util.HashMap;
                 "com.crescendo.connections.connections_query",
                 "com.crescendo.emailservice.apikey.key_query",
                 "com.crescendo.emailservice.emailtemplate.template_query",
-                "com.crescendo.app"
+                "com.crescendo.app",
+                "com.crescendo.emailservice.metrics"
         },
         entityManagerFactoryRef = "queryEntityManagerFactory",
         transactionManagerRef = "queryTransactionManager"
@@ -104,6 +105,7 @@ public class QueryDBConfig {
                                 "com.crescendo.emailservice.apikey.key_query",
                                 "com.crescendo.emailservice.emailtemplate.template_query",
                                 "com.crescendo.emailservice.email_log",
+                                "com.crescendo.emailservice.metrics",
                                 "com.crescendo.app",
                                 "com.crescendo.publicapi.audit",
                                 "com.crescendo.publicapi.oauth",

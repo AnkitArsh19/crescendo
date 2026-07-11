@@ -23,6 +23,8 @@ public interface EmailLogRepository extends JpaRepository<EmailLog, UUID> {
     Optional<EmailLog> findByProviderMessageId(String providerMessageId);
 
     long countByUserIdAndStatus(UUID userId, EmailStatus status);
+    
+    List<EmailLog> findByStatusAndCreatedAtBefore(EmailStatus status, Instant createdAt);
 
     long countByUserId(UUID userId);
 

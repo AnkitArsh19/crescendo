@@ -52,6 +52,15 @@ export const templatesApi = {
 
   delete: (id) =>
     api.delete(`/settings/templates/${id}`),
+
+  publish: (id) =>
+    api.post(`/settings/templates/${id}/publish`).then((r) => r.data),
+
+  testSend: (id, data) =>
+    api.post(`/settings/templates/${id}/test-send`, data).then((r) => r.data),
+
+  cloneFromBroadcast: (broadcastId) =>
+    api.post(`/settings/templates/clone-from-broadcast/${broadcastId}`).then((r) => r.data),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
