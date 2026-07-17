@@ -48,28 +48,29 @@ public class JWTService {
         this.eventPublisher = eventPublisher;
     }
 
-    /// Issue a fresh access + refresh token pair for first-time login (no device fingerprint known).
     public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent) {
-        return issueTokenPair(user, principal, userAgent, false);
+        return issueTokenPair(user, principal, userAgent, false, false, null);
     }
 
     public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent, boolean rememberMe) {
+        return issueTokenPair(user, principal, userAgent, rememberMe, false, null);
+    }
+
+    public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent, boolean rememberMe, boolean mfaVerified, List<String> amr) {
         Instant now = Instant.now();
         // 30 days for remember-me sessions, default otherwise
         Long ttl = rememberMe ? 2_592_000_000L : null;
         RefreshIssue refreshIssue = createRefreshSession(user, userAgent, null, null, null, null, now, ttl);
-        String access = buildAccessToken(principal, refreshIssue.sessionId(), now);
+        String access = buildAccessToken(principal, refreshIssue.sessionId(), now, mfaVerified, amr);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
 
-    /// Overload that also records full device fingerprint (IP, device ID, human-readable label).
-    /// Used when the client sends device metadata alongside the login request.
     public TokenPair issueTokenPair(User_command user, AppUserDetails principal, String userAgent,
                                     String clientIp, String deviceId, String deviceLabel, boolean rememberMe) {
         Instant now = Instant.now();
         Long ttl = rememberMe ? 2_592_000_000L : null;
         RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now, ttl);
-        String access = buildAccessToken(principal, refreshIssue.sessionId(), now);
+        String access = buildAccessToken(principal, refreshIssue.sessionId(), now, false, null);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
 
@@ -99,7 +100,7 @@ public class JWTService {
             User_command user = session.getUser();
             AppUserDetails principal = AppUserDetails.from(user, Optional.empty());
 
-            String newAccess = buildAccessToken(principal, session.getId().toString(), now);
+            String newAccess = buildAccessToken(principal, session.getId().toString(), now, false, null);
             Instant refreshExpires = session.getExpiresAt();
             String outRefresh = presentedRefreshToken;
 
@@ -113,7 +114,7 @@ public class JWTService {
                         now, null);
                 outRefresh = ri.plainToken();
                 refreshExpires = ri.expiresAt();
-                newAccess = buildAccessToken(principal, ri.sessionId(), now);
+                newAccess = buildAccessToken(principal, ri.sessionId(), now, false, null);
             }
             return new TokenPair(newAccess, outRefresh, now.plusMillis(accessExpirationMs), refreshExpires);
         });
@@ -149,8 +150,12 @@ public class JWTService {
 
     public boolean validateAccessToken(String token, UserDetails details) {
         try {
-            String subject = extractUserName(token);
-            return subject.equals(details.getUsername()) && !isExpired(token);
+            Claims claims = parseClaims(token);
+            // Purpose-bound tokens (for example, passkey recovery links) must never
+            // authenticate API requests merely because they share the signing key.
+            if (claims.get("token_use") != null) return false;
+            String subject = claims.getSubject();
+            return subject.equals(details.getUsername()) && !claims.getExpiration().toInstant().isBefore(Instant.now());
         } catch (Exception e) {
             return false;
         }
@@ -164,6 +169,32 @@ public class JWTService {
     public String extractSessionId(String token) { return extractClaim(token, c -> c.get("sid", String.class)); }
 
     public boolean isExpired(String token) { return extractExpiryInstant(token).isBefore(Instant.now()); }
+
+    /** Creates a short-lived, purpose-bound token which is valid only for passkey recovery. */
+    public String issuePasskeyRecoveryToken(UUID userId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("token_use", "passkey_recovery")
+                .claim("uid", userId.toString())
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(600)))
+                .signWith(signingKey())
+                .compact();
+    }
+
+    /** Validates the signed recovery-link claims without treating it as an access token. */
+    public PasskeyRecoveryClaims parsePasskeyRecoveryToken(String token) {
+        Claims claims = parseClaims(token);
+        if (!"passkey_recovery".equals(claims.get("token_use", String.class))) {
+            throw new IllegalArgumentException("Invalid recovery token");
+        }
+        return new PasskeyRecoveryClaims(
+                UUID.fromString(claims.get("uid", String.class)),
+                claims.getId()
+        );
+    }
 
     private <T> T extractClaim(String token, Function<Claims,T> resolver) {
         return resolver.apply(parseClaims(token));
@@ -179,13 +210,19 @@ public class JWTService {
     ///   role = user's role for quick authorization checks in filters
     ///   jti  = unique token ID (allows individual token revocation if needed)
     ///   sid  = session ID linking this access token to its parent refresh session
-    private String buildAccessToken(AppUserDetails principal, String sessionId, Instant now) {
+    private String buildAccessToken(AppUserDetails principal, String sessionId, Instant now, boolean mfaVerified, List<String> amr) {
         Map<String,Object> claims = new HashMap<>();
         claims.put("uid", principal.getId().toString());
         claims.put("role", principal.getRole().name());
         claims.put("jti", UUID.randomUUID().toString());
         if (sessionId != null) {
             claims.put("sid", sessionId);
+        }
+        if (mfaVerified) {
+            claims.put("mfa_verified", true);
+        }
+        if (amr != null && !amr.isEmpty()) {
+            claims.put("amr", amr);
         }
         Instant exp = now.plusMillis(accessExpirationMs);
         return Jwts.builder()
@@ -251,6 +288,8 @@ public class JWTService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
+
+
     /// Attempts a Base64 decode — if it succeeds the secret is treated as Base64, else as plain UTF-8.
     private boolean looksBase64(String s) {
         try { Decoders.BASE64.decode(s); return true; } catch (IllegalArgumentException e) { return false; }
@@ -259,5 +298,46 @@ public class JWTService {
     /// Internal result carrier for the refresh session creation helper —
     /// bundles the new session ID, the raw (unhashed) token, and its expiry together.
     private record RefreshIssue(String sessionId, String plainToken, Instant expiresAt) {}
-}
 
+    public record PasskeyRecoveryClaims(UUID userId, String tokenId) {}
+
+    /**
+     * Issues a short-lived, purpose-bound JWT for revoking a session from an email link.
+     * token_use = "session_revoke"
+     * uid       = user's UUID
+     * sid       = session UUID to revoke (null means "revoke all sessions for this user")
+     * Expires in 24 hours.
+     */
+    public String issueSessionRevokeToken(UUID userId, UUID sessionId) {
+        Instant now = Instant.now();
+        var builder = Jwts.builder()
+                .subject(userId.toString())
+                .claim("token_use", "session_revoke")
+                .claim("uid", userId.toString())
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(86400))) // 24 hours
+                .signWith(signingKey());
+        if (sessionId != null) {
+            builder.claim("sid", sessionId.toString());
+        }
+        return builder.compact();
+    }
+
+    /**
+     * Validates and parses a session-revoke token.
+     * Throws IllegalArgumentException if the token is invalid, expired, or has the wrong purpose.
+     */
+    public SessionRevokeClaims parseSessionRevokeToken(String token) {
+        Claims claims = parseClaims(token);
+        if (!"session_revoke".equals(claims.get("token_use", String.class))) {
+            throw new IllegalArgumentException("Invalid session revoke token");
+        }
+        UUID userId = UUID.fromString(claims.get("uid", String.class));
+        String sidStr = claims.get("sid", String.class);
+        UUID sessionId = sidStr != null ? UUID.fromString(sidStr) : null;
+        return new SessionRevokeClaims(userId, sessionId);
+    }
+
+    public record SessionRevokeClaims(UUID userId, UUID sessionId) {}
+}

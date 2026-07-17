@@ -133,7 +133,8 @@ public class AuthenticationService {
      * @param userAgent        HTTP User-Agent for session tracking
      */
     public AuthDto.LoginResponse oauthLogin(AuthProvider provider, String providerUserId,
-                                            String email, String suggestedUsername, String userAgent) {
+                                            String email, String suggestedUsername, String userAgent,
+                                            String clientIp, String deviceId, String deviceLabel) {
         // Step 1: exact match on (provider, providerUserId) — fastest path for returning OAuth users.
         Optional<UserIdentity> identityOpt = identityRepo.findByProviderAndProviderUserId(provider, providerUserId);
 
@@ -167,7 +168,7 @@ public class AuthenticationService {
         eventPublisher.publish(new UserLoggedInEvent(user.getId(), user.getEmailId(), provider));
 
         Optional<UserCredential> cred = credentialRepo.findByUser_Id(user.getId());
-        TokenPair tokens = issueTokens(user, userAgent, null, null, null, false);
+        TokenPair tokens = issueTokens(user, userAgent, clientIp, deviceId, deviceLabel, false);
         return buildLoginResponse(user, cred.orElse(null), tokens);
     }
 

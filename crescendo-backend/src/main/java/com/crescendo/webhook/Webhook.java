@@ -31,10 +31,16 @@ public class Webhook {
     @Column(name = "isActive", nullable = false)
     private boolean isActive;
 
-    @Column(name = "secretKey", nullable = false, length = 128)
+    // DEFAULT ensures ALTER TABLE ADD COLUMN NOT NULL succeeds on existing rows.
+    // Existing webhooks get a random UUID-derived key; newly created ones still
+    // use the constructor-assigned value.
+    @Column(name = "secretKey", nullable = false, length = 128,
+            columnDefinition = "varchar(128) default 'legacy-' || gen_random_uuid()")
     private String secretKey;
 
-    @Column(name = "providerSignatureHeader", nullable = false, length = 64)
+    // DEFAULT ensures ALTER TABLE ADD COLUMN NOT NULL succeeds on existing rows.
+    @Column(name = "providerSignatureHeader", nullable = false, length = 64,
+            columnDefinition = "varchar(64) default 'X-Hub-Signature-256'")
     private String providerSignatureHeader = "X-Hub-Signature-256";
 
     @CreationTimestamp

@@ -1,0 +1,20 @@
+# Self-contained GitHub Actions profile used only to generate the OpenAPI document.
+# Both CQRS persistence units deliberately point at the ephemeral CI PostgreSQL service.
+spring.datasource.command.url=jdbc:postgresql://localhost:5432/crescendo_ci
+spring.datasource.command.username=crescendo_ci
+spring.datasource.command.password=crescendo_ci
+spring.datasource.command.driver-class-name=org.postgresql.Driver
+spring.datasource.query.url=jdbc:postgresql://localhost:5432/crescendo_ci
+spring.datasource.query.username=crescendo_ci
+spring.datasource.query.password=crescendo_ci
+spring.datasource.query.driver-class-name=org.postgresql.Driver
+
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=false
+
+# CI does not serve browsers, but SecurityConfig validates this setting at startup.
+app.security.cors.allowed-origins=http://localhost:5173
+app.frontend-url=http://localhost:5173
+app.cookie.secure=false

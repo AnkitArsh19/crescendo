@@ -5,6 +5,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import com.crescendo.security.RateLimitingService;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
 
@@ -28,9 +35,11 @@ import java.util.UUID;
 public class SuppressionController {
 
     private final EmailSuppressionService suppressionService;
+    private final RateLimitingService rateLimitingService;
 
-    public SuppressionController(EmailSuppressionService suppressionService) {
+    public SuppressionController(EmailSuppressionService suppressionService, RateLimitingService rateLimitingService) {
         this.suppressionService = suppressionService;
+        this.rateLimitingService = rateLimitingService;
     }
 
     @GetMapping("/settings/suppressions")
@@ -66,14 +75,27 @@ public class SuppressionController {
 
     @PostMapping(value = "/settings/suppressions/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> importCsv(@RequestParam("file") org.springframework.web.multipart.MultipartFile file, Authentication auth) {
-        try {
-            String content = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
-            String[] lines = content.split("\\r?\\n");
-            if (lines.length == 0) return ResponseEntity.badRequest().build();
-            
+        UUID uId = userId(auth);
+
+        // 1. Rate Limit (2 requests per minute)
+        if (rateLimitingService.isRateLimited("suppressions:import", uId.toString(), 2, Duration.ofMinutes(1))) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded for CSV import");
+        }
+
+        // 2. Strict Size Limit (10MB)
+        if (file.getSize() > 10L * 1024 * 1024) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "CSV file exceeds 10MB limit");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null || headerLine.isBlank()) {
+                return ResponseEntity.badRequest().build();
+            }
+
             // Find email column index
             int emailColIdx = -1;
-            String[] headers = lines[0].split(",");
+            String[] headers = headerLine.split(",");
             for (int i = 0; i < headers.length; i++) {
                 String header = headers[i].trim().toLowerCase();
                 if (header.contains("email") || header.contains("e-mail")) {
@@ -83,25 +105,36 @@ public class SuppressionController {
             }
 
             java.util.List<String> emails = new java.util.ArrayList<>();
-            int startIndex = emailColIdx != -1 ? 1 : 0; // Skip header if found
-            for (int i = startIndex; i < lines.length; i++) {
-                String[] cols = lines[i].split(",");
-                if (emailColIdx != -1 && emailColIdx < cols.length) {
-                    emails.add(cols[emailColIdx].trim());
-                } else {
-                    // Fallback: look for an email in any column
+            if (emailColIdx != -1) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    String[] cols = line.split(",");
+                    if (cols.length > emailColIdx) {
+                        String e = cols[emailColIdx].trim();
+                        if (!e.isBlank()) emails.add(e);
+                    }
+                }
+            } else {
+                // If no header, just assume single column or look for an email pattern
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isBlank()) continue;
+                    String[] cols = line.split(",");
                     for (String col : cols) {
-                        col = col.trim();
-                        if (col.contains("@") && col.contains(".")) {
-                            emails.add(col);
+                        String e = col.trim();
+                        if (e.contains("@")) {
+                            emails.add(e);
                             break;
                         }
                     }
                 }
             }
-            
-            suppressionService.importSuppressions(emails, "IMPORTED", userId(auth));
-            return ResponseEntity.noContent().build();
+
+            if (!emails.isEmpty()) {
+                suppressionService.importSuppressions(emails, "IMPORTED", uId);
+            }
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

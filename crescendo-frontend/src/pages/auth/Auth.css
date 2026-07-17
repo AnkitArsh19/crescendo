@@ -84,7 +84,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px 24px;
+    padding: 24px;
 }
 
 .auth-form-container {
@@ -99,7 +99,7 @@
     -webkit-backdrop-filter: blur(24px) saturate(1.2);
     border: 1px solid var(--border-secondary);
     border-radius: var(--radius-xl);
-    padding: 36px 32px;
+    padding: 28px 32px;
     position: relative;
     z-index: 2;
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
@@ -170,6 +170,93 @@ body.light .auth-card {
     justify-content: space-between;
 }
 
+.auth-login-links {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auth-passkey-btn {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.87rem;
+    font-weight: 600;
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.auth-passkey-btn svg {
+    font-size: 1.05rem;
+}
+
+.auth-passkey-btn:hover:not(:disabled) {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+}
+
+.auth-passkey-btn:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: 3px;
+}
+
+.auth-passkey-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.auth-passkey-hint {
+    margin: -7px 0 -1px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.auth-passkey-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: none;
+    border: 0;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.auth-passkey-link svg {
+    font-size: 0.9rem;
+}
+
+.auth-passkey-link:hover:not(:disabled) {
+    color: var(--text-accent);
+}
+
+.auth-passkey-link:focus-visible,
+.auth-guest-link:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+
+.auth-passkey-link:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 .auth-remember {
     display: flex;
     align-items: center;
@@ -201,7 +288,7 @@ body.light .auth-card {
 
 .auth-btn {
     width: 100%;
-    padding: 13px;
+    padding: 11px;
     font-size: 0.92rem;
     font-weight: 600;
     color: var(--bg-primary);
@@ -242,7 +329,7 @@ body.light .auth-card {
 
 .auth-oauth-btn {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -270,7 +357,7 @@ body.light .auth-card {
 
 .auth-footer {
     text-align: center;
-    margin-top: 20px;
+    margin-top: 14px;
     font-size: 0.84rem;
     color: var(--text-secondary);
 }
@@ -391,6 +478,16 @@ body.light .auth-card {
         padding: 28px 20px;
         border-radius: var(--radius-lg);
     }
+
+    .auth-login-links {
+        gap: 6px;
+    }
+
+    .auth-remember,
+    .auth-forgot,
+    .auth-passkey-link {
+        font-size: 0.76rem;
+    }
 }
 
 /* ── Email verification spinner ── */
@@ -407,6 +504,22 @@ body.light .auth-card {
     to {
         transform: rotate(360deg);
     }
+}
+
+.auth-footer-separator {
+    color: var(--text-tertiary);
+    margin: 0 2px;
+}
+
+.auth-guest-link {
+    margin-top: 8px;
+    padding: 0;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-decoration: underline;
 }
 
 .oauth-bridge {
@@ -460,4 +573,64 @@ body.light .auth-card {
     width: 32px;
     height: 32px;
     color: var(--text-secondary);
+}
+
+/* ── Passkey CTA button (Login & Register) ────────────────────────────── */
+.auth-passkey-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 11px 16px;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-passkey-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(var(--accent-rgb, 99, 102, 241), 0.06) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.auth-passkey-btn:hover:not(:disabled)::before {
+    opacity: 1;
+}
+
+.auth-passkey-btn:hover:not(:disabled) {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.12);
+}
+
+.auth-passkey-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-passkey-btn svg {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* Helper text beneath the passkey button */
+.auth-passkey-hint {
+    margin: 0;
+    text-align: center;
+    font-size: 0.73rem;
+    color: var(--text-tertiary);
+    line-height: 1.4;
 }

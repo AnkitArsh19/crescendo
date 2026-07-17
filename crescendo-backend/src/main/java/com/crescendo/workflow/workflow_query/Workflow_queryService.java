@@ -2,6 +2,7 @@ package com.crescendo.workflow.workflow_query;
 
 import com.crescendo.steps.steps_query.Steps_queryService;
 import com.crescendo.workflow.WorkflowDto;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,11 @@ public class Workflow_queryService {
     /**
      * Lists all workflows for a registered user (summary only — no step detail).
      * Returns newest first.
+     *
+     * Cached per userId with a short TTL (60 s). Evicted on workflow create/delete
+     * by {@code WorkflowEventListener} so the list reflects changes promptly.
      */
+    @Cacheable(value = "workflowLists", key = "#userId")
     public List<WorkflowDto.WorkflowSummaryResponse> listWorkflows(UUID userId) {
         return workflowQueryRepo.findAllByUserIdOrderByCreatedAtDesc(userId)
                 .stream()

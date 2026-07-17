@@ -24,6 +24,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Redis configuration for caching, queues (Streams), and general key-value operations.
@@ -140,13 +141,14 @@ public class RedisConfig implements CachingConfigurer {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = Map.of(
-                "users", defaultConfig.entryTtl(Duration.ofMinutes(15)),
-                "workflows", defaultConfig.entryTtl(Duration.ofMinutes(30)),
-                "steps", defaultConfig.entryTtl(Duration.ofMinutes(30)),
-                "accessTiers", defaultConfig.entryTtl(Duration.ofMinutes(5)),
-                "workflowRuns", defaultConfig.entryTtl(Duration.ofHours(1)),
+                "users",         defaultConfig.entryTtl(jitter(Duration.ofMinutes(15))),
+                "workflows",     defaultConfig.entryTtl(jitter(Duration.ofMinutes(30))),
+                "steps",         defaultConfig.entryTtl(jitter(Duration.ofMinutes(30))),
+                "workflowLists", defaultConfig.entryTtl(Duration.ofSeconds(60)),  // short-lived, no jitter needed
+                "accessTiers",   defaultConfig.entryTtl(Duration.ofMinutes(5)),
+                "workflowRuns",  defaultConfig.entryTtl(Duration.ofHours(1)),
                 // Use JSON serialization for app catalog to prevent JDK serialization exceptions
-                "apps", defaultConfig.entryTtl(Duration.ofHours(6))
+                "apps",          defaultConfig.entryTtl(jitter(Duration.ofHours(6)))
         );
 
         return RedisCacheManager.builder(connectionFactory)
@@ -155,4 +157,21 @@ public class RedisConfig implements CachingConfigurer {
                 .transactionAware()
                 .build();
     }
+
+    /**
+     * Applies a ±10% random jitter to the given base TTL to prevent cache avalanche.
+     *
+     * <p>Without jitter, entries populated at the same moment (e.g. after a cold start
+     * or deploy) all expire simultaneously, causing a sudden spike of DB queries.
+     * Spreading expirations over a ±10% window distributes that load evenly.
+     *
+     * <p>Uses {@link ThreadLocalRandom} to avoid contention on a shared {@code Random}.
+     */
+    private static Duration jitter(Duration base) {
+        long millis = base.toMillis();
+        long offset = (long) (millis * 0.10); // ±10% of base
+        long jitterMs = ThreadLocalRandom.current().nextLong(-offset, offset + 1);
+        return Duration.ofMillis(Math.max(1, millis + jitterMs));
+    }
 }
+

@@ -7,13 +7,22 @@ import {
     HiOutlineShieldCheck,
     HiOutlineClipboardCopy,
     HiOutlineDownload,
+    HiOutlineKey,
+    HiOutlineTrash,
     HiCheck,
+    HiOutlineDesktopComputer,
+    HiOutlineDeviceMobile,
+    HiOutlineLocationMarker,
+    HiOutlineClock,
 } from 'react-icons/hi';
 import Input from '../../components/ui/Input';
 import Toggle from '../../components/ui/Toggle';
 import Stepper from '../../components/ui/Stepper';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
+import { sessionsApi } from '../../api/sessionsApi';
+import { passkeysSupported, registerPasskey } from '../../api/passkeys';
+import ReAuthModal from '../../components/ReAuthModal';
 import './Settings.css';
 
 const mfaSteps = ['Scan QR', 'Verify Code', 'Backup Codes'];
@@ -33,7 +42,7 @@ const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 export default function SecuritySettings() {
     const { user, checkAuth } = useAuthStore();
 
-    // -- Password State --
+    // -- Change Password State (for users who already have a password) --
     const [showOldPw, setShowOldPw] = useState(false);
     const [showNewPw, setShowNewPw] = useState(false);
     const [oldPw, setOldPw] = useState('');
@@ -43,18 +52,40 @@ export default function SecuritySettings() {
     const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
     const [isChangingPw, setIsChangingPw] = useState(false);
 
+    // -- Set Password State (OAuth-only users with no password yet) --
+    const [showSetNewPw, setShowSetNewPw] = useState(false);
+    const [setNewPw1, setSetNewPw1] = useState('');
+    const [setNewPw2, setSetNewPw2] = useState('');
+    const setPasswordStrength = getStrength(setNewPw1);
+    const [setPasswordMsg, setSetPasswordMsg] = useState({ type: '', text: '' });
+    const [isSettingPw, setIsSettingPw] = useState(false);
+
     // -- MFA State --
     const [mfaEnabled, setMfaEnabled] = useState(false);
     const [mfaSetupOpen, setMfaSetupOpen] = useState(false);
     const [mfaStep, setMfaStep] = useState(0);
     const [verifyCode, setVerifyCode] = useState(['', '', '', '', '', '']);
     const [copied, setCopied] = useState(false);
-    
+
     // MFA API data
     const [qrData, setQrData] = useState(null);
     const [backupCodes, setBackupCodes] = useState([]);
     const [mfaError, setMfaError] = useState('');
     const [isSendingMfa, setIsSendingMfa] = useState(false);
+
+    // -- Passkey State --
+    const [passkeys, setPasskeys] = useState([]);
+    const [passkeyStatus, setPasskeyStatus] = useState({ type: '', text: '' });
+    const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(true);
+    const [isAddingPasskey, setIsAddingPasskey] = useState(false);
+
+    // -- Step-up Auth State --
+    const [reAuthAction, setReAuthAction] = useState(null); // 'add' | { type: 'remove', passkey } | { type: 'revokeSession', session }
+
+    // -- Sessions State --
+    const [sessions, setSessions] = useState([]);
+    const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+    const [sessionStatus, setSessionStatus] = useState({ type: '', text: '' });
 
     // Sync local toggle state with actual user object on mount
     useEffect(() => {
@@ -63,10 +94,102 @@ export default function SecuritySettings() {
         }
     }, [user]);
 
+    const loadPasskeys = async () => {
+        try {
+            const { data } = await api.get('/auth/webauthn/credentials');
+            setPasskeys(data);
+        } catch {
+            setPasskeyStatus({ type: 'error', text: 'Could not load your passkeys.' });
+        } finally {
+            setIsLoadingPasskeys(false);
+        }
+    };
+
+    const loadSessions = async () => {
+        try {
+            const data = await sessionsApi.getSessions();
+            setSessions(data);
+        } catch {
+            setSessionStatus({ type: 'error', text: 'Could not load your active sessions.' });
+        } finally {
+            setIsLoadingSessions(false);
+        }
+    };
+
+    useEffect(() => {
+        loadPasskeys();
+        loadSessions();
+    }, []);
+
+    const addPasskey = async (elevatedToken) => {
+        const credentialName = window.prompt('Name this passkey (for example, "Work MacBook")', 'Passkey');
+        if (credentialName === null) return;
+        setPasskeyStatus({ type: '', text: '' });
+        setIsAddingPasskey(true);
+        try {
+            await registerPasskey(credentialName.trim() || 'Passkey', elevatedToken);
+            setPasskeyStatus({ type: 'success', text: 'Passkey added successfully.' });
+            await loadPasskeys();
+        } catch (error) {
+            setPasskeyStatus({ type: 'error', text: error.message });
+        } finally {
+            setIsAddingPasskey(false);
+        }
+    };
+
+    const removePasskey = async (passkey, elevatedToken) => {
+        setPasskeyStatus({ type: '', text: '' });
+        try {
+            await api.delete(`/auth/webauthn/credentials/${passkey.id}`, {
+                headers: { 'X-Elevated-Token': elevatedToken }
+            });
+            setPasskeys((current) => current.filter((item) => item.id !== passkey.id));
+            setPasskeyStatus({ type: 'success', text: 'Passkey removed.' });
+        } catch (error) {
+            setPasskeyStatus({ type: 'error', text: error.response?.data?.message || 'Could not remove this passkey.' });
+        }
+    };
+
+    const handleReAuthSuccess = (elevatedToken) => {
+        const action = reAuthAction;
+        setReAuthAction(null);
+        if (action === 'add') {
+            addPasskey(elevatedToken);
+        } else if (action?.type === 'remove') {
+            removePasskey(action.passkey, elevatedToken);
+        } else if (action?.type === 'revokeSession') {
+            revokeSession(action.session, elevatedToken);
+        }
+    };
+
+    const revokeSession = async (session, elevatedToken) => {
+        setSessionStatus({ type: '', text: '' });
+        try {
+            await sessionsApi.revokeSession(session.sessionId);
+            setSessions(sessions.filter(s => s.sessionId !== session.sessionId));
+            setSessionStatus({ type: 'success', text: 'Session revoked successfully.' });
+        } catch (error) {
+            setSessionStatus({ type: 'error', text: 'Could not revoke session.' });
+        }
+    };
+
+    const revokeAllSessions = async () => {
+        if (!window.confirm('Sign out everywhere? You will be signed out of all other devices.')) return;
+        setSessionStatus({ type: '', text: '' });
+        try {
+            await sessionsApi.revokeAllSessions();
+            setSessions(sessions.filter(s => s.isCurrent));
+            setSessionStatus({ type: 'success', text: 'All other sessions revoked.' });
+        } catch (error) {
+            setSessionStatus({ type: 'error', text: 'Could not revoke all sessions.' });
+        }
+    };
+
+    // Handler: change existing password
     const handlePwChange = async (e) => {
         e.preventDefault();
         setPwMsg({ type: '', text: '' });
-        
+
         if (newPw !== confirmPw) {
             return setPwMsg({ type: 'error', text: 'Passwords do not match' });
         }
@@ -85,6 +208,33 @@ export default function SecuritySettings() {
             setPwMsg({ type: 'error', text: error.response?.data?.message || 'Failed to change password' });
         } finally {
             setIsChangingPw(false);
+        }
+    };
+
+    // Handler: set a first password (OAuth-only accounts)
+    const handleSetPassword = async (e) => {
+        e.preventDefault();
+        setSetPasswordMsg({ type: '', text: '' });
+
+        if (setNewPw1.length < 8) {
+            return setSetPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' });
+        }
+        if (setNewPw1 !== setNewPw2) {
+            return setSetPasswordMsg({ type: 'error', text: 'Passwords do not match' });
+        }
+
+        setIsSettingPw(true);
+        try {
+            await api.post('/users/me/password', { password: setNewPw1 });
+            setSetPasswordMsg({ type: 'success', text: 'Password set! You can now use it to log in or add a passkey.' });
+            setSetNewPw1('');
+            setSetNewPw2('');
+            // Re-sync user state so hasLocalCredential flips to true
+            await checkAuth();
+        } catch (error) {
+            setSetPasswordMsg({ type: 'error', text: error.response?.data?.message || 'Failed to set password' });
+        } finally {
+            setIsSettingPw(false);
         }
     };
 
@@ -127,7 +277,7 @@ export default function SecuritySettings() {
     const completeMfa = async () => {
         const code = verifyCode.join('');
         if (code.length !== 6) return;
-        
+
         setMfaError('');
         setIsSendingMfa(true);
         try {
@@ -183,87 +333,300 @@ export default function SecuritySettings() {
 
     return (
         <>
-            {/* ── Change Password ── */}
-            <div className="settings-section">
-                <h2 className="settings-section-title">Change Password</h2>
-                <p className="settings-section-desc">
-                    Update your password to keep your account secure.
-                </p>
+            <ReAuthModal
+                isOpen={!!reAuthAction}
+                onClose={() => setReAuthAction(null)}
+                onSuccess={handleReAuthSuccess}
+            />
 
-                <form className="settings-form" onSubmit={handlePwChange}>
-                    <Input
-                        label="Current password"
-                        type={showOldPw ? 'text' : 'password'}
-                        placeholder="Enter current password"
-                        icon={<HiOutlineLockClosed />}
-                        rightIcon={showOldPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
-                        onRightIconClick={() => setShowOldPw(!showOldPw)}
-                        value={oldPw}
-                        onChange={(e) => setOldPw(e.target.value)}
-                        required
-                    />
+            {/* ── Password Section ── */}
+            {user?.hasLocalCredential === false ? (
+                // OAuth-only user: no password yet — show "Set Password" form
+                <div className="settings-section">
+                    <h2 className="settings-section-title">Set a Password</h2>
+                    <p className="settings-section-desc">
+                        You signed up with a social account and don&apos;t have a password yet.
+                        Setting one lets you log in with email + password and manage passkeys.
+                    </p>
 
-                    <Input
-                        label="New password"
-                        type={showNewPw ? 'text' : 'password'}
-                        placeholder="Enter new password"
-                        icon={<HiOutlineLockClosed />}
-                        rightIcon={showNewPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
-                        onRightIconClick={() => setShowNewPw(!showNewPw)}
-                        value={newPw}
-                        onChange={(e) => setNewPw(e.target.value)}
-                        required
-                    />
+                    <form className="settings-form" onSubmit={handleSetPassword}>
+                        <Input
+                            label="New password"
+                            type={showSetNewPw ? 'text' : 'password'}
+                            placeholder="Create a password"
+                            icon={<HiOutlineLockClosed />}
+                            rightIcon={showSetNewPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                            onRightIconClick={() => setShowSetNewPw(!showSetNewPw)}
+                            value={setNewPw1}
+                            onChange={(e) => setSetNewPw1(e.target.value)}
+                            autoComplete="new-password"
+                            required
+                        />
 
-                    {newPw && (
-                        <>
-                            <div className="password-strength">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <div
-                                        key={i}
-                                        className={`password-strength-bar ${i <= strength
+                        {setNewPw1 && (
+                            <>
+                                <div className="password-strength">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <div
+                                            key={i}
+                                            className={`password-strength-bar ${i <= setPasswordStrength
+                                                ? setPasswordStrength <= 1 ? 'weak' : setPasswordStrength <= 2 ? 'medium' : 'strong'
+                                                : ''
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="password-strength-text" style={{ marginBottom: 16, display: 'block' }}>
+                                    {strengthLabels[setPasswordStrength]}
+                                </span>
+                            </>
+                        )}
+
+                        <Input
+                            label="Confirm new password"
+                            type="password"
+                            placeholder="Re-enter your password"
+                            icon={<HiOutlineLockClosed />}
+                            value={setNewPw2}
+                            onChange={(e) => setSetNewPw2(e.target.value)}
+                            autoComplete="new-password"
+                            required
+                        />
+
+                        {setPasswordMsg.text && (
+                            <div style={{
+                                padding: '10px',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: setPasswordMsg.type === 'error' ? '#ef4444' : '#10b981',
+                                background: setPasswordMsg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                marginBottom: '16px'
+                            }}>
+                                {setPasswordMsg.text}
+                            </div>
+                        )}
+
+                        <button type="submit" className="settings-btn settings-btn-primary" disabled={isSettingPw}>
+                            {isSettingPw ? 'Setting password...' : 'Set Password'}
+                        </button>
+                    </form>
+                </div>
+            ) : (
+                // User already has a password — show "Change Password" form
+                <div className="settings-section">
+                    <h2 className="settings-section-title">Change Password</h2>
+                    <p className="settings-section-desc">
+                        Update your password to keep your account secure.
+                    </p>
+
+                    <form className="settings-form" onSubmit={handlePwChange}>
+                        <Input
+                            label="Current password"
+                            type={showOldPw ? 'text' : 'password'}
+                            placeholder="Enter current password"
+                            icon={<HiOutlineLockClosed />}
+                            rightIcon={showOldPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                            onRightIconClick={() => setShowOldPw(!showOldPw)}
+                            value={oldPw}
+                            onChange={(e) => setOldPw(e.target.value)}
+                            autoComplete="current-password"
+                            required
+                        />
+
+                        <Input
+                            label="New password"
+                            type={showNewPw ? 'text' : 'password'}
+                            placeholder="Enter new password"
+                            icon={<HiOutlineLockClosed />}
+                            rightIcon={showNewPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                            onRightIconClick={() => setShowNewPw(!showNewPw)}
+                            value={newPw}
+                            onChange={(e) => setNewPw(e.target.value)}
+                            autoComplete="new-password"
+                            required
+                        />
+
+                        {newPw && (
+                            <>
+                                <div className="password-strength">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <div
+                                            key={i}
+                                            className={`password-strength-bar ${i <= strength
                                                 ? strength <= 1 ? 'weak' : strength <= 2 ? 'medium' : 'strong'
                                                 : ''
                                             }`}
-                                    />
-                                ))}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="password-strength-text" style={{ marginBottom: 16, display: 'block' }}>
+                                    {strengthLabels[strength]}
+                                </span>
+                            </>
+                        )}
+
+                        <Input
+                            label="Confirm new password"
+                            type="password"
+                            placeholder="Re-enter new password"
+                            icon={<HiOutlineLockClosed />}
+                            value={confirmPw}
+                            onChange={(e) => setConfirmPw(e.target.value)}
+                            autoComplete="new-password"
+                            required
+                        />
+
+                        {pwMsg.text && (
+                            <div style={{
+                                padding: '10px',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: pwMsg.type === 'error' ? '#ef4444' : '#10b981',
+                                background: pwMsg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                marginBottom: '16px'
+                            }}>
+                                {pwMsg.text}
                             </div>
-                            <span className="password-strength-text" style={{ marginBottom: 16, display: 'block' }}>
-                                {strengthLabels[strength]}
-                            </span>
-                        </>
-                    )}
+                        )}
 
-                    <Input
-                        label="Confirm new password"
-                        type="password"
-                        placeholder="Re-enter new password"
-                        icon={<HiOutlineLockClosed />}
-                        value={confirmPw}
-                        onChange={(e) => setConfirmPw(e.target.value)}
-                        required
-                    />
+                        <button type="submit" className="settings-btn settings-btn-primary" disabled={isChangingPw}>
+                            {isChangingPw ? 'Updating...' : 'Update Password'}
+                        </button>
+                    </form>
+                </div>
+            )}
 
-                    {pwMsg.text && (
-                        <div style={{ 
-                            padding: '10px', 
-                            borderRadius: '6px', 
-                            fontSize: '0.85rem',
-                            color: pwMsg.type === 'error' ? '#ef4444' : '#10b981',
-                            background: pwMsg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            marginBottom: '16px'
-                        }}>
-                            {pwMsg.text}
-                        </div>
-                    )}
+            <div className="settings-divider" />
 
-                    <button type="submit" className="settings-btn settings-btn-primary" disabled={isChangingPw}>
-                        {isChangingPw ? 'Updating...' : 'Update Password'}
+            {/* ── Passkeys ── */}
+            <div className="settings-section">
+                <div className="settings-section-header">
+                    <div>
+                        <h2 className="settings-section-title">Passkeys</h2>
+                        <p className="settings-section-desc" style={{ marginBottom: 0 }}>
+                            Sign in securely with your device&apos;s screen lock, fingerprint, or security key. A passkey satisfies sign-in verification, so no separate TOTP code is required.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        className="settings-btn settings-btn-primary"
+                        disabled={!passkeysSupported() || isAddingPasskey}
+                        onClick={() => setReAuthAction('add')}
+                        title={passkeysSupported() ? undefined : 'Passkeys are not supported by this browser'}
+                    >
+                        <HiOutlineKey /> {isAddingPasskey ? 'Adding…' : 'Add passkey'}
                     </button>
-                </form>
+                </div>
+
+                {!passkeysSupported() && (
+                    <p className="mfa-desc" style={{ marginBottom: 14 }}>
+                        Passkeys require a supported browser on a secure (HTTPS) connection.
+                    </p>
+                )}
+                {passkeyStatus.text && (
+                    <div style={{ color: passkeyStatus.type === 'error' ? '#ef4444' : '#10b981', fontSize: '0.85rem', marginBottom: 14, padding: 10, borderRadius: 6, background: passkeyStatus.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' }}>
+                        {passkeyStatus.text}
+                    </div>
+                )}
+                <div className="settings-table passkey-table">
+                    <div className="settings-table-head">
+                        <span>Passkey</span><span>Type</span><span>Last used</span><span>Added</span><span aria-label="Actions" />
+                    </div>
+                    {isLoadingPasskeys ? (
+                        <div className="settings-skeleton-row" />
+                    ) : passkeys.length === 0 ? (
+                        <div className="settings-empty" style={{ padding: '28px 20px' }}>
+                            <HiOutlineKey className="settings-empty-icon" />
+                            <p>No passkeys yet. Add one to sign in without a password.</p>
+                        </div>
+                    ) : passkeys.map((passkey) => (
+                        <div className="settings-table-row" key={passkey.id}>
+                            <span className="settings-table-cell-name">{passkey.name || 'Passkey'}</span>
+                            <span className="settings-table-cell-code">{passkey.backedUp ? 'Synced' : 'Device-bound'}</span>
+                            <span className="settings-table-cell-date">{passkey.lastUsedAt ? new Date(passkey.lastUsedAt).toLocaleDateString() : 'Never'}</span>
+                            <span className="settings-table-cell-date">{new Date(passkey.createdAt).toLocaleDateString()}</span>
+                            <button type="button" className="settings-icon-btn settings-danger-icon" onClick={() => {
+                                if (window.confirm(`Remove "${passkey.name || 'this passkey'}"? You will no longer be able to sign in with it.`)) {
+                                    setReAuthAction({ type: 'remove', passkey });
+                                }
+                            }} aria-label={`Remove ${passkey.name || 'passkey'}`}><HiOutlineTrash /></button>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div className="settings-divider" />
+
+            {/* ── Active Sessions ── */}
+            <div className="settings-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h2 className="settings-section-title">Active Sessions</h2>
+                        <p className="settings-section-desc">
+                            These are the devices that are currently logged into your account.
+                        </p>
+                    </div>
+                    {sessions.length > 1 && (
+                        <button className="settings-btn settings-btn-danger" onClick={revokeAllSessions}>
+                            Sign out everywhere
+                        </button>
+                    )}
+                </div>
+
+                {sessionStatus.text && (
+                    <div style={{
+                        marginTop: '16px', padding: '10px', borderRadius: '6px', fontSize: '0.85rem',
+                        color: sessionStatus.type === 'error' ? '#ef4444' : '#10b981',
+                        background: sessionStatus.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)'
+                    }}>
+                        {sessionStatus.text}
+                    </div>
+                )}
+
+                <div className="settings-table-list" style={{ marginTop: '20px' }}>
+                    {isLoadingSessions ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>Loading sessions...</div>
+                    ) : sessions.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>No active sessions found.</div>
+                    ) : (
+                        sessions.map((session) => (
+                            <div className="settings-table-row" key={session.sessionId}>
+                                <div className="settings-table-cell-icon" style={{ color: '#4b5563' }}>
+                                    {session.deviceLabel?.toLowerCase().includes('mobile') || session.deviceLabel?.toLowerCase().includes('iphone') || session.deviceLabel?.toLowerCase().includes('android') ? <HiOutlineDeviceMobile size={22} /> : <HiOutlineDesktopComputer size={22} />}
+                                </div>
+                                <div className="settings-table-cell-main">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span className="settings-table-cell-title">{session.deviceLabel || 'Unknown Device'}</span>
+                                        {session.isCurrent && (
+                                            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontWeight: 500 }}>
+                                                This device
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px', color: '#6b7280', fontSize: '0.8rem' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <HiOutlineLocationMarker /> {session.approximateLocation || 'Unknown Location'}
+                                        </span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <HiOutlineClock /> Active {new Date(session.lastUsedAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                </div>
+                                {!session.isCurrent && (
+                                    <button 
+                                        type="button" 
+                                        className="settings-icon-btn settings-danger-icon" 
+                                        onClick={() => setReAuthAction({ type: 'revokeSession', session })}
+                                        aria-label="Revoke Session"
+                                    >
+                                        <HiOutlineTrash />
+                                    </button>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
 
             {/* ── Multi-Factor Authentication ── */}
             <div className="settings-section">

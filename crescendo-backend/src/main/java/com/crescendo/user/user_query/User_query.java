@@ -48,9 +48,11 @@ public class User_query {
     private boolean hasLocalCredential;
 
     /// Mirrors the email_verified flag from the command side.
-    /// Used for read-side access tier resolution without hitting the command DB.
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
+
+    @Column(name = "storage_used_bytes", nullable = false, columnDefinition = "bigint default 0")
+    private Long storageUsedBytes = 0L;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -110,4 +112,8 @@ public class User_query {
     public void setHasLocalCredential(boolean hasLocalCredential) { this.hasLocalCredential = hasLocalCredential; }
 
     public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public Long getStorageUsedBytes() { return storageUsedBytes; }
+
+    public void setStorageUsedBytes(Long storageUsedBytes) { this.storageUsedBytes = storageUsedBytes; }
 }

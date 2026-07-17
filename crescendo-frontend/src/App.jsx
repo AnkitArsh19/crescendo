@@ -19,7 +19,9 @@ import AuthLayout from './pages/auth/AuthLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ResetPassword from './pages/auth/ResetPassword';
+import RecoverPasskey from './pages/auth/RecoverPasskey';
 import VerifyEmail from './pages/auth/VerifyEmail';
+import RevokeSessionConfirm from './pages/auth/RevokeSessionConfirm';
 import OAuthCallback from './pages/auth/OAuthCallback';
 import OAuthComplete from './pages/OAuthComplete';
 import MfaChallenge from './pages/auth/MfaChallenge';
@@ -116,6 +118,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/recover-passkey" element={<RecoverPasskey />} />
+        <Route path="/auth/revoke-session" element={<RevokeSessionConfirm />} />
       </Route>
       <Route path="/verify-email" element={<AuthLayout />}>
         <Route index element={<VerifyEmail />} />

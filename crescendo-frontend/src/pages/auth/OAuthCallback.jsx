@@ -27,7 +27,7 @@ export default function OAuthCallback() {
 
       // Now fetch user profile using the token, then redirect
       checkAuth().then(() => {
-        navigate('/dashboard', { replace: true });
+        navigate('/dashboard', { replace: true, state: { justLoggedIn: true } });
       });
     } else {
       // No token — something went wrong, go back to login

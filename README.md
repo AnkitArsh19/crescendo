@@ -149,7 +149,7 @@ Great APIs require great client libraries. We provide an ecosystem of 8 official
 
 - **Hand-written DX:** For our most critical ecosystems (Node.js/TypeScript and Python), the SDKs are meticulously hand-crafted to provide a zero-dependency, highly idiomatic developer experience.
 - **Automated Generation at Scale:** For Java, Go, Rust, PHP, Ruby, and .NET, we utilize a fully automated `openapi-generator-cli` pipeline.
-- **Cross-Repo CI/CD:** To prevent the massive volume of auto-generated code (240,000+ lines) from bloating the backend git history, the architecture is strictly decoupled. When the Spring Boot backend CI detects an API surface change, it extracts the live `openapi.json` spec and securely pushes it directly into the `crescendo-sdk` repository. This triggers the SDK generation pipeline downstream, completely isolating the generated noise from the core engine while guaranteeing clients are always strictly up to date.
+- **Cross-Repo CI/CD:** To prevent the massive volume of auto-generated code (240,000+ lines) from bloating the backend git history, the architecture is strictly decoupled. When the Spring Boot backend CI detects an API surface change, it spins up an ephemeral, isolated backend instance (with its own PostgreSQL and Redis service containers), extracts the generated `openapi.json` spec, and securely pushes it directly into the `crescendo-sdk` repository. This triggers the SDK generation pipeline downstream, completely isolating the generated noise from the core engine and avoiding any reliance on live, deployed environments.
 
 ### Natural Language Workflow Builder (AI-ML)
 
@@ -237,6 +237,20 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **Async Rollups**: Solved heavy write-throughput and hot-row contention for time-series data using a Redis Stream consumer that flushes batched metrics every 5 seconds.
 - **Postgres Search**: Utilized `tsvector` and `pg_trgm` extensions to achieve highly efficient, relevance-ranked full-text search across millions of logs.
 - Why Postgres serves the purpose: No data synchronization delays, no split-brain schema issues, and significant operational simplicity compared to managing a separate ELK stack.
+
+### 14. Passwordless WebAuthn & Passkeys
+
+- **FIDO2 Cryptography**: Full support for hardware keys and biometric passkeys (FaceID/TouchID) using public-key cryptography via `webauthn4j`.
+- **Verified-Email-First Signup**: Passkey-only registration uses a strict OTP-first verification flow. This eliminates account-takeover vectors by ensuring the user proves ownership of the email *before* the server registers the public key or activates the account.
+- **Stateful Security Matrix**: The platform gracefully handles complex credential matrix scenarios (e.g., preventing users from deleting their final passkey if they have no password fallback, bypassing TOTP prompts when a passkey satisfies MFA inherently).
+- **Device & Identity Limiting**: Public passkey and recovery endpoints are protected by a two-layer rate limiter (IP-based volumetric limits + identity-keyed credential stuffing limits) that avoids consuming the request body during denial.
+
+### 15. Intelligent Sign-in Detection & Session Revocation
+
+- **Smart Login Alerts**: Moving beyond basic "new login" alerts which cause alert fatigue, the platform detects anomalous logins by analyzing the combination of device fingerprinting and GeoIP location data.
+- **Symmetric Anomaly Detection**: Triggering alerts on a strict OR-gate (New Device OR New Location) prevents loopholes where an attacker on a new device but same VPN location goes undetected.
+- **Cross-Stack Device Fingerprinting**: Device UUIDs are generated client-side and persisted in `localStorage`. These are threaded through all login paths including passwords, passkeys (`X-Device-Id` headers), and OAuth flows (`SameSite=Lax` transfer cookies) to ensure comprehensive attribution.
+- **Stateless Revocation & Bounded Exposure**: Instead of a complex Redis blocklist for revoked JWTs, the system employs short-lived Access Tokens (15m) and long-lived Refresh Tokens. Revocation instantly kills the refresh token in the database, relying on the short TTL to bound the exposure window gracefully.
 
 ## Reliability and production-style concerns addressed
 

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class GraphQlApp implements AppDefinition {
+public class GraphQLApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App(

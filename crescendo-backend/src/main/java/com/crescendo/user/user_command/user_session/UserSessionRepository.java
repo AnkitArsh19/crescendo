@@ -30,6 +30,11 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
 
 		Optional<UserSession> findByRefreshTokenHash(String refreshTokenHash);
 
+    /**
+     * Gets the user's most recent sessions to check device/location history for login alerts.
+     */
+    List<UserSession> findTop10ByUser_IdOrderByCreatedAtDesc(UUID userId);
+
 	/**
 	 * Deletes all sessions (active, revoked, and expired) for a given user.
 	 * Used during account deletion to avoid loading all sessions into memory.

@@ -116,6 +116,16 @@ public class SecurityConfig {
                                 "/auth/refresh",
                                 "/auth/forgot-password",
                                 "/auth/reset-password",
+                                "/auth/webauthn/login/start",
+                                "/auth/webauthn/login/finish",
+                                "/auth/webauthn/recovery/magic-link",
+                                "/auth/webauthn/recovery/register/start",
+                                "/auth/webauthn/recovery/register/finish",
+                                "/auth/webauthn/passwordless/start",
+                                "/auth/webauthn/passwordless/verify",
+                                "/auth/webauthn/passwordless/finish",
+                                "/auth/sessions/revoke-confirm",
+                                "/auth/sessions/revoke-by-token",
                                 "/auth/verify-email", // token is in query param, no auth header available
                                 "/mfa/challenge", // called before tokens are issued (post-login MFA step)
                                 "/mfa/backup-code", // called before tokens are issued (backup code login)
@@ -162,6 +172,7 @@ public class SecurityConfig {
                 // 2. ApiKeyFilter — handles API key auth
                 // 3. OAuthAccessTokenFilter — handles OAuth access token auth
                 // 4. JWTFilter — handles JWT auth
+
                 .addFilterBefore(authRateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(oauthAccessTokenFilter, UsernamePasswordAuthenticationFilter.class)
@@ -220,6 +231,9 @@ public class SecurityConfig {
                 "Authorization",
                 "Content-Type",
                 "X-Guest-Session",
+                "X-Elevated-Token",
+                "X-Device-Id",
+                "X-Device-Label",
                 "Idempotency-Key"));
         cfg.setExposedHeaders(List.of("Location"));
         cfg.setAllowCredentials(true); // required if refresh cookie used cross-origin (adjust in prod)

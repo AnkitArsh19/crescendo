@@ -90,8 +90,9 @@ const useAuthStore = create((set, get) => ({
 
   verifyMfa: async (email, code) => {
     try {
+      const { deviceId, deviceLabel } = getDeviceMetadata();
       // POST /mfa/challenge expects { email, code } to identify the user and verify the TOTP code.
-      const response = await api.post('/mfa/challenge', { email, code });
+      const response = await api.post('/mfa/challenge', { email, code, deviceId, deviceLabel });
       
       if (response.data.success) {
          const { accessToken } = response.data;
@@ -107,6 +108,24 @@ const useAuthStore = create((set, get) => ({
       }
     } catch (error) {
       throw new Error(error.response?.data?.message || error.message || 'Failed to verify 2FA');
+    }
+  },
+
+  useBackupCode: async (email, backupCode) => {
+    try {
+      const { deviceId, deviceLabel } = getDeviceMetadata();
+      const response = await api.post('/mfa/backup-code', { email, backupCode, deviceId, deviceLabel });
+      if (response.data.success) {
+        const { accessToken } = response.data;
+        set({ accessToken });
+        const userResp = await api.get('/users/me');
+        set({ user: userResp.data, isAuthenticated: true });
+        return { success: true, remaining: response.data.remaining };
+      } else {
+        throw new Error('Invalid backup code');
+      }
+    } catch (error) {
+      throw new Error(error.response?.data?.message || error.message || 'Invalid backup code');
     }
   },
 

@@ -197,6 +197,30 @@ public class User_commandService {
         eventPublisher.publish(new UserAccountDeletedEvent(userId));
     }
 
+    // PASSKEY NUDGE
+
+    /**
+     * Records a passkey-nudge dismissal for the user.
+     * <p>
+     * If {@code permanent} is true, sets {@code passkeyNudgeOptedOut = true} immediately,
+     * which prevents the nudge from ever appearing again regardless of count or cooldown.
+     * <p>
+     * Otherwise, increments the temporary dismissal counter and records the timestamp
+     * so the 14-day cooldown and 2-strike maximum can be enforced on the frontend.
+     *
+     * @param userId    authenticated user
+     * @param permanent true if the user clicked "Don't ask again", false for a temporary X-close
+     */
+    public void dismissPasskeyNudge(UUID userId, boolean permanent) {
+        User_command user = findUser(userId);
+        if (permanent) {
+            user.setPasskeyNudgeOptedOut(true);
+        } else {
+            user.setPasskeyNudgeDismissCount(user.getPasskeyNudgeDismissCount() + 1);
+            user.setPasskeyNudgeLastDismissedAt(Instant.now());
+        }
+    }
+
     // HELPERS
 
     private User_command findUser(UUID userId) {
@@ -204,3 +228,4 @@ public class User_commandService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }
+

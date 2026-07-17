@@ -5,21 +5,19 @@ import com.crescendo.emailservice.provider.EmailProvider;
 import com.crescendo.enums.EmailType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
 @Service
-@ConditionalOnBean(EmailProvider.class)
-public class ProdNotificationService implements NotificationService {
+public class NotificationServiceImpl implements NotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(ProdNotificationService.class);
+    private static final Logger log = LoggerFactory.getLogger(NotificationServiceImpl.class);
 
     private final EmailProvider emailProvider;
 
-    public ProdNotificationService(EmailProvider emailProvider) {
+    public NotificationServiceImpl(EmailProvider emailProvider) {
         this.emailProvider = emailProvider;
     }
 
@@ -37,9 +35,9 @@ public class ProdNotificationService implements NotificationService {
                     UUID.randomUUID().toString()
             );
             emailProvider.send(msg);
-            log.info("Sent transactional email '{}' from {} to {}", subject, from, to);
+            log.info("Sent transactional email '{}' to {}", subject, to);
         } catch (Exception e) {
-            log.error("Failed to send transactional email from {} to {}", from, to, e);
+            log.error("Failed to send transactional email '{}' to {}", subject, to, e);
         }
     }
 
@@ -53,6 +51,22 @@ public class ProdNotificationService implements NotificationService {
     public void sendEmailVerificationToken(String email, String plainToken) {
         String url = "https://app.crescendo.run/auth/verify-email?token=" + plainToken;
         sendAsync(email, "noreply@crescendo.run", "Verify your Crescendo account", EmailTemplateRenderer.renderEmailVerification(url));
+    }
+
+    @Override
+    public void sendPasskeyRecoveryLink(String email, String recoveryToken) {
+        String url = "https://app.crescendo.run/auth/recover-passkey?token=" + recoveryToken;
+        sendAsync(email, "noreply@crescendo.run", "Recover your Crescendo passkey", EmailTemplateRenderer.renderPasskeyRecovery(url));
+    }
+
+    @Override
+    public void sendPasswordlessSignupOtp(String email, String otp) {
+        sendAsync(email, "noreply@crescendo.run", "Your Crescendo verification code", EmailTemplateRenderer.renderPasswordlessSignupOtp(otp));
+    }
+
+    @Override
+    public void sendAccountExistsEmail(String email) {
+        sendAsync(email, "noreply@crescendo.run", "You already have a Crescendo account", EmailTemplateRenderer.renderAccountExists());
     }
 
     @Override
@@ -81,7 +95,17 @@ public class ProdNotificationService implements NotificationService {
     }
 
     @Override
-    public void sendLoginAlertEmail(String email, String device, String location) {
-        sendAsync(email, "noreply@crescendo.run", "New login to your Crescendo account", EmailTemplateRenderer.renderLoginAlert(device, location));
+    public void sendSmartLoginAlertEmail(String email, String device, String location, String country, String revokeUrl) {
+        sendAsync(email, "noreply@crescendo.run", "Security Alert: New sign-in detected", EmailTemplateRenderer.renderSmartLoginAlert(device, location, country, revokeUrl));
+    }
+
+    @Override
+    public void sendSuspiciousActivityEmail(String email, String originalIp, String newIp, String revokeUrl) {
+        sendAsync(email, "noreply@crescendo.run", "Security Alert: Suspicious session activity", EmailTemplateRenderer.renderSuspiciousActivity(originalIp, newIp, revokeUrl));
+    }
+
+    @Override
+    public void sendPasskeyAddedEmail(String email, String passkeyName) {
+        sendAsync(email, "noreply@crescendo.run", "A passkey was added to your account", EmailTemplateRenderer.renderPasskeyAdded(passkeyName));
     }
 }

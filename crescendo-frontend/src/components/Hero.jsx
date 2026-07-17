@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     HiArrowRight,
     HiOutlineLightningBolt,
     HiOutlineMail,
     HiOutlineDatabase,
-    HiOutlineCloud,
+    HiOutlineClock,
     HiOutlineGlobe,
     HiCheck,
 } from 'react-icons/hi';
 import {
     SiSlack, SiDiscord, SiGmail, SiPostgresql, SiMongodb,
-    SiGithub, SiTwilio, SiRedis, SiDocker,
+    SiGithub, SiRedis,
 } from 'react-icons/si';
 import './Hero.css';
 
@@ -37,12 +38,10 @@ const integrations = [
     { icon: <SiPostgresql />, name: 'PostgreSQL' },
     { icon: <SiMongodb />, name: 'MongoDB' },
     { icon: <SiGithub />, name: 'GitHub' },
-    { icon: <SiDocker />, name: 'Docker' },
-    { icon: <SiTwilio />, name: 'Twilio' },
-    { icon: <HiOutlineCloud />, name: 'AWS' },
+    { icon: <HiOutlineMail />, name: 'CrescendoMail' },
     { icon: <SiRedis />, name: 'Redis' },
-    { icon: <SiDocker />, name: 'Docker' },
     { icon: <HiOutlineGlobe />, name: 'Webhooks' },
+    { icon: <HiOutlineClock />, name: 'Schedules' },
 ];
 
 /* ── Workflow execution cycle ── */
@@ -122,28 +121,26 @@ export default function Hero() {
                 >
                     <motion.div variants={fadeUp} className="hero-badge">
                         <span className="hero-badge-dot" />
-                        Workflow Automation Platform
+                        Workflow automation
                     </motion.div>
 
                     <motion.h1 variants={fadeUp} className="hero-title">
                         Automate your
                         <br />
-                        <span className="hero-title-serif">workflows</span> with
+                        <span className="hero-title-serif">workflows</span>
                         <br />
-                        precision
+                        with confidence
                     </motion.h1>
 
                     <motion.p variants={fadeUp} className="hero-subtitle">
-                        Build, orchestrate, and monitor complex workflows with an intuitive
-                        visual builder. Connect your services, schedule tasks, and let
-                        Crescendo handle the rest.
+                        Build, run, and monitor workflows across your stack.
                     </motion.p>
 
                     <motion.div variants={fadeUp} className="hero-cta">
-                        <button className="hero-btn-primary">
+                        <Link to="/register" className="hero-btn-primary">
                             Get Started <HiArrowRight />
-                        </button>
-                        <button className="hero-btn-secondary">View Documentation</button>
+                        </Link>
+                        <Link to="/docs" className="hero-btn-secondary">View Documentation</Link>
                     </motion.div>
                 </motion.div>
 
@@ -165,7 +162,7 @@ export default function Hero() {
                                 <span className="canvas-dot" />
                                 <span className="canvas-dot" />
                             </div>
-                            <span className="canvas-filename">data-pipeline.flow</span>
+                            <span className="canvas-filename">lead-follow-up.flow</span>
                             <span className="canvas-status">
                                 <span className="canvas-status-dot" />
                                 {wf.allDone ? 'Done' : 'Live'}
@@ -207,7 +204,7 @@ export default function Hero() {
                                 <div className="hero-wf-node-info">
                                     <div className="hero-wf-node-label">Trigger</div>
                                     <div className="hero-wf-node-name">Webhook</div>
-                                    <div className="hero-wf-node-detail">POST /ingest</div>
+                                    <div className="hero-wf-node-detail">POST /hooks/new-lead</div>
                                 </div>
                                 <div className={`hero-wf-node-check ${wf.triggerDone ? 'done' : ''}`}>
                                     {wf.triggerDone && <HiCheck />}
@@ -220,9 +217,9 @@ export default function Hero() {
                                     <HiOutlineMail />
                                 </div>
                                 <div className="hero-wf-node-info">
-                                    <div className="hero-wf-node-name">Send Email</div>
+                                    <div className="hero-wf-node-name">CrescendoMail</div>
                                     <div className="hero-wf-node-detail">
-                                        {wf.action1Done ? 'Delivered' : wf.triggerDone ? 'Sending...' : 'Idle'}
+                                        {wf.action1Done ? 'Queued' : wf.triggerDone ? 'Sending...' : 'Idle'}
                                     </div>
                                 </div>
                                 <div className={`hero-wf-node-check ${wf.action1Done ? 'done' : ''}`}>
@@ -236,9 +233,9 @@ export default function Hero() {
                                     <HiOutlineDatabase />
                                 </div>
                                 <div className="hero-wf-node-info">
-                                    <div className="hero-wf-node-name">Store Data</div>
+                                    <div className="hero-wf-node-name">Google Sheets</div>
                                     <div className="hero-wf-node-detail">
-                                        {wf.action2Done ? 'Stored' : wf.action1Done ? 'Writing...' : 'Idle'}
+                                        {wf.action2Done ? 'Updated' : wf.action1Done ? 'Writing...' : 'Idle'}
                                     </div>
                                 </div>
                                 <div className={`hero-wf-node-check ${wf.action2Done ? 'done' : ''}`}>

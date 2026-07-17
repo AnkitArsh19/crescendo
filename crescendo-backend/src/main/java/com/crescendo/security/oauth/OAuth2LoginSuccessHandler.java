@@ -114,10 +114,18 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
+        // Read device fingerprint from a short-lived transfer cookie set by the frontend
+        // immediately before initiating the OAuth redirect (SameSite=Lax allows it to
+        // survive the cross-origin redirect chain).
+        String deviceId = extractCookieValue(request, "crescendo_device_id_transfer");
+        String deviceLabel = extractCookieValue(request, "crescendo_device_label_transfer");
+        String clientIp = extractClientIp(request);
+
         // No MFA — proceed to issue tokens.
         String userAgent = request.getHeader("User-Agent");
         AuthDto.LoginResponse loginResp = authService.oauthLogin(
-                provider, providerUserId, email, displayName, userAgent
+                provider, providerUserId, email, displayName, userAgent,
+                clientIp, deviceId, deviceLabel
         );
 
         // Set refresh token as HttpOnly cookie.
@@ -253,4 +261,21 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         return identity.map(userIdentity -> userRepo.findById(userIdentity.getUser().getId())).orElseGet(() -> email != null ? userRepo.findByEmailIgnoreCase(email) : Optional.empty());
         // Fall back to email match (account linking scenario).
     }
+
+    /// Reads a named cookie from the request. Returns null if absent.
+    private String extractCookieValue(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) return null;
+        for (Cookie c : request.getCookies()) {
+            if (name.equals(c.getName())) return c.getValue();
+        }
+        return null;
+    }
+
+    /// Extracts the real client IP, honouring X-Forwarded-For set by a reverse proxy.
+    private String extractClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) return xff.split(",")[0].trim();
+        return request.getRemoteAddr();
+    }
 }
+

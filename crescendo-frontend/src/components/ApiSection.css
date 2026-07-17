@@ -169,3 +169,39 @@
         gap: 40px;
     }
 }
+
+.api-code-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-card);
+    scrollbar-width: thin;
+}
+
+.api-code-tabs button {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.api-code-tabs button:hover,
+.api-code-tabs button.active {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    border-color: var(--border-primary);
+}
+
+.api-code-tabs button:focus-visible {
+    outline: 2px solid var(--text-secondary);
+    outline-offset: -2px;
+}

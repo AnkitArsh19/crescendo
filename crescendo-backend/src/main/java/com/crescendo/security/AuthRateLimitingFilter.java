@@ -2,8 +2,11 @@ package com.crescendo.security;
 
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -11,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +59,15 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
             "/auth/login",
             "/auth/register",
             "/auth/forgot-password",
-            "/auth/reset-password"
+            "/auth/reset-password",
+            "/auth/webauthn/login/start",
+            "/auth/webauthn/login/finish",
+            "/auth/webauthn/recovery/magic-link",
+            "/auth/webauthn/recovery/register/start",
+            "/auth/webauthn/recovery/register/finish",
+            "/auth/webauthn/passwordless/start",
+            "/auth/webauthn/passwordless/verify",
+            "/auth/webauthn/passwordless/finish"
     );
 
     // --- Layer 1: IP limits ---
@@ -95,7 +108,10 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
             return;
         }
 
-        String clientIp = resolveClientIp(request);
+        // The identity limiter needs to inspect JSON. Replay the cached body to
+        // Spring MVC afterwards so controllers can still deserialize it.
+        HttpServletRequest cachedRequest = new CachedBodyRequest(request);
+        String clientIp = resolveClientIp(cachedRequest);
 
         // ── LAYER 1: IP-based rate limit ──────────────────────────────────────
         if (rateLimiter.isRateLimited(NS_IP, clientIp, ipMaxRequests, Duration.ofMinutes(ipWindowMinutes))) {
@@ -107,8 +123,8 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
         // ── LAYER 2: Identity-keyed rate limit (login only) ───────────────────
         // We extract the email from the cached request body. This only applies to
         // /auth/login because that's where credential stuffing attacks happen.
-        if ("/auth/login".equals(path) && "POST".equalsIgnoreCase(request.getMethod())) {
-            String email = extractEmailFromBody(request);
+        if (isIdentityLimitedPath(path) && "POST".equalsIgnoreCase(cachedRequest.getMethod())) {
+            String email = extractEmailFromBody(cachedRequest);
             if (email != null && !email.isBlank()) {
                 if (rateLimiter.isRateLimited(NS_EMAIL, email.toLowerCase(),
                         emailMaxRequests, Duration.ofMinutes(emailWindowMinutes))) {
@@ -119,7 +135,7 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(cachedRequest, response);
     }
 
     /**
@@ -159,6 +175,39 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
         } catch (Exception ignored) {
             // Malformed JSON or empty body — skip Layer 2 gracefully
             return null;
+        }
+    }
+
+    private boolean isIdentityLimitedPath(String path) {
+        return "/auth/login".equals(path)
+                || "/auth/webauthn/login/start".equals(path)
+                || "/auth/webauthn/passwordless/start".equals(path)
+                || "/auth/webauthn/recovery/magic-link".equals(path);
+    }
+
+    /** Replays the JSON body after the rate limiter reads it. */
+    private static final class CachedBodyRequest extends HttpServletRequestWrapper {
+        private final byte[] body;
+
+        private CachedBodyRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            this.body = request.getInputStream().readAllBytes();
+        }
+
+        @Override
+        public ServletInputStream getInputStream() {
+            ByteArrayInputStream input = new ByteArrayInputStream(body);
+            return new ServletInputStream() {
+                @Override public int read() { return input.read(); }
+                @Override public boolean isFinished() { return input.available() == 0; }
+                @Override public boolean isReady() { return true; }
+                @Override public void setReadListener(ReadListener listener) { }
+            };
+        }
+
+        @Override
+        public java.io.BufferedReader getReader() {
+            return new java.io.BufferedReader(new java.io.InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
         }
     }
 

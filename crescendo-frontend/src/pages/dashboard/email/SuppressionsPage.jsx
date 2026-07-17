@@ -18,6 +18,13 @@ export default function SuppressionsPage() {
     const handleFileUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size exceeds the 10MB limit for CSV imports.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
         setImporting(true);
         const formData = new FormData();
         formData.append('file', file);

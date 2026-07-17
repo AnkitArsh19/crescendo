@@ -34,12 +34,20 @@ public class UserDto {
             String username,
             String role,
             boolean hasLocalCredential,
+            // Number of passkeys registered on this account. Frontend derives hasPasskeys from count > 0.
+            // Used to determine whether to show the passkey setup nudge and settings management UI.
+            int passkeyCount,
+            // Nudge throttle state — forwarded from the user record so the frontend
+            // can apply the dismissal rules without an extra round-trip.
+            int passkeyNudgeDismissCount,
+            boolean passkeyNudgeOptedOut,
             MfaStatusResponse mfa,
             List<LinkedAccountResponse> linkedAccounts,
             List<ActiveSessionResponse> activeSessions,
             Instant createdAt,
             LimitsResponse limits
     ) {}
+
 
     /// The effective access tier and plan limits for this account.
     /// maxWorkflows / maxConnections are -1 for unlimited (ADMIN).

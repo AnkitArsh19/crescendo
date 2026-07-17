@@ -9,11 +9,36 @@ on:
       - 'crescendo-backend/src/main/java/com/crescendo/emailservice/email_log/**'
       - 'crescendo-backend/src/main/java/com/crescendo/emailservice/customevent/**'
       - 'crescendo-backend/src/main/java/com/crescendo/config/OpenApiConfig.java'
+      - 'crescendo-backend/src/main/resources/application-ci.properties'
+      - '.github/workflows/publish-openapi-spec.yml'
 
 jobs:
   publish-spec:
     name: Publish Spec & Trigger SDKs
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crescendo_ci
+          POSTGRES_PASSWORD: crescendo_ci
+          POSTGRES_DB: crescendo_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crescendo_ci -d crescendo_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
 
     steps:
       - name: Checkout repository
@@ -28,14 +53,18 @@ jobs:
       - name: Start backend (background)
         run: |
           cd crescendo-backend
-          ./mvnw spring-boot:run -DskipTests -Dspring-boot.run.profiles=test &
-          for i in $(seq 1 30); do
+          ./mvnw -q spring-boot:run -DskipTests -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+          echo $! > ../backend.pid
+          for i in $(seq 1 40); do
             if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
               echo "Server is up"
-              break
+              exit 0
             fi
             sleep 3
           done
+          echo "Backend did not become healthy. Startup log:"
+          cat ../backend.log
+          exit 1
 
       - name: Determine API version
         id: ver
@@ -45,7 +74,7 @@ jobs:
 
       - name: Fetch OpenAPI Spec
         run: |
-          curl -sS --max-time 15 "http://localhost:8080/api-docs/crescendo-public-api-v1" -o openapi.json
+          curl --fail --show-error --silent --max-time 30 "http://localhost:8080/api-docs/crescendo-public-api-v1" -o openapi.json
 
 
       - name: Push Spec to SDK Repository
