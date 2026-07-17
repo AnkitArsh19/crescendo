@@ -439,6 +439,9 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                 value && typeof value === 'object' ? value.name : (value ? 'File selected' : '')
             );
             const [isDragging, setIsDragging] = useState(false);
+            const [isUploading, setIsUploading] = useState(false);
+            const addToast = useToastStore(s => s.addToast);
+            const { token } = useAuthStore();
 
             const handleFileChange = (e) => {
                 const file = e.target.files?.[0];
@@ -446,18 +449,45 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                 processFile(file);
             };
 
-            const processFile = (file) => {
+            const processFile = async (file) => {
+                const maxSizeMB = field.maxSizeMB || 25;
+                if (file.size > maxSizeMB * 1024 * 1024) {
+                    addToast(`File size exceeds the limit of ${maxSizeMB}MB`, 'error');
+                    return;
+                }
+
+                setIsUploading(true);
                 setFileName(file.name);
-                const reader = new FileReader();
-                reader.onload = () => {
-                    onChange({
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        data: reader.result, // base64 data URI
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    // Default to RELAY if not explicitly set to RETAINED
+                    const consumptionModel = field.consumptionModel || 'RELAY';
+                    formData.append('consumptionModel', consumptionModel);
+                    if (field.maxSizeMB) formData.append('maxSizeMB', field.maxSizeMB);
+
+                    const res = await fetch('/api/v1/files/upload', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
                     });
-                };
-                reader.readAsDataURL(file);
+
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        throw new Error(errText || 'Upload failed');
+                    }
+
+                    const data = await res.json();
+                    onChange(data); // Emits structured reference: { name, contentType, sizeBytes, storageKey, checksum, consumptionModel }
+                    addToast('File uploaded successfully', 'success');
+                } catch (err) {
+                    console.error('File upload error:', err);
+                    addToast(`Failed to upload file: ${err.message}`, 'error');
+                    setFileName('');
+                } finally {
+                    setIsUploading(false);
+                }
             };
 
             const handleDragOver = (e) => {
@@ -495,8 +525,13 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                         accept={acceptStr}
                         className="cpb-file-hidden"
                         onChange={handleFileChange}
+                        disabled={isUploading}
                     />
-                    {fileName ? (
+                    {isUploading ? (
+                        <div className="cpb-file-uploading">
+                            <span>Uploading...</span>
+                        </div>
+                    ) : fileName ? (
                         <div className="cpb-file-selected">
                             <div className="cpb-file-icon"><HiUpload /></div>
                             <div className="cpb-file-info">

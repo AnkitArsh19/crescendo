@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { workflowApi } from '../api/workflowApi';
+import { workflowClient } from '../api/workflowClient';
 import useToastStore from './toastStore';
 
 const useWorkflowStore = create((set, get) => ({
@@ -10,7 +11,7 @@ const useWorkflowStore = create((set, get) => ({
   fetchWorkflows: async () => {
     set({ isLoading: true, error: null });
     try {
-      const data = await workflowApi.list();
+      const data = await workflowClient.list();
       set({ workflows: data, isLoading: false });
     } catch (err) {
       set({
@@ -21,14 +22,14 @@ const useWorkflowStore = create((set, get) => ({
   },
 
   createWorkflow: async (name, description = '') => {
-    const workflow = await workflowApi.create({ name, description });
+    const workflow = await workflowClient.create({ name, description });
     set((state) => ({ workflows: [workflow, ...state.workflows] }));
     useToastStore.getState().addToast('Workflow created', 'success');
     return workflow;
   },
 
   updateWorkflow: async (id, data) => {
-    await workflowApi.update(id, data);
+    await workflowClient.update(id, data);
     set((state) => ({
       workflows: state.workflows.map((w) =>
         w.id === id ? { ...w, ...data } : w
@@ -37,7 +38,7 @@ const useWorkflowStore = create((set, get) => ({
   },
 
   deleteWorkflow: async (id) => {
-    await workflowApi.delete(id);
+    await workflowClient.delete(id);
     set((state) => ({
       workflows: state.workflows.filter((w) => w.id !== id),
     }));

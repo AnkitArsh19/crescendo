@@ -9,12 +9,16 @@ import {
     HiOutlineLockClosed,
     HiOutlineEye,
     HiOutlineEyeOff,
+    HiOutlineKey,
 } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
 import { SiGithub } from 'react-icons/si';
 import { useTheme } from '../../components/ThemeContext';
 import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
+import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
+import api from '../../api/axios';
+import { getDeviceId } from '../../utils/deviceFingerprint';
 import './Auth.css';
 
 function getStrength(pw) {
@@ -46,6 +50,10 @@ export default function Register() {
 
     const [showPw, setShowPw] = useState(false);
     const [globalError, setGlobalError] = useState('');
+    const [passwordless, setPasswordless] = useState(false);
+    const [passwordlessStep, setPasswordlessStep] = useState('details');
+    const [passwordlessData, setPasswordlessData] = useState({ username: '', email: '', otp: '' });
+    const [isPasswordlessBusy, setIsPasswordlessBusy] = useState(false);
 
     const {
         register,
@@ -63,13 +71,86 @@ export default function Register() {
         setGlobalError('');
         try {
             await registerFn(data.email, data.username, data.password);
-            
+
             // Redirect to dashboard on successful registration
-            navigate('/dashboard');
+            navigate('/dashboard', { state: { justLoggedIn: true } });
         } catch (error) {
             setGlobalError(error.message);
         }
     };
+
+    const updatePasswordlessData = (field) => (event) => setPasswordlessData((current) => ({ ...current, [field]: event.target.value }));
+
+    const handleOAuthLogin = (provider) => {
+        const deviceId = getDeviceId();
+        document.cookie = `crescendo_device_id_transfer=${encodeURIComponent(deviceId)}; path=/; max-age=300; SameSite=Lax`;
+        window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider}`;
+    };
+
+    const startPasswordless = async (event) => {
+        event.preventDefault();
+        setGlobalError('');
+        setIsPasswordlessBusy(true);
+        try {
+            await api.post('/auth/webauthn/passwordless/start', { username: passwordlessData.username, email: passwordlessData.email });
+            setPasswordlessStep('otp');
+        } catch (error) {
+            setGlobalError(error.response?.data?.message || 'Could not send a verification code.');
+        } finally {
+            setIsPasswordlessBusy(false);
+        }
+    };
+
+    const verifyOtpAndCreatePasskey = async (event) => {
+        event.preventDefault();
+        if (!browserSupportsWebAuthn()) {
+            setGlobalError('Passkeys are not supported by this browser or device.');
+            return;
+        }
+        setGlobalError('');
+        setIsPasswordlessBusy(true);
+        try {
+            const { data: options } = await api.post('/auth/webauthn/passwordless/verify', { email: passwordlessData.email, otp: passwordlessData.otp });
+            const registration = await startRegistration({ optionsJSON: options });
+            const { data: tokens } = await api.post('/auth/webauthn/passwordless/finish', {
+                ...registration,
+                transactionId: options.transactionId,
+                verificationSessionId: options.verificationSessionId,
+                credentialName: 'Passkey',
+            });
+            useAuthStore.getState().setTokens(tokens.accessToken, tokens.accessExpiresAt, tokens.refreshToken, tokens.refreshExpiresAt);
+            await useAuthStore.getState().checkAuth();
+            navigate('/dashboard', { state: { justLoggedIn: true } });
+        } catch (error) {
+            setGlobalError(error.response?.data?.message || error.message || 'Could not create your passkey account.');
+        } finally {
+            setIsPasswordlessBusy(false);
+        }
+    };
+
+    if (passwordless) {
+        return (
+            <div className="auth-card">
+                <Link to="/" className="auth-logo"><img src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'} alt="Crescendo" /><span className="auth-logo-text">Crescendo</span></Link>
+                <div className="auth-header"><h1 className="auth-title">Create account with a passkey</h1><p className="auth-subtitle">Verify your email first, then use your device’s secure screen lock instead of a password.</p></div>
+                {globalError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 16, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 6 }}>{globalError}</div>}
+                {passwordlessStep === 'details' ? (
+                    <form className="auth-form" onSubmit={startPasswordless}>
+                        <Input label="Username" value={passwordlessData.username} onChange={updatePasswordlessData('username')} placeholder="Choose a username" icon={<HiOutlineUser />} required />
+                        <Input label="Email" type="email" value={passwordlessData.email} onChange={updatePasswordlessData('email')} placeholder="you@example.com" icon={<HiOutlineMail />} required />
+                        <button type="submit" className="auth-btn" disabled={isPasswordlessBusy}>{isPasswordlessBusy ? 'Sending code…' : 'Email me a code'}</button>
+                    </form>
+                ) : (
+                    <form className="auth-form" onSubmit={verifyOtpAndCreatePasskey}>
+                        <Input label="6-digit email code" inputMode="numeric" autoComplete="one-time-code" value={passwordlessData.otp} onChange={updatePasswordlessData('otp')} placeholder="123456" icon={<HiOutlineKey />} maxLength="6" required />
+                        <button type="submit" className="auth-btn" disabled={isPasswordlessBusy}>{isPasswordlessBusy ? 'Creating passkey…' : 'Verify & create passkey'}</button>
+                        <button type="button" className="auth-oauth-btn" onClick={() => setPasswordlessStep('details')}>Use a different email</button>
+                    </form>
+                )}
+                <div className="auth-footer">Prefer a password? <button type="button" onClick={() => setPasswordless(false)} style={{ background: 'none', border: 0, color: 'var(--text-accent)', cursor: 'pointer', font: 'inherit', padding: 0 }}>Sign up with password</button></div>
+            </div>
+        );
+    }
 
     return (
         <div className="auth-card">
@@ -100,6 +181,7 @@ export default function Register() {
                     icon={<HiOutlineUser />}
                     {...register("username")}
                     error={errors.username?.message}
+                    autoComplete="username"
                 />
 
                 <Input
@@ -109,6 +191,7 @@ export default function Register() {
                     icon={<HiOutlineMail />}
                     {...register("email")}
                     error={errors.email?.message}
+                    autoComplete="email"
                 />
 
                 <Input
@@ -120,6 +203,7 @@ export default function Register() {
                     onRightIconClick={() => setShowPw(!showPw)}
                     {...register("password")}
                     error={errors.password?.message}
+                    autoComplete="new-password"
                 />
 
                 <Input
@@ -129,6 +213,7 @@ export default function Register() {
                     icon={<HiOutlineLockClosed />}
                     {...register("confirmPassword")}
                     error={errors.confirmPassword?.message}
+                    autoComplete="new-password"
                 />
 
                 {watchPassword && (
@@ -138,12 +223,12 @@ export default function Register() {
                                 <div
                                     key={i}
                                     className={`password-strength-bar ${i <= strength
-                                            ? strength <= 1
-                                                ? 'weak'
-                                                : strength <= 2
-                                                    ? 'medium'
-                                                    : 'strong'
-                                            : ''
+                                        ? strength <= 1
+                                            ? 'weak'
+                                            : strength <= 2
+                                                ? 'medium'
+                                                : 'strong'
+                                        : ''
                                         }`}
                                 />
                             ))}
@@ -166,6 +251,12 @@ export default function Register() {
                     {isSubmitting ? 'Creating Account...' : 'Create Account'}
                 </button>
 
+                <button type="button" className="auth-passkey-btn" onClick={() => setPasswordless(true)}>
+                    <HiOutlineKey />
+                    <span>Continue with a passkey</span>
+                </button>
+                <p className="auth-passkey-hint">Verify your email, then use your device instead of a password.</p>
+
                 <div className="auth-divider">
                     <span className="auth-divider-line" />
                     <span className="auth-divider-text">or continue with</span>
@@ -173,19 +264,19 @@ export default function Register() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         className="auth-oauth-btn"
-                        onClick={() => window.location.href = 'https://api.crescendo.run/oauth2/authorization/google'}
+                        onClick={() => handleOAuthLogin('google')}
                         style={{ flex: 1 }}
                     >
                         <span className="auth-oauth-icon"><FcGoogle /></span>
                         Google
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         className="auth-oauth-btn"
-                        onClick={() => window.location.href = 'https://api.crescendo.run/oauth2/authorization/github'}
+                        onClick={() => handleOAuthLogin('github')}
                         style={{ flex: 1, color: 'var(--text-primary)' }}
                     >
                         <span className="auth-oauth-icon"><SiGithub /></span>

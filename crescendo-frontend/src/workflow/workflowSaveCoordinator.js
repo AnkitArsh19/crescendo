@@ -402,7 +402,7 @@ export function createSaveCoordinator(callbacks) {
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                const baseUrl = import.meta.env.VITE_API_URL || 'https://api.crescendo.run';
                 fetch(`${baseUrl}${url}`, {
                     method: 'PATCH',
                     headers,

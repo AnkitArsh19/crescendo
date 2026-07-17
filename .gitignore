@@ -2,6 +2,7 @@
 .vscode/
 .DS_Store
 .agent/
+.agents/
 .ui-ux-pro-max-skill/
 graphify-out/
 
@@ -21,3 +22,4 @@ graphify-out/
 
 docs_archive/
 demo/
+geo-data/

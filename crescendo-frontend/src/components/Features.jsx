@@ -13,46 +13,42 @@ const features = [
     {
         icon: <HiOutlineCube />,
         title: 'Visual Workflow Builder',
-        desc: 'Design complex workflows with an intuitive drag-and-drop canvas. No code required to get started.',
+        desc: 'Compose triggers and actions on the visual canvas, with each app exposing its own configuration schema.',
     },
     {
         icon: <HiOutlineLightningBolt />,
-        title: 'Webhook Triggers',
-        desc: 'Listen for events from any service via webhooks. Trigger workflows instantly when data arrives.',
+        title: 'Webhook Workflows',
+        desc: 'Receive incoming HTTP requests, choose accepted methods and a response mode, then continue the workflow.',
     },
     {
         icon: <HiOutlineClock />,
-        title: 'Scheduled Execution',
-        desc: 'Run workflows on a schedule — cron expressions, intervals, or specific dates. Set it and forget it.',
+        title: 'Schedule Triggers',
+        desc: 'Start workflows with Spring cron expressions or fixed intervals for recurring jobs and checks.',
     },
     {
         icon: <HiOutlineLink />,
-        title: 'Integrations',
-        desc: 'Connect with 50+ services out of the box. REST APIs, databases, messaging queues, and more.',
+        title: 'Catalog-driven Apps',
+        desc: 'Connect the 114 app definitions in the catalog, including Google, Microsoft, GitHub, databases, AI, and HTTP tools.',
     },
     {
         icon: <HiOutlineChartBar />,
-        title: 'Real-time Monitoring',
-        desc: 'Track every execution with detailed logs, metrics, and alerts. Debug issues before they escalate.',
+        title: 'Execution Visibility',
+        desc: 'Inspect workflow runs, step logs, statuses, and failures from the dashboard and public API.',
     },
     {
         icon: <HiOutlineTemplate />,
-        title: 'Pre-built Templates',
-        desc: 'Start fast with battle-tested templates for common automation patterns. Customize to fit your needs.',
+        title: 'CrescendoMail',
+        desc: 'Send transactional or marketing email with verified domains, templates, audiences, suppressions, and delivery events.',
     },
 ];
 
 const cardVariants = {
     hidden: { opacity: 0, y: 50, rotateX: -8 },
-    visible: (i) => ({
+    visible: (index) => ({
         opacity: 1,
         y: 0,
         rotateX: 0,
-        transition: {
-            duration: 0.8,
-            delay: i * 0.08,
-            ease: [0.22, 1, 0.36, 1],
-        },
+        transition: { duration: 0.8, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] },
     }),
 };
 
@@ -60,50 +56,25 @@ export default function Features() {
     return (
         <section className="features" id="features">
             <div className="features-header">
-                <motion.p
-                    className="section-label"
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                >
+                <motion.p className="section-label" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: '-50px' }}>
                     Features
                 </motion.p>
-                <motion.h2
-                    className="section-title"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                    transition={{ duration: 0.6 }}
-                >
+                <motion.h2 className="section-title" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6 }}>
                     Everything you need to <span className="font-serif" style={{ fontStyle: 'italic' }}>automate</span>
                 </motion.h2>
-                <motion.p
-                    className="section-subtitle"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-50px' }}
-                    transition={{ duration: 0.6, delay: 0.1 }}
-                >
-                    Powerful primitives that compose into any workflow.
-                    From simple data transforms to complex orchestrations.
+                <motion.p className="section-subtitle" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6, delay: 0.1 }}>
+                    A catalog-driven builder, dependable execution pipeline, and built-in email platform
+                    for automations that need more than a single request.
                 </motion.p>
             </div>
 
             <div className="features-grid">
-                {features.map((f, i) => (
-                    <motion.div
-                        className="feature-card"
-                        key={f.title}
-                        custom={i}
-                        variants={cardVariants}
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, margin: '-30px' }}
-                    >
+                {features.map((feature, index) => (
+                    <motion.div className="feature-card" key={feature.title} custom={index} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-30px' }}>
                         <div className="feature-card-corner" />
-                        <div className="feature-icon">{f.icon}</div>
-                        <div className="feature-title">{f.title}</div>
-                        <div className="feature-desc">{f.desc}</div>
+                        <div className="feature-icon">{feature.icon}</div>
+                        <div className="feature-title">{feature.title}</div>
+                        <div className="feature-desc">{feature.desc}</div>
                     </motion.div>
                 ))}
             </div>

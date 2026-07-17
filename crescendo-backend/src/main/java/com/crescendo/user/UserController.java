@@ -182,7 +182,28 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "All other sessions revoked"));
     }
 
+    // PASSKEY NUDGE
+
+    /**
+     * POST /users/me/passkey-nudge/dismiss
+     * Records a passkey-setup nudge dismissal for the authenticated user.
+     *
+     * Body: { "permanent": false }   → temporary X-close (increments dismiss count, enforces 14-day cooldown and 2-strike max)
+     * Body: { "permanent": true }    → explicit "Don't ask again" (sets optedOut flag, nudge never shown again)
+     *
+     * The backend stores this so throttling is per-account across devices, not per-browser.
+     */
+    @PostMapping("/passkey-nudge/dismiss")
+    public ResponseEntity<Map<String, String>> dismissPasskeyNudge(
+            @RequestBody Map<String, Boolean> body,
+            Authentication auth) {
+        boolean permanent = Boolean.TRUE.equals(body.get("permanent"));
+        commandService.dismissPasskeyNudge(principal(auth).getId(), permanent);
+        return ResponseEntity.ok(Map.of("message", permanent ? "Opted out of passkey nudge" : "Nudge dismissed"));
+    }
+
     // ACCOUNT DELETION
+
 
     /**
      * DELETE /users/me

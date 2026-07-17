@@ -12,6 +12,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@react-email/components": "^1.0.12",
+    "@simplewebauthn/browser": "^13.3.0",
     "@xyflow/react": "^12.10.1",
     "axios": "^1.13.6",
     "framer-motion": "^12.35.0",

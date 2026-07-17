@@ -50,6 +50,13 @@ jwt.secret=REPLACE_ME_WITH_STRONG_JWT_SECRET
 jwt.access.expiration=3600000
 jwt.refresh.expiration=604800000
 
+# ─── GeoIP Database ──────────────────────────────────────────────────────────
+# The application will automatically download and update the MaxMind GeoLite2 database
+# if you provide a valid license key below. Get a free key at https://www.maxmind.com/en/geolite2/signup
+app.geoip.db-path=geo-data/GeoLite2-Country.mmdb
+app.geoip.license-key=REPLACE_ME
+app.geoip.auto-update.enabled=true
+
 # ─── CORS ────────────────────────────────────────────────────────────────────
 app.security.cors.allowed-origins=http://localhost:5173,https://app.crescendo.run
 

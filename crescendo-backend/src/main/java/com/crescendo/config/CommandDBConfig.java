@@ -30,6 +30,7 @@ import java.util.HashMap;
                 "com.crescendo.auth.token.password",
                 "com.crescendo.emailservice.domain",
                 "com.crescendo.user.user_command",
+                "com.crescendo.storage.storage_command",
                 "com.crescendo.workflow.workflow_command",
                 "com.crescendo.steps.steps_command",
                 "com.crescendo.steps.step_condition",
@@ -120,6 +121,7 @@ public class CommandDBConfig {
                         .dataSource(commandDataSource())
                         .packages(
                                 "com.crescendo.user.user_command",
+                                "com.crescendo.storage.storage_command",
                                 "com.crescendo.workflow.workflow_command",
                                 "com.crescendo.steps.steps_command",
                                 "com.crescendo.steps.step_condition",

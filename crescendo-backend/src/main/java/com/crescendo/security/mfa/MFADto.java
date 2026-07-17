@@ -39,7 +39,9 @@ public class MFADto {
     /// code  — the 6-digit TOTP code from the authenticator app (validated as exactly 6 digits)
     public record MfaLoginChallengeRequest(
             @NotBlank String email,
-            @Pattern(regexp="^[0-9]{6}$") String code
+            @Pattern(regexp="^[0-9]{6}$") String code,
+            String deviceId,
+            String deviceLabel
     ) {}
 
     /// Returned from POST /mfa/challenge.
@@ -63,7 +65,9 @@ public class MFADto {
     /// backupCode — the plain XXXX-XXXX-XXXX-XXXX code from the user's saved list.
     public record MfaUseBackupCodeRequest(
             @NotBlank String email,
-            @NotBlank String backupCode
+            @NotBlank String backupCode,
+            String deviceId,
+            String deviceLabel
     ) {}
 
     /// Returned from POST /mfa/backup-code.

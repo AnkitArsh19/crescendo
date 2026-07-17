@@ -154,16 +154,6 @@ public class UserEventListener {
         logger.info("User logged in: userId={}, provider={}", event.aggregateId(), event.getProvider());
     }
 
-    @TransactionalEventListener
-    public void onSessionCreated(com.crescendo.auth.domain_event.UserSessionCreatedEvent event) {
-        logger.info("User session created: userId={}, device={}", event.aggregateId(), event.getDeviceLabel());
-        userQueryRepo.findById(event.aggregateId()).ifPresent(q -> {
-            String device = event.getDeviceLabel() != null ? event.getDeviceLabel() : "Unknown Device";
-            String location = event.getClientIp() != null ? "IP: " + event.getClientIp() : "Unknown Location";
-            notificationService.sendLoginAlertEmail(q.getEmailId(), device, location);
-        });
-    }
-
     @Transactional
     @TransactionalEventListener
     @CacheEvict(value = "users", key = "#event.aggregateId()")

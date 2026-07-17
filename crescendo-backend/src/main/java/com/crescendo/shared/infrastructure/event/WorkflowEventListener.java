@@ -9,7 +9,13 @@ import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.webhook.Webhook;
 import com.crescendo.webhook.WebhookRepository;
-import com.crescendo.workflow.domain_event.*;
+import com.crescendo.workflow.domain_event.WorkflowActivatedEvent;
+import com.crescendo.workflow.domain_event.WorkflowCreatedEvent;
+import com.crescendo.workflow.domain_event.WorkflowDeactivatedEvent;
+import com.crescendo.workflow.domain_event.WorkflowDeletedEvent;
+import com.crescendo.workflow.domain_event.WorkflowGraphSavedEvent;
+import com.crescendo.workflow.domain_event.WorkflowUpdatedEvent;
+
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
 import org.slf4j.Logger;
@@ -65,6 +71,8 @@ public class WorkflowEventListener {
     public void onWorkflowCreated(WorkflowCreatedEvent event) {
         logger.info("Workflow created: workflowId={}, name={}, userId={}, guest={}",
                 event.aggregateId(), event.getWorkflowName(), event.getUserId(), event.isGuestWorkflow());
+        // Evict the list cache so the new workflow appears immediately
+        evictWorkflowListCache(event.getUserId());
         // Downstream: analytics tracking for workflow creation metrics
     }
 
@@ -79,6 +87,25 @@ public class WorkflowEventListener {
         logger.info("Workflow deleted: workflowId={}", event.aggregateId());
         evictWorkflowCaches(event.aggregateId());
         // Downstream: cancel any scheduled triggers for this workflow
+    }
+
+    private void evictWorkflowListCache(UUID userId) {
+        if (userId == null) return;
+        Cache listCache = cacheManager.getCache("workflowLists");
+        if (listCache != null) {
+            listCache.evict(userId);
+        }
+    }
+
+    /**
+     * Evicts the cached workflow detail after a graph save (steps + edges replaced).
+     * Distinct from onWorkflowUpdated which handles name/description changes only.
+     */
+    @TransactionalEventListener
+    public void onWorkflowGraphSaved(WorkflowGraphSavedEvent event) {
+        logger.info("Workflow graph saved: workflowId={}, userId={}",
+                event.aggregateId(), event.getUserId());
+        evictWorkflowCaches(event.aggregateId());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -180,6 +207,8 @@ public class WorkflowEventListener {
 
         if (workflow.getUser() != null) {
             cache.evict("detail:v2:" + workflow.getUser().getId() + ":" + workflowId);
+            // Also evict the list cache for this user so add/delete changes propagate immediately
+            evictWorkflowListCache(workflow.getUser().getId());
         }
         if (workflow.getGuestSessionId() != null) {
             cache.evict("guest-detail:v2:" + workflow.getGuestSessionId() + ":" + workflowId);

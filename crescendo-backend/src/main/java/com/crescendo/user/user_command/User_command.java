@@ -9,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.ColumnDefault;
 
 /**
  * Entity to store user details and command operations.
@@ -43,6 +44,27 @@ public class User_command {
     /// OAuth-registered users may bypass this if the provider has already verified the email.
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
+
+    @Column(name = "storage_used_bytes", nullable = false, columnDefinition = "bigint default 0")
+    private Long storageUsedBytes = 0L;
+
+    // ── Passkey nudge throttle ──────────────────────────────────────────────────
+    // How many times the "set up a passkey" nudge has been dismissed (temporary X).
+    // After 2 dismissals, the nudge stops appearing. An explicit opt-out sets
+    // passkeyNudgeOptedOut = true immediately, overriding this counter.
+    @Column(name = "passkeyNudgeDismissCount", nullable = false,
+            columnDefinition = "integer default 0")
+    private int passkeyNudgeDismissCount = 0;
+
+    // Timestamp of the last temporary dismissal — used to enforce the 14-day cooldown.
+    @Column(name = "passkeyNudgeLastDismissedAt")
+    private Instant passkeyNudgeLastDismissedAt;
+
+    // Set to true when the user explicitly clicks "Don't ask again".
+    // Checked first — if true, the nudge never appears regardless of count/cooldown.
+    @Column(name = "passkeyNudgeOptedOut", nullable = false,
+            columnDefinition = "boolean default false")
+    private boolean passkeyNudgeOptedOut = false;
 
     @CreationTimestamp
     @Column(name = "createdAt", nullable = false)
@@ -139,11 +161,43 @@ public class User_command {
         this.updatedAt = updatedAt;
     }
 
+    public Long getStorageUsedBytes() {
+        return storageUsedBytes;
+    }
+
+    public void setStorageUsedBytes(Long storageUsedBytes) {
+        this.storageUsedBytes = storageUsedBytes;
+    }
+
     public boolean isEmailVerified() {
         return emailVerified;
     }
 
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
+    }
+
+    public int getPasskeyNudgeDismissCount() {
+        return passkeyNudgeDismissCount;
+    }
+
+    public void setPasskeyNudgeDismissCount(int passkeyNudgeDismissCount) {
+        this.passkeyNudgeDismissCount = passkeyNudgeDismissCount;
+    }
+
+    public Instant getPasskeyNudgeLastDismissedAt() {
+        return passkeyNudgeLastDismissedAt;
+    }
+
+    public void setPasskeyNudgeLastDismissedAt(Instant passkeyNudgeLastDismissedAt) {
+        this.passkeyNudgeLastDismissedAt = passkeyNudgeLastDismissedAt;
+    }
+
+    public boolean isPasskeyNudgeOptedOut() {
+        return passkeyNudgeOptedOut;
+    }
+
+    public void setPasskeyNudgeOptedOut(boolean passkeyNudgeOptedOut) {
+        this.passkeyNudgeOptedOut = passkeyNudgeOptedOut;
     }
 }

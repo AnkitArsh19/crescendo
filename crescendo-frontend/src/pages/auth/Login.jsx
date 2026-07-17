@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineShieldCheck } from 'react-icons/hi';
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineShieldCheck, HiOutlineKey } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
 import { SiGithub } from 'react-icons/si';
 import { useTheme } from '../../components/ThemeContext';
 import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
+import { beginPasskeyAutofill, cancelPasskeyRequest, loginWithPasskey, passkeysSupported } from '../../api/passkeys';
+import { getDeviceId } from '../../utils/deviceFingerprint';
 import './Auth.css';
 
 const loginSchema = z.object({
@@ -30,19 +32,45 @@ export default function Login() {
         : '/dashboard';
     const loginFn = useAuthStore((state) => state.login);
     const verifyMfaFn = useAuthStore((state) => state.verifyMfa);
+    const useBackupCodeFn = useAuthStore((state) => state.useBackupCode);
     
     const [showPw, setShowPw] = useState(false);
     const [isMfaStep, setIsMfaStep] = useState(false);
+    const [isBackupCodeMode, setIsBackupCodeMode] = useState(false);
+    const [backupRemaining, setBackupRemaining] = useState(null);
     const [savedEmail, setSavedEmail] = useState('');
     const [globalError, setGlobalError] = useState('');
+    const [isPasskeyLogin, setIsPasskeyLogin] = useState(false);
 
-    const { register: registerLogin, handleSubmit: handleLoginSubmit, formState: { errors: loginErrors, isSubmitting: isLoggingIn } } = useForm({
+    const { register: registerLogin, handleSubmit: handleLoginSubmit, watch, formState: { errors: loginErrors, isSubmitting: isLoggingIn } } = useForm({
         resolver: zodResolver(loginSchema),
     });
 
     const { register: registerMfa, handleSubmit: handleMfaSubmit, formState: { errors: mfaErrors, isSubmitting: isVerifyingMfa } } = useForm({
         resolver: zodResolver(mfaSchema),
     });
+
+    const backupSchema = z.object({ backupCode: z.string().min(8, 'Backup code must be at least 8 characters') });
+    const { register: registerBackup, handleSubmit: handleBackupSubmit, formState: { errors: backupErrors, isSubmitting: isUsingBackup } } = useForm({
+        resolver: zodResolver(backupSchema),
+    });
+
+    useEffect(() => {
+        let active = true;
+
+        beginPasskeyAutofill()
+            .then((signedIn) => {
+                if (active && signedIn) navigate(destination, { replace: true });
+            })
+            // Conditional UI is a progressive enhancement. A failed background
+            // request must never prevent the ordinary password sign-in flow.
+            .catch(() => {});
+
+        return () => {
+            active = false;
+            cancelPasskeyRequest();
+        };
+    }, [destination, navigate, location.state]);
 
     const onLogin = async (data) => {
         setGlobalError('');
@@ -52,7 +80,7 @@ export default function Login() {
                 setSavedEmail(data.email);
                 setIsMfaStep(true);
             } else {
-                navigate(destination, { replace: true });
+                navigate(destination, { replace: true, state: { ...location.state, justLoggedIn: true } });
             }
         } catch (error) {
             setGlobalError(error.message);
@@ -63,10 +91,45 @@ export default function Login() {
         setGlobalError('');
         try {
             await verifyMfaFn(savedEmail, data.code);
-            navigate(destination, { replace: true });
+            navigate(destination, { replace: true, state: { ...location.state, justLoggedIn: true } });
         } catch (error) {
             setGlobalError(error.message);
         }
+    };
+
+    const onBackupCode = async (data) => {
+        setGlobalError('');
+        try {
+            const result = await useBackupCodeFn(savedEmail, data.backupCode);
+            if (result.remaining !== undefined && result.remaining <= 2) {
+                setBackupRemaining(result.remaining);
+            }
+            navigate(destination, { replace: true, state: { ...location.state, justLoggedIn: true } });
+        } catch (error) {
+            setGlobalError(error.message);
+        }
+    };
+
+    const onPasskeyLogin = async () => {
+        setGlobalError('');
+        setIsPasskeyLogin(true);
+        try {
+            // When email is blank, a discoverable/resident passkey lets the device
+            // select the account. With an email entered, only that account's keys
+            // are offered.
+            await loginWithPasskey(watch('email') || '');
+            navigate(destination, { replace: true, state: { ...location.state, justLoggedIn: true } });
+        } catch (error) {
+            setGlobalError(error.message);
+        } finally {
+            setIsPasskeyLogin(false);
+        }
+    };
+
+    const handleOAuthLogin = (provider) => {
+        const deviceId = getDeviceId();
+        document.cookie = `crescendo_device_id_transfer=${encodeURIComponent(deviceId)}; path=/; max-age=300; SameSite=Lax`;
+        window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider}`;
     };
 
     return (
@@ -99,6 +162,7 @@ export default function Login() {
                         type="email"
                         placeholder="Enter your email"
                         icon={<HiOutlineMail />}
+                        autoComplete="username webauthn"
                         {...registerLogin('email')}
                         error={loginErrors.email?.message}
                     />
@@ -110,6 +174,7 @@ export default function Login() {
                         icon={<HiOutlineLockClosed />}
                         rightIcon={showPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                         onRightIconClick={() => setShowPw(!showPw)}
+                        autoComplete="current-password"
                         {...registerLogin('password')}
                         error={loginErrors.password?.message}
                     />
@@ -119,14 +184,24 @@ export default function Login() {
                             <input type="checkbox" {...registerLogin('rememberMe')} />
                             Remember me
                         </label>
-                        <Link to="/reset-password" className="auth-forgot">
-                            Forgot password?
-                        </Link>
+                        <Link to="/reset-password" className="auth-forgot">Forgot password?</Link>
                     </div>
 
                     <button type="submit" className="auth-btn" disabled={isLoggingIn}>
                         {isLoggingIn ? 'Logging in...' : 'Log in'}
                     </button>
+
+                    <button
+                        type="button"
+                        className="auth-passkey-btn"
+                        onClick={onPasskeyLogin}
+                        disabled={!passkeysSupported() || isPasskeyLogin}
+                        title={passkeysSupported() ? 'Use a passkey, security key, or another device' : 'Passkeys are not supported by this browser'}
+                    >
+                        <HiOutlineKey />
+                        <span>{isPasskeyLogin ? 'Checking for passkeys…' : 'Continue with a passkey'}</span>
+                    </button>
+                    <p className="auth-passkey-hint">Use your screen lock, security key, or a nearby phone.</p>
 
                     <div className="auth-divider">
                         <span className="auth-divider-line" />
@@ -138,7 +213,7 @@ export default function Login() {
                         <button 
                             type="button" 
                             className="auth-oauth-btn" 
-                            onClick={() => window.location.href = 'https://api.crescendo.run/oauth2/authorization/google'}
+                            onClick={() => handleOAuthLogin('google')}
                             style={{ flex: 1 }}
                         >
                             <span className="auth-oauth-icon"><FcGoogle /></span>
@@ -147,7 +222,7 @@ export default function Login() {
                         <button 
                             type="button" 
                             className="auth-oauth-btn" 
-                            onClick={() => window.location.href = 'https://api.crescendo.run/oauth2/authorization/github'}
+                            onClick={() => handleOAuthLogin('github')}
                             style={{ flex: 1, color: 'var(--text-primary)' }}
                         >
                             <span className="auth-oauth-icon"><SiGithub /></span>
@@ -156,16 +231,41 @@ export default function Login() {
                     </div>
                     
                     <div className="auth-footer">
-                        Don't have an account? <Link to="/register">Sign up</Link>
-                        <div style={{ marginTop: '16px' }}>
-                            <button
-                                type="button"
-                                onClick={() => { useAuthStore.getState().enterGuestMode(); navigate('/dashboard'); }}
-                                style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                            >
-                                Continue as guest
-                            </button>
-                        </div>
+                        <div>Don't have an account? <Link to="/register">Sign up</Link> <span className="auth-footer-separator">•</span> <Link to="/auth/recover-passkey">Recover passkey</Link></div>
+                        <button
+                            type="button"
+                            className="auth-guest-link"
+                            onClick={() => { useAuthStore.getState().enterGuestMode(); navigate('/dashboard'); }}
+                        >
+                            Continue as guest
+                        </button>
+                    </div>
+                </form>
+            ) : isBackupCodeMode ? (
+                <form className="auth-form" onSubmit={handleBackupSubmit(onBackupCode)}>
+                    <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.4)', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '0.83rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        &#9888;&#65039; Backup codes are <strong>single-use</strong>. Each code can only be used once.
+                        {backupRemaining !== null && ` You have ${backupRemaining} backup code${backupRemaining !== 1 ? 's' : ''} remaining.`}
+                    </div>
+                    <Input
+                        label="Backup Code"
+                        type="text"
+                        placeholder="e.g. ABCD-1234-EFGH"
+                        icon={<HiOutlineShieldCheck />}
+                        {...registerBackup('backupCode')}
+                        error={backupErrors.backupCode?.message}
+                        autoComplete="off"
+                    />
+                    <button type="submit" className="auth-btn" disabled={isUsingBackup} style={{ marginTop: '10px' }}>
+                        {isUsingBackup ? 'Verifying...' : 'Use Backup Code'}
+                    </button>
+                    <div className="auth-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <button type="button" onClick={() => { setIsBackupCodeMode(false); setGlobalError(''); }} style={{ background: 'none', border: 'none', color: 'var(--text-accent)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            Use authenticator app instead
+                        </button>
+                        <button type="button" onClick={() => { setIsMfaStep(false); setIsBackupCodeMode(false); setGlobalError(''); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            Back to login
+                        </button>
                     </div>
                 </form>
             ) : (
@@ -184,9 +284,12 @@ export default function Login() {
                     <button type="submit" className="auth-btn" disabled={isVerifyingMfa} style={{ marginTop: '10px' }}>
                         {isVerifyingMfa ? 'Verifying...' : 'Verify & Log in'}
                     </button>
-                    
-                    <div className="auth-footer" style={{ marginTop: '20px' }}>
-                        <button type="button" onClick={() => setIsMfaStep(false)} style={{ background: 'none', border: 'none', color: 'var(--text-accent)', cursor: 'pointer', fontSize: '0.85rem' }}>
+
+                    <div className="auth-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <button type="button" onClick={() => { setIsBackupCodeMode(true); setGlobalError(''); }} style={{ background: 'none', border: 'none', color: 'var(--text-accent)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            Lost access? Use backup code
+                        </button>
+                        <button type="button" onClick={() => { setIsMfaStep(false); setGlobalError(''); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>
                             Back to login
                         </button>
                     </div>

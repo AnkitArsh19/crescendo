@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
 @EnableAsync
+// Application entry point.
 public class CrescendoApplication {
 
 	public static void main(String[] args) {

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class MySqlApp implements AppDefinition {
+public class MySQLApp implements AppDefinition {
 
     @Override
     public App toApp() {

@@ -1,38 +1,22 @@
 import { motion } from 'framer-motion';
-import { HiOutlineGlobeAlt } from 'react-icons/hi';
-import { FaGithub, FaDiscord } from 'react-icons/fa';
-import { FaXTwitter } from 'react-icons/fa6';
+import { Link } from 'react-router-dom';
+import { FaGithub } from 'react-icons/fa';
 import './Footer.css';
 
 export default function Footer() {
     return (
-        <motion.footer
-            className="footer"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-        >
+        <motion.footer className="footer" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }}>
             <div className="footer-inner">
                 <div className="footer-grid">
                     <div className="footer-brand">
                         <div className="footer-brand-name">Crescendo</div>
                         <p className="footer-brand-desc">
-                            The workflow automation platform that grows with you.
-                            Build, deploy, and monitor with confidence.
+                            A workflow automation platform with a catalog-driven builder,
+                            asynchronous execution, and built-in transactional email.
                         </p>
                         <div className="footer-social">
-                            <a href="#" className="footer-social-link" aria-label="GitHub">
+                            <a href="https://github.com/AnkitArsh19/crescendo" className="footer-social-link" aria-label="Crescendo on GitHub" target="_blank" rel="noreferrer">
                                 <FaGithub />
-                            </a>
-                            <a href="#" className="footer-social-link" aria-label="Twitter">
-                                <FaXTwitter />
-                            </a>
-                            <a href="#" className="footer-social-link" aria-label="Discord">
-                                <FaDiscord />
-                            </a>
-                            <a href="#" className="footer-social-link" aria-label="Website">
-                                <HiOutlineGlobeAlt />
                             </a>
                         </div>
                     </div>
@@ -41,40 +25,38 @@ export default function Footer() {
                         <div className="footer-column-title">Product</div>
                         <ul className="footer-links">
                             <li><a href="#features" className="footer-link">Features</a></li>
-                            <li><a href="#api" className="footer-link">API</a></li>
-                            <li><a href="#" className="footer-link">Integrations</a></li>
-                            <li><a href="#" className="footer-link">Changelog</a></li>
+                            <li><a href="#api" className="footer-link">Public API</a></li>
+                            <li><Link to="/docs/api/apps" className="footer-link">App Catalog</Link></li>
+                            <li><Link to="/dashboard/email" className="footer-link">CrescendoMail</Link></li>
                         </ul>
                     </div>
 
                     <div className="footer-column">
                         <div className="footer-column-title">Resources</div>
                         <ul className="footer-links">
-                            <li><a href="#docs" className="footer-link">Documentation</a></li>
-                            <li><a href="#" className="footer-link">Tutorials</a></li>
-                            <li><a href="#" className="footer-link">Blog</a></li>
-                            <li><a href="#" className="footer-link">Community</a></li>
+                            <li><Link to="/docs" className="footer-link">Documentation</Link></li>
+                            <li><Link to="/docs/authentication" className="footer-link">Authentication</Link></li>
+                            <li><Link to="/docs/api/workflows" className="footer-link">API Reference</Link></li>
+                            <li><a href="https://github.com/AnkitArsh19/crescendo-sdk" className="footer-link" target="_blank" rel="noreferrer">SDKs</a></li>
                         </ul>
                     </div>
 
                     <div className="footer-column">
-                        <div className="footer-column-title">Company</div>
+                        <div className="footer-column-title">Account</div>
                         <ul className="footer-links">
-                            <li><a href="#" className="footer-link">About</a></li>
-                            <li><a href="#" className="footer-link">Careers</a></li>
-                            <li><a href="#" className="footer-link">Contact</a></li>
-                            <li><a href="#" className="footer-link">Status</a></li>
+                            <li><Link to="/register" className="footer-link">Create account</Link></li>
+                            <li><Link to="/login" className="footer-link">Log in</Link></li>
+                            <li><Link to="/settings/developer-api" className="footer-link">API keys</Link></li>
+                            <li><Link to="/developer" className="footer-link">Developer profile</Link></li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="footer-bottom">
-                    <div className="footer-copyright">
-                        © 2026 Crescendo. All rights reserved.
-                    </div>
+                    <div className="footer-copyright">© 2026 Crescendo. All rights reserved.</div>
                     <div className="footer-legal">
-                        <a href="https://app.crescendo.run/privacy/">Privacy Policy</a>
-                        <a href="https://app.crescendo.run/terms/">Terms of Service</a>
+                        <Link to="/privacy">Privacy Policy</Link>
+                        <Link to="/terms">Terms of Service</Link>
                     </div>
                 </div>
             </div>

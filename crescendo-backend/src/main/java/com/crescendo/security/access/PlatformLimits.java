@@ -18,6 +18,7 @@ package com.crescendo.security.access;
  * │ canUseWebhooks       │   false   │   false   │   true    │   true    │
  * │ canManageConnections │   true    │   true    │   true    │   true    │
  * │ canExportWorkflows   │   false   │   false   │   true    │   true    │
+ * │ maxStorageBytes      │   10MB    │   50MB    │   1GB     │ unlimited │
  * └──────────────────────┴───────────┴───────────┴───────────┴───────────┘
  */
 public record PlatformLimits(
@@ -26,7 +27,8 @@ public record PlatformLimits(
         boolean canActivateWorkflow,
         boolean canUseWebhooks,
         boolean canManageConnections,
-        boolean canExportWorkflows
+        boolean canExportWorkflows,
+        long maxStorageBytes
 ) {
 
     /// Guest tier — just enough to try the platform as a portfolio demo.
@@ -36,7 +38,8 @@ public record PlatformLimits(
             true,  // can activate and execute their workflow
             false, // no webhooks
             true,  // can connect apps to see the integration flow
-            false  // no export
+            false, // no export
+            10L * 1024 * 1024 // 10MB storage
     );
 
     /// Unverified registered user — slightly more generous than guest.
@@ -46,7 +49,8 @@ public record PlatformLimits(
             true,  // can activate and execute
             false, // no webhooks until verified
             true,  // can connect apps
-            false  // no export until verified
+            false, // no export until verified
+            50L * 1024 * 1024 // 50MB storage
     );
 
     /// Standard verified-user tier — generous limits for normal usage.
@@ -56,7 +60,8 @@ public record PlatformLimits(
             true,
             true,
             true,
-            true
+            true,
+            1024L * 1024 * 1024 // 1GB storage
     );
 
     /// Admin tier — effectively no restrictions.
@@ -66,7 +71,8 @@ public record PlatformLimits(
             true,
             true,
             true,
-            true
+            true,
+            Long.MAX_VALUE
     );
 
     /**

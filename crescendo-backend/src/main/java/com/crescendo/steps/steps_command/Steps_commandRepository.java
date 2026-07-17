@@ -24,4 +24,27 @@ public interface Steps_commandRepository extends JpaRepository<Steps_command, UU
     /// Soft-delete all steps for a workflow (used when soft-deleting a workflow).
     @Query("SELECT s FROM Steps_command s WHERE s.workflow.id = :workflowId AND s.deletedAt IS NULL")
     List<Steps_command> findActiveByWorkflowId(UUID workflowId);
+
+    /**
+     * Finds active TRIGGER steps whose parent workflow is active and
+     * have no corresponding active {@code Webhook} row.
+     *
+     * Used by {@code WebhookReconciliationJob} to self-heal missing webhook
+     * registrations that can occur when {@code onWorkflowActivated}'s
+     * secondary transaction (REQUIRES_NEW) fails after the parent TX commits.
+     */
+    @Query("""
+            SELECT s FROM Steps_command s
+            WHERE s.deletedAt IS NULL
+              AND s.type = com.crescendo.enums.StepType.TRIGGER
+              AND s.workflow.isActive = true
+              AND s.workflow.deletedAt IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM Webhook w
+                  WHERE w.stepId = s.id
+                    AND w.isActive = true
+              )
+            """)
+    List<Steps_command> findActiveTriggersWithNoWebhook();
+
 }

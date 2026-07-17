@@ -19,6 +19,7 @@ import { useTheme } from '../../components/ThemeContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
+import PasskeyNudge from '../../components/PasskeyNudge';
 import './DashboardLayout.css';
 
 const navItems = [
@@ -263,6 +264,7 @@ export default function DashboardLayout() {
                         </div>
                     )}
 
+                    <PasskeyNudge />
                     <Outlet context={{ toggleTheme, theme, collapsed, setCollapsed }} />
                 </div>
             </div>

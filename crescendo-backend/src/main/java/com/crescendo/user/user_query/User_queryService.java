@@ -10,6 +10,7 @@ import com.crescendo.user.user_command.user_identity.UserIdentityRepository;
 import com.crescendo.user.user_command.user_session.UserSession;
 import com.crescendo.user.user_command.user_session.UserSessionRepository;
 import com.crescendo.security.mfa.UserMFASettingRepository;
+import com.crescendo.user.user_command.webauthn.PasskeyCredential_commandRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -37,17 +38,20 @@ public class User_queryService {
     private final UserIdentityRepository identityRepo;
     private final UserSessionRepository sessionRepo;
     private final UserMFASettingRepository mfaSettingRepo;
+    private final PasskeyCredential_commandRepository passkeyRepo;
 
     public User_queryService(User_commandRepository userRepo,
                              UserCredentialRepository credentialRepo,
                              UserIdentityRepository identityRepo,
                              UserSessionRepository sessionRepo,
-                             UserMFASettingRepository mfaSettingRepo) {
+                             UserMFASettingRepository mfaSettingRepo,
+                             PasskeyCredential_commandRepository passkeyRepo) {
         this.userRepo = userRepo;
         this.credentialRepo = credentialRepo;
         this.identityRepo = identityRepo;
         this.sessionRepo = sessionRepo;
         this.mfaSettingRepo = mfaSettingRepo;
+        this.passkeyRepo = passkeyRepo;
     }
     /**
      * Builds the complete account profile for GET /users/me.
@@ -88,12 +92,17 @@ public class User_queryService {
             case GUEST      -> new UserDto.LimitsResponse("GUEST",      true,  1,   1);
         };
 
+        int passkeyCount = (int) passkeyRepo.countByUserId(userId);
+
         return new UserDto.AccountResponse(
                 user.getId().toString(),
                 user.getEmailId(),
                 user.getUserName(),
                 user.getRole().name(),
                 hasLocal,
+                passkeyCount,
+                user.getPasskeyNudgeDismissCount(),
+                user.isPasskeyNudgeOptedOut(),
                 mfa,
                 linkedAccounts,
                 sessions,

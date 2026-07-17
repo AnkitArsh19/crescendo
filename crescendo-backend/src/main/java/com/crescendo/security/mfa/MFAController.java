@@ -133,7 +133,10 @@ public class MFAController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         int code = Integer.parseInt(req.code());
-        Optional<TokenPair> tokenOpt = mfaService.completeLoginIfValid(user, code, userAgent(servReq));
+        String clientIp = servReq.getHeader("X-Forwarded-For");
+        if (clientIp == null) clientIp = servReq.getRemoteAddr();
+        else clientIp = clientIp.split(",")[0].trim();
+        Optional<TokenPair> tokenOpt = mfaService.completeLoginIfValid(user, code, userAgent(servReq), clientIp, req.deviceId(), req.deviceLabel());
 
         if (tokenOpt.isEmpty())
             return ResponseEntity.ok(new MFADto.MfaLoginChallengeResponse(false, null, null));
@@ -157,7 +160,10 @@ public class MFAController {
         User_command user = userRepo.findByEmailIgnoreCase(req.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
-        Optional<TokenPair> tokenOpt = mfaService.useBackupCode(user, req.backupCode(), userAgent(servReq));
+        String backupClientIp = servReq.getHeader("X-Forwarded-For");
+        if (backupClientIp == null) backupClientIp = servReq.getRemoteAddr();
+        else backupClientIp = backupClientIp.split(",")[0].trim();
+        Optional<TokenPair> tokenOpt = mfaService.useBackupCode(user, req.backupCode(), userAgent(servReq), backupClientIp, req.deviceId(), req.deviceLabel());
 
         if (tokenOpt.isEmpty())
             return ResponseEntity.ok(new MFADto.MfaUseBackupCodeResponse(false, null, null, 0));

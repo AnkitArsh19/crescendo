@@ -5,7 +5,7 @@
     align-items: center;
     position: relative;
     overflow: hidden;
-    padding: 100px 24px 40px;
+    padding: 84px 24px 24px;
 }
 
 .hero-inner {
@@ -14,7 +14,7 @@
     width: 100%;
     display: grid;
     grid-template-columns: 0.85fr 1.15fr;
-    gap: 48px;
+    gap: 36px;
     align-items: center;
     position: relative;
     z-index: 2;
@@ -38,7 +38,7 @@
     font-size: 0.72rem;
     font-weight: 500;
     color: var(--text-tertiary);
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     background: var(--bg-card);
     letter-spacing: 0.5px;
 }
@@ -72,7 +72,7 @@
     color: var(--text-accent);
     line-height: 1.08;
     letter-spacing: -1.5px;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
 }
 
 .hero-title-serif {
@@ -86,9 +86,9 @@
     font-size: 1.05rem;
     color: var(--text-secondary);
     max-width: 440px;
-    line-height: 1.7;
+    line-height: 1.55;
     font-weight: 400;
-    margin-bottom: 36px;
+    margin-bottom: 26px;
 }
 
 .hero-cta {
@@ -417,7 +417,7 @@
 .integrations-strip {
     width: 100%;
     overflow: hidden;
-    padding: 48px 0 0;
+    padding: 30px 0 0;
     position: relative;
     z-index: 2;
     flex-shrink: 0;
@@ -430,7 +430,7 @@
     text-transform: uppercase;
     letter-spacing: 3px;
     color: var(--text-tertiary);
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 .integrations-track {

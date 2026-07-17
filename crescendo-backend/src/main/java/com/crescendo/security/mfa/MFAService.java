@@ -104,14 +104,14 @@ public class MFAService {
     /// provides their 6-digit TOTP code. Returns a full TokenPair on success, empty on failure.
     /// Returns empty (not an exception) so the auth controller can return a clean 401 without
     /// leaking whether the failure was a wrong code vs no MFA configured.
-    public Optional<TokenPair> completeLoginIfValid(User_command user, int code, String userAgent) {
+    public Optional<TokenPair> completeLoginIfValid(User_command user, int code, String userAgent, String clientIp, String deviceId, String deviceLabel) {
         Optional<UserMFASetting> settingOpt = mfaRepo.findByUser_Id(user.getId());
         if (settingOpt.isEmpty()) return Optional.empty();
         UserMFASetting setting = settingOpt.get();
         if (!setting.isEnabled() || !setting.isVerified()) return Optional.empty();
         if (verifyCode(setting.getSecret(), code, 1)) {
             AppUserDetails principal = AppUserDetails.from(user, Optional.empty());
-            return Optional.of(jwtService.issueTokenPair(user, principal, userAgent));
+            return Optional.of(jwtService.issueTokenPair(user, principal, userAgent, clientIp, deviceId, deviceLabel, false));
         }
         return Optional.empty();
     }
@@ -145,14 +145,14 @@ public class MFAService {
     /// On match: mark the code as consumed (sets usedAt) and issue a full token pair.
     /// The code becomes permanently unusable after this call — even if the user logs out and tries again.
     @Transactional
-    public Optional<TokenPair> useBackupCode(User_command user, String rawCode, String userAgent) {
+    public Optional<TokenPair> useBackupCode(User_command user, String rawCode, String userAgent, String clientIp, String deviceId, String deviceLabel) {
         String hash = hashBackupCode(rawCode);
         Optional<UserMFABackupCode> opt = backupRepo.findByUser_IdAndCodeHashAndUsedAtIsNull(user.getId(), hash);
         if (opt.isEmpty()) return Optional.empty();
         UserMFABackupCode code = opt.get();
         code.setUsedAt(Instant.now()); // marks code as consumed — single-use enforced
         AppUserDetails principal = AppUserDetails.from(user, Optional.empty());
-        return Optional.of(jwtService.issueTokenPair(user, principal, userAgent));
+        return Optional.of(jwtService.issueTokenPair(user, principal, userAgent, clientIp, deviceId, deviceLabel, false));
     }
 
     /// Builds the standard otpauth:// URI consumed by authenticator apps (Google Authenticator, Authy etc.).

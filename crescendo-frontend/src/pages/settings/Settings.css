@@ -1221,6 +1221,17 @@
     font-variant-numeric: tabular-nums;
 }
 
+.passkey-table .settings-table-head,
+.passkey-table .settings-table-row {
+    grid-template-columns: 2fr 1fr 1fr 1fr 42px;
+}
+
+@media (max-width: 700px) {
+    .passkey-table { overflow-x: auto; }
+    .passkey-table .settings-table-head,
+    .passkey-table .settings-table-row { min-width: 590px; }
+}
+
 .apikey-table .settings-table-head,
 .apikey-table .settings-table-row {
     grid-template-columns: minmax(120px, 1.5fr) minmax(110px, 1fr) 70px 100px 85px 78px;
