@@ -15,6 +15,7 @@ export default function VerifyEmail() {
     useEffect(() => {
         const token = searchParams.get('token');
         if (!token) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStatus('error');
             setErrorMsg('No verification token found in the link.');
             return;

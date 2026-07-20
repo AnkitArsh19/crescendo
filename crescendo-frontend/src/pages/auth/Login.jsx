@@ -32,7 +32,7 @@ export default function Login() {
         : '/dashboard';
     const loginFn = useAuthStore((state) => state.login);
     const verifyMfaFn = useAuthStore((state) => state.verifyMfa);
-    const useBackupCodeFn = useAuthStore((state) => state.useBackupCode);
+    const verifyBackupCode = useAuthStore((state) => state.useBackupCode);
     
     const [showPw, setShowPw] = useState(false);
     const [isMfaStep, setIsMfaStep] = useState(false);
@@ -100,7 +100,7 @@ export default function Login() {
     const onBackupCode = async (data) => {
         setGlobalError('');
         try {
-            const result = await useBackupCodeFn(savedEmail, data.backupCode);
+            const result = await verifyBackupCode(savedEmail, data.backupCode);
             if (result.remaining !== undefined && result.remaining <= 2) {
                 setBackupRemaining(result.remaining);
             }

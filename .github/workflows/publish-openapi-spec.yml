@@ -53,6 +53,7 @@ jobs:
       - name: Start backend (background)
         run: |
           cd crescendo-backend
+          chmod +x mvnw
           ./mvnw -q spring-boot:run -DskipTests -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
           echo $! > ../backend.pid
           for i in $(seq 1 40); do

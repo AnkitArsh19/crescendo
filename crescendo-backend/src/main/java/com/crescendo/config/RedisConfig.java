@@ -17,10 +17,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.listener.PatternTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import com.crescendo.shared.infrastructure.sse.WorkflowSseService;
 
 import java.time.Duration;
 import java.util.Map;
@@ -122,6 +125,16 @@ public class RedisConfig implements CachingConfigurer {
 
         template.afterPropertiesSet();
         return template;
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            WorkflowSseService workflowSseService) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(workflowSseService, new PatternTopic("workflow-events:*"));
+        return container;
     }
 
     /**

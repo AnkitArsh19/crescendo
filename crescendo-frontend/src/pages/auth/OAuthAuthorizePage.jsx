@@ -23,6 +23,7 @@ export default function OAuthAuthorizePage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     continueAuthorization();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

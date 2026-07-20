@@ -12,7 +12,7 @@
  *  - Test-send before publishing
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiOutlineX, HiOutlineCheck, HiOutlinePaperAirplane, HiOutlineCode,
@@ -45,7 +45,7 @@ function createBlock(type) {
   switch (type) {
     case 'heading':  return { ...base, content: 'Your Heading', level: 'h1', align: 'left', color: '#0a0a0a', fontSize: 32 };
     case 'text':     return { ...base, content: 'Your paragraph text goes here. Use {{FIRST_NAME}} for personalization.', align: 'left', color: '#374151', fontSize: 16, lineHeight: 1.6 };
-    case 'button':   return { ...base, content: 'Click Here', href: 'https://', align: 'center', bgColor: '#6366f1', textColor: '#ffffff', borderRadius: 8, paddingV: 12, paddingH: 24 };
+    case 'button':   return { ...base, content: 'Click Here', href: 'https://', align: 'center', bgColor: '#1a1a1a', textColor: '#ffffff', borderRadius: 8, paddingV: 12, paddingH: 24 };
     case 'image':    return { ...base, src: '', alt: '', align: 'center', width: '100%' };
     case 'divider':  return { ...base, color: '#e5e7eb', thickness: 1, margin: 24 };
     case 'columns':  return { ...base, columns: [{ content: 'Column 1 content', align: 'left', color: '#374151' }, { content: 'Column 2 content', align: 'left', color: '#374151' }] };
@@ -79,7 +79,6 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const [blocks, setBlocks] = useState(() => initBlocks(template));
   const [selectedBlockId, setSelectedBlockId] = useState(null);
   const [slashMenu, setSlashMenu] = useState({ open: false, blockId: null, query: '' });
-  const [varMenu, setVarMenu] = useState({ open: false, blockId: null, field: null });
   const [importOpen, setImportOpen] = useState(false);
   const [importHtml, setImportHtml] = useState('');
   const [testSendOpen, setTestSendOpen] = useState(false);
@@ -387,10 +386,8 @@ ${blocksToHtml(blocks)}
 
 // ─── Block Row ─────────────────────────────────────────────────────────────────
 
-function BlockRow({ block, isSelected, isFirst, isLast, onSelect, onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate, onAddAfter, onSlashMenu, slashMenu, onCloseSlashMenu }) {
+function BlockRow({ block, isSelected, isFirst, isLast, onSelect, onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate, onAddAfter, slashMenu }) {
   const [showActions, setShowActions] = useState(false);
-  const [slashQuery, setSlashQuery]   = useState('');
-  const contentRef = useRef(null);
 
   const filtered = BLOCK_TYPES.filter(t =>
     !slashMenu.query || t.label.toLowerCase().startsWith(slashMenu.query.toLowerCase())

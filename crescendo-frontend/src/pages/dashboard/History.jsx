@@ -13,7 +13,7 @@ import {
   HiOutlineLightningBolt,
 } from 'react-icons/hi';
 import useLogbookStore from '../../store/logbookStore';
-import useWorkflowStore from '../../store/workflowStore';
+import { useWorkflowList } from '../../hooks/useWorkflows';
 import './History.css';
 
 const fadeIn = {
@@ -62,12 +62,11 @@ export default function History() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const { runs, page, isLoading, error, fetchAllRuns } = useLogbookStore();
-  const { workflows, fetchWorkflows } = useWorkflowStore();
+  const { data: workflows = [] } = useWorkflowList();
 
   useEffect(() => {
     fetchAllRuns(currentPage);
-    fetchWorkflows();
-  }, [fetchAllRuns, fetchWorkflows, currentPage]);
+  }, [fetchAllRuns, currentPage]);
 
   const workflowNames = {};
   workflows.forEach((w) => { workflowNames[w.id] = w.name; });

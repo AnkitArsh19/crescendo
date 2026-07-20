@@ -94,8 +94,8 @@ export default function SuppressionsPage() {
 
             {list.length === 0 ? (
                 <div className="settings-empty">
-                    <div className="settings-empty-icon">🚫</div>
-                    <p>No suppressed addresses. Bounced emails are automatically added here.</p>
+                    <div className="settings-empty-icon"><HiOutlineBan size={32} /></div>
+                    <p>No suppression records found. Your list is clean!</p>
                 </div>
             ) : (
                 <div className="settings-table">

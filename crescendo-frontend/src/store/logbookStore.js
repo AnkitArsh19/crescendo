@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { allRunsApi, workflowRunApi, stepRunApi } from '../api/logbookApi';
+import { allRunsApi, workflowRunApi } from '../api/logbookApi';
 
-const useLogbookStore = create((set, get) => ({
+
+const useLogbookStore = create((set) => ({
   // All-runs view (cross-workflow)
   runs: [],
   page: null,

@@ -107,7 +107,7 @@ public class DomainController {
     @GetMapping("/{id}/domain-connect")
     public ResponseEntity<?> getDomainConnectUrl(@PathVariable UUID id, Authentication auth) {
         var domainDto = queryService.getDomain(userId(auth), id);
-        return domainConnectService.buildSyncUrl(domainDto.domainName())
+        return domainConnectService.buildSyncUrl(domainDto)
                 .map(url -> ResponseEntity.ok().body(Map.of("url", url)))
                 .orElseGet(() -> ResponseEntity.badRequest()
                         .body(Map.of("error", "Domain Connect is not supported by the DNS provider for this domain.")));

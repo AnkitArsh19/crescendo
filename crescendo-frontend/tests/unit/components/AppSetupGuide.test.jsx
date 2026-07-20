@@ -4,7 +4,7 @@ import AppSetupGuide from '../../../src/components/AppSetupGuide';
 
 // Mock the appGuideData to return predictable content for our tests
 vi.mock('../../../src/data/appGuideData', () => ({
-  getAppGuide: vi.fn((appKey, app) => {
+  getAppGuide: vi.fn((appKey) => {
     if (appKey === 'no-guide') return null;
     
     return {

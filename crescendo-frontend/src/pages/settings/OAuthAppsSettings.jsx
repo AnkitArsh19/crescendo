@@ -15,10 +15,12 @@ export default function OAuthAppsSettings() {
     const addToast = useToastStore(state => state.addToast);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const fetchData = async () => {
+    async function fetchData() {
         setLoading(true);
         try {
             const [myApps, allApps] = await Promise.all([
@@ -27,7 +29,7 @@ export default function OAuthAppsSettings() {
             ]);
             setOauthApps(myApps);
             setCatalogApps(allApps.filter(app => app.authType === 'OAUTH2'));
-        } catch (error) {
+        } catch {
             addToast('Failed to load OAuth configurations', 'error');
         } finally {
             setLoading(false);
@@ -44,7 +46,7 @@ export default function OAuthAppsSettings() {
             await oauthAppsApi.delete(confirmDelete);
             addToast('Configuration deleted', 'success');
             fetchData();
-        } catch (error) {
+        } catch {
             addToast('Failed to delete configuration', 'error');
         }
         setConfirmDelete(null);

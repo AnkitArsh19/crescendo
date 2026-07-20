@@ -23,3 +23,9 @@ graphify-out/
 docs_archive/
 demo/
 geo-data/
+
+# Domain Connect Temp Files
+private_key.pem
+public_key.pem
+keys-server/
+template.schema.json

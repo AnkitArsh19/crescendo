@@ -68,6 +68,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isAdmin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchUsers();
       fetchAdminEmails();
       fetchPlatformKeys();

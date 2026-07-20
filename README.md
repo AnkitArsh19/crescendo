@@ -96,7 +96,8 @@ Engineering focus areas:
 - React 19
 - Vite 7
 - React Router
-- Zustand
+- Zustand (UI state)
+- React Query (`@tanstack/react-query`) — server-state caching, optimistic updates
 - Axios
 - React Hook Form + Zod
 - Framer Motion
@@ -252,6 +253,14 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **Cross-Stack Device Fingerprinting**: Device UUIDs are generated client-side and persisted in `localStorage`. These are threaded through all login paths including passwords, passkeys (`X-Device-Id` headers), and OAuth flows (`SameSite=Lax` transfer cookies) to ensure comprehensive attribution.
 - **Stateless Revocation & Bounded Exposure**: Instead of a complex Redis blocklist for revoked JWTs, the system employs short-lived Access Tokens (15m) and long-lived Refresh Tokens. Revocation instantly kills the refresh token in the database, relying on the short TTL to bound the exposure window gracefully.
 
+### 16. Layered Client-Side Caching with SSE-driven Invalidation
+
+- **Two-Layer Cache Architecture**: The backend serves Redis-cached responses (per-user TTLs, event-driven eviction via `@TransactionalEventListener`). The frontend adds React Query as a second, independent cache layer — the two solve different costs: backend reduces DB load, frontend eliminates redundant network round-trips on navigation.
+- **Correct staleTime semantics**: The workflow list uses a short `staleTime` (30s) for freshness on re-visits. The open canvas uses `staleTime: Infinity` — no background refetch mid-edit — with `refetchOnWindowFocus: 'always'` as the intentional safety net.
+- **Optimistic Mutations with Rollback**: Activate/deactivate and workflow renames update the React Query cache immediately and roll back on failure via `onMutate`/`onError`/`onSettled` lifecycle, matching the UX standard set by tools like Notion and Linear.
+- **SSE Push Channel + Redis Pub/Sub Fan-out**: `WorkflowSseService` holds per-instance SSE emitters. Mutations publish to a Redis Pub/Sub channel (`workflow-events:{userId}`). Every backend instance subscribes and fans notifications to its own locally registered emitters. This ensures cross-tab and multi-instance invalidation without the per-request blocklist overhead.
+- **Layered Redundancy for Disconnects**: `EventSource` reconnects automatically after network drops. Events missed during a disconnect are caught by `refetchOnWindowFocus`, which fires on laptop wake. The two mechanisms are complementary, not redundant.
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads
@@ -311,6 +320,7 @@ This project demonstrates:
 - Handling real failure scenarios (retries, DLQ, pending reclaim, health checks)
 - Designing extensible platform architecture for third-party integrations
 - Balancing product velocity with reliability and security foundations
+- Making deliberate, reasoned tradeoffs (e.g. two-layer cache over a single approach, SSE + Redis Pub/Sub over per-request blocklists)
 
 ## Current direction
 

@@ -15,12 +15,13 @@ import {
     HiOutlineDocumentText,
     HiOutlineSun,
 } from 'react-icons/hi';
-import { SiSlack, SiGithub, SiGooglesheets, SiDiscord, SiGooglecalendar } from 'react-icons/si';
+import { SiGithub, SiGooglesheets, SiDiscord, SiGooglecalendar } from 'react-icons/si';
+import { FaSlack } from 'react-icons/fa';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import useAuthStore from '../../store/authStore';
 import useConnectionStore from '../../store/connectionStore';
 import useToastStore from '../../store/toastStore';
-import useWorkflowStore from '../../store/workflowStore';
+import { useCreateWorkflow, useWorkflowList } from '../../hooks/useWorkflows';
 import { workflowClient } from '../../api/workflowClient';
 import { allRunsApi } from '../../api/logbookApi';
 import './Dashboard.css';
@@ -80,7 +81,7 @@ const starters = [
 ];
 
 const featuredApps = [
-    { icon: <SiSlack />, name: 'Slack', appKey: 'slack' },
+    { icon: <FaSlack />, name: 'Slack', appKey: 'slack' },
     { icon: <SiGithub />, name: 'GitHub', appKey: 'github' },
     { icon: <SiGooglesheets />, name: 'Google Sheets', appKey: 'google-sheets' },
     { icon: <SiDiscord />, name: 'Discord', appKey: 'discord' },
@@ -149,7 +150,8 @@ function getGreeting(hour, name, variation) {
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { workflows, fetchWorkflows } = useWorkflowStore();
+    const { data: workflows = [] } = useWorkflowList();
+    const createWorkflow = useCreateWorkflow();
     const { user, isGuest } = useAuthStore();
     const { connections, fetchConnections } = useConnectionStore();
     const [stats, setStats] = useState(null);
@@ -161,12 +163,11 @@ export default function Dashboard() {
     const connectedAppKeys = useMemo(() => new Set(connections.map((connection) => connection.appKey)), [connections]);
 
     useEffect(() => {
-        fetchWorkflows();
         if (!isGuest) {
             fetchConnections();
             allRunsApi.stats().then(setStats).catch(() => setStats(null));
         }
-    }, [fetchConnections, fetchWorkflows, isGuest]);
+    }, [fetchConnections, isGuest]);
 
     useEffect(() => {
         const timer = window.setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
@@ -176,14 +177,13 @@ export default function Dashboard() {
     const handleUseStarter = async (starter) => {
         setCreatingTemplate(starter.name);
         try {
-            const workflow = await workflowClient.create({
+            const workflow = await createWorkflow.mutateAsync({
                 name: starter.name,
                 description: starter.desc,
             });
             for (const step of starter.steps) {
                 await workflowClient.steps.add(workflow.id, step);
             }
-            await fetchWorkflows();
             useToastStore.getState().addToast('Starter added as a draft. Finish its setup before activating it.', 'success');
             navigate(`/dashboard/workflows/${workflow.id}`);
         } catch (error) {

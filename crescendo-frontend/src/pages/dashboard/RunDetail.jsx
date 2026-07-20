@@ -16,7 +16,7 @@ import {
   HiOutlineDownload,
 } from 'react-icons/hi';
 import useLogbookStore from '../../store/logbookStore';
-import useWorkflowStore from '../../store/workflowStore';
+import { useWorkflowList } from '../../hooks/useWorkflows';
 import './RunDetail.css';
 
 function formatDateTime(dateStr) {
@@ -52,15 +52,14 @@ export default function RunDetail() {
     fetchRunDetail, clearRunDetail, cancelRun,
   } = useLogbookStore();
 
-  const { workflows, fetchWorkflows } = useWorkflowStore();
+  const { data: workflows = [] } = useWorkflowList();
   const [expandedStep, setExpandedStep] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     fetchRunDetail(workflowId, runId);
-    fetchWorkflows();
     return () => clearRunDetail();
-  }, [workflowId, runId, fetchRunDetail, clearRunDetail, fetchWorkflows]);
+  }, [workflowId, runId, fetchRunDetail, clearRunDetail]);
 
   const workflowName = workflows.find((w) => w.id === workflowId)?.name || 'Workflow';
   const run = runDetail;

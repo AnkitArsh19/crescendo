@@ -30,7 +30,7 @@ export default function MfaChallenge() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const verifyMfaFn = useAuthStore((s) => s.verifyMfa);
-    const useBackupCodeFn = useAuthStore((s) => s.useBackupCode);
+    const verifyBackupCode = useAuthStore((s) => s.useBackupCode);
 
     const email = searchParams.get('email') || '';
     const [globalError, setGlobalError] = useState('');
@@ -64,7 +64,7 @@ export default function MfaChallenge() {
     const onBackupCode = async (data) => {
         setGlobalError('');
         try {
-            const result = await useBackupCodeFn(email, data.backupCode);
+            const result = await verifyBackupCode(email, data.backupCode);
             if (result.remaining !== undefined && result.remaining <= 2) {
                 setBackupRemaining(result.remaining);
             }

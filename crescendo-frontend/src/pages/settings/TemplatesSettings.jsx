@@ -23,6 +23,7 @@ export default function TemplatesSettings() {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchTemplates(); }, []);
 
   const handleDelete = async () => {
@@ -46,15 +47,15 @@ export default function TemplatesSettings() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+    <motion.div className="email-templates-page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div className="settings-section-header">
         <div>
-          <h2 className="settings-section-title">Email Templates</h2>
+          <h2 className="settings-section-title">Templates</h2>
           <p className="settings-section-desc">
-            Create reusable templates with <code>{'{{variable}}'}</code> interpolation. Draft templates must be published before use.
+            Build reusable emails with personal details such as <code>{'{{FIRST_NAME}}'}</code>, then publish when they are ready to send.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="email-template-actions">
           <button className="settings-btn-secondary" onClick={() => setCloneModal(true)}>
             <HiOutlineUpload /> Clone from Broadcast
           </button>
@@ -69,7 +70,11 @@ export default function TemplatesSettings() {
       ) : templates.length === 0 ? (
         <div className="settings-empty">
           <HiOutlineTemplate className="settings-empty-icon" />
-          <p>No templates yet. Create one to build beautiful, reusable email content.</p>
+          <h3>Create your first template</h3>
+          <p>Start from a blank, responsive email and reuse it whenever you need it.</p>
+          <button className="settings-btn-primary settings-empty-action" onClick={() => setEditing('new')}>
+            <HiOutlinePlus /> Create template
+          </button>
         </div>
       ) : (
         <div className="template-grid">

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation, Link, useNavigate } from 'react-router-dom';
 import {
@@ -20,6 +21,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
 import PasskeyNudge from '../../components/PasskeyNudge';
+import useWorkflowEventStream from '../../hooks/useWorkflowEventStream';
 import './DashboardLayout.css';
 
 const navItems = [
@@ -30,6 +32,7 @@ const navItems = [
 ];
 
 export default function DashboardLayout() {
+    useWorkflowEventStream();
     const { theme, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();

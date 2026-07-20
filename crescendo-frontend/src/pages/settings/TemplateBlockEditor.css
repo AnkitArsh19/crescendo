@@ -135,9 +135,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  background: var(--accent, #6366f1);
+  background: var(--text-accent);
   border: none;
-  color: #fff;
+  color: var(--bg-primary);
   padding: 7px 16px;
   border-radius: 7px;
   font-size: 13px;
@@ -146,7 +146,7 @@
   transition: all 0.15s;
   white-space: nowrap;
 }
-.tbe-btn-primary:hover { background: var(--accent-hover, #4f52d8); transform: translateY(-1px); }
+.tbe-btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
 .tbe-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
 .tbe-btn-icon {
@@ -249,8 +249,8 @@
   cursor: pointer;
 }
 
-.tbe-block-row:hover { background: rgba(99, 102, 241, 0.04); }
-.tbe-block-row.selected { background: rgba(99, 102, 241, 0.08); outline: 2px solid rgba(99, 102, 241, 0.3); outline-offset: -1px; border-radius: 6px; }
+.tbe-block-row:hover { background: rgba(255, 255, 255, 0.03); }
+.tbe-block-row.selected { background: rgba(255, 255, 255, 0.05); outline: 2px solid var(--border-hover); outline-offset: -1px; border-radius: 6px; }
 
 .tbe-block-controls {
   display: flex;
@@ -340,14 +340,14 @@
   border: 1px dashed transparent;
   transition: border-color 0.15s;
 }
-.tbe-block-column:focus { border-color: #c7d2fe; }
+.tbe-block-column:focus { border-color: var(--border-hover); }
 
 .tbe-block-spacer {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(99,102,241,0.05) 4px, rgba(99,102,241,0.05) 8px);
+  background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.02) 4px, rgba(255,255,255,0.02) 8px);
   border-radius: 4px;
   position: relative;
 }
@@ -381,7 +381,7 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.tbe-add-block-btn:hover { border-color: #c7d2fe; color: #6366f1; background: rgba(99,102,241,0.05); }
+.tbe-add-block-btn:hover { border-color: var(--border-hover); color: var(--text-accent); background: rgba(255,255,255,0.03); }
 
 /* ── Empty state ────────────────────────────────────────────────────────────── */
 .tbe-empty-state {
@@ -450,7 +450,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  height: 100%;
 }
 
 .tbe-preview-iframe {
@@ -537,7 +537,7 @@
   font-size: 14px;
   transition: all 0.1s;
 }
-.tbe-align-btn:hover, .tbe-align-btn.active { background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.4); color: #a5b4fc; }
+.tbe-align-btn:hover, .tbe-align-btn.active { background: var(--bg-elevated); border-color: var(--border-hover); color: var(--text-accent); }
 
 .tbe-color-input {
   width: 36px;
@@ -551,7 +551,7 @@
 
 .tbe-range {
   flex: 1;
-  accent-color: #6366f1;
+  accent-color: var(--text-accent);
   height: 4px;
 }
 .tbe-range-val { font-size: 11px; color: var(--text-secondary, #888); white-space: nowrap; min-width: 36px; text-align: right; }
@@ -577,7 +577,7 @@
   width: 100%;
   outline: none;
 }
-.tbe-text-input:focus { border-color: rgba(99,102,241,0.5); }
+.tbe-text-input:focus { border-color: var(--border-hover); }
 
 .tbe-inspector-vars { border-top: 1px solid var(--border-color, rgba(255,255,255,0.06)); padding-top: 14px; margin-top: 4px; }
 .tbe-inspector-vars h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted, #555); margin: 0 0 6px 0; }
@@ -586,9 +586,9 @@
 .tbe-var-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .tbe-var-chip {
   font-size: 10px;
-  background: rgba(99,102,241,0.12);
-  color: #a5b4fc;
-  border: 1px solid rgba(99,102,241,0.2);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
   padding: 2px 6px;
   font-family: monospace;
@@ -651,7 +651,7 @@
   outline: none;
   box-sizing: border-box;
 }
-.tbe-html-import-textarea:focus { border-color: rgba(99,102,241,0.4); }
+.tbe-html-import-textarea:focus { border-color: var(--border-hover); }
 
 .tbe-form-label {
   display: flex;
@@ -670,4 +670,4 @@
   font-size: 13px;
   outline: none;
 }
-.tbe-form-input:focus { border-color: rgba(99,102,241,0.5); }
+.tbe-form-input:focus { border-color: var(--border-hover); }

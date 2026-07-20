@@ -52,7 +52,7 @@
 .settings-content {
     flex: 1;
     padding: 0 32px;
-    max-width: 680px;
+    min-width: 0;
 }
 
 .settings-section {
@@ -177,11 +177,226 @@
     opacity: 1;
 }
 
+.settings-avatar:hover .settings-avatar-info {
+    flex: 1;
+}
+
 .settings-avatar-info h3 {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 600;
     color: var(--text-accent);
     margin-bottom: 2px;
+}
+
+/* ── Settings Tables (for Sessions, Keys, etc) ──────────────────────── */
+.settings-table-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-table-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast);
+}
+
+.settings-table-row:hover {
+    background: rgba(255,255,255,0.02);
+    border-color: var(--border-hover);
+}
+
+.settings-table-cell-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.settings-table-cell-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-table-cell-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+
+.domain-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.domain-dns {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+.domain-dns h4 {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.dns-record {
+    background: rgba(255,255,255,0.02);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.dns-record-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+}
+
+.dns-record-row:last-child { margin-bottom: 0; }
+
+.dns-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-tertiary);
+    width: 48px;
+    flex-shrink: 0;
+}
+
+.dns-record code {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+    flex: 1;
+}
+
+.dns-copy {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: color var(--transition-fast);
+}
+
+.dns-copy:hover { color: var(--text-accent); }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Email Logs ──────────────────────────────────────────────────────── */
+
+.email-log-list {
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.email-log-item {
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.email-log-item:last-child { border-bottom: none; }
+
+.email-log-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 2fr 140px 24px;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.email-log-row:hover { background: rgba(255,255,255,0.02); }
+
+.email-status-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 3px 8px;
+    border-radius: 100px;
+}
+
+.es-pending   { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); }
+.es-sent      { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); }
+.es-delivered { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+.es-bounced   { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35); border: 1px dashed rgba(255,255,255,0.08); }
+.es-failed    { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.3); }
+
+.email-log-to {
+    color: var(--text-accent);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-log-subject {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.email-log-date {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.email-log-detail {
+    padding: 0 16px 16px;
+    overflow: hidden;
+}
+
+.email-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 14px;
+    background: rgba(255,255,255,0.02);
+    border-radius: var(--radius-sm);
+}
+
+.email-detail-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+}
+
+.email-detail-error {
+    color: rgba(255,255,255,0.4);
+}
+
+.email-detail-grid code {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    word-break: break-all;
 }
 
 .settings-avatar-info p {
@@ -722,203 +937,6 @@
 .ds-failed   { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35); border: 1px dashed rgba(255,255,255,0.08); }
 
 .domain-card-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.domain-dns {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255,255,255,0.04);
-}
-
-.domain-dns h4 {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-}
-
-.dns-record {
-    background: rgba(255,255,255,0.02);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    margin-bottom: 8px;
-}
-
-.dns-record-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 0.8rem;
-}
-
-.dns-record-row:last-child { margin-bottom: 0; }
-
-.dns-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    color: var(--text-tertiary);
-    width: 48px;
-    flex-shrink: 0;
-}
-
-.dns-record code {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    word-break: break-all;
-    flex: 1;
-}
-
-.dns-copy {
-    background: none;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 4px;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    transition: color var(--transition-fast);
-}
-
-.dns-copy:hover { color: var(--text-accent); }
-
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Templates ───────────────────────────────────────────────────────── */
-
-.template-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
-}
-
-.template-card {
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-md);
-    padding: 18px;
-    background: var(--bg-card);
-    transition: border-color var(--transition-fast);
-}
-
-.template-card:hover { border-color: var(--border-hover); }
-
-.template-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.template-card-header h3 {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--text-accent);
-}
-
-.template-card-actions {
-    display: flex;
-    gap: 4px;
-}
-
-.template-subject {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-    line-height: 1.4;
-}
-
-.template-date {
-    font-size: 0.72rem;
-    color: var(--text-tertiary);
-}
-
-.template-card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.template-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 999px;
-}
-
-.template-status-badge.draft {
-    background: rgba(251, 191, 36, 0.12);
-    color: #fbbf24;
-}
-
-.template-status-badge.published {
-    background: rgba(52, 211, 153, 0.12);
-    color: #34d399;
-}
-
-
-/* ── Email Logs ──────────────────────────────────────────────────────── */
-
-.email-log-list {
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.email-log-item {
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-
-.email-log-item:last-child { border-bottom: none; }
-
-.email-log-row {
-    display: grid;
-    grid-template-columns: 90px 1fr 2fr 140px 24px;
-    gap: 12px;
-    align-items: center;
-    padding: 14px 16px;
-    background: none;
-    border: none;
-    width: 100%;
-    text-align: left;
-    color: var(--text-secondary);
-    font-size: 0.84rem;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.email-log-row:hover { background: rgba(255,255,255,0.02); }
-
-.email-status-badge {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    padding: 3px 8px;
-    border-radius: 100px;
-}
-
-.es-pending   { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); }
-.es-sent      { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); }
-.es-delivered { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
-.es-bounced   { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.35); border: 1px dashed rgba(255,255,255,0.08); }
-.es-failed    { background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.3); }
-
-.email-log-to {
-    color: var(--text-accent);
-    font-weight: 500;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -1470,4 +1488,267 @@
         min-width: 0;
         flex: 1;
     }
+}
+
+/* ── Shared section header (used by email sub-pages) ───────────────────────── */
+
+.settings-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.settings-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-accent);
+    margin: 0 0 4px;
+}
+
+.settings-section-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.55;
+}
+
+.email-template-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ── Shared buttons ─────────────────────────────────────────────────────────── */
+
+.settings-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--text-accent);
+    color: var(--bg-primary);
+    border: none;
+    padding: 9px 18px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.settings-btn-primary:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.settings-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-card);
+    color: var(--text-accent);
+    border: 1px solid var(--border-primary);
+    padding: 9px 18px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.settings-btn-secondary:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-elevated);
+}
+
+.settings-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-tertiary);
+    padding: 5px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all var(--transition-fast);
+}
+
+.settings-icon-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-accent);
+    border-color: var(--border-primary);
+}
+
+.settings-danger-icon:hover {
+    color: rgba(248, 113, 113, 0.85);
+    border-color: rgba(248, 113, 113, 0.25);
+    background: rgba(248, 113, 113, 0.07);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────────── */
+
+.settings-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 72px 24px;
+    text-align: center;
+}
+
+.settings-empty-icon {
+    font-size: 2.2rem;
+    color: var(--text-tertiary);
+    opacity: 0.5;
+    margin-bottom: 4px;
+}
+
+.settings-empty h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin: 0;
+}
+
+.settings-empty p {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 360px;
+    line-height: 1.55;
+}
+
+.settings-empty-action {
+    margin-top: 8px;
+}
+
+/* ── Skeleton loader ──────────────────────────────────────────────────────────── */
+
+.settings-skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.settings-skeleton-row {
+    height: 60px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    animation: settings-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes settings-shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ── Template grid ───────────────────────────────────────────────────────────── */
+
+.email-templates-page {
+    width: 100%;
+}
+
+.template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.template-card {
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 18px;
+    background: var(--bg-card);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.template-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.template-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.template-card-header h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-accent);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.template-card-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.template-subject {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.template-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.template-date {
+    font-size: 0.71rem;
+    color: var(--text-tertiary);
+}
+
+.template-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.template-status-badge.draft {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.template-status-badge.published {
+    background: rgba(52, 211, 153, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.2);
 }

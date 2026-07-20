@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     HiPlus,
@@ -16,7 +16,7 @@ import {
     HiOutlineClipboardCopy,
     HiOutlineSparkles,
 } from 'react-icons/hi';
-import useWorkflowStore from '../../store/workflowStore';
+import { useActivateWorkflow, useDeactivateWorkflow, useDeleteWorkflow, useWorkflowList } from '../../hooks/useWorkflows';
 import useToastStore from '../../store/toastStore';
 import NLWorkflowModal from './NLWorkflowModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -73,12 +73,10 @@ async function generateShareLink(ids) {
 
 export default function Workflows() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const {
-        workflows, isLoading, error,
-        fetchWorkflows, deleteWorkflow, activateWorkflow, deactivateWorkflow,
-        bulkActivate, bulkDeactivate,
-    } = useWorkflowStore();
+    const { data: workflows = [], isLoading, error } = useWorkflowList();
+    const deleteWorkflow = useDeleteWorkflow();
+    const activateWorkflow = useActivateWorkflow();
+    const deactivateWorkflow = useDeactivateWorkflow();
 
     const [menuOpen, setMenuOpen] = useState(null);
     const [deleting, setDeleting] = useState(null);
@@ -91,10 +89,6 @@ export default function Workflows() {
     const [bulkAction, setBulkAction] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(false); // 'activating' | 'deactivating'
     const [copied, setCopied] = useState(false);
-
-    useEffect(() => {
-        fetchWorkflows();
-    }, [fetchWorkflows, location.key]);
 
     // Exit select mode resets selection
     const exitSelectMode = useCallback(() => {
@@ -122,8 +116,8 @@ export default function Workflows() {
     const handleToggleActive = async (wf) => {
         setToggling(wf.id);
         try {
-            if (wf.isActive) await deactivateWorkflow(wf.id);
-            else await activateWorkflow(wf.id);
+            if (wf.isActive) await deactivateWorkflow.mutateAsync(wf.id);
+            else await activateWorkflow.mutateAsync(wf.id);
         } catch { /* handled by store */ } finally {
             setToggling(null);
         }
@@ -131,7 +125,7 @@ export default function Workflows() {
 
     const handleDelete = async (id) => {
         setDeleting(id);
-        try { await deleteWorkflow(id); } finally {
+        try { await deleteWorkflow.mutateAsync(id); } finally {
             setDeleting(null);
             setMenuOpen(null);
         }
@@ -140,7 +134,7 @@ export default function Workflows() {
     const handleBulkActivate = async () => {
         setBulkAction('activating');
         try {
-            await bulkActivate([...selected]);
+            await Promise.all([...selected].map((id) => activateWorkflow.mutateAsync(id)));
         } finally {
             setBulkAction(null);
         }
@@ -149,7 +143,7 @@ export default function Workflows() {
     const handleBulkDeactivate = async () => {
         setBulkAction('deactivating');
         try {
-            await bulkDeactivate([...selected]);
+            await Promise.all([...selected].map((id) => deactivateWorkflow.mutateAsync(id)));
         } finally {
             setBulkAction(null);
         }
@@ -164,7 +158,7 @@ export default function Workflows() {
         setConfirmDelete(false);
         setBulkAction('deleting');
         try {
-            await Promise.all([...selected].map((id) => deleteWorkflow(id)));
+            await Promise.all([...selected].map((id) => deleteWorkflow.mutateAsync(id)));
             exitSelectMode();
             useToastStore.getState().addToast(`Deleted ${count} workflow${count !== 1 ? 's' : ''}`, 'success');
         } finally {
@@ -179,7 +173,7 @@ export default function Workflows() {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
             });
-        } catch (error) {
+        } catch {
             useToastStore.getState().addToast('Failed to generate share link', 'error');
         }
     };

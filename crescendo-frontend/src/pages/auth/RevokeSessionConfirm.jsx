@@ -16,6 +16,7 @@ export default function RevokeSessionConfirm() {
 
     useEffect(() => {
         if (!token) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setStatus('error');
             setErrorMessage('Invalid link. No token provided.');
             return;

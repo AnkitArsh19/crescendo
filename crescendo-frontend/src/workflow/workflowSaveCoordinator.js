@@ -65,6 +65,7 @@ import useToastStore from '../store/toastStore';
  *   onSaveSuccess:      (savedAt: number) => void,
  *   onSaveError:        (msg: string) => void,
  *   onDirtyChange:      (isDirty: boolean) => void,
+ *   saveGraph:           (id: string, data: Object) => Promise<Object>,
  * }} callbacks
  */
 export function createSaveCoordinator(callbacks) {
@@ -82,6 +83,7 @@ export function createSaveCoordinator(callbacks) {
         onSaveSuccess,
         onSaveError,
         onDirtyChange,
+        saveGraph = workflowClient.updateGraph,
     } = callbacks;
 
     let inflightPromise = null;  // currently running save promise
@@ -207,7 +209,7 @@ export function createSaveCoordinator(callbacks) {
 
                 const edgePayloads = edgesToPayload(edges);
 
-                const resp = await workflowClient.updateGraph(id, {
+                const resp = await saveGraph(id, {
                     name: (getWorkflowName() || '').trim() || 'Untitled',
                     revision: serverRevision,
                     steps,
@@ -298,7 +300,7 @@ export function createSaveCoordinator(callbacks) {
 
                 const { serverRevision } = draft.getDelta();
 
-                const resp = await workflowClient.updateGraph(id, {
+                const resp = await saveGraph(id, {
                     name: (getWorkflowName() || '').trim() || 'Untitled',
                     revision: serverRevision,
                     steps,

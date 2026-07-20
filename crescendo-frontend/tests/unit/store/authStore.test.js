@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import useAuthStore from '../../../src/store/authStore';
 import api from '../../../src/api/axios';
-import * as deviceFingerprint from '../../../src/utils/deviceFingerprint';
 
 // Mock api and deviceFingerprint
 vi.mock('../../../src/api/axios', () => {
@@ -19,7 +18,7 @@ vi.mock('../../../src/utils/deviceFingerprint', () => ({
 }));
 
 // Mock global fetch for checkAuth
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 describe('authStore', () => {
   beforeEach(() => {
