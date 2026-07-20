@@ -1,4 +1,4 @@
-import { useState, Children, isValidElement } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -42,7 +42,7 @@ export default function MarkdownRenderer({ content }) {
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                    blockquote: ({ node, ...props }) => {
+                    blockquote: ({ ...props }) => {
                         const str = props.children?.[1]?.props?.children?.[0] || '';
                         let type = 'info';
                         let cleanStr = str;
@@ -62,7 +62,7 @@ export default function MarkdownRenderer({ content }) {
                         );
                     },
                     code(props) {
-                        const { className, children, node, ...rest } = props;
+                        const { className, children, ...rest } = props;
                         const match = /language-(\w+)/.exec(className || '');
                         
                         // If it has a language match, it's definitely a code block.

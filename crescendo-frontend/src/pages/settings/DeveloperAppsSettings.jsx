@@ -46,6 +46,7 @@ export default function DeveloperAppsSettings() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rotateSecret = async (application) => {

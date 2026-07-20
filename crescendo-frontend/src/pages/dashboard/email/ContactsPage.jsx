@@ -61,8 +61,8 @@ export default function ContactsPage() {
 
             {contacts.length === 0 ? (
                 <div className="settings-empty">
-                    <div className="settings-empty-icon">📧</div>
-                    <p>No contacts yet. Add your first contact to start building your audience.</p>
+                    <div className="settings-empty-icon"><HiOutlineMail size={32} /></div>
+                    <p>No contacts yet. Upload a CSV or add contacts manually to build your audience.</p>
                 </div>
             ) : (
                 <div className="settings-table">

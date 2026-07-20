@@ -1,41 +1,58 @@
 /* ── Email Service Layout ──────────────────────────────────────────── */
 
 .email-service {
-    padding: 0;
+    width: 100%;
 }
 
 .email-service-header {
-    margin-bottom: 24px;
+    margin-bottom: 28px;
+    max-width: 680px;
+}
+
+.email-service-eyebrow {
+    margin: 0 0 8px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
 }
 
 .email-service-title {
-    font-size: 1.5rem;
+    font-size: clamp(1.5rem, 2vw, 2rem);
+    letter-spacing: -0.035em;
+    line-height: 1.1;
     font-weight: 700;
     color: var(--text-accent);
-    margin-bottom: 4px;
+    margin: 0 0 8px;
 }
 
 .email-service-desc {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.55;
+    margin: 0;
 }
 
 /* ── Horizontal Tabs ──────────────────────────────────────────────── */
 
 .email-service-tabs {
     display: flex;
-    gap: 2px;
+    gap: 4px;
     border-bottom: 1px solid var(--border-primary);
-    margin-bottom: 28px;
+    margin-bottom: 32px;
     overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+}
+.email-service-tabs::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
 }
 
 .email-tab {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 11px 14px;
     font-size: 0.82rem;
     font-weight: 500;
     color: var(--text-secondary);
@@ -48,7 +65,7 @@
 
 .email-tab:hover {
     color: var(--text-accent);
-    background: rgba(255,255,255,0.02);
+    background: var(--bg-card);
 }
 
 .email-tab.active {
@@ -66,5 +83,12 @@
 /* ── Content ──────────────────────────────────────────────────────── */
 
 .email-service-content {
-    max-width: 780px;
+    width: 100%;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .email-service-header { margin-bottom: 22px; }
+    .email-service-tabs { margin-left: -4px; margin-right: -4px; margin-bottom: 24px; }
+    .email-tab { padding: 10px 12px; }
 }

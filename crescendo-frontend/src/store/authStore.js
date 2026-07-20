@@ -82,9 +82,9 @@ const useAuthStore = create((set, get) => ({
       return { success: true, mfaRequired: false };
     } catch (error) {
       if (error.response?.status === 401) {
-          throw new Error('Invalid email or password');
+          throw new Error('Invalid email or password', { cause: error });
       }
-      throw new Error(error.response?.data?.message || 'Failed to log in');
+      throw new Error(error.response?.data?.message || 'Failed to log in', { cause: error });
     }
   },
 
@@ -107,7 +107,7 @@ const useAuthStore = create((set, get) => ({
          throw new Error('Invalid 2FA code');
       }
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || 'Failed to verify 2FA');
+      throw new Error(error.response?.data?.message || error.message || 'Failed to verify 2FA', { cause: error });
     }
   },
 
@@ -125,7 +125,7 @@ const useAuthStore = create((set, get) => ({
         throw new Error('Invalid backup code');
       }
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || 'Invalid backup code');
+      throw new Error(error.response?.data?.message || error.message || 'Invalid backup code', { cause: error });
     }
   },
 
@@ -147,9 +147,9 @@ const useAuthStore = create((set, get) => ({
       return { success: true };
     } catch (error) {
       if (error.response?.status === 409) {
-          throw new Error('Email or username already taken');
+          throw new Error('Email or username already taken', { cause: error });
       }
-      throw new Error(error.response?.data?.message || 'Failed to register');
+      throw new Error(error.response?.data?.message || 'Failed to register', { cause: error });
     }
   },
 

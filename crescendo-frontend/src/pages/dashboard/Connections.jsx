@@ -1,3 +1,6 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

@@ -68,7 +68,7 @@ export async function beginPasskeyAutofill() {
     // Starting the explicit passkey flow or leaving this page cancels the
     // pending conditional request. That is expected, not an error for users.
     if (isCancellation(error)) return false;
-    throw new Error(readableError(error, 'Could not sign in with this passkey.'));
+    throw new Error(readableError(error, 'Could not sign in with this passkey.'), { cause: error });
   }
 }
 
@@ -90,7 +90,7 @@ export async function registerPasskey(credentialName = 'Passkey', elevatedToken)
       credentialName,
     });
   } catch (error) {
-    throw new Error(readableError(error, 'Could not add this passkey.'));
+    throw new Error(readableError(error, 'Could not add this passkey.'), { cause: error });
   }
 }
 
@@ -101,6 +101,6 @@ export async function loginWithPasskey(email = '') {
     const authentication = await startAuthentication({ optionsJSON: options });
     await finishAuthentication(options, authentication);
   } catch (error) {
-    throw new Error(readableError(error, 'Could not sign in with this passkey.'));
+    throw new Error(readableError(error, 'Could not sign in with this passkey.'), { cause: error });
   }
 }

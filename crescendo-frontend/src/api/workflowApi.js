@@ -107,6 +107,7 @@ export const guestWorkflowApi = {
 
   delete: (sessionId, id) =>
     api.delete(`/guest/workflows/${id}`, guestHeaders(sessionId)),
+
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

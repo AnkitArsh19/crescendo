@@ -20,11 +20,12 @@ export default function EmailService() {
     return (
         <div className="email-service">
             <div className="email-service-header">
-                <h1 className="email-service-title">Email Service</h1>
-                <p className="email-service-desc">Send transactional emails, manage domains, templates, and API keys.</p>
+                <p className="email-service-eyebrow">Crescendo Email</p>
+                <h1 className="email-service-title">Email delivery, in one place</h1>
+                <p className="email-service-desc">Create reliable transactional email, grow an audience, and see how every send performs.</p>
             </div>
 
-            <nav className="email-service-tabs">
+            <nav className="email-service-tabs" aria-label="Email service sections">
                 {tabs.map((tab) => (
                     <NavLink
                         key={tab.to}

@@ -11,9 +11,10 @@ import {
     HiCheck,
 } from 'react-icons/hi';
 import {
-    SiSlack, SiDiscord, SiGmail, SiPostgresql, SiMongodb,
+    SiDiscord, SiGmail, SiPostgresql, SiMongodb,
     SiGithub, SiRedis,
 } from 'react-icons/si';
+import { FaSlack } from 'react-icons/fa';
 import './Hero.css';
 
 /* ── Animation variants ── */
@@ -32,7 +33,7 @@ const fadeUp = {
 
 /* ── Integration icons ── */
 const integrations = [
-    { icon: <SiSlack />, name: 'Slack' },
+    { icon: <FaSlack />, name: 'Slack' },
     { icon: <SiDiscord />, name: 'Discord' },
     { icon: <SiGmail />, name: 'Gmail' },
     { icon: <SiPostgresql />, name: 'PostgreSQL' },

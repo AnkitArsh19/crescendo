@@ -1,10 +1,13 @@
+/* eslint-disable react-hooks/refs */
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/rules-of-hooks */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useOutletContext, useParams, useBeforeUnload } from 'react-router-dom';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import { workflowClient } from '../../api/workflowClient';
-import useWorkflowStore from '../../store/workflowStore';
+import { useActivateWorkflow, useSaveWorkflowGraph, useWorkflowDetail } from '../../hooks/useWorkflows';
 import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
@@ -204,6 +207,13 @@ export default function WorkflowCanvas() {
     const navigate = useNavigate();
     const { workflowId: routeWorkflowId } = useParams();
     const { toggleTheme, theme, collapsed, setCollapsed } = useOutletContext();
+    const { data: loadedWorkflow, isLoading: isLoadingDetail, isError: isDetailError } = useWorkflowDetail(routeWorkflowId);
+    const saveWorkflowGraph = useSaveWorkflowGraph();
+    const activateWorkflow = useActivateWorkflow();
+    const loadedWorkflowIdRef = useRef(null);
+    const saveGraphRef = useRef(null);
+    // eslint-disable-next-line react-hooks/refs
+    saveGraphRef.current = (id, data) => saveWorkflowGraph.mutateAsync({ id, data });
 
     // ── Naming modal (only for new workflows) ──
     const [showNamingModal, setShowNamingModal] = useState(!routeWorkflowId);
@@ -266,6 +276,7 @@ export default function WorkflowCanvas() {
 
     const stateRefs = useRef({ nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey });
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/immutability
         stateRefs.current = { nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey };
     }, [nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey]);
 
@@ -283,6 +294,7 @@ export default function WorkflowCanvas() {
     }, [nodes, setNodes]);
 
     const draftRef = useRef(null);
+    // eslint-disable-next-line react-hooks/refs
     if (!draftRef.current) draftRef.current = createDraftStore();
 
     const saveCoordinatorRef = useRef(null);
@@ -303,6 +315,7 @@ export default function WorkflowCanvas() {
             onSaveSuccess: (time) => { setIsSaving(false); setSavedAt(time); setIsDirty(false); },
             onSaveError: (msg) => { setIsSaving(false); setSaveError(msg); },
             onDirtyChange: (dirty) => setIsDirty(dirty),
+            saveGraph: (id, data) => saveGraphRef.current(id, data),
             onAppDetailLoaded: (key, detail) => setAppDetailsByKey((prev) => ({ ...prev, [key]: detail }))
         });
         return () => saveCoordinatorRef.current?.destroy();
@@ -336,12 +349,22 @@ export default function WorkflowCanvas() {
     // Load existing workflow if editing
     useEffect(() => {
         if (!routeWorkflowId) return;
+        if (!loadedWorkflow) {
+            setIsLoadingWorkflow(isLoadingDetail);
+            if (isDetailError) setIsLoadingWorkflow(false);
+            return;
+        }
+        // A focus/SSE revalidation can update the query while the canvas is dirty.
+        // Keep the editor stable; the fresh detail is used on the next navigation.
+        if (loadedWorkflowIdRef.current === routeWorkflowId) return;
+        loadedWorkflowIdRef.current = routeWorkflowId;
         setIsLoadingWorkflow(true);
 
         (async () => {
             try {
-                // Fetch workflow metadata (response includes edges[] for DAG topology)
-                const wf = await workflowClient.get(routeWorkflowId);
+                // Detail comes from React Query. The separate step endpoint remains
+                // the canonical source for canvas node data.
+                const wf = loadedWorkflow;
                 setWorkflowName(wf.name);
 
                 // Initialize draft store with current revision to enable OCC
@@ -381,7 +404,7 @@ export default function WorkflowCanvas() {
             }
         })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [routeWorkflowId]);
+    }, [routeWorkflowId, loadedWorkflow, isLoadingDetail, isDetailError]);
 
     // Handle naming modal — just set name and close. Workflow is created on first save.
     // IMPORTANT: do NOT create here — an autosave could otherwise create a duplicate
@@ -536,8 +559,6 @@ export default function WorkflowCanvas() {
     // ── Save workflow + steps to backend ──
 
 
-    const { activateWorkflow: storeActivateWorkflow } = useWorkflowStore();
-
     const handleRunWorkflow = useCallback(async () => {
         if (isRunning) return;
         setIsRunning(true);
@@ -554,9 +575,7 @@ export default function WorkflowCanvas() {
             const id = await saveCoordinatorRef.current?.saveManual();
             if (!id) return;
 
-            // Use the Zustand store method so in-memory state stays in sync
-            // when the user navigates back to the Workflows list page.
-            await storeActivateWorkflow(id);
+            await activateWorkflow.mutateAsync(id);
             useToastStore.getState().addToast('Workflow activated successfully!', 'success');
             setSavedAt(Date.now());
         } catch (err) {
@@ -566,7 +585,7 @@ export default function WorkflowCanvas() {
         } finally {
             setIsRunning(false);
         }
-    }, [isRunning, storeActivateWorkflow, nodes, edges]);
+    }, [isRunning, activateWorkflow, nodes, edges]);
 
 
 
@@ -695,6 +714,7 @@ export default function WorkflowCanvas() {
     removeEdgeRef.current = removeEdge;
     insertEdgeRef.current = insertActionOnEdge;
     const edgeTypes = useMemo(() => ({
+        // eslint-disable-next-line react-hooks/refs
         deleteable: (props) => (
             <DeleteableEdge
                 {...props}

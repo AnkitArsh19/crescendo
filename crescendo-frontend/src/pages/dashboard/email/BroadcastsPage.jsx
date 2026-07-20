@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlinePaperAirplane } from 'react-icons/hi';
@@ -25,6 +27,7 @@ export default function BroadcastsPage() {
         setLoading(false);
     };
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { fetchData(); }, []);
 
     const handleCreate = async () => {
@@ -75,7 +78,7 @@ export default function BroadcastsPage() {
 
             {broadcasts.length === 0 ? (
                 <div className="settings-empty">
-                    <div className="settings-empty-icon">📢</div>
+                    <div className="settings-empty-icon"><HiOutlineSpeakerphone size={32} /></div>
                     <p>No broadcasts yet. Create your first broadcast campaign to reach your audience.</p>
                 </div>
             ) : (

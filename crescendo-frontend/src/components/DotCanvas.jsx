@@ -4,7 +4,7 @@ import './DotCanvas.css';
 
 export default function DotCanvas() {
     const canvasRef = useRef(null);
-    const { theme } = useTheme();
+    useTheme();
     const mouseRef = useRef({ x: -1000, y: -1000 });
     const animationRef = useRef(null);
     const dotsRef = useRef([]);

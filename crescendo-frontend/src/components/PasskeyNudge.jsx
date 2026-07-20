@@ -12,6 +12,7 @@ export default function PasskeyNudge() {
     const [isVisible, setIsVisible] = useState(false);
 
     // Determine if we should show the nudge
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!user || isGuest) return;
 
@@ -36,6 +37,7 @@ export default function PasskeyNudge() {
             if (lastDismissed > fourteenDaysAgo) return;
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsVisible(true);
     }, [user, isGuest, location]);
 

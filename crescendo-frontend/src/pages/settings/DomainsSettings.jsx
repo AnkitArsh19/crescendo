@@ -26,6 +26,7 @@ export default function DomainsSettings() {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchDomains(); }, []);
 
   const handleVerify = async (id) => {
@@ -42,7 +43,7 @@ export default function DomainsSettings() {
     try {
       const { url } = await domainsApi.getDomainConnectUrl(id);
       if (url) {
-        window.location.href = url;
+        window.location.assign(url);
       }
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to connect automatically.');

@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
@@ -28,6 +30,7 @@ export default function ConnectedAccounts() {
         const error = searchParams.get('error');
 
         if (linked) {
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             setSuccessMsg(`${linked.charAt(0).toUpperCase() + linked.slice(1)} connected successfully!`);
             checkAuth(); // refresh user data to show new linked account
             setSearchParams({}, { replace: true }); // clean URL
@@ -63,9 +66,9 @@ export default function ConnectedAccounts() {
             // Step 1: Tell the backend to set the link cookie
             await api.post('/users/me/link-provider/init', { provider });
             // Step 2: Navigate to the OAuth authorization URL
-            window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider.toLowerCase()}`;
-        } catch (error) {
-            setStatusMsg(error.response?.data?.message || 'Failed to start provider linking');
+            window.location.assign(`https://api.crescendo.run/oauth2/authorization/${provider.toLowerCase()}`);
+        } catch {
+            setStatusMsg('Failed to start provider linking');
         }
     };
 

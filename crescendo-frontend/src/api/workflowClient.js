@@ -23,6 +23,8 @@ export const workflowClient = {
   update: (id, data) => isGuest() ? guestWorkflowApi.update(getSession(), id, data) : workflowApi.update(id, data),
   updateGraph: (id, data) => isGuest() ? guestWorkflowApi.updateGraph(getSession(), id, data) : workflowApi.updateGraph(id, data),
   delete: (id) => isGuest() ? guestWorkflowApi.delete(getSession(), id) : workflowApi.delete(id),
+  activate: (id) => workflowApi.activate(id),
+  deactivate: (id) => workflowApi.deactivate(id),
 
   // Step CRUD
   steps: {

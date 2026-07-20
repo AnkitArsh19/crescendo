@@ -90,6 +90,7 @@ export default function SecuritySettings() {
     // Sync local toggle state with actual user object on mount
     useEffect(() => {
         if (user?.mfa?.enabled) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMfaEnabled(true);
         }
     }, [user]);
@@ -117,6 +118,7 @@ export default function SecuritySettings() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadPasskeys();
         loadSessions();
     }, []);
@@ -158,17 +160,17 @@ export default function SecuritySettings() {
         } else if (action?.type === 'remove') {
             removePasskey(action.passkey, elevatedToken);
         } else if (action?.type === 'revokeSession') {
-            revokeSession(action.session, elevatedToken);
+            revokeSession(action.session);
         }
     };
 
-    const revokeSession = async (session, elevatedToken) => {
+    const revokeSession = async (session) => {
         setSessionStatus({ type: '', text: '' });
         try {
             await sessionsApi.revokeSession(session.sessionId);
             setSessions(sessions.filter(s => s.sessionId !== session.sessionId));
             setSessionStatus({ type: 'success', text: 'Session revoked successfully.' });
-        } catch (error) {
+        } catch {
             setSessionStatus({ type: 'error', text: 'Could not revoke session.' });
         }
     };
@@ -180,7 +182,7 @@ export default function SecuritySettings() {
             await sessionsApi.revokeAllSessions();
             setSessions(sessions.filter(s => s.isCurrent));
             setSessionStatus({ type: 'success', text: 'All other sessions revoked.' });
-        } catch (error) {
+        } catch {
             setSessionStatus({ type: 'error', text: 'Could not revoke all sessions.' });
         }
     };
@@ -595,20 +597,33 @@ export default function SecuritySettings() {
                                     {session.deviceLabel?.toLowerCase().includes('mobile') || session.deviceLabel?.toLowerCase().includes('iphone') || session.deviceLabel?.toLowerCase().includes('android') ? <HiOutlineDeviceMobile size={22} /> : <HiOutlineDesktopComputer size={22} />}
                                 </div>
                                 <div className="settings-table-cell-main">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <span className="settings-table-cell-title">{session.deviceLabel || 'Unknown Device'}</span>
                                         {session.isCurrent && (
-                                            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontWeight: 500 }}>
+                                            <span style={{
+                                                fontSize: '0.7rem', padding: '2px 8px',
+                                                background: 'rgba(255,255,255,0.08)', color: 'var(--text-accent)',
+                                                border: '1px solid var(--border-primary)',
+                                                borderRadius: '999px', fontWeight: 600
+                                            }}>
                                                 This device
                                             </span>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px', color: '#6b7280', fontSize: '0.8rem' }}>
+                                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px', color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <HiOutlineLocationMarker /> {session.approximateLocation || 'Unknown Location'}
+                                            <HiOutlineLocationMarker />
+                                            {session.country
+                                                ? `${session.country}${session.clientIp ? ` · ${session.clientIp}` : ''}`
+                                                : session.clientIp || 'Unknown Location'}
                                         </span>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <HiOutlineClock /> Active {new Date(session.lastUsedAt).toLocaleDateString()}
+                                            <HiOutlineClock />
+                                            {session.lastUsedAt
+                                                ? `Active ${new Date(session.lastUsedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                                : session.createdAt
+                                                    ? `Created ${new Date(session.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                                    : 'Active'}
                                         </span>
                                     </div>
                                 </div>

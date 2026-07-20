@@ -101,11 +101,11 @@ export default function EmailMetrics() {
         );
     }
 
-    if (!metrics) {
+    if (!metrics || Object.keys(metrics).length === 0) {
         return (
             <div className="settings-empty">
-                <div className="settings-empty-icon">📊</div>
-                <p>No email metrics available yet. Send some emails to see analytics.</p>
+                <div className="settings-empty-icon"><HiOutlineChartBar size={32} /></div>
+                <p>No email analytics available yet. Start sending emails to see your performance metrics here.</p>
             </div>
         );
     }

@@ -51,7 +51,6 @@ export default function NLWorkflowModal({ onClose }) {
 
             // 3. Format and save the steps
             const graphSteps = [];
-            let parentStepId = null;
 
             // Trigger
             if (spec.trigger) {
@@ -65,7 +64,6 @@ export default function NLWorkflowModal({ onClose }) {
                     parentStepId: null,
                     configuration: spec.trigger.config || {}
                 });
-                parentStepId = clientId;
             }
 
             // Actions
