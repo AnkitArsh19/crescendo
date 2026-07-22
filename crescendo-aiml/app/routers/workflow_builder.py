@@ -29,6 +29,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.agents.planner import plan_workflow
 from app.schemas.workflow import WorkflowDraftRequest, WorkflowDraftResponse
+from app.security.sanitizer import sanitize_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,12 @@ async def create_workflow_draft(
     """
     logger.info("Received workflow draft request for user=%s", request.userId)
 
+    # Sanitize user input — raises HTTP 400 if injection patterns are detected.
+    # Returns the prompt wrapped in <user_request>…</user_request> delimiters.
+    sanitized_prompt = sanitize_prompt(request.prompt)
+
     result = plan_workflow(
-        prompt=request.prompt,
+        prompt=sanitized_prompt,
         context=request.context,
         user_id=request.userId,
     )
