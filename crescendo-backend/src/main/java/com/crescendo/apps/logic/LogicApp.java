@@ -35,7 +35,7 @@ public class LogicApp implements AppDefinition {
                                 "name", "If",
                                 "description", "Route items to different branches (true/false)",
                                 "configSchema", List.of(
-                                        Map.of("key", "conditions", "label", "Conditions", "type", "json"),
+                                        Map.of("key", "conditions", "label", "Conditions", "type", "json", "required", true),
                                         Map.of("key", "options", "label", "Options", "type", "json")
                                 )
                         ),
@@ -44,11 +44,19 @@ public class LogicApp implements AppDefinition {
                                 "name", "Switch",
                                 "description", "Route items depending on defined expression or rules",
                                 "configSchema", List.of(
-                                        Map.of("key", "mode", "label", "Mode", "type", "text", "default", "rules"),
+                                        Map.of("key", "mode", "label", "Mode", "type", "select", "options", List.of("rules", "expression"), "default", "rules"),
                                         Map.of("key", "numberOutputs", "label", "Number of Outputs", "type", "number", "default", 4),
                                         Map.of("key", "output", "label", "Output Index", "type", "number"),
                                         Map.of("key", "rules", "label", "Routing Rules", "type", "json"),
                                         Map.of("key", "options", "label", "Options", "type", "json")
+                                )
+                        ),
+                        Map.of(
+                                "actionKey", "logic:merge",
+                                "name", "Merge",
+                                "description", "Combine branches after an If or Switch",
+                                "configSchema", List.of(
+                                        Map.of("key", "mode", "label", "Mode", "type", "select", "options", List.of("all", "any"), "default", "all")
                                 )
                         )
                 )

@@ -1,6 +1,7 @@
 package com.crescendo.apps.discord;
 
 import com.crescendo.execution.resource.ResourceOption;
+import com.crescendo.execution.resource.ResourceContextDescriptor;
 import com.crescendo.execution.resource.ResourceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,11 @@ public class DiscordResourceProvider implements ResourceProvider {
     @Override
     public Set<String> supportedResourceTypes() {
         return Set.of("guilds", "channels", "roles", "members");
+    }
+
+    @Override
+    public Set<ResourceContextDescriptor> contextResourceDescriptors() {
+        return Set.of(new ResourceContextDescriptor("guilds", 50, java.time.Duration.ofMinutes(5)));
     }
 
     @Override

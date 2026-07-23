@@ -55,4 +55,9 @@ public interface ResourceProvider {
      * Used for validation and API documentation.
      */
     Set<String> supportedResourceTypes();
+
+    /** Zero-parameter resources that are safe to snapshot for workflow planning. */
+    default Set<ResourceContextDescriptor> contextResourceDescriptors() {
+        return Set.of();
+    }
 }

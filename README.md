@@ -226,11 +226,14 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - Reduces hardcoded action wiring in business flows
 - Makes new integration onboarding faster for contributors
 
-### 12. Directed Acyclic Graph (DAG) Execution
+### 12. Directed Acyclic Graph (DAG) Execution & Edge-State Routing
 
-- Workflow execution is modeled as a Directed Acyclic Graph (DAG) to natively support branching (If/Else, Switch) and merging logic.
-- Previously built on a strict "Directed Rooted Tree" model (where nodes could only have one parent), we migrated to a full edge-based DAG architecture to support convergence points (like `merge` actions) where multiple parallel branches meet.
-- The execution engine relies on Kahn's algorithm for topological sorting to ensure steps execute only after their dependencies are met, utilizing skip-aware JOIN semantics to handle conditional sub-branches elegantly.
+- **Edge-State Routing Model**: Execution state belongs to individual graph edges (`sourceId:targetId:handle`), not just target nodes. Edges transition between `ST_PENDING`, `ST_COMPLETED`, and `ST_SKIPPED`. If/Else (`logic:if`) and Switch (`logic:switch`) branch steps mark the selected output handle as `ST_COMPLETED` and untaken handles as `ST_SKIPPED`.
+- **Natural Skip Cascading**: Eliminates fragile recursive DFS walks. In topological order (Kahn's algorithm), a node only executes when non-skipped incoming edges complete; if all incoming edges are `ST_SKIPPED`, the node marks itself `ST_SKIPPED` and cascades `ST_SKIPPED` forward to its outgoing edges.
+- **Deterministic Merge Join (`logic:merge`)**: Handles reconverging parallel branches by collecting and flattening all completed parent outputs using deterministic step UUID ordering. Emits audit warning logs on key collisions and preserves unmerged per-parent data under `_bySource`.
+- **Recursive Expression Resolver**: `WorkflowExpressionResolver` walks deeply into nested maps, lists, `$ref` objects, and template strings, preserving native JSON types (`number`, `boolean`, `object`, `array`, `null`) before logic evaluation.
+- **Persisted Routing State**: Edge decisions (`_edgeState`) are saved in `executionState` on run suspension and restored seamlessly when a suspended workflow run resumes.
+- **Visual Rule Builder UI**: Frontend dynamic node type resolution (`resolveNodeType`) ensures `BranchNode` renders with named output handles (`true`/`false`, `output_N`) immediately upon creation. Config panel features `ConditionRuleBuilder` for visual group editing (AND/OR) and switch routing rules with a raw JSON editor fallback.
 
 ### 13. Native Postgres Search & Async Batched Rollups
 
