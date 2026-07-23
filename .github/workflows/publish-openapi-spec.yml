@@ -9,7 +9,7 @@ on:
       - 'crescendo-backend/src/main/java/com/crescendo/emailservice/email_log/**'
       - 'crescendo-backend/src/main/java/com/crescendo/emailservice/customevent/**'
       - 'crescendo-backend/src/main/java/com/crescendo/config/OpenApiConfig.java'
-      - 'crescendo-backend/src/main/resources/application-ci.properties.example'
+      - 'crescendo-backend/src/main/resources/application-ci.properties'
       - '.github/workflows/publish-openapi-spec.yml'
 
 jobs:
@@ -53,7 +53,6 @@ jobs:
       - name: Start backend (background)
         run: |
           cd crescendo-backend
-          cp src/main/resources/application-ci.properties.example src/main/resources/application-ci.properties
           chmod +x mvnw
           ./mvnw -q spring-boot:run -DskipTests -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
           echo $! > ../backend.pid
