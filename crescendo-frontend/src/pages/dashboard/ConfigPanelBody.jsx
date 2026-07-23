@@ -10,6 +10,7 @@ import useAuthStore from '../../store/authStore';
 import { parseConfigSchema } from '../../workflow/workflowGraphSerializer';
 import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
+import ConditionRuleBuilder from './nodes/ConditionRuleBuilder';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Common output fields per app — used when we don't have real test data yet
@@ -107,6 +108,8 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    // Set when the AI guessed a label that doesn't match any real option ID or label
+    const [aiMismatch, setAiMismatch] = useState(false);
     const prevParamsRef = useRef('');
 
     const canFetch = appKey && connectionId && field.resourceType
@@ -123,22 +126,49 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
 
         setLoading(true);
         setError(null);
+        setAiMismatch(false);
         try {
             const data = await resourceApi.list(appKey, field.resourceType, connectionId, params);
-            setOptions((data || []).map((o) => ({
+            const mapped = (data || []).map((o) => ({
                 id: o.id,
                 label: o.label || o.id,
                 description: o.description && o.description !== '0 items'
                     ? `${o.description} · ID: ${o.id}`
                     : `ID: ${o.id}`,
-            })));
+            }));
+            setOptions(mapped);
+
+            // ── Section 4: AI guess auto-mapping ──────────────────────────────
+            // If the current value exists in the options as an ID already,
+            // no action needed. If it looks like a plain-text label (AI guess),
+            // try to find a case-insensitive label match and upgrade it silently.
+            // If no match at all, flag it in red for the user to correct manually.
+            if (value && mapped.length > 0) {
+                const exactIdMatch = mapped.some((o) => o.id === value);
+                if (!exactIdMatch) {
+                    const lv = String(value).toLowerCase();
+                    const labelMatch = mapped.find(
+                        (o) => o.label.toLowerCase() === lv
+                             || o.id.toLowerCase() === lv
+                    );
+                    if (labelMatch) {
+                        // Silent upgrade: replace AI-guessed text with real ID
+                        onChange(labelMatch.id);
+                        setAiMismatch(false);
+                    } else {
+                        // No match — flag for user attention
+                        setAiMismatch(true);
+                    }
+                }
+            }
+            // ──────────────────────────────────────────────────────────────────
         } catch {
             setError('Failed to load options');
             setOptions([]);
         } finally {
             setLoading(false);
         }
-    }, [canFetch, appKey, connectionId, field.resourceType, field.dependsOn, config]);
+    }, [canFetch, appKey, connectionId, field.resourceType, field.dependsOn, config, value, onChange]);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchOptions(); }, [fetchOptions]);
@@ -147,6 +177,7 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
         if (!canFetch) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setOptions([]);
+            setAiMismatch(false);
             prevParamsRef.current = '';
         }
     }, [canFetch]);
@@ -163,18 +194,31 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
     }
 
     return (
-        <SearchableSelect
-            options={options}
-            value={value || ''}
-            onChange={onChange}
-            placeholder={`Select ${field.label}…`}
-            loading={loading}
-            error={error}
-            onRefresh={() => { prevParamsRef.current = ''; fetchOptions(); }}
-            emptyMessage={`No ${field.label.toLowerCase()} found`}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {aiMismatch && (
+                <div className="ai-mismatch-warning" role="alert">
+                    <span className="ai-mismatch-warning__icon">⚠</span>
+                    <span>
+                        AI picked <strong>&ldquo;{value}&rdquo;</strong> but it wasn&apos;t found.
+                        Please select the correct {field.label.toLowerCase()} below.
+                    </span>
+                </div>
+            )}
+            <SearchableSelect
+                options={options}
+                value={aiMismatch ? '' : (value || '')}
+                onChange={(v) => { setAiMismatch(false); onChange(v); }}
+                placeholder={aiMismatch ? `⚠ Select ${field.label}…` : `Select ${field.label}…`}
+                loading={loading}
+                error={error}
+                onRefresh={() => { prevParamsRef.current = ''; fetchOptions(); }}
+                emptyMessage={`No ${field.label.toLowerCase()} found`}
+                style={aiMismatch ? { borderColor: 'var(--color-danger, #ef4444)' } : undefined}
+            />
+        </div>
     );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VariableInsertButton — dropdown to insert {{step.N.field}} references
@@ -261,6 +305,52 @@ function VariableInsertButton({ availableVariables, onInsert }) {
 // DynamicField — renders the correct input per field type
 // ─────────────────────────────────────────────────────────────────────────────
 
+function LogicRuleBuilder({ field, value, onChange }) {
+    const operators = ['equals', 'notEquals', 'contains', 'notContains', 'startsWith', 'endsWith', 'isEmpty', 'isNotEmpty', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual', 'regex'];
+    const isSwitch = field.key === 'rules';
+    const rules = Array.isArray(value) ? value : [];
+    const updateRule = (index, patch) => onChange(rules.map((rule, i) => i === index ? { ...rule, ...patch } : rule));
+    const removeRule = (index) => onChange(rules.filter((_, i) => i !== index));
+    const addRule = () => onChange([...rules, isSwitch
+        ? { value: '', operator: 'equals', matchValue: '', outputIndex: 0 }
+        : { combinator: 'AND', conditions: [{ leftValue: '', operator: 'equals', rightValue: '' }] }
+    ]);
+
+    if (!isSwitch) {
+        const updateCondition = (groupIndex, conditionIndex, patch) => onChange(rules.map((group, i) => i !== groupIndex ? group : {
+            ...group,
+            conditions: (group.conditions || []).map((condition, ci) => ci === conditionIndex ? { ...condition, ...patch } : condition),
+        }));
+        return <div className="logic-rule-builder">
+            {rules.map((group, groupIndex) => <div className="logic-rule-group" key={groupIndex}>
+                <div className="logic-rule-group__header">
+                    <select value={group.combinator || 'AND'} onChange={(e) => updateRule(groupIndex, { combinator: e.target.value })}><option>AND</option><option>OR</option></select>
+                    <span>All conditions in this group must match</span>
+                    <button type="button" onClick={() => removeRule(groupIndex)} aria-label="Remove condition group"><HiX /></button>
+                </div>
+                {(group.conditions || []).map((condition, conditionIndex) => <div className="logic-rule-row" key={conditionIndex}>
+                    <input value={condition.leftValue || ''} placeholder="Value or {{steps…}}" onChange={(e) => updateCondition(groupIndex, conditionIndex, { leftValue: e.target.value })} />
+                    <select value={condition.operator || 'equals'} onChange={(e) => updateCondition(groupIndex, conditionIndex, { operator: e.target.value })}>{operators.map((operator) => <option value={operator} key={operator}>{operator}</option>)}</select>
+                    <input value={condition.rightValue || ''} placeholder="Compare with" disabled={['isEmpty', 'isNotEmpty'].includes(condition.operator)} onChange={(e) => updateCondition(groupIndex, conditionIndex, { rightValue: e.target.value })} />
+                </div>)}
+                <button type="button" className="logic-rule-add" onClick={() => updateRule(groupIndex, { conditions: [...(group.conditions || []), { leftValue: '', operator: 'equals', rightValue: '' }] })}><HiPlus /> Add condition</button>
+            </div>)}
+            <button type="button" className="logic-rule-add logic-rule-add--group" onClick={addRule}><HiPlus /> Add condition group</button>
+        </div>;
+    }
+
+    return <div className="logic-rule-builder">
+        {rules.map((rule, index) => <div className="logic-rule-row logic-rule-row--switch" key={index}>
+            <input value={rule.value || ''} placeholder="Value or {{steps…}}" onChange={(e) => updateRule(index, { value: e.target.value })} />
+            <select value={rule.operator || 'equals'} onChange={(e) => updateRule(index, { operator: e.target.value })}>{operators.map((operator) => <option value={operator} key={operator}>{operator}</option>)}</select>
+            <input value={rule.matchValue || ''} placeholder="Match value" disabled={['isEmpty', 'isNotEmpty'].includes(rule.operator)} onChange={(e) => updateRule(index, { matchValue: e.target.value })} />
+            <input type="number" min="0" value={rule.outputIndex ?? 0} aria-label="Output index" onChange={(e) => updateRule(index, { outputIndex: Number(e.target.value) })} />
+            <button type="button" onClick={() => removeRule(index)} aria-label="Remove rule"><HiX /></button>
+        </div>)}
+        <button type="button" className="logic-rule-add" onClick={addRule}><HiPlus /> Add routing rule</button>
+    </div>;
+}
+
 function DynamicField({ field, appKey, connectionId, config, value, onChange, availableVariables }) {
     const inputRef = useRef(null);
 
@@ -285,6 +375,10 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
     };
 
     const hasVars = availableVariables && availableVariables.length > 0;
+
+    if (appKey === 'logic' && ['conditions', 'rules'].includes(field.key)) {
+        return <LogicRuleBuilder field={field} value={value} onChange={onChange} />;
+    }
 
     switch (field.type) {
         case 'dynamic_dropdown':

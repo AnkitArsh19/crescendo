@@ -16,6 +16,7 @@ import {
     makeEdge,
     orderedNodesFromGraph,
     validateGraphForSave,
+    resolveNodeType,
 } from '../../workflow/workflowGraphSerializer';
 import { createDraftStore } from '../../workflow/workflowDraftStore';
 import { createSaveCoordinator } from '../../workflow/workflowSaveCoordinator';
@@ -53,10 +54,14 @@ import {
     HiMenuAlt2,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
+import BranchNode from './nodes/BranchNode';
 import DeleteableEdge from './nodes/DeleteableEdge';
 import './WorkflowCanvas.css';
 
-const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode };
+// 'branch' handles logic:if and logic:switch — these nodes render named output ports
+// ('true'/'false' for If; 'output_0'…'output_N' for Switch) so the execution engine
+// can route edges by sourceHandle. All other nodes use the generic WorkflowNode.
+const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode, branch: BranchNode };
 // edgeTypes registered after removeEdge is defined (passed via data.onDelete)
 
 const NODE_GAP_X = 330;
@@ -526,36 +531,11 @@ export default function WorkflowCanvas() {
                 fitWorkflow();
                 return;
             }
+            }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
     }, [handleUndo, handleRedo, handleSave, fitWorkflow]);
-
-    const historyTimeoutRef = useRef(null);
-
-    // ── Update node data from config panel (defined before handleSave to avoid TDZ) ──
-    const updateNodeData = useCallback(
-        (nodeId, newData, { skipHistory = false } = {}) => {
-            setNodes((nds) => {
-                const updated = nds.map((n) =>
-                    n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n
-                );
-                draftRef.current?.markChanged(nodeId);
-                if (!skipHistory) {
-                    if (historyTimeoutRef.current) clearTimeout(historyTimeoutRef.current);
-                    historyTimeoutRef.current = setTimeout(() => {
-                        pushHistory(updated, edges);
-                    }, 500);
-                }
-                return updated;
-            });
-            setConfigNode((prev) =>
-                prev && prev.id === nodeId ? { ...prev, data: { ...prev.data, ...newData } } : prev
-            );
-        },
-        [setNodes, pushHistory, edges]
-    );
-
     // ── Save workflow + steps to backend ──
 
 
@@ -615,13 +595,20 @@ export default function WorkflowCanvas() {
     const isValidConnection = useCallback((connection) => {
         if (!connection?.source || !connection?.target) return false;
         if (connection.source === connection.target) return false;
-        if (connection.sourceHandle && connection.sourceHandle !== 'out') return false;
         if (connection.targetHandle && connection.targetHandle !== 'in') return false;
         const { nodes: curNodes, edges: curEdges } = stateRefs.current;
         const source = curNodes.find((n) => n.id === connection.source);
         const target = curNodes.find((n) => n.id === connection.target);
         // Never connect into the trigger
         if (!source || !target || target.type === 'trigger') return false;
+        const sourceHandle = connection.sourceHandle || 'out';
+        if (source.type === 'branch') {
+            const outputCount = Math.max(2, Number(source.data?.configuration?.numberOutputs || 4));
+            const allowed = source.data?.actionKey === 'logic:if'
+                ? ['true', 'false']
+                : Array.from({ length: outputCount }, (_, index) => `output_${index}`);
+            if (!allowed.includes(sourceHandle)) return false;
+        } else if (sourceHandle !== 'out') return false;
         // No duplicate edges (same source→target pair)
         if (curEdges.some((e) => e.source === connection.source && e.target === connection.target)) return false;
         // DAG: multiple incoming allowed (merge points) — only prevent cycles

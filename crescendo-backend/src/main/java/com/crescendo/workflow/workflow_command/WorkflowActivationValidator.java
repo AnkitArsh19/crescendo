@@ -79,6 +79,7 @@ public class WorkflowActivationValidator {
         for (int i = 0; i < executableSteps.size(); i++) {
             validateStep(executableSteps.get(i), i);
         }
+        validateFlowPortsAndLogic(executableSteps, edges);
     }
 
     private void collectReachable(UUID stepId, Map<UUID, List<UUID>> outgoing, Set<UUID> reachable) {
@@ -165,5 +166,74 @@ public class WorkflowActivationValidator {
                 }
             }
         }
+    }
+
+    private void validateFlowPortsAndLogic(List<Steps_command> steps, List<WorkflowEdge_command> edges) {
+        for (WorkflowEdge_command edge : edges) {
+            if (edge.getTargetHandle() != null && !"in".equals(edge.getTargetHandle())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unsupported target port '" + edge.getTargetHandle() + "'.");
+            }
+        }
+
+        for (Steps_command step : steps) {
+            if (!"logic".equals(step.getAppKey())) {
+                boolean hasNamedPort = edges.stream().anyMatch(e -> e.getSourceStepId().equals(step.getId())
+                        && e.getSourceHandle() != null && !"out".equals(e.getSourceHandle()));
+                if (hasNamedPort) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Only If and Switch nodes may use named output ports.");
+                continue;
+            }
+
+            Map<String, Object> config = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
+            List<WorkflowEdge_command> outgoing = edges.stream()
+                    .filter(e -> e.getSourceStepId().equals(step.getId())).toList();
+            if ("logic:if".equals(step.getActionKey())) {
+                Object groups = config.get("conditions");
+                if (!(groups instanceof List<?> list) || list.isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "If requires at least one condition group.");
+                }
+                for (WorkflowEdge_command edge : outgoing) {
+                    if (!"true".equals(edge.getSourceHandle()) && !"false".equals(edge.getSourceHandle())) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "If outputs must use the true or false port.");
+                    }
+                }
+            } else if ("logic:switch".equals(step.getActionKey())) {
+                String mode = String.valueOf(config.getOrDefault("mode", "rules"));
+                if (!"rules".equals(mode) && !"expression".equals(mode)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Switch mode must be rules or expression.");
+                }
+                int outputs = number(config.get("numberOutputs"), 2);
+                if (outputs < 2 || outputs > 32) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Switch must have between 2 and 32 outputs.");
+                }
+                for (WorkflowEdge_command edge : outgoing) {
+                    String handle = edge.getSourceHandle();
+                    if (handle == null || !handle.matches("output_\\d+")) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "Switch outputs must use an output_N port.");
+                    }
+                    int outputIndex = Integer.parseInt(handle.substring("output_".length()));
+                    if (outputIndex >= outputs) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Switch connection references output " + outputIndex + " but only " + outputs + " outputs exist.");
+                }
+            } else if ("logic:merge".equals(step.getActionKey())) {
+                String mode = String.valueOf(config.getOrDefault("mode", "all"));
+                if (!"all".equals(mode) && !"any".equals(mode)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Merge mode must be all or any.");
+                }
+            }
+        }
+    }
+
+    private int number(Object value, int fallback) {
+        if (value instanceof Number number) return number.intValue();
+        try { return value != null ? Integer.parseInt(String.valueOf(value)) : fallback; }
+        catch (NumberFormatException ignored) { return fallback; }
     }
 }

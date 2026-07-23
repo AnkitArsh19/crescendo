@@ -12,6 +12,7 @@ import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionHandlerRegistry;
 import com.crescendo.execution.action.ActionResult;
+import com.crescendo.execution.expression.WorkflowExpressionResolver;
 import com.crescendo.logbook.LogbookDto;
 import com.crescendo.logbook.step_run.StepRunService;
 import com.crescendo.logbook.workflow_run.WorkflowRunService;
@@ -49,6 +50,14 @@ import java.util.regex.Pattern;
 @SuppressWarnings("unchecked")
 public class WorkflowExecutionEngine {
 
+    // Node / edge state constants — shared by execute(), markOutgoingEdges(), and helpers.
+    // Using class-level statics instead of local finals so helper methods can reference them
+    // without redeclaring magic numbers.
+    private static final int ST_PENDING   = 0;
+    private static final int ST_COMPLETED = 1;
+    private static final int ST_SKIPPED   = 2;
+    private static final int ST_FAILED    = 3;
+
     private static final Logger logger = LoggerFactory.getLogger(WorkflowExecutionEngine.class);
 
     private final Steps_commandRepository stepsRepo;
@@ -62,6 +71,7 @@ public class WorkflowExecutionEngine {
     private final PlatformKeyRepository platformKeyRepo;
     private final User_queryRepository userQueryRepo;
     private final ObjectMapper objectMapper;
+    private final WorkflowExpressionResolver expressionResolver;
 
     public WorkflowExecutionEngine(Steps_commandRepository stepsRepo,
                                     WorkflowEdge_commandRepository edgeRepo,
@@ -73,7 +83,8 @@ public class WorkflowExecutionEngine {
                                     WorkflowRunService workflowRunService,
                                     PlatformKeyRepository platformKeyRepo,
                                     User_queryRepository userQueryRepo,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    WorkflowExpressionResolver expressionResolver) {
         this.stepsRepo = stepsRepo;
         this.edgeRepo = edgeRepo;
         this.connectionsRepo = connectionsRepo;
@@ -85,15 +96,16 @@ public class WorkflowExecutionEngine {
         this.platformKeyRepo = platformKeyRepo;
         this.userQueryRepo = userQueryRepo;
         this.objectMapper = objectMapper;
+        this.expressionResolver = expressionResolver;
+    }
+
+    /**
     }
 
     /**
      * Executes all steps for a workflow run sequentially.
      *
-     * @param workflowRunId the run being executed
-     * @param workflowId    the parent workflow (for step lookup)
-     * @param userId        owner of the workflow (for service-level ownership checks)
-     * @param triggerData   the initial trigger payload (webhook body, manual input, etc.)
+     * @param run the run being executed
      */
     public void execute(com.crescendo.logbook.workflow_run.WorkflowRun run) {
         UUID workflowRunId = run.getId();
@@ -112,14 +124,20 @@ public class WorkflowExecutionEngine {
         // Build adjacency maps
         Map<UUID, List<UUID>> outgoing = new java.util.HashMap<>();
         Map<UUID, List<UUID>> incoming = new java.util.HashMap<>();
+        Map<UUID, List<WorkflowEdge_command>> outgoingEdges = new java.util.HashMap<>();
+        Map<UUID, List<WorkflowEdge_command>> incomingEdges = new java.util.HashMap<>();
         for (UUID id : stepById.keySet()) {
             outgoing.put(id, new java.util.ArrayList<>());
             incoming.put(id, new java.util.ArrayList<>());
+            outgoingEdges.put(id, new java.util.ArrayList<>());
+            incomingEdges.put(id, new java.util.ArrayList<>());
         }
         for (WorkflowEdge_command e : edges) {
             if (stepById.containsKey(e.getSourceStepId()) && stepById.containsKey(e.getTargetStepId())) {
                 outgoing.get(e.getSourceStepId()).add(e.getTargetStepId());
                 incoming.get(e.getTargetStepId()).add(e.getSourceStepId());
+                outgoingEdges.get(e.getSourceStepId()).add(e);
+                incomingEdges.get(e.getTargetStepId()).add(e);
             }
         }
 
@@ -134,17 +152,6 @@ public class WorkflowExecutionEngine {
         // Seed trigger data
         if (triggerData != null && triggerStep != null) {
             allStepOutputs.put(triggerStep.getId(), triggerData);
-        }
-
-        // If resuming, restore saved state
-        if (run.getExecutionState() != null) {
-            Map<String, Object> stateMap = (Map<String, Object>) (Object) run.getExecutionState();
-            for (Map.Entry<String, Object> entry : stateMap.entrySet()) {
-                try {
-                    UUID stepId = UUID.fromString(entry.getKey());
-                    allStepOutputs.put(stepId, (Map<String, Object>) entry.getValue());
-                } catch (IllegalArgumentException ignored) { /* legacy integer keys from old format */ }
-            }
         }
 
         // Detect reachable steps from trigger via DFS (orphan detection)
@@ -169,14 +176,10 @@ public class WorkflowExecutionEngine {
         List<UUID> topoOrder = topoSort(stepById.keySet(), incoming, outgoing, skipped,
                 triggerStep != null ? triggerStep.getId() : null);
 
-        if (topoOrder.isEmpty() && !skipped.isEmpty()) {
-            // Everything is skipped or no action steps
-        }
-
         if (topoOrder.isEmpty()) {
             logger.warn("[engine] Workflow {} has no executable action steps — completing run {} immediately",
                     workflowId, workflowRunId);
-            persistExecutionState(userId, workflowRunId, allStepOutputs);
+            persistExecutionState(userId, workflowRunId, allStepOutputs, Map.of());
             workflowRunService.completeRun(userId, workflowRunId);
             return;
         }
@@ -184,115 +187,143 @@ public class WorkflowExecutionEngine {
         logger.info("[engine] Starting DAG execution of {} action step(s) for run {}",
                 topoOrder.size(), workflowRunId);
 
-        // Node state machine (0=PENDING, 1=COMPLETED, 2=SKIPPED, 3=FAILED)
-        // Using int constants instead of local enum to avoid EnumMap type inference issues
-        final int PENDING = 0, COMPLETED = 1, SKIPPED = 2, FAILED = 3;
+        // Node state — ST_PENDING/ST_COMPLETED/ST_SKIPPED/ST_FAILED (class-level constants)
         Map<UUID, Integer> nodeState = new java.util.HashMap<>();
-        // Initialize: orphaned = SKIPPED, trigger = COMPLETED, others = PENDING
         for (UUID id : stepById.keySet()) {
-            nodeState.put(id, skipped.contains(id) ? SKIPPED : PENDING);
+            nodeState.put(id, skipped.contains(id) ? ST_SKIPPED : ST_PENDING);
         }
-        if (triggerStep != null) nodeState.put(triggerStep.getId(), COMPLETED);
+        if (triggerStep != null) nodeState.put(triggerStep.getId(), ST_COMPLETED);
+
+        // Edge state — keyed by "sourceId:targetId:handle" string so the same key works
+        // at runtime and at persistence (no translation layer needed on resume).
+        Map<String, Integer> edgeState = new java.util.HashMap<>();
+        for (List<WorkflowEdge_command> sourceEdges : outgoingEdges.values())
+            for (WorkflowEdge_command edge : sourceEdges) edgeState.put(edgeKey(edge), ST_PENDING);
+        if (triggerStep != null)
+            for (WorkflowEdge_command edge : outgoingEdges.getOrDefault(triggerStep.getId(), List.of()))
+                edgeState.put(edgeKey(edge), ST_COMPLETED);
+
+        // If resuming, restore saved execution state and edge routing state
+        if (run.getExecutionState() != null) {
+            Map<String, Object> stateMap = (Map<String, Object>) (Object) run.getExecutionState();
+            for (Map.Entry<String, Object> entry : stateMap.entrySet()) {
+                if ("_edgeState".equals(entry.getKey())) {
+                    if (entry.getValue() instanceof Map<?, ?> savedEdges) {
+                        for (Map.Entry<?, ?> e : savedEdges.entrySet()) {
+                            edgeState.put(String.valueOf(e.getKey()), ((Number) e.getValue()).intValue());
+                        }
+                    }
+                } else {
+                    try {
+                        UUID stepId = UUID.fromString(entry.getKey());
+                        allStepOutputs.put(stepId, (Map<String, Object>) entry.getValue());
+                    } catch (IllegalArgumentException ignored) { /* legacy keys */ }
+                }
+            }
+        }
 
         // Execute in topological order
         for (UUID stepId : topoOrder) {
             Steps_command step = stepById.get(stepId);
             if (step == null) continue;
 
-            List<UUID> parents = incoming.getOrDefault(stepId, List.of());
+            List<WorkflowEdge_command> parentEdges = incomingEdges.getOrDefault(stepId, List.of());
+            List<UUID> parents = parentEdges.stream().map(WorkflowEdge_command::getSourceStepId).toList();
 
-            // Skip-aware join check
+            // ── Join check ───────────────────────────────────────────────────────────
             if (!parents.isEmpty()) {
-                boolean anyFailed = parents.stream().anyMatch(p -> nodeState.get(p) == FAILED);
+                boolean anyFailed = parents.stream().anyMatch(p -> nodeState.getOrDefault(p, ST_PENDING) == ST_FAILED);
                 if (anyFailed) {
-                    nodeState.put(stepId, FAILED);
+                    nodeState.put(stepId, ST_FAILED);
+                    markOutgoingEdges(outgoingEdges.getOrDefault(stepId, List.of()), edgeState, null);
                     logger.warn("[engine] Step '{}' ({}) propagated FAILED from upstream", step.getName(), stepId);
                     continue;
                 }
 
-                boolean allParentsSkipped = parents.stream().allMatch(p -> nodeState.get(p) == SKIPPED);
-                if (allParentsSkipped) {
-                    nodeState.put(stepId, SKIPPED);
-                    logger.info("[engine] Step '{}' ({}) SKIPPED (all incoming branches were skipped)", step.getName(), stepId);
+                // All incoming edges skipped → this node skips too, cascades forward.
+                boolean allIncomingSkipped = parentEdges.stream()
+                        .allMatch(edge -> edgeState.getOrDefault(edgeKey(edge), ST_PENDING) == ST_SKIPPED);
+                if (allIncomingSkipped) {
+                    nodeState.put(stepId, ST_SKIPPED);
+                    markOutgoingEdges(outgoingEdges.getOrDefault(stepId, List.of()), edgeState, null);
+                    logger.info("[engine] Step '{}' ({}) SKIPPED — all incoming branches were skipped",
+                            step.getName(), stepId);
                     continue;
                 }
-
-                // Logic/merge action: skip-aware AND join — wait for all non-skipped branches
-                boolean isMergeStep = "logic".equals(step.getAppKey()) && "merge".equals(step.getActionKey());
-                if (isMergeStep) {
-                    List<UUID> takenParents = parents.stream()
-                            .filter(p -> nodeState.get(p) != SKIPPED)
-                            .toList();
-                    boolean allTakenCompleted = takenParents.stream().allMatch(p -> nodeState.get(p) == COMPLETED);
-                    if (!allTakenCompleted) {
-                        nodeState.put(stepId, SKIPPED);
-                        continue;
-                    }
-                    // Merge data from all completed parents
-                    Map<String, Object> mergedInput = new java.util.HashMap<>();
-                    for (UUID p : takenParents) {
-                        Map<String, Object> pOut = allStepOutputs.getOrDefault(p, Map.of());
-                        mergedInput.putAll(pOut);
-                    }
-                    allStepOutputs.put(stepId, mergedInput); // seed merged input before execution
-                }
             }
 
-            // Gather input from the first completed parent (skip-aware OR join default)
-            Map<String, Object> inputData = Map.of();
+            // ── Gather inputData ─────────────────────────────────────────────────────
+            boolean isMergeStep = "logic".equals(step.getAppKey())
+                    && "logic:merge".equals(step.getActionKey());
+            Map<String, Object> inputData;
+
             if (!parents.isEmpty()) {
-                inputData = parents.stream()
-                        .filter(p -> nodeState.get(p) == COMPLETED)
-                        .map(allStepOutputs::get)
-                        .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(Map.of());
+                List<UUID> completedParents = parentEdges.stream()
+                        .filter(edge -> edgeState.getOrDefault(edgeKey(edge), ST_PENDING) == ST_COMPLETED)
+                        .map(WorkflowEdge_command::getSourceStepId)
+                        .filter(p -> nodeState.getOrDefault(p, ST_PENDING) == ST_COMPLETED)
+                        .sorted(Comparator.comparing(UUID::toString))
+                        .toList();
+
+                if (isMergeStep) {
+                    Map<String, Object> bySource = new java.util.LinkedHashMap<>();
+                    Map<String, Object> merged   = new java.util.LinkedHashMap<>();
+                    for (UUID p : completedParents) {
+                        Map<String, Object> pOut = allStepOutputs.getOrDefault(p, Map.of());
+                        bySource.put(p.toString(), pOut);
+                        for (String k : pOut.keySet()) {
+                            if (merged.containsKey(k) && !k.startsWith("_")) {
+                                logger.warn("[logic:merge] step={} key collision on '{}' — last writer ({}) wins",
+                                        stepId, k, p);
+                            }
+                        }
+                        merged.putAll(pOut);
+                    }
+                    merged.put("_bySource", bySource);
+                    inputData = merged;
+                } else {
+                    inputData = completedParents.stream()
+                            .map(allStepOutputs::get)
+                            .filter(Objects::nonNull)
+                            .findFirst()
+                            .orElse(Map.of());
+                }
             } else if (triggerStep != null) {
                 inputData = allStepOutputs.getOrDefault(triggerStep.getId(), Map.of());
+            } else {
+                inputData = Map.of();
             }
 
-            StepExecutionResult result = executeStep(step, workflowRunId, userId, inputData, allStepOutputs);
+            StepExecutionResult result = executeStep(step, workflowRunId, userId, inputData, allStepOutputs, stepById);
 
             if (!result.success) {
-                nodeState.put(stepId, FAILED);
+                nodeState.put(stepId, ST_FAILED);
+                markOutgoingEdges(outgoingEdges.getOrDefault(stepId, List.of()), edgeState, null);
                 logger.warn("[engine] Step '{}' failed — propagating failure downstream", step.getName());
-                // Continue topo iteration so downstream nodes get FAILED state set
                 continue;
             }
 
             allStepOutputs.put(stepId, result.outputData);
-            nodeState.put(stepId, COMPLETED);
+            nodeState.put(stepId, ST_COMPLETED);
 
-            // Handle if/else branch routing: mark the non-selected outgoing branches as SKIPPED
             String selectedBranchHandle = selectedBranch(result.outputData);
-            if (selectedBranchHandle != null) {
-                // Iterate all edges from this step; skip children on non-selected handles.
-                for (WorkflowEdge_command edge : edges) {
-                    if (edge.getSourceStepId().equals(stepId)) {
-                        String handle = edge.getSourceHandle();
-                        if (!selectedBranchHandle.equals(handle)) {
-                            UUID childId = edge.getTargetStepId();
-                            if (nodeState.get(childId) == PENDING) {
-                                nodeState.put(childId, SKIPPED);
-                                logger.info("[engine] Skipping branch '{}' from step '{}'", handle, step.getName());
-                            }
-                        }
-                    }
-                }
-            }
+            boolean isBranchStep = "logic".equals(step.getAppKey())
+                    && ("logic:if".equals(step.getActionKey()) || "logic:switch".equals(step.getActionKey()));
+            markOutgoingEdges(outgoingEdges.getOrDefault(stepId, List.of()), edgeState,
+                    isBranchStep ? selectedBranchHandle : null);
 
             if (result.suspended) {
-                // Suspend — save state and exit
                 workflowRunService.suspendRun(userId, workflowRunId, result.resumeAt,
-                        step.getId(), result.resumeToken, stringifiedOutputs(allStepOutputs));
+                        step.getId(), result.resumeToken,
+                        stringifiedOutputs(allStepOutputs, edgeState));
                 logger.info("[engine] Run {} suspended at step '{}'", workflowRunId, step.getName());
                 return;
             }
         }
 
         // Check overall result: fail if any FAILED state
-        boolean anyFailed = nodeState.values().stream().anyMatch(s -> s == FAILED);
-        persistExecutionState(userId, workflowRunId, allStepOutputs);
+        boolean anyFailed = nodeState.values().stream().anyMatch(s -> s == ST_FAILED);
+        persistExecutionState(userId, workflowRunId, allStepOutputs, edgeState);
         if (anyFailed) {
             workflowRunService.failRun(userId, workflowRunId, "One or more steps failed");
         } else {
@@ -326,6 +357,42 @@ public class WorkflowExecutionEngine {
         for (UUID next : outgoing.getOrDefault(start, List.of())) {
             dfsReachable(next, outgoing, visited);
         }
+    }
+
+    // transitiveSkip() removed — edge-state cascading via markOutgoingEdges() + the
+    // allIncomingSkipped check in the topo loop handles all skip propagation correctly
+    // without a separate DFS walk.
+
+    /**
+     * Updates edgeState for all outgoing edges of a completed step.
+     *
+     * <p>For branch steps (logic:if / logic:switch), the edge whose sourceHandle matches
+     * {@code selectedHandle} is set to ST_COMPLETED; all other outgoing edges are ST_SKIPPED.
+     * The allIncomingSkipped check in the next topo iteration cascades the skip forward.
+     *
+     * <p>For all other steps (selectedHandle == null), all outgoing edges are ST_COMPLETED.
+     */
+    private void markOutgoingEdges(List<WorkflowEdge_command> outgoingEdges,
+                                   Map<String, Integer> edgeState,
+                                   String selectedHandle) {
+        for (WorkflowEdge_command edge : outgoingEdges) {
+            String key = edgeKey(edge);
+            if (selectedHandle == null) {
+                edgeState.put(key, ST_COMPLETED);
+            } else {
+                String handle = edge.getSourceHandle();
+                edgeState.put(key, selectedHandle.equals(handle) ? ST_COMPLETED : ST_SKIPPED);
+            }
+        }
+    }
+
+    /**
+     * Canonical string key for an edge: {@code "sourceId:targetId:handle"}.
+     * Same format at runtime and at persistence — no translation needed on resume.
+     */
+    private String edgeKey(WorkflowEdge_command edge) {
+        String handle = edge.getSourceHandle() != null ? edge.getSourceHandle() : "out";
+        return edge.getSourceStepId() + ":" + edge.getTargetStepId() + ":" + handle;
     }
 
     /** Kahn's algorithm topological sort over action (non-trigger) steps. */
@@ -385,14 +452,19 @@ public class WorkflowExecutionEngine {
 
 
     private void persistExecutionState(UUID userId, UUID workflowRunId,
-                                       Map<UUID, Map<String, Object>> allStepOutputs) {
-        workflowRunService.saveExecutionState(userId, workflowRunId, stringifiedOutputs(allStepOutputs));
+                                       Map<UUID, Map<String, Object>> allStepOutputs,
+                                       Map<String, Integer> edgeState) {
+        workflowRunService.saveExecutionState(userId, workflowRunId, stringifiedOutputs(allStepOutputs, edgeState));
     }
 
-    private Map<String, Object> stringifiedOutputs(Map<UUID, Map<String, Object>> allStepOutputs) {
+    private Map<String, Object> stringifiedOutputs(Map<UUID, Map<String, Object>> allStepOutputs,
+                                                  Map<String, Integer> edgeState) {
         Map<String, Object> stringifiedOutputs = new java.util.HashMap<>();
         for (Map.Entry<UUID, Map<String, Object>> entry : allStepOutputs.entrySet()) {
             stringifiedOutputs.put(entry.getKey().toString(), entry.getValue());
+        }
+        if (edgeState != null && !edgeState.isEmpty()) {
+            stringifiedOutputs.put("_edgeState", edgeState);
         }
         return stringifiedOutputs;
     }
@@ -403,7 +475,8 @@ public class WorkflowExecutionEngine {
      */
     private StepExecutionResult executeStep(Steps_command step, UUID workflowRunId,
                                             UUID userId, Map<String, Object> inputData,
-                                            Map<UUID, Map<String, Object>> allStepOutputs) {
+                                            Map<UUID, Map<String, Object>> allStepOutputs,
+                                            Map<UUID, Steps_command> stepsById) {
 
         String appKey = step.getAppKey();
         String actionKey = step.getActionKey();
@@ -429,7 +502,7 @@ public class WorkflowExecutionEngine {
 
         // 4. Resolve variable templates in configuration (e.g. {{steps.1.fieldName}})
         Map<String, Object> rawConfig = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
-        Map<String, Object> resolvedConfig = resolveTemplates(rawConfig, allStepOutputs);
+        Map<String, Object> resolvedConfig = expressionResolver.resolveConfiguration(rawConfig, allStepOutputs, stepsById);
 
         // 5. Build context and execute
         ActionContext context = new ActionContext(
@@ -534,98 +607,5 @@ public class WorkflowExecutionEngine {
                 "No credential found for app '" + appKey + "'. " +
                 "Connect your own account under Connections, or ask your admin to enable " +
                 "the platform key for this app.");
-    }
-
-    // UUID-based template pattern: {{steps.<uuid>.fieldName}}
-    private static final Pattern TEMPLATE_PATTERN =
-            Pattern.compile("\\{\\{steps\\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\\.([^}]+)}}");
-
-    // Legacy ordinal pattern: {{steps.N.fieldName}} — kept for backwards compat
-    private static final Pattern TEMPLATE_PATTERN_LEGACY = Pattern.compile("\\{\\{steps\\.(\\d+)\\.([^}]+)}}");
-
-    /**
-     * Deeply resolves templates in a configuration map.
-     * Currently supports string values containing {{steps.N.fieldName}}.
-     */
-    private Map<String, Object> resolveTemplates(Map<String, Object> config,
-                                                   Map<UUID, Map<String, Object>> allStepOutputs) {
-        if (config == null || config.isEmpty()) return config;
-
-        Map<String, Object> resolved = new java.util.HashMap<>();
-        for (Map.Entry<String, Object> entry : config.entrySet()) {
-            Object value = entry.getValue();
-            if (value instanceof String strVal) {
-                resolved.put(entry.getKey(), resolveStringTemplate(strVal, allStepOutputs));
-            } else {
-                resolved.put(entry.getKey(), value);
-            }
-        }
-        return resolved;
-    }
-
-    private String resolveStringTemplate(String template, Map<UUID, Map<String, Object>> allStepOutputs) {
-        if (template == null || !template.contains("{{")) return template;
-
-        // Try UUID-based pattern first
-        Matcher matcher = TEMPLATE_PATTERN.matcher(template);
-        if (matcher.find()) {
-            matcher.reset();
-            StringBuilder sb = new StringBuilder();
-            while (matcher.find()) {
-                UUID stepId;
-                try { stepId = UUID.fromString(matcher.group(1)); }
-                catch (IllegalArgumentException e) { continue; }
-                String fieldName = matcher.group(2).trim();
-                String replacement = "";
-                Map<String, Object> stepOut = allStepOutputs.get(stepId);
-                if (stepOut != null) {
-                    Object val = stepOut.get(fieldName);
-                    if (val != null) replacement = String.valueOf(val);
-                    else if (fieldName.contains("."))
-                        replacement = String.valueOf(resolveNestedProperty(stepOut, fieldName.split("\\.")));
-                }
-                logger.debug("[engine] Resolved {{steps.{}.{}}} -> {}", stepId, fieldName, replacement);
-                matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-            }
-            matcher.appendTail(sb);
-            return sb.toString();
-        }
-
-        // Fallback: legacy ordinal pattern {{steps.N.field}} — for workflows not yet migrated
-        Matcher legacyMatcher = TEMPLATE_PATTERN_LEGACY.matcher(template);
-        if (!legacyMatcher.find()) return template;
-        legacyMatcher.reset();
-        StringBuilder sb = new StringBuilder();
-        while (legacyMatcher.find()) {
-            int stepIndex = Integer.parseInt(legacyMatcher.group(1));
-            String fieldName = legacyMatcher.group(2).trim();
-            // Try to find by matching step order against outputs
-            String replacement = "";
-            for (Map.Entry<UUID, Map<String, Object>> entry : allStepOutputs.entrySet()) {
-                // Legacy fallback: match by ordinal position in sorted order (best effort)
-                // For newly created workflows this path should never fire
-                Map<String, Object> stepOut = entry.getValue();
-                if (stepOut != null) {
-                    Object val = stepOut.get(fieldName);
-                    if (val != null) { replacement = String.valueOf(val); break; }
-                }
-            }
-            logger.debug("[engine] Legacy resolved {{steps.{}.{}}} -> {}", stepIndex, fieldName, replacement);
-            legacyMatcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-        }
-        legacyMatcher.appendTail(sb);
-        return sb.toString();
-    }
-
-    private Object resolveNestedProperty(Map<String, Object> map, String[] parts) {
-        Object current = map;
-        for (String part : parts) {
-            if (current instanceof Map<?,?> m) {
-                current = m.get(part);
-            } else {
-                return null;
-            }
-        }
-        return current;
     }
 }

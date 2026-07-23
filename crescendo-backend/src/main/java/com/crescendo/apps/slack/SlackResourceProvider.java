@@ -1,6 +1,7 @@
 package com.crescendo.apps.slack;
 
 import com.crescendo.execution.resource.ResourceOption;
+import com.crescendo.execution.resource.ResourceContextDescriptor;
 import com.crescendo.execution.resource.ResourceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,11 @@ public class SlackResourceProvider implements ResourceProvider {
     @Override
     public Set<String> supportedResourceTypes() {
         return Set.of("channels", "users");
+    }
+
+    @Override
+    public Set<ResourceContextDescriptor> contextResourceDescriptors() {
+        return Set.of(new ResourceContextDescriptor("channels", 100, java.time.Duration.ofMinutes(5)));
     }
 
     @Override

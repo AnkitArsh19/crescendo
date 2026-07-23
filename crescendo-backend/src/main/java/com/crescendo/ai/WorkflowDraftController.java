@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,15 +40,17 @@ import static com.crescendo.security.AuthenticatedUser.userId;
 @RequestMapping("/ai")
 public class WorkflowDraftController {
 
-
     private final String pythonBaseUrl;
     private final String pythonServiceToken;
+    private final AiContextService aiContextService;
 
     public WorkflowDraftController(
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
-            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken) {
+            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
+            AiContextService aiContextService) {
         this.pythonBaseUrl = pythonBaseUrl;
         this.pythonServiceToken = pythonServiceToken;
+        this.aiContextService = aiContextService;
     }
 
     @PostMapping("/workflow-drafts")
@@ -65,12 +66,17 @@ public class WorkflowDraftController {
                     "AI workflow builder is not available yet.");
         }
 
-        Map<String, Object> context = request.context() != null ? new HashMap<>(request.context()) : new HashMap<>();
-        
+        // Build enriched context: user connections + bounded dynamic-data pre-fetch.
+        // This replaces the bare context pass-through — the AI now receives real
+        // connection IDs and live resource lists (e.g. Slack channels) instead of
+        // guessing from plain text.
+        Map<String, Object> enrichedContext =
+            aiContextService.buildContext(resolvedUserId, request.context());
+
         Map<String, Object> body = Map.of(
                 "userId",  resolvedUserId.toString(),
                 "prompt",  request.prompt(),
-                "context", context
+                "context", enrichedContext
         );
 
         RestClient.Builder builder = RestClient.builder()
@@ -127,3 +133,4 @@ public class WorkflowDraftController {
             Map<String, Object> context
     ) {}
 }
+

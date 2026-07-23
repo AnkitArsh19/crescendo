@@ -1,6 +1,7 @@
 package com.crescendo.apps.notion;
 
 import com.crescendo.execution.resource.ResourceOption;
+import com.crescendo.execution.resource.ResourceContextDescriptor;
 import com.crescendo.execution.resource.ResourceProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,11 @@ public class NotionResourceProvider implements ResourceProvider {
     @Override
     public Set<String> supportedResourceTypes() {
         return Set.of("databases", "pages");
+    }
+
+    @Override
+    public Set<ResourceContextDescriptor> contextResourceDescriptors() {
+        return Set.of(new ResourceContextDescriptor("databases", 50, java.time.Duration.ofMinutes(5)));
     }
 
     @Override
