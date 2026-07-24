@@ -167,8 +167,8 @@ export default function SecuritySettings() {
     const revokeSession = async (session) => {
         setSessionStatus({ type: '', text: '' });
         try {
-            await sessionsApi.revokeSession(session.sessionId);
-            setSessions(sessions.filter(s => s.sessionId !== session.sessionId));
+            await sessionsApi.revokeSession(session.id);
+            setSessions(sessions.filter(s => s.id !== session.id));
             setSessionStatus({ type: 'success', text: 'Session revoked successfully.' });
         } catch {
             setSessionStatus({ type: 'error', text: 'Could not revoke session.' });
@@ -592,32 +592,27 @@ export default function SecuritySettings() {
                         <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>No active sessions found.</div>
                     ) : (
                         sessions.map((session) => (
-                            <div className="settings-table-row" key={session.sessionId}>
-                                <div className="settings-table-cell-icon" style={{ color: '#4b5563' }}>
+                            <div className="session-card-row" key={session.id}>
+                                <div className="session-card-icon">
                                     {session.deviceLabel?.toLowerCase().includes('mobile') || session.deviceLabel?.toLowerCase().includes('iphone') || session.deviceLabel?.toLowerCase().includes('android') ? <HiOutlineDeviceMobile size={22} /> : <HiOutlineDesktopComputer size={22} />}
                                 </div>
-                                <div className="settings-table-cell-main">
-                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span className="settings-table-cell-title">{session.deviceLabel || 'Unknown Device'}</span>
+                                <div className="session-card-content">
+                                     <div className="session-card-title-group">
+                                        <span className="session-card-title">{session.deviceLabel || 'Unknown Device'}</span>
                                         {session.isCurrent && (
-                                            <span style={{
-                                                fontSize: '0.7rem', padding: '2px 8px',
-                                                background: 'rgba(255,255,255,0.08)', color: 'var(--text-accent)',
-                                                border: '1px solid var(--border-primary)',
-                                                borderRadius: '999px', fontWeight: 600
-                                            }}>
+                                            <span className="session-card-current-badge">
                                                 This device
                                             </span>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', gap: '16px', marginTop: '4px', color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <div className="session-card-meta">
+                                        <span className="session-card-meta-item">
                                             <HiOutlineLocationMarker />
                                             {session.country
                                                 ? `${session.country}${session.clientIp ? ` · ${session.clientIp}` : ''}`
                                                 : session.clientIp || 'Unknown Location'}
                                         </span>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span className="session-card-meta-item">
                                             <HiOutlineClock />
                                             {session.lastUsedAt
                                                 ? `Active ${new Date(session.lastUsedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -630,11 +625,12 @@ export default function SecuritySettings() {
                                 {!session.isCurrent && (
                                     <button 
                                         type="button" 
-                                        className="settings-icon-btn settings-danger-icon" 
+                                        className="session-card-delete-btn" 
                                         onClick={() => setReAuthAction({ type: 'revokeSession', session })}
                                         aria-label="Revoke Session"
+                                        title="Revoke Session"
                                     >
-                                        <HiOutlineTrash />
+                                        <HiOutlineTrash size={18} />
                                     </button>
                                 )}
                             </div>

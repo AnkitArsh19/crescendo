@@ -337,6 +337,7 @@
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: var(--radius-md);
     color: var(--text-accent);
+    font-family: inherit;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -366,6 +367,7 @@
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-md);
     color: var(--text-secondary);
+    font-family: inherit;
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
@@ -383,10 +385,11 @@
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.25);
     border-radius: var(--radius-md);
-    color: var(--text-accent);
+    color: #f87171;
+    font-family: inherit;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
@@ -394,7 +397,8 @@
 }
 
 .conn-btn-danger:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(248, 113, 113, 0.2);
+    border-color: rgba(248, 113, 113, 0.4);
 }
 
 .conn-btn-danger:disabled {
@@ -526,11 +530,13 @@
 
 .conn-modal-footer {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
-    gap: 10px;
-    padding-top: 20px;
-    margin-top: 8px;
+    gap: 12px;
+    padding: 16px 24px 24px 24px;
     border-top: 1px solid var(--border-primary);
+    border-bottom-left-radius: var(--radius-xl);
+    border-bottom-right-radius: var(--radius-xl);
 }
 
 .conn-modal-error {
@@ -941,7 +947,9 @@
     margin-left: 2px;
 }
 
-.conn-form-input {
+.conn-form-input,
+.conn-form-textarea,
+select.conn-form-input {
     display: block;
     width: 100%;
     margin-top: 6px;
@@ -950,17 +958,42 @@
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-md);
     color: var(--text-accent);
+    font-family: inherit;
     font-size: 0.88rem;
     outline: none;
     transition: border-color var(--transition-fast);
+    appearance: none;
+    -webkit-appearance: none;
 }
 
-.conn-form-input:focus {
+select.conn-form-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 36px;
+}
+
+select.conn-form-input option {
+    background-color: #18181b;
+    color: #f4f4f5;
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 10px;
+}
+
+.conn-form-input:focus,
+.conn-form-textarea:focus,
+select.conn-form-input:focus {
     border-color: var(--border-hover);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
 }
 
-.conn-form-input::placeholder {
+.conn-form-input::placeholder,
+.conn-form-textarea::placeholder {
     color: var(--text-tertiary);
+    font-family: inherit;
+    opacity: 0.6;
 }
 
 /* ─── Password Toggle ───────────────────────────────────────────────────── */

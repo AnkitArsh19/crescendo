@@ -531,7 +531,6 @@ export default function WorkflowCanvas() {
                 fitWorkflow();
                 return;
             }
-            }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);

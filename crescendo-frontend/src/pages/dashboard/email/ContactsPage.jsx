@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineX, HiOutlineMail } from 'react-icons/hi';
 import useContactStore from '../../../store/contactStore';
 import '../../settings/Settings.css';
 
@@ -102,7 +102,10 @@ export default function ContactsPage() {
                     <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={resetForm}>
                         <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={e => e.stopPropagation()}>
                             <div className="conn-modal-header">
-                                <h2>{editId ? 'Edit Contact' : 'Add Contact'}</h2>
+                                <div>
+                                    <h2>{editId ? 'Edit Contact' : 'Add Contact'}</h2>
+                                    <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>{editId ? 'Update recipient details and email preferences.' : 'Add a new recipient to your broadcast audience.'}</p>
+                                </div>
                                 <button className="conn-modal-close" onClick={resetForm}><HiOutlineX /></button>
                             </div>
                             <div className="conn-modal-body">

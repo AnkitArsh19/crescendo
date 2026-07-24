@@ -28,6 +28,8 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
 		""")
 		List<UserSession> findAllActiveByUserId(UUID userId, Instant now);
 
+		List<UserSession> findAllByUser_IdAndDeviceId_ValueAndRevokedAtIsNullAndExpiresAtAfter(UUID userId, String deviceId, Instant now);
+
 		Optional<UserSession> findByRefreshTokenHash(String refreshTokenHash);
 
     /**

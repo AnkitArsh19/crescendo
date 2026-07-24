@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlinePaperAirplane } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlinePaperAirplane, HiOutlineSpeakerphone } from 'react-icons/hi';
 import { broadcastsApi } from '../../../api/broadcastsApi';
 import { templatesApi } from '../../../api/emailServiceApi';
 import '../../settings/Settings.css';
@@ -129,7 +129,10 @@ export default function BroadcastsPage() {
                     <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreate(false)}>
                         <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={e => e.stopPropagation()}>
                             <div className="conn-modal-header">
-                                <h2>New Broadcast</h2>
+                                <div>
+                                    <h2>New Broadcast</h2>
+                                    <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Select an email template and sender address to prepare a broadcast campaign.</p>
+                                </div>
                                 <button className="conn-modal-close" onClick={() => setShowCreate(false)}><HiOutlineX /></button>
                             </div>
                             <div className="conn-modal-body">

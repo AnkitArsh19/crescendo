@@ -164,11 +164,17 @@ export default function DomainsSettings() {
         {deleteTarget && (
           <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteTarget(null)}>
             <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()}>
-              <div className="conn-modal-header"><h2>Delete Domain</h2></div>
-              <div className="conn-modal-body"><p style={{ color: 'var(--text-secondary)' }}>Emails from this domain will no longer be deliverable.</p></div>
+              <div className="conn-modal-header">
+                <div>
+                  <h2>Delete Domain</h2>
+                  <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Permanently remove this custom domain.</p>
+                </div>
+                <button type="button" className="conn-modal-close" onClick={() => setDeleteTarget(null)}><HiOutlineX /></button>
+              </div>
+              <div className="conn-modal-body"><p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>Emails sent from this domain will no longer be deliverable until re-verified.</p></div>
               <div className="conn-modal-footer">
                 <button className="conn-btn-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
-                <button className="conn-btn-danger" onClick={handleDelete}>Delete</button>
+                <button className="conn-btn-danger" onClick={handleDelete}>Delete Domain</button>
               </div>
             </motion.div>
           </motion.div>
@@ -214,7 +220,10 @@ function AddDomainModal({ onClose, onAdded }) {
     <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.form className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <div className="conn-modal-header">
-          <h2>Add Domain</h2>
+          <div>
+            <h2>Add Custom Domain</h2>
+            <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Configure DNS records to send emails from your custom domain.</p>
+          </div>
           <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
         </div>
         <div className="conn-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

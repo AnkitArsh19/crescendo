@@ -18,7 +18,7 @@ import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
 import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
 import api from '../../api/axios';
-import { getDeviceId } from '../../utils/deviceFingerprint';
+import { getDeviceMetadata } from '../../utils/deviceFingerprint';
 import './Auth.css';
 
 function getStrength(pw) {
@@ -82,8 +82,9 @@ export default function Register() {
     const updatePasswordlessData = (field) => (event) => setPasswordlessData((current) => ({ ...current, [field]: event.target.value }));
 
     const handleOAuthLogin = (provider) => {
-        const deviceId = getDeviceId();
+        const { deviceId, deviceLabel } = getDeviceMetadata();
         document.cookie = `crescendo_device_id_transfer=${encodeURIComponent(deviceId)}; path=/; max-age=300; SameSite=Lax`;
+        document.cookie = `crescendo_device_label_transfer=${encodeURIComponent(deviceLabel)}; path=/; max-age=300; SameSite=Lax`;
         window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider}`;
     };
 
