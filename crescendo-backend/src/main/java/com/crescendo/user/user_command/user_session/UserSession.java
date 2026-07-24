@@ -145,7 +145,38 @@ public class UserSession {
         this.clientIp = IpAddress.of(clientIp);
         this.lastIp = IpAddress.of(clientIp);
         this.deviceId = DeviceId.of(deviceId);
-        this.deviceLabel = deviceLabel;
+        this.deviceLabel = resolveDeviceLabel(userAgent, deviceLabel);
+    }
+
+    private static String resolveDeviceLabel(String userAgent, String clientLabel) {
+        if (clientLabel != null && !clientLabel.isBlank() && !"Unknown Device".equalsIgnoreCase(clientLabel.trim())) {
+            return clientLabel.trim();
+        }
+        if (userAgent == null || userAgent.isBlank()) {
+            return "Unknown Device";
+        }
+        String browser = "Unknown Browser";
+        String os = "Unknown OS";
+
+        String ua = userAgent;
+        if (ua.contains("Firefox")) browser = "Firefox";
+        else if (ua.contains("SamsungBrowser")) browser = "Samsung Internet";
+        else if (ua.contains("Opera") || ua.contains("OPR")) browser = "Opera";
+        else if (ua.contains("Trident")) browser = "Internet Explorer";
+        else if (ua.contains("Edge") || ua.contains("Edg/")) browser = "Edge";
+        else if (ua.contains("Chrome")) browser = "Chrome";
+        else if (ua.contains("Safari")) browser = "Safari";
+
+        if (ua.contains("Win")) os = "Windows";
+        else if (ua.contains("Mac")) os = "macOS";
+        else if (ua.contains("Linux")) os = "Linux";
+        else if (ua.contains("Android")) os = "Android";
+        else if (ua.contains("like Mac") || ua.contains("iPhone") || ua.contains("iPad")) os = "iOS";
+
+        if ("Unknown Browser".equals(browser) && "Unknown OS".equals(os)) {
+            return "Unknown Device";
+        }
+        return browser + " on " + os;
     }
 
     public UUID getId() {

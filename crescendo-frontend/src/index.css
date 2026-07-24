@@ -145,6 +145,10 @@ a:hover {
   opacity: 0.85;
 }
 
+input, select, textarea, button, option, optgroup {
+  font-family: var(--font-sans);
+}
+
 button {
   cursor: pointer;
   font-family: var(--font-sans);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlineUpload } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlineUpload, HiOutlineBan } from 'react-icons/hi';
 import { suppressionsApi } from '../../../api/suppressionsApi';
 import '../../settings/Settings.css';
 
@@ -127,7 +127,10 @@ export default function SuppressionsPage() {
                     <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAdd(false)}>
                         <motion.div className="conn-modal conn-modal-sm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={e => e.stopPropagation()}>
                             <div className="conn-modal-header">
-                                <h2>Add Suppression</h2>
+                                <div>
+                                    <h2>Add Suppression</h2>
+                                    <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Prevent emails from being delivered to specific addresses or domains.</p>
+                                </div>
                                 <button className="conn-modal-close" onClick={() => setShowAdd(false)}><HiOutlineX /></button>
                             </div>
                             <div className="conn-modal-body">

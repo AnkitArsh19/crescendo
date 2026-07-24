@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { HiOutlineChartBar } from 'react-icons/hi';
 import { metricsApi } from '../../../api/metricsApi';
 import '../../settings/Settings.css';
 import './EmailMetrics.css';

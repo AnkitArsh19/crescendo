@@ -213,14 +213,17 @@ function CreateKeyModal({ onClose, onCreated }) {
   return (
     <motion.div className="conn-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.form
-        className="conn-modal conn-modal-sm"
+        className="conn-modal"
         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
       >
         <div className="conn-modal-header">
-          <h2>Create API Key</h2>
+          <div>
+            <h2>Create API Key</h2>
+            <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Generate a secret API key for authenticating backend requests.</p>
+          </div>
           <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
         </div>
         <div className="conn-modal-body">

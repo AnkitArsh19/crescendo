@@ -1,15 +1,11 @@
 name: Publish OpenAPI Spec and Trigger SDK Generation
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - 'crescendo-backend/src/main/java/com/crescendo/publicapi/**'
-      - 'crescendo-backend/src/main/java/com/crescendo/emailservice/email_send/**'
-      - 'crescendo-backend/src/main/java/com/crescendo/emailservice/email_log/**'
-      - 'crescendo-backend/src/main/java/com/crescendo/emailservice/customevent/**'
-      - 'crescendo-backend/src/main/java/com/crescendo/config/OpenApiConfig.java'
-      - 'crescendo-backend/src/main/resources/application-ci.properties'
+      - 'crescendo-backend/**'
       - '.github/workflows/publish-openapi-spec.yml'
 
 jobs:
@@ -54,7 +50,7 @@ jobs:
         run: |
           cd crescendo-backend
           chmod +x mvnw
-          ./mvnw -q spring-boot:run -DskipTests -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+          ./mvnw -q spring-boot:run -DskipTests -Dspring.profiles.active=ci -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
           echo $! > ../backend.pid
           for i in $(seq 1 40); do
             if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
@@ -77,6 +73,12 @@ jobs:
         run: |
           curl --fail --show-error --silent --max-time 30 "http://localhost:8080/api-docs/crescendo-public-api-v1" -o openapi.json
 
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) 2>/dev/null || true
+          fi
 
       - name: Push Spec to SDK Repository
         run: |

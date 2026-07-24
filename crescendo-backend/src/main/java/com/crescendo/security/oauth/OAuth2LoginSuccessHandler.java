@@ -266,7 +266,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private String extractCookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() == null) return null;
         for (Cookie c : request.getCookies()) {
-            if (name.equals(c.getName())) return c.getValue();
+            if (name.equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
+                try {
+                    return java.net.URLDecoder.decode(c.getValue(), StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    return c.getValue();
+                }
+            }
         }
         return null;
     }

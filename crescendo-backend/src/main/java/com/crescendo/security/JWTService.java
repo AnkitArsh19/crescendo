@@ -237,6 +237,11 @@ public class JWTService {
     private RefreshIssue createRefreshSession(User_command user, String userAgent,
                                               String clientIp, String deviceId, String deviceLabel, String originalClientIp,
                                               Instant now, Long customTtlMs) {
+        if (deviceId != null && !deviceId.isBlank()) {
+            List<UserSession> activeSameDevice = userSessionRepository.findAllByUser_IdAndDeviceId_ValueAndRevokedAtIsNullAndExpiresAtAfter(user.getId(), deviceId, now);
+            activeSameDevice.forEach(s -> s.setRevokedAt(now));
+        }
+
         String raw = randomToken();
         String hash = hashRefresh(raw);
         Instant expires = now.plusMillis(customTtlMs != null ? customTtlMs : refreshExpirationMs);
@@ -287,8 +292,6 @@ public class JWTService {
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }
-
-
 
     /// Attempts a Base64 decode — if it succeeds the secret is treated as Base64, else as plain UTF-8.
     private boolean looksBase64(String s) {

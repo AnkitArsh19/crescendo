@@ -224,7 +224,7 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
 // VariableInsertButton — dropdown to insert {{step.N.field}} references
 // ─────────────────────────────────────────────────────────────────────────────
 
-function VariableInsertButton({ availableVariables, onInsert }) {
+export function VariableInsertButton({ availableVariables, onInsert }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef(null);

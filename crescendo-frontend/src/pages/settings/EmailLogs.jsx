@@ -140,7 +140,10 @@ function SendEmailModal({ onClose, onSent }) {
         onSubmit={handleSubmit}
       >
         <div className="conn-modal-header">
-          <h2>Send Test Email</h2>
+          <div>
+            <h2>Send Test Email</h2>
+            <p className="conn-field-help" style={{ marginTop: 2, marginBottom: 0 }}>Send a test message or rendered template to verify your delivery pipeline.</p>
+          </div>
           <button type="button" className="conn-modal-close" onClick={onClose}><HiOutlineX /></button>
         </div>
         <div className="conn-modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
