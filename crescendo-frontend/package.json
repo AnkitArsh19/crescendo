@@ -19,7 +19,7 @@
     "axios": "^1.18.1",
     "framer-motion": "^12.42.2",
     "fuse.js": "^7.5.0",
-    "react": "^19.2.7",
+    "react": "^19.2.8",
     "react-dom": "^19.2.7",
     "react-email": "^6.9.0",
     "react-hook-form": "^7.82.0",
