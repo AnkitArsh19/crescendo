@@ -12,32 +12,32 @@ import java.util.Map;
 @Component
 public class MySqlHandlers {
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:deleteTable")
+    @ActionMapping(appKey = "mysql", actionKey = "deleteTable")
     public Object deleteTable(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Delete executed");
     }
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:executeQuery")
+    @ActionMapping(appKey = "mysql", actionKey = "executeQuery")
     public Object executeQuery(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Query executed");
     }
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:insert")
+    @ActionMapping(appKey = "mysql", actionKey = "insert")
     public Object insert(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Insert executed");
     }
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:upsert")
+    @ActionMapping(appKey = "mysql", actionKey = "upsert")
     public Object upsert(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Upsert executed");
     }
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:select")
+    @ActionMapping(appKey = "mysql", actionKey = "select")
     public Object select(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Select executed");
     }
 
-    @ActionMapping(appKey = "mySql", actionKey = "mySql:update")
+    @ActionMapping(appKey = "mysql", actionKey = "update")
     public Object update(ActionContext context) throws Exception {
         return Map.of("status", "success", "message", "Update executed");
     }

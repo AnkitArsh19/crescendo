@@ -9,6 +9,12 @@ crescendo.admin.emails=your-admin@example.com
 # Trust reverse proxy headers (e.g. Cloudflare Tunnel, nginx) so HTTPS redirect URIs are correct
 server.forward-headers-strategy=framework
 
+# ─── Virtual Threads & High-Concurrency Network Tuning (Java 21+) ────────────
+spring.threads.virtual.enabled=true
+server.tomcat.max-connections=10000
+server.tomcat.accept-count=1000
+server.tomcat.connection-timeout=20000
+
 # Fix for PostgreSQL 18+ which removed deprecated timezone "Asia/Calcutta"
 spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Kolkata
 
@@ -31,6 +37,12 @@ spring.jpa.open-in-view=false
 # NEVER commit the real key. Use an environment variable in production:
 #   CREDENTIALS_CRYPTO_KEY=<your-base64-key>
 credentials.crypto.key=REPLACE_ME_WITH_BASE64_AES256_KEY
+
+# ─── Observability & Actuator Telemetry ────────────────────────────────────────
+management.endpoints.web.exposure.include=health,info,metrics,prometheus
+management.endpoint.health.show-details=always
+management.endpoint.prometheus.enabled=true
+management.prometheus.metrics.export.enabled=true
 
 # ─── App URLs ─────────────────────────────────────────────────────────────────
 app.frontend-url=https://app.crescendo.run

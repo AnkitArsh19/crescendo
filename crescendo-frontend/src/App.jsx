@@ -10,6 +10,7 @@ import DotCanvas from './components/DotCanvas';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
+import AiBuilderSection from './components/AiBuilderSection';
 import ApiSection from './components/ApiSection';
 import DocsSection from './components/DocsSection';
 import Footer from './components/Footer';
@@ -73,6 +74,7 @@ function LandingPage() {
         <Navbar />
         <Hero />
         <Features />
+        <AiBuilderSection />
         <ApiSection />
         <DocsSection />
         <Footer />

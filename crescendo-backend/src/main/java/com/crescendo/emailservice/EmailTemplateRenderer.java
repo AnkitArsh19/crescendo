@@ -277,7 +277,7 @@ public class EmailTemplateRenderer {
             </div>
         </body>
         </html>
-        """.formatted(LOGO_SVG_PATHS);
+        """.replace("%s", LOGO_SVG_PATHS);
 
     private static String render(String content) {
         return BASE_LAYOUT.replace("{{CONTENT}}", content);

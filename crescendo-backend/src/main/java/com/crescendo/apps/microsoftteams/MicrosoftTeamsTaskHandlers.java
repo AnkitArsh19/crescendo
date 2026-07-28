@@ -17,7 +17,7 @@ public class MicrosoftTeamsTaskHandlers {
     private static final String GRAPH_API = MicrosoftTeamsSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "createTask")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "createTask")
 // @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -47,7 +47,7 @@ public class MicrosoftTeamsTaskHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "deleteTask")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "deleteTask")
     public ActionResult delete(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String listId = MicrosoftTeamsSupport.require(config, "listId");
@@ -69,7 +69,7 @@ public class MicrosoftTeamsTaskHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getTask")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getTask")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -92,7 +92,7 @@ public class MicrosoftTeamsTaskHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getAllTasks")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getAllTasks")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -114,7 +114,7 @@ public class MicrosoftTeamsTaskHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "updateTask")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "updateTask")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

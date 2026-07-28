@@ -52,7 +52,7 @@ public class GoogleTasksHandlers {
      *         notes, due (RFC 3339 timestamp), status (needsAction|completed),
      *         parent (task ID — creates sub-task), previous (task ID — inserts after)
      */
-    @ActionMapping(appKey = "googletasks", actionKey = "create")
+    @ActionMapping(appKey = "google-tasks", actionKey = "create")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -98,7 +98,7 @@ public class GoogleTasksHandlers {
      * Update an existing task (PATCH — only provided fields changed).
      * Config: taskId (required), taskListId (required), title, notes, due, status, completed, deleted
      */
-    @ActionMapping(appKey = "googletasks", actionKey = "update")
+    @ActionMapping(appKey = "google-tasks", actionKey = "update")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -141,7 +141,7 @@ public class GoogleTasksHandlers {
      * Delete a task.
      * Config: taskId (required), taskListId (required)
      */
-    @ActionMapping(appKey = "googletasks", actionKey = "delete")
+    @ActionMapping(appKey = "google-tasks", actionKey = "delete")
     public ActionResult delete(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -174,7 +174,7 @@ public class GoogleTasksHandlers {
      * Mark a task as completed.
      * Config: taskId (required), taskListId (required)
      */
-    @ActionMapping(appKey = "googletasks", actionKey = "complete")
+    @ActionMapping(appKey = "google-tasks", actionKey = "complete")
     @SuppressWarnings("unchecked")
     public ActionResult complete(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -211,7 +211,7 @@ public class GoogleTasksHandlers {
      *         showCompleted (bool, default true), showHidden (bool, default false),
      *         showDeleted (bool, default false), dueMin, dueMax (RFC 3339 timestamps)
      */
-    @ActionMapping(appKey = "googletasks", actionKey = "getAll")
+    @ActionMapping(appKey = "google-tasks", actionKey = "getAll")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();

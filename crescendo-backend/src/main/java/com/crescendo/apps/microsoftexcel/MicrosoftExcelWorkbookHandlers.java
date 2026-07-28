@@ -19,7 +19,7 @@ public class MicrosoftExcelWorkbookHandlers {
     private static final String GRAPH_API = MicrosoftExcelSupport.GRAPH_API;
 
     // ── createWorkbook ────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "createWorkbook")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "createWorkbook")
     public ActionResult createWorkbook(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String fileName = MicrosoftExcelSupport.require(config, "fileName");
@@ -50,7 +50,7 @@ public class MicrosoftExcelWorkbookHandlers {
     }
 
     // ── createWorksheet ───────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "createWorksheet")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "createWorksheet")
     public ActionResult createWorksheet(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String driveItemId = MicrosoftExcelSupport.require(config, "driveItemId");

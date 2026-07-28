@@ -92,10 +92,11 @@ public class CommandDBConfig {
          * It will be used by the Entity Manager Factory
          */
         @Primary
-        @Bean(name = "commandDataSource")
+        @Bean(name = "commandDataSource", destroyMethod = "close")
         public DataSource commandDataSource(){
                 return commandDatasourceProperties()
                         .initializeDataSourceBuilder()
+                        .type(com.zaxxer.hikari.HikariDataSource.class)
                         .build();
         }
 

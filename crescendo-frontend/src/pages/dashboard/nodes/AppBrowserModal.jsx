@@ -245,9 +245,10 @@ export default function AppBrowserModal({
             <div className="abm-overlay" onClick={() => { if (!activeConnectMode) setDetailApp(null); }}>
                 <motion.div
                     className="abm-modal detail-mode"
-                    initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                    initial={{ opacity: 0, scale: 0.65, y: 40 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="abm-header">
@@ -492,10 +493,10 @@ export default function AppBrowserModal({
         <div className="abm-overlay" onClick={onClose}>
             <motion.div
                 className="abm-modal"
-                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                initial={{ opacity: 0, scale: 0.65, y: 40 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}

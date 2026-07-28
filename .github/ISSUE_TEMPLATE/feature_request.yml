@@ -1,0 +1,43 @@
+name: Feature Request
+description: Propose an architectural enhancement, third-party integration connector, or UI refinement
+title: "[FEATURE] <Descriptive title of proposed feature>"
+labels: ["enhancement", "under-discussion"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing ideas to Crescendo. Provide structured technical proposals focused on modular design and scalability.
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target Subsystem
+      description: Indicate which part of the enterprise stack will house this capability.
+      options:
+        - crescendo-backend (New connector, DAG execution feature, API endpoint)
+        - crescendo-frontend (New studio UI component, canvas capability, dashboard)
+        - crescendo-aiml (AI workflow generator template, conversational skill)
+        - Cross-cutting architectural upgrade
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Explain the practical business workflow or technical obstacle this request solves.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Implementation Details
+      description: Detail how this feature should function, including API endpoints, data models, or configuration options.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Architectures Considered
+      description: Note any alternative workarounds or structural variations evaluated during your planning.
+    validations:
+      required: false

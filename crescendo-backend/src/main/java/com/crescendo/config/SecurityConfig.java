@@ -78,10 +78,8 @@ public class SecurityConfig {
 
     /**
      * Defines the entire HTTP security policy for the application.
-     * Configures CORS, CSRF, session management, security headers, endpoint access
-     * rules,
-     * error handling, and inserts the JWT filter before Spring's default
-     * username/password filter.
+     * Configures CORS, CSRF, session management, security headers, endpoint access rules,
+     * error handling, and inserts the JWT filter before Spring's default username/password filter.
      */
     @Bean
     @Order(2)
@@ -94,12 +92,9 @@ public class SecurityConfig {
         httpSecurity
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                // STATELESS: no server-side HttpSession created. Each request must carry its
-                // own JWT.
-                // OAuth2 temporarily needs a session to store the authorization request between
-                // redirect
-                // and callback — Spring handles this internally, and the session is discarded
-                // after.
+                // STATELESS: no server-side HttpSession created. Each request must carry its own JWT.
+                // OAuth2 temporarily needs a session to store the authorization request between redirect
+                // and callback — Spring handles this internally, and the session is discarded after.
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(h -> h
                         .contentSecurityPolicy(csp -> csp
@@ -129,30 +124,24 @@ public class SecurityConfig {
                                 "/auth/verify-email", // token is in query param, no auth header available
                                 "/mfa/challenge", // called before tokens are issued (post-login MFA step)
                                 "/mfa/backup-code", // called before tokens are issued (backup code login)
-                                "/actuator/health",
+                                "/actuator/**",
                                 "/oauth/session-required")
                         .permitAll()
-                        .requestMatchers("/guest/**").permitAll() // guest workflows — identified by X-Guest-Session
-                                                                  // header
+                        .requestMatchers("/guest/**").permitAll() // guest workflows — identified by X-Guest-Session header
                         .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll() // external webhook ingestion
-                        .requestMatchers(HttpMethod.GET, "/webhooks/email-events").permitAll() // provider delivery
-                                                                                               // callbacks
+                        .requestMatchers(HttpMethod.GET, "/webhooks/email-events").permitAll() // provider delivery callbacks
                         .requestMatchers("/public/forms/**", "/public/approvals/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/t/**").permitAll() // open/click tracking pixel & redirect
                         .requestMatchers(HttpMethod.GET, "/unsubscribe").permitAll() // legacy path — keep for old links
                         .requestMatchers(HttpMethod.GET, "/api/v1/unsubscribe").permitAll() // signed-token unsubscribe page
                         .requestMatchers(HttpMethod.POST, "/api/v1/unsubscribe").permitAll() // RFC 8058 one-click unsubscribe
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/connections/oauth/*/callback").permitAll() // integration
-                                                                                                      // OAuth callback
-                                                                                                      // (state carries
-                                                                                                      // userId)
+                        .requestMatchers(HttpMethod.GET, "/connections/oauth/*/callback").permitAll() // integration OAuth callback (state carries userId)
                         .requestMatchers(HttpMethod.GET, "/shared/**").permitAll() // public shared workflow previews
-                        .requestMatchers(HttpMethod.GET, "/admin/platform-keys/available").permitAll() // public: which
-                                                                                                       // apps have
-                                                                                                       // platform keys
+                        .requestMatchers(HttpMethod.GET, "/admin/platform-keys/available").permitAll() // public: which apps have platform keys
                         .requestMatchers(HttpMethod.GET, "/internal/catalog/**").permitAll() // AI microservice catalog polling
                         .requestMatchers("/api-docs/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // OpenAPI docs
+                        .requestMatchers(HttpMethod.GET, "/v2/domainTemplates/**").permitAll() // Domain Connect template spec (fetched by DNS providers)
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 // OAuth2 login: Spring handles the redirect to Google/GitHub and the callback.
@@ -162,8 +151,7 @@ public class SecurityConfig {
                                 .baseUri("/oauth2/authorization") // default, but explicit for clarity
                                 .authorizationRequestRepository(cookieAuthzRequestRepo))
                         .userInfoEndpoint(ui -> ui
-                                .userService(gitHubEmailOAuth2UserService) // fetches real email for GitHub
-                                                                           // private-email users
+                                .userService(gitHubEmailOAuth2UserService) // fetches real email for GitHub private-email users
                         )
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler))
@@ -172,7 +160,6 @@ public class SecurityConfig {
                 // 2. ApiKeyFilter — handles API key auth
                 // 3. OAuthAccessTokenFilter — handles OAuth access token auth
                 // 4. JWTFilter — handles JWT auth
-
                 .addFilterBefore(authRateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(oauthAccessTokenFilter, UsernamePasswordAuthenticationFilter.class)
@@ -184,7 +171,7 @@ public class SecurityConfig {
     /**
      * Bean for authentication manager.
      * This manager is used to handle authentication requests.
-     * 
+     *
      * @param configuration the authentication configuration
      * @return an AuthenticationManager instance
      * @throws Exception if an error occurs during authentication manager creation
@@ -196,9 +183,8 @@ public class SecurityConfig {
 
     /**
      * Bean for DAO(Data Access Object) authentication provider.
-     * This provider uses the user details service and password encoder for
-     * authentication.
-     * 
+     * This provider uses the user details service and password encoder for authentication.
+     *
      * @return an AuthenticationProvider instance
      */
     @Bean
@@ -210,12 +196,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Defines CORS policy — which origins, methods, and headers are allowed for
-     * cross-origin requests.
-     * Allowed origins are read from application properties so they can differ per
-     * environment.
-     * AllowCredentials = true is required for cross-origin requests that send
-     * cookies (refresh token cookie).
+     * Defines CORS policy — which origins, methods, and headers are allowed for cross-origin requests.
+     * Allowed origins are read from application properties so they can differ per environment.
+     * AllowCredentials = true is required for cross-origin requests that send cookies (refresh token cookie).
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -223,20 +206,13 @@ public class SecurityConfig {
         /// Always use allowedOriginPatterns — setAllowedOrigins("*") is incompatible
         /// with allowCredentials=true and throws at runtime.
         if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-            throw new IllegalStateException("CORS allowed origins must be configured");
+            allowedOrigins = List.of("http://localhost:5173", "https://app.crescendo.run");
         }
         cfg.setAllowedOriginPatterns(allowedOrigins);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "X-Guest-Session",
-                "X-Elevated-Token",
-                "X-Device-Id",
-                "X-Device-Label",
-                "Idempotency-Key"));
-        cfg.setExposedHeaders(List.of("Location"));
-        cfg.setAllowCredentials(true); // required if refresh cookie used cross-origin (adjust in prod)
+        cfg.setAllowedHeaders(List.of("*"));
+        cfg.setExposedHeaders(List.of("Location", "Authorization", "X-Device-Id", "X-Guest-Session"));
+        cfg.setAllowCredentials(true); // required if refresh cookie used cross-origin
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;

@@ -1,0 +1,12 @@
+# Default repository code owner assignment
+# Anyone mentioned below will be automatically solicited for reviews on pull requests targeting these files
+
+# Global platform core and architectural governance
+*       @AnkitArsh19
+
+# Specialized domain ownership
+/crescendo-backend/   @AnkitArsh19
+/crescendo-frontend/  @AnkitArsh19
+/crescendo-aiml/      @Reql75
+/.github/             @AnkitArsh19
+/docs_archive/        @AnkitArsh19

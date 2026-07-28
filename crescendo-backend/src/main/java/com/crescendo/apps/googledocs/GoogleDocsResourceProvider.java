@@ -14,7 +14,7 @@ import java.util.*;
 
 /**
  * Lists Google Docs from the user's Drive (uses Drive API filtered to docs mimeType).
- * Supports: documents
+ * Supports: documents, folders
  */
 @Component
 public class GoogleDocsResourceProvider implements ResourceProvider {
@@ -29,7 +29,7 @@ public class GoogleDocsResourceProvider implements ResourceProvider {
 
     @Override
     public Set<String> supportedResourceTypes() {
-        return Set.of("documents");
+        return Set.of("documents", "folders");
     }
 
     @Override
@@ -37,7 +37,11 @@ public class GoogleDocsResourceProvider implements ResourceProvider {
                                                String resourceType,
                                                Map<String, String> params) {
         String accessToken = credentials.get("accessToken").toString();
-        return listDocuments(accessToken);
+        return switch (resourceType) {
+            case "documents" -> listDocuments(accessToken);
+            case "folders" -> listFolders(accessToken);
+            default -> List.of();
+        };
     }
 
     @SuppressWarnings("unchecked")
@@ -63,6 +67,29 @@ public class GoogleDocsResourceProvider implements ResourceProvider {
                     .toList();
         } catch (Exception e) {
             logger.error("[google-docs] Failed to list documents: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ResourceOption> listFolders(String accessToken) {
+        try {
+            String query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
+            Map<String, Object> response = restClient(accessToken)
+                    .get()
+                    .uri(DRIVE_API + "/files?q={q}&pageSize=100&orderBy=name&fields=files(id,name)", query)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            List<Map<String, Object>> files = response != null
+                    ? (List<Map<String, Object>>) response.get("files")
+                    : List.of();
+            if (files == null) return List.of();
+            return files.stream()
+                    .map(file -> new ResourceOption(String.valueOf(file.get("id")),
+                            String.valueOf(file.get("name")), "Google Drive folder"))
+                    .toList();
+        } catch (Exception exception) {
+            logger.error("[google-docs] Failed to list folders: {}", exception.getMessage());
             return List.of();
         }
     }

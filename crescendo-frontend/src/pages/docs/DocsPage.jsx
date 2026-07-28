@@ -7,7 +7,15 @@ import {
     HiOutlineCode,
     HiOutlineMenu,
     HiOutlineX,
-    HiOutlineShieldCheck
+    HiOutlineShieldCheck,
+    HiOutlineMail,
+    HiOutlineUsers,
+    HiOutlineChartBar,
+    HiOutlineTemplate,
+    HiOutlineSparkles,
+    HiOutlineAdjustments,
+    HiOutlineCog,
+    HiOutlineTerminal
 } from 'react-icons/hi';
 import './DocsPage.css';
 
@@ -17,32 +25,94 @@ import OpenApiRenderer from './OpenApiRenderer';
 
 // Import raw markdown content
 import gettingStartedMd from './content/getting-started.md?raw';
+import emailBroadcastingMd from './content/email-broadcasting.md?raw';
+import audiencesContactsMd from './content/audiences-contacts.md?raw';
+import analyticsInsightsMd from './content/analytics-insights.md?raw';
+import workflowCanvasMd from './content/workflow-canvas.md?raw';
+import naturalLanguageMd from './content/natural-language.md?raw';
+import workflowRunsMd from './content/workflow-runs.md?raw';
+import appsIntegrationsMd from './content/apps-integrations.md?raw';
+import appsCatalogDeepdiveMd from './content/apps-catalog-deepdive.md?raw';
+import byokVsOauthMd from './content/byok-vs-oauth.md?raw';
+import settingsSecurityMd from './content/settings-security.md?raw';
+import publicApiMd from './content/public-api.md?raw';
+import sdkNodeMd from './content/sdk-node.md?raw';
+import sdkPythonMd from './content/sdk-python.md?raw';
+import sdkMultiLanguageMd from './content/sdk-multi-language.md?raw';
 import authenticationMd from './content/authentication.md?raw';
 import governanceMd from './content/api-governance.md?raw';
 
-// We index this for Fuse.js
+// Index all markdown guides and REST endpoints for instantaneous Fuse.js search
 const CONTENT_INDEX = [
-    { title: 'Getting Started', path: '/docs', contentSnippet: gettingStartedMd },
-    { title: 'Authentication', path: '/docs/authentication', contentSnippet: authenticationMd },
-    { title: 'API Governance', path: '/docs/api-governance', contentSnippet: governanceMd },
-    { title: 'Workflows API', path: '/docs/api/workflows', contentSnippet: 'Manage and trigger workflows programmatically.' },
-    { title: 'Connections API', path: '/docs/api/connections', contentSnippet: 'Manage third-party app credentials.' },
-    { title: 'Domains API', path: '/docs/api/domains', contentSnippet: 'Manage email sender domains and DNS.' },
-    { title: 'Audiences API', path: '/docs/api/audiences', contentSnippet: 'Manage contacts and audiences.' },
-    { title: 'Suppressions API', path: '/docs/api/suppressions', contentSnippet: 'Manage suppressed emails and bounces.' },
+    { title: 'Getting Started & Overview', path: '/docs', contentSnippet: gettingStartedMd },
+    { title: 'Email Marketing & Broadcasting', path: '/docs/email-broadcasting', contentSnippet: emailBroadcastingMd },
+    { title: 'Audience & Contact Management', path: '/docs/audiences-contacts', contentSnippet: audiencesContactsMd },
+    { title: 'Analytics & Insights Dashboards', path: '/docs/analytics-insights', contentSnippet: analyticsInsightsMd },
+    { title: 'Workflow Studio & Canvas', path: '/docs/workflow-canvas', contentSnippet: workflowCanvasMd },
+    { title: 'AI Builder (Natural Language)', path: '/docs/ai-builder', contentSnippet: naturalLanguageMd },
+    { title: 'Workflow Runs & Diagnostic Logs', path: '/docs/workflow-runs', contentSnippet: workflowRunsMd },
+    { title: 'App Catalog & Integrations Overview', path: '/docs/apps-integrations', contentSnippet: appsIntegrationsMd },
+    { title: '113+ Backend Apps Catalog Index', path: '/docs/apps-catalog-deepdive', contentSnippet: appsCatalogDeepdiveMd },
+    { title: 'BYOK & OAuth 2.0 Security Architecture', path: '/docs/byok-vs-oauth', contentSnippet: byokVsOauthMd },
+    { title: 'Settings, Security & Passkeys', path: '/docs/settings-security', contentSnippet: settingsSecurityMd },
+    { title: 'Node.js & TypeScript SDK (@crescendo/email)', path: '/docs/sdk-node', contentSnippet: sdkNodeMd },
+    { title: 'Python SDK (crescendo-sdk-python)', path: '/docs/sdk-python', contentSnippet: sdkPythonMd },
+    { title: 'Multi-Language SDKs (Java, Go, Rust, C#, CLI)', path: '/docs/sdk-multi-language', contentSnippet: sdkMultiLanguageMd },
+    { title: 'Developer API Overview', path: '/docs/public-api', contentSnippet: publicApiMd },
+    { title: 'API Authentication', path: '/docs/authentication', contentSnippet: authenticationMd },
+    { title: 'API Governance & Idempotency', path: '/docs/api-governance', contentSnippet: governanceMd },
+    { title: 'Workflows OpenAPI Spec', path: '/docs/api/workflows', contentSnippet: 'Manage and trigger workflows programmatically via OpenAPI v3 definitions.' },
+    { title: 'Connections OpenAPI Spec', path: '/docs/api/connections', contentSnippet: 'Manage third-party app credentials via interactive specification.' },
+    { title: 'Domains OpenAPI Spec', path: '/docs/api/domains', contentSnippet: 'Manage email sender domains and DNS via OpenAPI v3 definitions.' },
+    { title: 'Audiences OpenAPI Spec', path: '/docs/api/audiences', contentSnippet: 'Manage contacts and audience segments via REST endpoints.' },
+    { title: 'Suppressions OpenAPI Spec', path: '/docs/api/suppressions', contentSnippet: 'Manage suppressed emails and bounces via REST endpoints.' },
 ];
 
 const NAV_GROUPS = [
     {
-        title: 'Guides',
+        title: 'User Guides & Operations',
         items: [
             { id: '', title: 'Getting Started', icon: <HiOutlineBookOpen />, type: 'md', content: gettingStartedMd },
+            { id: 'email-broadcasting', title: 'Email Broadcasting', icon: <HiOutlineMail />, type: 'md', content: emailBroadcastingMd },
+            { id: 'audiences-contacts', title: 'Audience & Contacts', icon: <HiOutlineUsers />, type: 'md', content: audiencesContactsMd },
+            { id: 'analytics-insights', title: 'Analytics & Insights', icon: <HiOutlineChartBar />, type: 'md', content: analyticsInsightsMd },
+        ]
+    },
+    {
+        title: 'Workflow Automation & AI',
+        items: [
+            { id: 'workflow-canvas', title: 'Workflow Studio', icon: <HiOutlineTemplate />, type: 'md', content: workflowCanvasMd },
+            { id: 'ai-builder', title: 'AI Builder (NL Prompts)', icon: <HiOutlineSparkles />, type: 'md', content: naturalLanguageMd },
+            { id: 'workflow-runs', title: 'Runs & Diagnostic Logs', icon: <HiOutlineAdjustments />, type: 'md', content: workflowRunsMd },
+            { id: 'apps-integrations', title: 'App Catalog Overview', icon: <HiOutlineViewGrid />, type: 'md', content: appsIntegrationsMd },
+            { id: 'apps-catalog-deepdive', title: '113+ Apps Directory', icon: <HiOutlineViewGrid />, type: 'md', content: appsCatalogDeepdiveMd },
+            { id: 'byok-vs-oauth', title: 'BYOK & OAuth Security', icon: <HiOutlineShieldCheck />, type: 'md', content: byokVsOauthMd },
+        ]
+    },
+    {
+        title: 'Official Client SDKs',
+        items: [
+            { id: 'sdk-node', title: 'Node.js / TypeScript SDK', icon: <HiOutlineTerminal />, type: 'md', content: sdkNodeMd },
+            { id: 'sdk-python', title: 'Python SDK', icon: <HiOutlineTerminal />, type: 'md', content: sdkPythonMd },
+            { id: 'sdk-multi-language', title: 'Multi-Language SDKs & CLI', icon: <HiOutlineTerminal />, type: 'md', content: sdkMultiLanguageMd },
+        ]
+    },
+    {
+        title: 'Administration & Security',
+        items: [
+            { id: 'settings-security', title: 'Settings & Passkeys', icon: <HiOutlineCog />, type: 'md', content: settingsSecurityMd },
+        ]
+    },
+    {
+        title: 'Developer REST API',
+        items: [
+            { id: 'public-api', title: 'API Overview & Auth', icon: <HiOutlineTerminal />, type: 'md', content: publicApiMd },
             { id: 'authentication', title: 'Authentication', icon: <HiOutlineShieldCheck />, type: 'md', content: authenticationMd },
             { id: 'api-governance', title: 'API Governance', icon: <HiOutlineLightningBolt />, type: 'md', content: governanceMd },
         ]
     },
     {
-        title: 'API Reference',
+        title: 'OpenAPI Reference',
         items: [
             { id: 'api/workflows', title: 'Workflows', icon: <HiOutlineCode />, type: 'openapi', tag: 'Workflows' },
             { id: 'api/runs', title: 'Workflow Runs', icon: <HiOutlineCode />, type: 'openapi', tag: 'Workflow Runs' },
@@ -50,7 +120,7 @@ const NAV_GROUPS = [
             { id: 'api/domains', title: 'Domains', icon: <HiOutlineCode />, type: 'openapi', tag: 'Domains' },
             { id: 'api/audiences', title: 'Audiences (Contacts)', icon: <HiOutlineCode />, type: 'openapi', tag: 'Audiences (Contacts)' },
             { id: 'api/suppressions', title: 'Suppressions', icon: <HiOutlineCode />, type: 'openapi', tag: 'Suppressions' },
-            { id: 'api/apps', title: 'App Catalog', icon: <HiOutlineViewGrid />, type: 'openapi', tag: 'App Catalog' },
+            { id: 'api/apps', title: 'App Catalog Schema', icon: <HiOutlineCode />, type: 'openapi', tag: 'App Catalog' },
         ]
     }
 ];
@@ -146,26 +216,32 @@ export default function DocsPage() {
                 <div className="docs-content-wrapper">
                     <main className="docs-markdown-body">
                         <Routes location={location} key={location.pathname}>
-                            {NAV_GROUPS.flatMap(g => g.items).map(sec => {
-                                const path = sec.id;
-                                if (sec.type === 'md') {
-                                    return (
-                                        <Route 
-                                            key={sec.id} 
-                                            path={path} 
-                                            element={<MarkdownRenderer content={sec.content} />} 
-                                        />
-                                    );
-                                } else {
-                                    return (
-                                        <Route 
-                                            key={sec.id} 
-                                            path={path} 
-                                            element={<OpenApiRenderer targetTag={sec.tag} />} 
-                                        />
-                                    );
-                                }
-                            })}
+                            {(() => {
+                                const flatNavItems = NAV_GROUPS.flatMap(g => g.items);
+                                return flatNavItems.map((sec, idx) => {
+                                    const path = sec.id;
+                                    const prevItem = idx > 0 ? flatNavItems[idx - 1] : null;
+                                    const nextItem = idx < flatNavItems.length - 1 ? flatNavItems[idx + 1] : null;
+
+                                    if (sec.type === 'md') {
+                                        return (
+                                            <Route 
+                                                key={sec.id} 
+                                                path={path} 
+                                                element={<MarkdownRenderer content={sec.content} prevItem={prevItem} nextItem={nextItem} />} 
+                                            />
+                                        );
+                                    } else {
+                                        return (
+                                            <Route 
+                                                key={sec.id} 
+                                                path={path} 
+                                                element={<OpenApiRenderer targetTag={sec.tag} />} 
+                                            />
+                                        );
+                                    }
+                                });
+                            })()}
                         </Routes>
                     </main>
 

@@ -17,7 +17,7 @@ public class MicrosoftOutlookEventHandlers {
     private static final String GRAPH_API = MicrosoftOutlookSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "createEvent")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "createEvent")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -52,7 +52,7 @@ public class MicrosoftOutlookEventHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "deleteEvent")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "deleteEvent")
     public ActionResult delete(ActionContext context) {
         String eventId = MicrosoftOutlookSupport.require(context.configuration(), "eventId");
         if (eventId == null) return ActionResult.failure("'eventId' is required");
@@ -69,7 +69,7 @@ public class MicrosoftOutlookEventHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getEvent")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getEvent")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String eventId = MicrosoftOutlookSupport.require(context.configuration(), "eventId");
@@ -87,7 +87,7 @@ public class MicrosoftOutlookEventHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAllEvents")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAllEvents")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -107,7 +107,7 @@ public class MicrosoftOutlookEventHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "updateEvent")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "updateEvent")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

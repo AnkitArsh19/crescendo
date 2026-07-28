@@ -17,7 +17,7 @@ public class MicrosoftTeamsChannelMessageHandlers {
     private static final String GRAPH_API = MicrosoftTeamsSupport.GRAPH_API;
 
     // ── send ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "sendChannelMessage")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "sendChannelMessage")
     @SuppressWarnings("unchecked")
     public ActionResult send(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -51,7 +51,7 @@ public class MicrosoftTeamsChannelMessageHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getAllChannelMessages")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getAllChannelMessages")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();

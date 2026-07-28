@@ -77,7 +77,6 @@
 }
 
 .api-code-block:hover {
-    transform: rotateY(-2deg) rotateX(1deg) translateZ(10px);
     border-color: var(--border-secondary);
     box-shadow: var(--shadow-lg);
 }
@@ -86,7 +85,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 18px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border-primary);
     background: var(--bg-elevated);
 }
@@ -97,55 +96,114 @@
 }
 
 .api-code-dot {
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    border: 1px solid var(--border-secondary);
-    background: transparent;
 }
+
+.api-code-dot-red    { background: #ff5f57; }
+.api-code-dot-yellow { background: #febc2e; }
+.api-code-dot-green  { background: #28c840; }
 
 .api-code-filename {
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 0.7rem;
     color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+/* Copy button */
+.api-code-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.api-code-copy-btn:hover {
+    color: var(--text-accent);
+    border-color: var(--border-hover);
+    background: var(--bg-card);
+}
+
+.copy-icon-success {
+    color: #28c840;
+}
+
+/* SDK Tabs */
+.api-code-tabs {
+    display: flex;
+    gap: 3px;
+    padding: 6px 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-card);
+    scrollbar-width: none;
+}
+
+.api-code-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.api-tab-btn {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 6px 11px;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    z-index: 1;
+}
+
+.api-tab-btn:hover {
+    color: var(--text-secondary);
+}
+
+.api-tab-btn.active {
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+.api-tab-pill {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    z-index: -1;
+}
+
+.api-tab-label {
+    position: relative;
+    z-index: 2;
 }
 
 .api-code-body {
     padding: 20px;
     overflow-x: auto;
+    min-height: 240px;
 }
 
 .api-code-body pre {
     font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    font-size: 0.82rem;
-    line-height: 1.8;
+    font-size: 0.8rem;
+    line-height: 1.75;
     color: var(--text-secondary);
     margin: 0;
     white-space: pre;
-}
-
-.code-keyword {
-    color: var(--text-tertiary);
-    font-weight: 600;
-}
-
-.code-string {
-    color: var(--text-secondary);
-    opacity: 0.8;
-}
-
-.code-comment {
-    color: var(--text-tertiary);
-    opacity: 0.5;
-    font-style: italic;
-}
-
-.code-func {
-    color: var(--text-accent);
-}
-
-.code-bracket {
-    color: var(--text-tertiary);
 }
 
 /* Glow */
@@ -168,40 +226,4 @@
         grid-template-columns: 1fr;
         gap: 40px;
     }
-}
-
-.api-code-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 8px 10px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--border-primary);
-    background: var(--bg-card);
-    scrollbar-width: thin;
-}
-
-.api-code-tabs button {
-    flex: 0 0 auto;
-    padding: 6px 9px;
-    color: var(--text-tertiary);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.7rem;
-    font-weight: 600;
-    transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.api-code-tabs button:hover,
-.api-code-tabs button.active {
-    color: var(--text-primary);
-    background: var(--bg-elevated);
-    border-color: var(--border-primary);
-}
-
-.api-code-tabs button:focus-visible {
-    outline: 2px solid var(--text-secondary);
-    outline-offset: -2px;
 }

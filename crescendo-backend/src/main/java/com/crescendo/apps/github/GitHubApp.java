@@ -92,7 +92,7 @@ public class GitHubApp implements AppDefinition {
                         "configSchema", List.of(repoField, issueField,
                             Map.of("key", "body", "label", "Comment", "type", "textarea", "required", true,
                                    "placeholder", "LGTM!", "helpText", "Comment body (Markdown)"))),
-                    Map.of("actionKey", "github:issue:update", "name", "Close Issue",
+                    Map.of("actionKey", "github:issue:close", "name", "Close Issue",
                         "description", "Close an open issue",
                         "configSchema", List.of(repoField, issueField)),
                     Map.of("actionKey", "github:release:create", "name", "Create Release",

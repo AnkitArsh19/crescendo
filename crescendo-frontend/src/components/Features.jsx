@@ -42,42 +42,81 @@ const features = [
     },
 ];
 
+const containerVariants = {
+    hidden: {},
+    visible: {
+        transition: {
+            staggerChildren: 0.08,
+            delayChildren: 0.1,
+        },
+    },
+};
+
 const cardVariants = {
-    hidden: { opacity: 0, y: 50, rotateX: -8 },
-    visible: (index) => ({
+    hidden: { opacity: 0, y: 36, scale: 0.96 },
+    visible: {
         opacity: 1,
         y: 0,
-        rotateX: 0,
-        transition: { duration: 0.8, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] },
-    }),
+        scale: 1,
+        transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
+    },
 };
 
 export default function Features() {
     return (
         <section className="features" id="features">
             <div className="features-header">
-                <motion.p className="section-label" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true, margin: '-50px' }}>
+                <motion.p
+                    className="section-label"
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.3 }}
+                    transition={{ duration: 0.5 }}
+                >
                     Features
                 </motion.p>
-                <motion.h2 className="section-title" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6 }}>
+                <motion.h2
+                    className="section-title"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.3 }}
+                    transition={{ duration: 0.6, delay: 0.08 }}
+                >
                     Everything you need to <span className="font-serif" style={{ fontStyle: 'italic' }}>automate</span>
                 </motion.h2>
-                <motion.p className="section-subtitle" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.6, delay: 0.1 }}>
+                <motion.p
+                    className="section-subtitle"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.3 }}
+                    transition={{ duration: 0.6, delay: 0.16 }}
+                >
                     A catalog-driven builder, dependable execution pipeline, and built-in email platform
                     for automations that need more than a single request.
                 </motion.p>
             </div>
 
-            <div className="features-grid">
-                {features.map((feature, index) => (
-                    <motion.div className="feature-card" key={feature.title} custom={index} variants={cardVariants} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-30px' }}>
+            <motion.div
+                className="features-grid"
+                variants={containerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: false, amount: 0.2 }}
+            >
+                {features.map((feature) => (
+                    <motion.div
+                        className="feature-card"
+                        key={feature.title}
+                        variants={cardVariants}
+                        whileHover={{ y: -6, transition: { duration: 0.25, ease: 'easeOut' } }}
+                    >
                         <div className="feature-card-corner" />
                         <div className="feature-icon">{feature.icon}</div>
                         <div className="feature-title">{feature.title}</div>
                         <div className="feature-desc">{feature.desc}</div>
                     </motion.div>
                 ))}
-            </div>
+            </motion.div>
         </section>
     );
 }

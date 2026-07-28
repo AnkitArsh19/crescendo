@@ -16,7 +16,7 @@ public class MicrosoftTeamsChatHandlers {
     private static final String GRAPH_API = MicrosoftTeamsSupport.GRAPH_API;
 
     // ── send ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "sendChatMessage")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "sendChatMessage")
     @SuppressWarnings("unchecked")
     public ActionResult send(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -49,7 +49,7 @@ public class MicrosoftTeamsChatHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getChat")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getChat")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String chatId = MicrosoftTeamsSupport.require(context.configuration(), "chatId");
@@ -70,7 +70,7 @@ public class MicrosoftTeamsChatHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getAllChats")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getAllChats")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         try {

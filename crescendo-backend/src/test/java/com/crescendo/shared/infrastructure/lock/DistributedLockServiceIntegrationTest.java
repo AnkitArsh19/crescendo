@@ -81,4 +81,44 @@ class DistributedLockServiceIntegrationTest extends BaseIntegrationTest {
         boolean extended = lockService.extend(testLockKey, "wrong-token", 20000);
         assertFalse(extended, "Extend should fail with incorrect token");
     }
+
+    @Test
+    void tryLock_under100ConcurrentVirtualThreadWorkers_exactlyOneSucceedsAnd99Fail() throws InterruptedException {
+        int totalWorkers = 100;
+        java.util.concurrent.CountDownLatch startBarrier = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch doneBarrier = new java.util.concurrent.CountDownLatch(totalWorkers);
+        java.util.concurrent.atomic.AtomicInteger successCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger rejectedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger errorCount = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        // Execute across 100 true simultaneous virtual threads
+        try (java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i < totalWorkers; i++) {
+                executor.submit(() -> {
+                    try {
+                        startBarrier.await(); // Synchronize all 100 workers to strike at the exact same millisecond
+                        Optional<String> token = lockService.tryLock(testLockKey, 15000);
+                        if (token.isPresent()) {
+                            successCount.incrementAndGet();
+                        } else {
+                            rejectedCount.incrementAndGet();
+                        }
+                    } catch (Exception e) {
+                        errorCount.incrementAndGet();
+                    } finally {
+                        doneBarrier.countDown();
+                    }
+                });
+            }
+
+            // Release all workers simultaneously
+            startBarrier.countDown();
+            doneBarrier.await(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
+
+        assertEquals(0, errorCount.get(), "Zero exceptions should occur under 100-worker concurrency storm");
+        assertEquals(1, successCount.get(), "CRITICAL RACE ASSERTION: Exactly 1 worker out of 100 must acquire the lock to prevent silent double-execution!");
+        assertEquals(99, rejectedCount.get(), "CRITICAL RACE ASSERTION: Exactly 99 workers must be cleanly rejected!");
+    }
 }
+

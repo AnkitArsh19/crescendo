@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiX } from 'react-icons/hi';
+import { BorderBeam } from './BorderBeam';
 import './Modal.css';
 
-export default function Modal({ open, onClose, title, description, children }) {
+export default function Modal({ open, onClose, title, description, children, noBorderBeam = false }) {
     return (
         <AnimatePresence>
             {open && (
@@ -16,12 +17,13 @@ export default function Modal({ open, onClose, title, description, children }) {
                 >
                     <motion.div
                         className="modal-card"
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        initial={{ opacity: 0, scale: 0.65, y: 40 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                         onClick={(e) => e.stopPropagation()}
                     >
+                        {!noBorderBeam && <BorderBeam duration={8} borderWidth={2} />}
                         <button className="modal-close" onClick={onClose}>
                             <HiX />
                         </button>

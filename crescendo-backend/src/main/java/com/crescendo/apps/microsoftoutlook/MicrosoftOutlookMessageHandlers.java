@@ -24,7 +24,7 @@ public class MicrosoftOutlookMessageHandlers {
     private final tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
 
     // ── send ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "sendEmail")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "sendEmail")
     public ActionResult send(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String to = MicrosoftOutlookSupport.require(config, "to");
@@ -86,7 +86,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getMessage")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getMessage")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");
@@ -104,7 +104,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAllMessages")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAllMessages")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -131,7 +131,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "deleteMessage")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "deleteMessage")
     public ActionResult delete(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");
         if (messageId == null) return ActionResult.failure("'messageId' is required");
@@ -148,7 +148,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── move ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "moveMessage")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "moveMessage")
     @SuppressWarnings("unchecked")
     public ActionResult move(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");
@@ -168,7 +168,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── reply ─────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "replyMessage")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "replyMessage")
     public ActionResult reply(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String messageId = MicrosoftOutlookSupport.require(config, "messageId");
@@ -198,7 +198,7 @@ public class MicrosoftOutlookMessageHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "updateMessage")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "updateMessage")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

@@ -1,0 +1,56 @@
+name: Bug Report
+description: Submit an actionable bug report to help improve Crescendo platform reliability
+title: "[BUG] <Descriptive summary of problem>"
+labels: ["bug", "triage-needed"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please complete this form with precise technical information. Ensure zero emojis or non-standard characters appear in your logs or descriptions.
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected Module
+      description: Select the system subsystem where the anomaly occurred.
+      options:
+        - crescendo-backend (Java / Spring Boot Engine)
+        - crescendo-frontend (React / Vite UI)
+        - crescendo-aiml (Python Microservice)
+        - Infrastructure & Containerization (Docker / Redis / Postgres)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Provide a clear, factual description of what happened versus what was expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide exact deterministic instructions to recreate the behavior locally.
+      placeholder: |
+        1. Start backend server using ./mvnw spring-boot:run
+        2. Execute workflow containing Postgres action step
+        3. Observe error trace in application console
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Stack Trace or Error Logs
+      description: Paste relevant stack traces, HTTP status payloads, or compiler error outputs.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: environment
+    attributes:
+      label: System Environment & Version Detail
+      description: Specify your Java JDK version, Node.js version, Python release, or OS distribution.
+      placeholder: e.g., JDK 25, Node.js 20.10.0, Windows 11 / Ubuntu 24.04
+    validations:
+      required: true

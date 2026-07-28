@@ -3,13 +3,13 @@
 # This profile is used when running the app locally
 
 # Command Database (Write Side) - Local
-spring.datasource.command.url=jdbc:postgresql://localhost:5432/crescendo_command
+spring.datasource.command.url=jdbc:postgresql://localhost:5433/crescendo_command
 spring.datasource.command.username=your_username
 spring.datasource.command.password=your_password
 spring.datasource.command.driver-class-name=org.postgresql.Driver
 
 # Query Database (Read Side) - Local
-spring.datasource.query.url=jdbc:postgresql://localhost:5432/crescendo_query
+spring.datasource.query.url=jdbc:postgresql://localhost:5433/crescendo_query
 spring.datasource.query.username=your_username
 spring.datasource.query.password=your_password
 spring.datasource.query.driver-class-name=org.postgresql.Driver
@@ -17,6 +17,27 @@ spring.datasource.query.driver-class-name=org.postgresql.Driver
 # Local Development Settings
 spring.jpa.show-sql=false
 logging.level.org.springframework.web=DEBUG
+
+# Conservative Tomcat Concurrency for Local Laptop Dev (Prevents RAM memory swapping under load tests)
+server.tomcat.max-connections=500
+server.tomcat.accept-count=200
+server.tomcat.connection-timeout=20000
+
+# HikariCP connection pool optimization & keepalive for local Docker Postgres
+# Sizing formula: ((Core count * 2) + Spindle count). Keeping pool small prevents Docker RAM exhaustion.
+spring.datasource.command.hikari.maximum-pool-size=12
+spring.datasource.command.hikari.minimum-idle=3
+spring.datasource.command.hikari.connection-timeout=30000
+spring.datasource.command.hikari.idle-timeout=600000
+spring.datasource.command.hikari.max-lifetime=1800000
+spring.datasource.command.hikari.keepalive-time=120000
+
+spring.datasource.query.hikari.maximum-pool-size=12
+spring.datasource.query.hikari.minimum-idle=3
+spring.datasource.query.hikari.connection-timeout=30000
+spring.datasource.query.hikari.idle-timeout=600000
+spring.datasource.query.hikari.max-lifetime=1800000
+spring.datasource.query.hikari.keepalive-time=120000
 
 # Required for encrypting connection credentials at rest (AES-256 Base64 key)
 credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY

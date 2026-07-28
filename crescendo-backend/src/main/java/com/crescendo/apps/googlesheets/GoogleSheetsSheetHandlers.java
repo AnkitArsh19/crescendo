@@ -50,7 +50,7 @@ public class GoogleSheetsSheetHandlers {
      * Config: spreadsheetId (required), range (required, e.g. "Sheet1!A1"),
      *         values (required, List of cell values)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "appendRow")
+    @ActionMapping(appKey = "google-sheets", actionKey = "appendRow")
     @SuppressWarnings("unchecked")
     public ActionResult appendRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -91,7 +91,7 @@ public class GoogleSheetsSheetHandlers {
      * Clear all values in a range.
      * Config: spreadsheetId (required), range (required)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "clearCells")
+    @ActionMapping(appKey = "google-sheets", actionKey = "clearCells")
     @SuppressWarnings("unchecked")
     public ActionResult clearCells(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -126,7 +126,7 @@ public class GoogleSheetsSheetHandlers {
      * Delete a row by index (0-based internally, 1-based from config).
      * Config: spreadsheetId (required), sheetId (int, required), rowIndex (int, 1-based)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "deleteRow")
+    @ActionMapping(appKey = "google-sheets", actionKey = "deleteRow")
     @SuppressWarnings("unchecked")
     public ActionResult deleteRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -175,7 +175,7 @@ public class GoogleSheetsSheetHandlers {
      * Config: spreadsheetId (required), range (required),
      *         keyColumn (int, 0-based, default 0), keyValue (required)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "findRow")
+    @ActionMapping(appKey = "google-sheets", actionKey = "findRow")
     @SuppressWarnings("unchecked")
     public ActionResult findRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -220,7 +220,7 @@ public class GoogleSheetsSheetHandlers {
      * Read rows from a sheet range.
      * Config: spreadsheetId (required), range (required)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "readRows")
+    @ActionMapping(appKey = "google-sheets", actionKey = "readRows")
     @SuppressWarnings("unchecked")
     public ActionResult readRows(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -255,7 +255,7 @@ public class GoogleSheetsSheetHandlers {
      * Config: spreadsheetId (required), range (required, e.g. "Sheet1!A2"),
      *         values (required, List of cell values)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "updateRow")
+    @ActionMapping(appKey = "google-sheets", actionKey = "updateRow")
     @SuppressWarnings("unchecked")
     public ActionResult updateRow(ActionContext context) {
         Map<String, Object> config = context.configuration();

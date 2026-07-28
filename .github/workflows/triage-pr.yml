@@ -1,0 +1,65 @@
+name: Automated PR Triage & Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  triage-labels:
+    name: Auto Tag PR by Modified Modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect Modified Files & Assign Tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Scanning changed files in PR #${PR_NUMBER}..."
+          CHANGED_FILES=$(gh pr view $PR_NUMBER --json files --jq '.files[].path')
+          
+          LABELS_TO_ADD=()
+
+          if echo "$CHANGED_FILES" | grep -q "^crescendo-backend/"; then
+            LABELS_TO_ADD+=("backend")
+            echo "Detected Java backend changes."
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^crescendo-frontend/"; then
+            LABELS_TO_ADD+=("frontend")
+            echo "Detected React frontend changes."
+          fi
+
+          if echo "$CHANGED_FILES" | grep -q "^crescendo-aiml/"; then
+            LABELS_TO_ADD+=("ai-ml")
+            echo "Detected Python AI microservice changes."
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE "(\.md$|^docs_archive/)"; then
+            LABELS_TO_ADD+=("documentation")
+            echo "Detected documentation changes."
+          fi
+
+          if echo "$CHANGED_FILES" | grep -qE "(^\.github/|^docker-compose|^Dockerfile|^redis\.conf)"; then
+            LABELS_TO_ADD+=("infrastructure")
+            echo "Detected CI or infrastructure changes."
+          fi
+
+          if [ ${#LABELS_TO_ADD[@]} -gt 0 ]; then
+            label_args=""
+            for label in "${LABELS_TO_ADD[@]}"; do
+              label_args="$label_args --add-label $label"
+            done
+            echo "Applying labels to PR: $label_args"
+            gh pr edit $PR_NUMBER $label_args || true
+          else
+            echo "No domain specific directory alterations found for tagging."
+          fi

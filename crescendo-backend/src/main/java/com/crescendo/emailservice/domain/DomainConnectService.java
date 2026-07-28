@@ -51,7 +51,7 @@ public class DomainConnectService {
         if (privateKeyPath != null && !privateKeyPath.isBlank()) {
             try {
                 String keyContent = Files.readString(Paths.get(privateKeyPath))
-                        .replaceAll("\\n", "")
+                        .replaceAll("[\\r\\n]", "") // strip real newlines (CRLF and LF)
                         .replace("-----BEGIN PRIVATE KEY-----", "")
                         .replace("-----END PRIVATE KEY-----", "")
                         .replace("-----BEGIN RSA PRIVATE KEY-----", "")
@@ -79,7 +79,7 @@ public class DomainConnectService {
     public Optional<String> buildSyncUrl(DomainDto.DomainResponse domainDto) {
         String domain = domainDto.domainName();
         return discoverApiDomain(domain)
-                .flatMap(this::fetchUrlSyncUX)
+                .flatMap(apiDomain -> fetchUrlSyncUX(apiDomain, domain))
                 .map(urlSyncUx -> constructApplyUrl(urlSyncUx, domainDto));
     }
 
@@ -105,7 +105,7 @@ public class DomainConnectService {
                     if (txt.startsWith("domainconnectProviderName")) {
                         continue;
                     }
-                    // It should just be the domain, e.g., "domainconnect.godaddy.com"
+                    // It should just be the domain, e.g., "api.cloudflare.com/client/v4/dns/domainconnect"
                     log.info("Domain Connect discovery for {}: Found API domain {}", domain, txt);
                     return Optional.of(txt);
                 }
@@ -118,20 +118,30 @@ public class DomainConnectService {
 
     /**
      * Step 2: Fetch the urlSyncUX from the provider's settings endpoint.
+     * Appends ?domain=<domain> as required by DNS providers (such as Cloudflare and GoDaddy).
      */
-    private Optional<String> fetchUrlSyncUX(String apiDomain) {
-        String url = "https://" + apiDomain + "/v2/domainconnect/settings";
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, String> response = restTemplate.getForObject(url, Map.class);
-            if (response != null && response.containsKey("urlSyncUX")) {
-                String syncUx = response.get("urlSyncUX");
-                log.info("Domain Connect settings for {}: Found urlSyncUX {}", apiDomain, syncUx);
-                return Optional.of(syncUx);
+    private Optional<String> fetchUrlSyncUX(String apiDomain, String domain) {
+        String encodedDomain = URLEncoder.encode(domain, StandardCharsets.UTF_8);
+        List<String> candidateUrls = List.of(
+                "https://" + apiDomain + "/v2/" + encodedDomain + "/settings",
+                "https://" + apiDomain + "/v2/domainconnect/settings?domain=" + encodedDomain,
+                "https://" + apiDomain + "/v2/domainconnect/settings"
+        );
+
+        for (String url : candidateUrls) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, String> response = restTemplate.getForObject(url, Map.class);
+                if (response != null && response.containsKey("urlSyncUX")) {
+                    String syncUx = response.get("urlSyncUX");
+                    log.info("Domain Connect settings for {} (domain: {} via {}): Found urlSyncUX {}", apiDomain, domain, url, syncUx);
+                    return Optional.of(syncUx);
+                }
+            } catch (Exception e) {
+                log.debug("Domain Connect settings check failed for URL {}: {}", url, e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("Failed to fetch Domain Connect settings from {}", url, e);
         }
+        log.error("Failed to fetch Domain Connect settings for domain {} across all candidate URLs", domain);
         return Optional.empty();
     }
 
@@ -141,7 +151,7 @@ public class DomainConnectService {
     String constructApplyUrl(String urlSyncUx, DomainDto.DomainResponse domainDto) {
         String domain = domainDto.domainName();
         String token = extractToken(domainDto);
-        String dkimPubKey = "YOUR_PUBLIC_KEY"; // Placeholder to match DomainCommandService's DnsRecord generation
+        String dkimPubKey = extractDkimPubKey(domainDto);
 
         try {
             // Construct the query string variables.
@@ -193,5 +203,23 @@ public class DomainConnectService {
             }
         }
         return "missing-token";
+    }
+
+    String extractDkimPubKey(DomainDto.DomainResponse domainDto) {
+        List<DomainDto.DnsRecord> records = domainDto.requiredDnsRecords();
+        if (records != null) {
+            for (DomainDto.DnsRecord record : records) {
+                if (record.name() != null && record.name().startsWith("crescendo._domainkey") && record.value() != null) {
+                    String val = record.value();
+                    int pIndex = val.indexOf("p=");
+                    if (pIndex != -1) {
+                        String pubKey = val.substring(pIndex + 2).trim();
+                        if (pubKey.endsWith(";")) pubKey = pubKey.substring(0, pubKey.length() - 1);
+                        return pubKey;
+                    }
+                }
+            }
+        }
+        return "YOUR_PUBLIC_KEY";
     }
 }

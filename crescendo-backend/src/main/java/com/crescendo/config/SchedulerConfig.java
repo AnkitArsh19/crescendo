@@ -16,6 +16,7 @@ public class SchedulerConfig {
         org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler scheduler = new org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler();
         scheduler.setPoolSize(10);
         scheduler.setThreadNamePrefix("scheduled-task-");
+        scheduler.setThreadFactory(java.lang.Thread.ofVirtual().name("scheduled-task-", 0).factory());
         scheduler.initialize();
         return scheduler;
     }

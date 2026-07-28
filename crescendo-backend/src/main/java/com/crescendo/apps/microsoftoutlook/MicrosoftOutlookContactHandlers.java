@@ -17,7 +17,7 @@ public class MicrosoftOutlookContactHandlers {
     private static final String GRAPH_API = MicrosoftOutlookSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "createContact")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "createContact")
 // @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -46,7 +46,7 @@ public class MicrosoftOutlookContactHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "deleteContact")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "deleteContact")
     public ActionResult delete(ActionContext context) {
         String contactId = MicrosoftOutlookSupport.require(context.configuration(), "contactId");
         if (contactId == null) return ActionResult.failure("'contactId' is required");
@@ -63,7 +63,7 @@ public class MicrosoftOutlookContactHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getContact")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getContact")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String contactId = MicrosoftOutlookSupport.require(context.configuration(), "contactId");
@@ -81,7 +81,7 @@ public class MicrosoftOutlookContactHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAllContacts")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAllContacts")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -99,7 +99,7 @@ public class MicrosoftOutlookContactHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "updateContact")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "updateContact")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

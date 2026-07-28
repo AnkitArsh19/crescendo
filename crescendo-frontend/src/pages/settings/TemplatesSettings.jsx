@@ -9,6 +9,29 @@ import { templatesApi } from '../../api/emailServiceApi';
 import TemplateBlockEditor from './TemplateBlockEditor';
 import './Settings.css';
 
+const STARTER_TEMPLATES = [
+  {
+    name: 'Welcome & Onboarding',
+    subject: 'Welcome to Crescendo, {{FIRST_NAME}}! 🎉',
+    contentHtml: '<h1 style="color:#0f172a;">Welcome aboard!</h1><p>Hi {{FIRST_NAME}},</p><p>We are excited to have you join us. Whether you are automating workflows or orchestrating APIs, we are here to help you succeed.</p><p><a href="https://app.crescendo.run" style="background:#6366f1;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:bold;">Go to Dashboard</a></p><p>Best regards,<br/>The Team</p>'
+  },
+  {
+    name: 'Workflow Failure Alert',
+    subject: '🚨 Alert: Your workflow "{{WORKFLOW_NAME}}" failed',
+    contentHtml: '<h2 style="color:#ef4444;">Workflow Execution Notice</h2><p>Hi {{FIRST_NAME}},</p><p>Your workflow <strong>{{WORKFLOW_NAME}}</strong> encountered an error during its latest execution on {{DATE}}.</p><p style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;color:#991b1b;"><strong>Error Details:</strong> {{ERROR_MESSAGE}}</p><p>Please inspect your execution history to resolve the issue.</p><p><a href="https://app.crescendo.run/runs" style="background:#ef4444;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;">View Execution Log</a></p>'
+  },
+  {
+    name: 'Monthly Billing & Invoice',
+    subject: 'Receipt for order #{{ORDER_ID}}',
+    contentHtml: '<h2 style="color:#1e293b;">Thank you for your purchase!</h2><p>Hi {{FIRST_NAME}},</p><p>Here is your summary for invoice <strong>#{{ORDER_ID}}</strong> billed on {{BILLING_DATE}}.</p><table style="width:100%;border-collapse:collapse;margin:20px 0;"><tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:8px 0;"><strong>Plan / Item</strong></td><td style="text-align:right;padding:8px 0;"><strong>Amount</strong></td></tr><tr><td style="padding:12px 0;">{{PLAN_NAME}}</td><td style="text-align:right;padding:12px 0;">${{AMOUNT}}</td></tr></table><p>You can view or download your invoice in your billing account settings.</p>'
+  },
+  {
+    name: 'New Security Login Alert',
+    subject: 'Security notice: New login from {{DEVICE_NAME}}',
+    contentHtml: '<h2 style="color:#f59e0b;">New Login Detected</h2><p>Hi {{FIRST_NAME}},</p><p>We noticed a sign-in to your account from a new device or location:</p><ul><li><strong>Device:</strong> {{DEVICE_NAME}}</li><li><strong>Location:</strong> {{LOCATION_CITY}}, {{LOCATION_COUNTRY}}</li><li><strong>Time:</strong> {{TIME_TIMESTAMP}}</li></ul><p>If this was you, you can safely ignore this notice. If you did not perform this login, please change your password immediately.</p><p><a href="https://app.crescendo.run/settings/security" style="color:#ef4444;font-weight:bold;">Revoke Session & Secure Account →</a></p>'
+  }
+];
+
 export default function TemplatesSettings() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +87,27 @@ export default function TemplatesSettings() {
           </button>
         </div>
       </div>
+
+      <div style={{ margin: '24px 0' }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Quick Start from Pre-made Transactional Templates
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          {STARTER_TEMPLATES.map((starter, i) => (
+            <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: 14, cursor: 'pointer', transition: 'border-color 0.2s', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} onClick={() => setEditing({ ...starter })}>
+              <div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: 14, color: 'var(--text-primary)' }}>{starter.name}</h4>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{starter.subject}</p>
+              </div>
+              <span style={{ marginTop: 12, fontSize: 12, color: 'var(--primary-color)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                Use Template →
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '28px 0 16px 0' }}>Your Custom Templates</h3>
 
       {loading ? (
         <div className="settings-skeleton-list">{[1, 2].map((i) => <div key={i} className="settings-skeleton-row" />)}</div>

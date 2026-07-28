@@ -1,27 +1,27 @@
 # Authentication
 
-The Crescendo Public API uses strictly scoped API Keys for authentication. 
+The Crescendo Public API enforces strict security standards, demanding authorized, granular API keys for all programmatic interactions and external server requests.
 
 ## Generating an API Key
 
-You can generate API Keys directly from the dashboard under **Settings > API Keys**. When creating a key, you must grant it specific scopes.
+You can provision secure programmatic credentials directly within your workspace under **Settings > Developer API**. When registering a secret key, assign explicit role-based scopes matching your exact software operational requirements.
 
 > [!WARNING]
-> Keep your API keys secret. Do not expose them in client-side code, public repositories, or frontend JavaScript frameworks.
+> Maintain strict confidentiality over your API secret keys. Never embed API tokens inside client-side browser scripts, public repository codebases, or frontend JavaScript frameworks. Always proxy external API requests through authenticated, private server infrastructure.
 
 ## Making Authenticated Requests
 
-Pass your API Key in the `Authorization` header of your HTTP requests. We expect the `Bearer` scheme. Our API keys typically begin with the `re_` prefix.
+Provide your generated API Key inside the HTTP `Authorization` request header utilizing the standard `Bearer` authentication schema. Our production API credentials typically initiate with an explicit `re_` prefix string.
 
 ```bash language-bash
-curl -X GET "https://api.crescendo.run/api/v1/workflows" \
+curl -X GET "https://api.crescendo.run/api/v1/public/workflows" \
   -H "Authorization: Bearer re_1234567890abcdef"
 ```
 
 ```python language-python
 import requests
 
-url = "https://api.crescendo.run/api/v1/workflows"
+url = "https://api.crescendo.run/api/v1/public/workflows"
 headers = {
     "Authorization": "Bearer re_1234567890abcdef"
 }
@@ -31,7 +31,7 @@ print(response.json())
 ```
 
 ```javascript language-javascript
-fetch('https://api.crescendo.run/api/v1/workflows', {
+fetch('https://api.crescendo.run/api/v1/public/workflows', {
   headers: {
     'Authorization': 'Bearer re_1234567890abcdef'
   }
@@ -40,9 +40,8 @@ fetch('https://api.crescendo.run/api/v1/workflows', {
 .then(console.log);
 ```
 
-## Dashboard JWTs
+## Dashboard Sessions & Internal Cookies
 
-If you are inspecting network traffic in the browser, you may notice routes starting with `/settings/...` that authenticate using a JWT or session cookie. 
-**Do not use these endpoints.** They are internal to the Crescendo React Dashboard and subject to unannounced breaking changes. 
+When monitoring web browser HTTP network transmissions, you may observe internal administrative traffic running against endpoints initiated with `/settings/...` or `/api/v1/private/...` utilizing session cookies or short-lived JSON Web Tokens (JWT).
 
-Always use `/api/v1/...` for programmatic access.
+Do not target these browser session endpoints in external custom applications. They are designed strictly to support internal interactive dashboard state mechanics and remain subject to structural updates without general deprecation notification. Always utilize designated `/api/v1/public/...` endpoints for stable, version-controlled developer programming.

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { HiOutlineCheck } from 'react-icons/hi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiOutlineCheck, HiOutlineClipboard, HiCheck } from 'react-icons/hi';
 import './ApiSection.css';
 
 const apiFeatures = [
@@ -47,18 +47,42 @@ const sdkExamples = [
 
 export default function ApiSection() {
     const [selectedSdk, setSelectedSdk] = useState('node');
+    const [copied, setCopied] = useState(false);
     const example = sdkExamples.find((item) => item.id === selectedSdk) || sdkExamples[0];
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(example.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
         <section className="api-section" id="api">
             <div className="api-inner">
-                <motion.div className="api-content" initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
+                <motion.div
+                    className="api-content"
+                    initial={{ opacity: 0, x: -28 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+                >
                     <p className="section-label">Public API</p>
-                    <h2 className="section-title">Built for <span className="font-serif" style={{ fontStyle: 'italic' }}>developers</span></h2>
-                    <p className="section-subtitle">Use the public API for CrescendoMail and automation resources, backed by scoped API keys, consistent errors, idempotent writes, and generated clients.</p>
+                    <h2 className="section-title">
+                        Built for <span className="font-serif" style={{ fontStyle: 'italic' }}>developers</span>
+                    </h2>
+                    <p className="section-subtitle">
+                        Use the public API for CrescendoMail and automation resources, backed by scoped API keys, consistent errors, idempotent writes, and generated clients.
+                    </p>
                     <div className="api-features">
                         {apiFeatures.map((feature, index) => (
-                            <motion.div className="api-feature" key={index} initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 + index * 0.1, duration: 0.5 }}>
+                            <motion.div
+                                className="api-feature"
+                                key={index}
+                                initial={{ opacity: 0, x: -16 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: false, amount: 0.2 }}
+                                transition={{ delay: 0.15 + index * 0.08, duration: 0.5 }}
+                            >
                                 <div className="api-feature-icon"><HiOutlineCheck /></div>
                                 <div className="api-feature-text">{feature.text}</div>
                             </motion.div>
@@ -66,17 +90,68 @@ export default function ApiSection() {
                     </div>
                 </motion.div>
 
-                <motion.div className="api-code-wrapper" initial={{ opacity: 0, x: 30, rotateY: 5 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }} viewport={{ once: true, margin: '-50px' }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
+                <motion.div
+                    className="api-code-wrapper"
+                    initial={{ opacity: 0, x: 28 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
                     <div className="api-code-glow" />
                     <div className="api-code-block">
                         <div className="api-code-header">
-                            <div className="api-code-dots"><span className="api-code-dot" /><span className="api-code-dot" /><span className="api-code-dot" /></div>
+                            <div className="api-code-dots">
+                                <span className="api-code-dot api-code-dot-red" />
+                                <span className="api-code-dot api-code-dot-yellow" />
+                                <span className="api-code-dot api-code-dot-green" />
+                            </div>
                             <span className="api-code-filename">{example.filename}</span>
+                            <button
+                                className="api-code-copy-btn"
+                                onClick={handleCopy}
+                                title="Copy code snippet"
+                                aria-label="Copy code to clipboard"
+                            >
+                                {copied ? <HiCheck className="copy-icon-success" /> : <HiOutlineClipboard />}
+                                <span className="copy-label">{copied ? 'Copied!' : 'Copy'}</span>
+                            </button>
                         </div>
+
                         <div className="api-code-tabs" role="tablist" aria-label="Crescendo SDK languages">
-                            {sdkExamples.map((sdk) => <button key={sdk.id} type="button" role="tab" aria-selected={selectedSdk === sdk.id} className={selectedSdk === sdk.id ? 'active' : ''} onClick={() => setSelectedSdk(sdk.id)}>{sdk.label}</button>)}
+                            {sdkExamples.map((sdk) => (
+                                <button
+                                    key={sdk.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={selectedSdk === sdk.id}
+                                    className={`api-tab-btn ${selectedSdk === sdk.id ? 'active' : ''}`}
+                                    onClick={() => setSelectedSdk(sdk.id)}
+                                >
+                                    {selectedSdk === sdk.id && (
+                                        <motion.div
+                                            className="api-tab-pill"
+                                            layoutId="activeSdkTab"
+                                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                                        />
+                                    )}
+                                    <span className="api-tab-label">{sdk.label}</span>
+                                </button>
+                            ))}
                         </div>
-                        <div className="api-code-body" role="tabpanel" aria-label={`${example.label} example`}><pre>{example.code}</pre></div>
+
+                        <div className="api-code-body" role="tabpanel" aria-label={`${example.label} example`}>
+                            <AnimatePresence mode="wait">
+                                <motion.pre
+                                    key={selectedSdk}
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    {example.code}
+                                </motion.pre>
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </motion.div>
             </div>

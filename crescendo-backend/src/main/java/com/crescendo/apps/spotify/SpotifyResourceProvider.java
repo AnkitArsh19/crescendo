@@ -23,9 +23,16 @@ import java.util.*;
 public class SpotifyResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(SpotifyResourceProvider.class);
-    private static final String SPOTIFY_API = "https://api.spotify.com/v1";
+    private static final String DEFAULT_SPOTIFY_API = "https://api.spotify.com/v1";
+    private final String spotifyApi;
 
     public SpotifyResourceProvider() {
+        this(DEFAULT_SPOTIFY_API);
+    }
+
+    /** Local fixture endpoint constructor used by deterministic contract tests. */
+    public SpotifyResourceProvider(String spotifyApi) {
+        this.spotifyApi = spotifyApi;
     }
 
     @Override
@@ -60,7 +67,7 @@ public class SpotifyResourceProvider implements ResourceProvider {
         try {
             Map<String, Object> response = restClient(accessToken)
                     .get()
-                    .uri(SPOTIFY_API + "/me/playlists?limit=50")
+                    .uri(spotifyApi + "/me/playlists?limit=50")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 
@@ -88,7 +95,7 @@ public class SpotifyResourceProvider implements ResourceProvider {
         try {
             Map<String, Object> response = restClient(accessToken)
                     .get()
-                    .uri(SPOTIFY_API + "/playlists/{id}/tracks?limit=50&fields=items(track(id,name,artists))", playlistId)
+                    .uri(spotifyApi + "/playlists/{id}/tracks?limit=50&fields=items(track(id,name,artists))", playlistId)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 

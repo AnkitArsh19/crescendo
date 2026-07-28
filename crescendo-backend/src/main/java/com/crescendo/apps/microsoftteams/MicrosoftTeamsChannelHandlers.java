@@ -17,7 +17,7 @@ public class MicrosoftTeamsChannelHandlers {
     private static final String GRAPH_API = MicrosoftTeamsSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "createChannel")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "createChannel")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -50,7 +50,7 @@ public class MicrosoftTeamsChannelHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "deleteChannel")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "deleteChannel")
     public ActionResult delete(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String teamId = MicrosoftTeamsSupport.require(config, "teamId");
@@ -72,7 +72,7 @@ public class MicrosoftTeamsChannelHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getChannel")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getChannel")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -95,7 +95,7 @@ public class MicrosoftTeamsChannelHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "getAllChannels")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "getAllChannels")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -117,7 +117,7 @@ public class MicrosoftTeamsChannelHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftteams", actionKey = "updateChannel")
+    @ActionMapping(appKey = "microsoft-teams", actionKey = "updateChannel")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { HiOutlineLockClosed, HiX } from 'react-icons/hi';
 import api from '../api/axios';
 import Input from './ui/Input';
@@ -28,7 +29,13 @@ export default function ReAuthModal({ isOpen, onClose, onSuccess }) {
 
     return (
         <div className="reauth-modal-overlay">
-            <div className="reauth-modal-card">
+            <motion.div
+                className="reauth-modal-card"
+                initial={{ opacity: 0, scale: 0.65, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
+            >
                 <button className="reauth-modal-close" onClick={onClose} title="Cancel">
                     <HiX />
                 </button>
@@ -58,7 +65,7 @@ export default function ReAuthModal({ isOpen, onClose, onSuccess }) {
                         </button>
                     </div>
                 </form>
-            </div>
+            </motion.div>
         </div>
     );
 }

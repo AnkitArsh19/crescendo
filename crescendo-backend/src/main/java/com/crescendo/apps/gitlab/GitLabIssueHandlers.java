@@ -74,4 +74,33 @@ public class GitLabIssueHandlers {
                 .get()
                 .execute();
     }
+
+    @ActionMapping(appKey = "gitlab", actionKey = "gitlab:issue:addComment")
+    public Object addIssueComment(ActionContext context) throws Exception {
+        String projectId = context.getString("projectId");
+        String issueIid = context.getString("issueIid");
+        String body = context.getString("body");
+        String encodedId = URLEncoder.encode(projectId, StandardCharsets.UTF_8);
+
+        return RestClient.builder()
+                .url(GitLabSupport.getBaseUrl(context) + "/projects/" + encodedId + "/issues/" + issueIid + "/notes")
+                .header("Authorization", GitLabSupport.getAuthHeader(context))
+                .header("Content-Type", "application/json")
+                .post(Map.of("body", body))
+                .execute();
+    }
+
+    @ActionMapping(appKey = "gitlab", actionKey = "gitlab:issue:close")
+    public Object closeIssue(ActionContext context) throws Exception {
+        String projectId = context.getString("projectId");
+        String issueIid = context.getString("issueIid");
+        String encodedId = URLEncoder.encode(projectId, StandardCharsets.UTF_8);
+
+        return RestClient.builder()
+                .url(GitLabSupport.getBaseUrl(context) + "/projects/" + encodedId + "/issues/" + issueIid)
+                .header("Authorization", GitLabSupport.getAuthHeader(context))
+                .header("Content-Type", "application/json")
+                .put(Map.of("state_event", "close"))
+                .execute();
+    }
 }

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="crescendo-frontend/public/logo.png" alt="Crescendo" width="140" />
+</p>
+
 # Crescendo
 
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
@@ -290,6 +294,37 @@ OAuth callback testing and external webhook testing:
 - Local development commonly runs through Cloudflare Tunnel to provide a public HTTPS domain.
 - Active testing domain: app.crescendo.run
 - This enables realistic OAuth redirect URI testing and end-to-end webhook/provider callback flows.
+
+## Testing strategy & zero-credential verification
+
+A common challenge in integration platforms is testing hundreds of third-party actions without requiring developers to manage dozens of external developer accounts, live API keys, or flaky OAuth refresh tokens in CI.
+
+Crescendo utilizes a **3-Layer Zero-Credential Verification Strategy**:
+
+1. **Universal Catalog Contracts (`CatalogContractTest`)**: All 114 application integrations and 868 action mappings are loaded into memory and audited automatically in ~100ms. Asserts unique app/action keys, parameter schema types, handler registration parity, and valid JSON payload formatting without network connectivity or API tokens.
+2. **Local HTTP Mock Seams (`ResourceProviderHttpContractTest`)**: Verifies dynamic resource fetching (Gmail inboxes, Spotify playlists, Slack channels) and API formatting by spinning up lightweight embedded local web servers. By feeding dummy tokens (`"test-token-123"`) to the Java providers, tests assert precise OAuth Bearer token headers and UI dropdown serialization without calling external servers.
+3. **Native Email Pipeline Testing**: Transactional HTML template rendering (`EmailTemplateRendererTest`) and cryptographic DNS authentication strings for SPF, DKIM, and DMARC (`DnsVerificationServiceTest`) run completely in-memory in CI, while physical inbox placement and bounce webhooks are validated against a dedicated test subdomain.
+
+Running tests locally requires **no user accounts, no active OAuth configurations, and zero secret keys in `application.properties`**:
+
+```bash
+# Run backend contract & execution suites offline
+cd crescendo-backend && ./mvnw test
+
+# Run frontend Vitest unit & component suites offline
+cd crescendo-frontend && npm test -- --run
+```
+
+## Performance Hardening, Concurrency & Telemetry Suite
+
+Crescendo is architected for enterprise-scale concurrent traffic and resilient load testing without cloud vendor dependencies:
+
+- **Java 21+ Virtual Threads & Custom Schedulers:** Core networking and async thread pools operate on Virtual Threads (`spring.threads.virtual.enabled=true`). Because Spring Boot does not automatically convert manually instantiated executors, background tasks like workflow distributed lock extension heartbeats (`ExecutionQueueConsumer`) and interval schedules (`SchedulerConfig`) explicitly employ `Thread.ofVirtual().factory()`. This ensures thousands of background timers consume virtually zero OS platform thread memory.
+- **HikariCP Sizing & OSIV Boundary:** By explicitly disabling Open-in-View (`spring.jpa.open-in-view=false`), database connections are borrowed strictly during `@Transactional` queries and released immediately before network proxying or JSON rendering. Coupled with conservative local pool formulas (`Pool Size = ((Cores * 2) + Spindles)`), Crescendo handles high concurrency without causing Docker RAM starvation or OS memory swapping.
+- **Live Telemetry & Observability:** Integrated Spring Boot Actuator and Micrometer metrics stream real-time operational state to Prometheus and Grafana. Running `docker-compose up -d prometheus grafana` launches a pre-configured dashboard at `http://localhost:3001` showing live HikariCP pool usage, active HTTP sockets, requests per second (RPS), and JVM garbage collection intervals.
+- **Race-Condition & Double-Execution Defense:** To guarantee protection against silent double-execution defects—where two simultaneous workers both assume lock acquisition and silently return HTTP 200 without raising server exceptions—Crescendo implements a dual-layer verification strategy:
+  - **In-Memory JVM Concurrency Suite:** Automated integration tests (`DistributedLockServiceIntegrationTest`) fire 100 synchronized Virtual Threads directly in RAM across a `CountDownLatch` starting barrier, asserting exactly 1 worker acquires the lock and 99 fail cleanly.
+  - **3-Tier Container Benchmark Suite (`performance-tests/`):** Standalone k6 configurations test peak Read queries, transactional Write bursts, and simultaneous race conditions via simple Docker execution commands without local software installation.
 
 ## What makes this project different from a basic CRUD app
 

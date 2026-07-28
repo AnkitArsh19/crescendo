@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class HomeAssistantStateHandlers {
 
-    @ActionMapping(appKey = "homeassistant", actionKey = "homeassistant:state:get")
+    @ActionMapping(appKey = "home-assistant", actionKey = "homeassistant:state:get")
     public Object getState(ActionContext context) throws Exception {
         String entityId = context.getString("entityId");
         
@@ -21,7 +21,7 @@ public class HomeAssistantStateHandlers {
                 .execute();
     }
 
-    @ActionMapping(appKey = "homeassistant", actionKey = "homeassistant:state:getMany")
+    @ActionMapping(appKey = "home-assistant", actionKey = "homeassistant:state:getMany")
     public Object getStates(ActionContext context) throws Exception {
         return RestClient.builder()
                 .url(HomeAssistantSupport.getBaseUrl(context) + "/api/states")

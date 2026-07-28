@@ -71,10 +71,11 @@ public class QueryDBConfig {
          * Builds an actual datasource(JDBC connection pool) using the datasource properties.
          * It will be used by the Entity Manager Factory
          */
-        @Bean(name = "queryDataSource")
+        @Bean(name = "queryDataSource", destroyMethod = "close")
         public DataSource queryDataSource(){
                 return queryDatasourceProperties()
                         .initializeDataSourceBuilder()
+                        .type(com.zaxxer.hikari.HikariDataSource.class)
                         .build();
         }
 

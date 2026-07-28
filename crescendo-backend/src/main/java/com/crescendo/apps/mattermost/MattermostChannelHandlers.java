@@ -15,7 +15,7 @@ import java.util.Map;
 public class MattermostChannelHandlers {
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "mattermost", actionKey = "createChannel")
+    @ActionMapping(appKey = "mattermost", actionKey = "create-channel")
 // @SuppressWarnings("unchecked")
     public ActionResult createChannel(ActionContext context) {
         String token = MattermostSupport.resolveToken(context);
@@ -73,7 +73,7 @@ public class MattermostChannelHandlers {
     }
 
     // ── addUser ───────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "mattermost", actionKey = "addUserToChannel")
+    @ActionMapping(appKey = "mattermost", actionKey = "add-user-to-channel")
     public ActionResult addUser(ActionContext context) {
         String token = MattermostSupport.resolveToken(context);
         String baseUrl = MattermostSupport.getBaseUrl(context);
