@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { HiX, HiOutlineLightningBolt, HiOutlineSparkles } from 'react-icons/hi';
 import { aiApi } from '../../api/aiApi';
 import { workflowApi } from '../../api/workflowApi';
@@ -117,11 +118,19 @@ export default function NLWorkflowModal({ onClose }) {
     function handleKeyDown(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleGenerate();
     }
-
     return (
         <div className="nlwf-overlay" onClick={handleOverlayClick}>
-            <div className="nlwf-modal" role="dialog" aria-modal="true" aria-label="Build workflow with AI">
-
+            <motion.div
+                className="nlwf-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Build workflow with AI"
+                initial={{ opacity: 0, scale: 0.65, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Header */}
                 <div className="nlwf-header">
                     <div className="nlwf-header-text">
@@ -202,8 +211,7 @@ export default function NLWorkflowModal({ onClose }) {
                         )}
                     </button>
                 </div>
-
-            </div>
+            </motion.div>
         </div>
     );
 }

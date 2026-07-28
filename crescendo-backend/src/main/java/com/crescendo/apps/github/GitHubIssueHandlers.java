@@ -47,7 +47,23 @@ public class GitHubIssueHandlers {
                 .header("Authorization", GitHubSupport.getAuthHeader(context))
                 .header("Accept", "application/vnd.github.v3+json")
                 .header("Content-Type", "application/json")
-                .post(fields != null ? fields : Map.of()) // github uses PATCH for issues but our rest client might use post/put
+                .patch(fields != null ? fields : Map.of())
+                .execute();
+    }
+
+    /** Closes an issue through GitHub's PATCH issue endpoint. */
+    @ActionMapping(appKey = "github", actionKey = "github:issue:close")
+    public Object closeIssue(ActionContext context) throws Exception {
+        String owner = context.getString("owner");
+        String repo = context.getString("repo");
+        String issueNumber = context.getString("issueNumber");
+
+        return RestClient.builder()
+                .url(GitHubSupport.getBaseUrl() + "/repos/" + owner + "/" + repo + "/issues/" + issueNumber)
+                .header("Authorization", GitHubSupport.getAuthHeader(context))
+                .header("Accept", "application/vnd.github.v3+json")
+                .header("Content-Type", "application/json")
+                .patch(Map.of("state", "closed"))
                 .execute();
     }
 

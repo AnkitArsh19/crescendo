@@ -9,8 +9,10 @@ import com.crescendo.execution.resource.ResourceProvider;
 import com.crescendo.execution.resource.ResourceProviderRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,14 +31,25 @@ public class AiContextService {
     private final Connections_queryService connectionsQueryService;
     private final ResourceFetchService resourceFetchService;
     private final ResourceProviderRegistry resourceProviderRegistry;
+    private final Clock clock;
     private final Map<SnapshotKey, Snapshot> snapshotCache = new ConcurrentHashMap<>();
 
+    @Autowired
     public AiContextService(Connections_queryService connectionsQueryService,
                             ResourceFetchService resourceFetchService,
                             ResourceProviderRegistry resourceProviderRegistry) {
+        this(connectionsQueryService, resourceFetchService, resourceProviderRegistry, Clock.systemUTC());
+    }
+
+    /** Package-visible clock seam keeps snapshot expiry deterministic in unit tests. */
+    AiContextService(Connections_queryService connectionsQueryService,
+                     ResourceFetchService resourceFetchService,
+                     ResourceProviderRegistry resourceProviderRegistry,
+                     Clock clock) {
         this.connectionsQueryService = connectionsQueryService;
         this.resourceFetchService = resourceFetchService;
         this.resourceProviderRegistry = resourceProviderRegistry;
+        this.clock = clock;
     }
 
     public Map<String, Object> buildContext(UUID userId, Map<String, Object> callerContext) {
@@ -81,10 +94,11 @@ public class AiContextService {
                                           ResourceContextDescriptor descriptor) {
         SnapshotKey key = new SnapshotKey(userId, connectionId, descriptor.resourceType());
         Snapshot cached = snapshotCache.get(key);
-        if (cached != null && cached.expiresAt().isAfter(Instant.now())) return cached.items();
+        Instant now = Instant.now(clock);
+        if (cached != null && cached.expiresAt().isAfter(now)) return cached.items();
         List<ResourceOption> options = resourceFetchService.fetchResources(appKey, descriptor.resourceType(),
                 connectionId, userId, Map.of()).stream().limit(descriptor.maxItems()).toList();
-        snapshotCache.put(key, new Snapshot(options, Instant.now().plus(descriptor.cacheTtl())));
+        snapshotCache.put(key, new Snapshot(options, now.plus(descriptor.cacheTtl())));
         return options;
     }
 

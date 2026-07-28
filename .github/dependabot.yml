@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/crescendo-backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "backend"
+
+  - package-ecosystem: "npm"
+    directory: "/crescendo-frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  - package-ecosystem: "pip"
+    directory: "/crescendo-aiml"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ai-ml"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci-cd"

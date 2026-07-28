@@ -54,7 +54,7 @@ public class GoogleDriveFileHandlers {
      * Config: fileId (required), name (optional — new name for copy),
      *         folderId (optional — destination folder)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "copy")
+    @ActionMapping(appKey = "google-drive", actionKey = "copy")
     @SuppressWarnings("unchecked")
     public ActionResult copy(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -93,7 +93,7 @@ public class GoogleDriveFileHandlers {
      * Permanently delete a file.
      * Config: fileId (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "deleteFile")
+    @ActionMapping(appKey = "google-drive", actionKey = "deleteFile")
     public ActionResult delete(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -124,7 +124,7 @@ public class GoogleDriveFileHandlers {
      * Download a file (returns raw bytes as base64 string).
      * Config: fileId (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "download")
+    @ActionMapping(appKey = "google-drive", actionKey = "download")
     public ActionResult download(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -159,7 +159,7 @@ public class GoogleDriveFileHandlers {
      * Config: query (Drive query string), folderId (filters to folder),
      *         pageSize (int, default 20), fields (comma-sep Drive fields)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "getAll")
+    @ActionMapping(appKey = "google-drive", actionKey = "getAll")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -201,7 +201,7 @@ public class GoogleDriveFileHandlers {
      * Move a file to a different folder.
      * Config: fileId (required), folderId (required — destination)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "move")
+    @ActionMapping(appKey = "google-drive", actionKey = "move")
     @SuppressWarnings("unchecked")
     public ActionResult move(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -251,7 +251,7 @@ public class GoogleDriveFileHandlers {
      * Config: fileId (required), email (required), role (reader|writer|commenter, default "reader"),
      *         type (user|group|domain|anyone, default "user")
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "share")
+    @ActionMapping(appKey = "google-drive", actionKey = "share")
     @SuppressWarnings("unchecked")
     public ActionResult share(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -292,7 +292,7 @@ public class GoogleDriveFileHandlers {
      * Upload a file (metadata-only create; content via separate Drive upload API).
      * Config: name (required), mimeType (required), folderId (optional)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "upload")
+    @ActionMapping(appKey = "google-drive", actionKey = "upload")
     @SuppressWarnings("unchecked")
     public ActionResult upload(ActionContext context) {
         Map<String, Object> config = context.configuration();

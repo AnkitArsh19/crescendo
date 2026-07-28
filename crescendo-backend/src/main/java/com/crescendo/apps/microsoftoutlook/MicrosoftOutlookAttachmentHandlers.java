@@ -18,7 +18,7 @@ public class MicrosoftOutlookAttachmentHandlers {
     private static final String GRAPH_API = MicrosoftOutlookSupport.GRAPH_API;
 
     // ── add ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "addAttachment")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "addAttachment")
     @SuppressWarnings("unchecked")
     public ActionResult add(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -51,7 +51,7 @@ public class MicrosoftOutlookAttachmentHandlers {
     }
 
     // ── download ──────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "downloadAttachment")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "downloadAttachment")
     @SuppressWarnings("unchecked")
     public ActionResult download(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");
@@ -72,7 +72,7 @@ public class MicrosoftOutlookAttachmentHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAttachment")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAttachment")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");
@@ -93,7 +93,7 @@ public class MicrosoftOutlookAttachmentHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAllAttachments")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAllAttachments")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         String messageId = MicrosoftOutlookSupport.require(context.configuration(), "messageId");

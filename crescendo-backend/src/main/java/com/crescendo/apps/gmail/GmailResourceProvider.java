@@ -20,7 +20,20 @@ import java.util.*;
 public class GmailResourceProvider implements ResourceProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(GmailResourceProvider.class);
-    private static final String GMAIL_API = "https://gmail.googleapis.com/gmail/v1";
+    private static final String DEFAULT_GMAIL_API = "https://gmail.googleapis.com/gmail/v1";
+    private final String gmailApi;
+
+    public GmailResourceProvider() {
+        this(DEFAULT_GMAIL_API);
+    }
+
+    /**
+     * Explicit endpoint seam for deterministic provider-contract tests. Production
+     * code uses the default Google endpoint; tests can point at a local fixture.
+     */
+    public GmailResourceProvider(String gmailApi) {
+        this.gmailApi = gmailApi;
+    }
 
     @Override
     public String appKey() {
@@ -45,7 +58,7 @@ public class GmailResourceProvider implements ResourceProvider {
         try {
             Map<String, Object> response = restClient(accessToken)
                     .get()
-                    .uri(GMAIL_API + "/users/me/labels")
+                    .uri(gmailApi + "/users/me/labels")
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 

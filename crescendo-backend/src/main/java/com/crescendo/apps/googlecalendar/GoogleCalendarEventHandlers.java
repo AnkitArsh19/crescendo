@@ -53,7 +53,7 @@ public class GoogleCalendarEventHandlers {
      *         calendarId (default "primary"), timeZone (default "UTC"),
      *         description, location, attendees (comma-sep emails), allDay (bool)
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "create")
+    @ActionMapping(appKey = "google-calendar", actionKey = "create")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -117,7 +117,7 @@ public class GoogleCalendarEventHandlers {
      * Config: eventId (required), calendarId (default "primary"),
      *         summary, description, location, start, end, timeZone
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "update")
+    @ActionMapping(appKey = "google-calendar", actionKey = "update")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -160,7 +160,7 @@ public class GoogleCalendarEventHandlers {
      * Config: eventId (required), calendarId (default "primary"),
      *         sendUpdates (none|all|externalOnly — notify attendees)
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "delete")
+    @ActionMapping(appKey = "google-calendar", actionKey = "delete")
     public ActionResult delete(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -193,7 +193,7 @@ public class GoogleCalendarEventHandlers {
      * Get a single calendar event by ID.
      * Config: eventId (required), calendarId (default "primary")
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "get")
+    @ActionMapping(appKey = "google-calendar", actionKey = "get")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -228,7 +228,7 @@ public class GoogleCalendarEventHandlers {
      *         timeMin (ISO dateTime), timeMax (ISO dateTime), query (text search),
      *         showDeleted (bool), singleEvents (bool, default true)
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "getAll")
+    @ActionMapping(appKey = "google-calendar", actionKey = "getAll")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -275,7 +275,7 @@ public class GoogleCalendarEventHandlers {
      * Config: eventId (required), attendees (required, comma-separated emails),
      *         calendarId (default "primary"), sendUpdates (none|all|externalOnly)
      */
-    @ActionMapping(appKey = "googlecalendar", actionKey = "addAttendee")
+    @ActionMapping(appKey = "google-calendar", actionKey = "addAttendee")
     @SuppressWarnings("unchecked")
     public ActionResult addAttendee(ActionContext context) {
         Map<String, Object> config = context.configuration();

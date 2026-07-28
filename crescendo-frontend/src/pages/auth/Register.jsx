@@ -19,6 +19,7 @@ import useAuthStore from '../../store/authStore';
 import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
 import api from '../../api/axios';
 import { getDeviceMetadata } from '../../utils/deviceFingerprint';
+import { BorderBeam } from '../../components/ui/BorderBeam';
 import './Auth.css';
 
 function getStrength(pw) {
@@ -132,6 +133,7 @@ export default function Register() {
     if (passwordless) {
         return (
             <div className="auth-card">
+                <BorderBeam duration={8} borderWidth={2.5} />
                 <Link to="/" className="auth-logo"><img src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'} alt="Crescendo" /><span className="auth-logo-text">Crescendo</span></Link>
                 <div className="auth-header"><h1 className="auth-title">Create account with a passkey</h1><p className="auth-subtitle">Verify your email first, then use your device’s secure screen lock instead of a password.</p></div>
                 {globalError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 16, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 6 }}>{globalError}</div>}
@@ -155,6 +157,7 @@ export default function Register() {
 
     return (
         <div className="auth-card">
+            <BorderBeam duration={8} borderWidth={2.5} />
             <Link to="/" className="auth-logo">
                 <img
                     src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'}

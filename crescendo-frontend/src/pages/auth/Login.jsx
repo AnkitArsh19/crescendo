@@ -11,6 +11,7 @@ import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
 import { beginPasskeyAutofill, cancelPasskeyRequest, loginWithPasskey, passkeysSupported } from '../../api/passkeys';
 import { getDeviceMetadata } from '../../utils/deviceFingerprint';
+import { BorderBeam } from '../../components/ui/BorderBeam';
 import './Auth.css';
 
 const loginSchema = z.object({
@@ -33,7 +34,7 @@ export default function Login() {
     const loginFn = useAuthStore((state) => state.login);
     const verifyMfaFn = useAuthStore((state) => state.verifyMfa);
     const verifyBackupCode = useAuthStore((state) => state.useBackupCode);
-    
+
     const [showPw, setShowPw] = useState(false);
     const [isMfaStep, setIsMfaStep] = useState(false);
     const [isBackupCodeMode, setIsBackupCodeMode] = useState(false);
@@ -64,7 +65,7 @@ export default function Login() {
             })
             // Conditional UI is a progressive enhancement. A failed background
             // request must never prevent the ordinary password sign-in flow.
-            .catch(() => {});
+            .catch(() => { });
 
         return () => {
             active = false;
@@ -135,6 +136,7 @@ export default function Login() {
 
     return (
         <div className="auth-card">
+            <BorderBeam duration={8} borderWidth={0.5} />
             <Link to="/" className="auth-logo">
                 <img
                     src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'}
@@ -211,18 +213,18 @@ export default function Login() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <button 
-                            type="button" 
-                            className="auth-oauth-btn" 
+                        <button
+                            type="button"
+                            className="auth-oauth-btn"
                             onClick={() => handleOAuthLogin('google')}
                             style={{ flex: 1 }}
                         >
                             <span className="auth-oauth-icon"><FcGoogle /></span>
                             Google
                         </button>
-                        <button 
-                            type="button" 
-                            className="auth-oauth-btn" 
+                        <button
+                            type="button"
+                            className="auth-oauth-btn"
                             onClick={() => handleOAuthLogin('github')}
                             style={{ flex: 1, color: 'var(--text-primary)' }}
                         >
@@ -230,7 +232,7 @@ export default function Login() {
                             GitHub
                         </button>
                     </div>
-                    
+
                     <div className="auth-footer">
                         <div>Don't have an account? <Link to="/register">Sign up</Link> <span className="auth-footer-separator">•</span> <Link to="/auth/recover-passkey">Recover passkey</Link></div>
                         <button

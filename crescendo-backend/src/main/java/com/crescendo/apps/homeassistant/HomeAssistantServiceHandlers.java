@@ -10,7 +10,7 @@ import java.util.Map;
 @Component
 public class HomeAssistantServiceHandlers {
 
-    @ActionMapping(appKey = "homeassistant", actionKey = "homeassistant:service:call")
+    @ActionMapping(appKey = "home-assistant", actionKey = "homeassistant:service:call")
     public Object callService(ActionContext context) throws Exception {
         String domain = context.getString("domain");
         String service = context.getString("service");

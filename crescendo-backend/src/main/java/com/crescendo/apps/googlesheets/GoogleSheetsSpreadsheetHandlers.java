@@ -44,7 +44,7 @@ public class GoogleSheetsSpreadsheetHandlers {
      * Create a new Google Sheets spreadsheet.
      * Config: title (required)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "create")
+    @ActionMapping(appKey = "google-sheets", actionKey = "create")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -77,7 +77,7 @@ public class GoogleSheetsSpreadsheetHandlers {
      * Get a spreadsheet's metadata.
      * Config: spreadsheetId (required)
      */
-    @ActionMapping(appKey = "googlesheets", actionKey = "getSpreadsheet")
+    @ActionMapping(appKey = "google-sheets", actionKey = "getSpreadsheet")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();

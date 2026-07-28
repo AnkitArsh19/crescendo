@@ -5,7 +5,13 @@ import './Footer.css';
 
 export default function Footer() {
     return (
-        <motion.footer className="footer" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }}>
+        <motion.footer
+            className="footer"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false, amount: 0.1 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
             <div className="footer-inner">
                 <div className="footer-grid">
                     <div className="footer-brand">

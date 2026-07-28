@@ -15,7 +15,7 @@ import java.util.Map;
 public class MattermostMessageHandlers {
 
     // ── post ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "mattermost", actionKey = "createPost")
+    @ActionMapping(appKey = "mattermost", actionKey = "create-post")
 // @SuppressWarnings("unchecked")
     public ActionResult createPost(ActionContext context) {
         String token = MattermostSupport.resolveToken(context);
@@ -89,7 +89,7 @@ public class MattermostMessageHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "mattermost", actionKey = "deletePost")
+    @ActionMapping(appKey = "mattermost", actionKey = "delete-post")
     public ActionResult deletePost(ActionContext context) {
         String token = MattermostSupport.resolveToken(context);
         String baseUrl = MattermostSupport.getBaseUrl(context);

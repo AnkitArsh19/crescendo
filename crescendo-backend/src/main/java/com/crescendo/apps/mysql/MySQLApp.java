@@ -31,7 +31,7 @@ public class MySQLApp implements AppDefinition {
                 "https://www.google.com/s2/favicons?domain=mysql.com&sz=128", AuthType.NONE,
                 List.of(),
                 List.of(
-                        Map.of("actionKey", "mySql:executeQuery", "name", "Execute Query", "description", "Execute a SQL query",
+                        Map.of("actionKey", "executeQuery", "name", "Execute Query", "description", "Execute a SQL query",
                                 "configSchema", List.of(
                                         Map.of("key", "query", "label", "SQL Query", "type", "textarea", "required", true)
                                 ))

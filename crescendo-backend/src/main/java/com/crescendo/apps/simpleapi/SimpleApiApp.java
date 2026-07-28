@@ -32,24 +32,24 @@ public class SimpleApiApp implements AppDefinition {
                     Map.of("actionKey", "execute", "name", "Execute Operation",
                         "description", "Run a One Simple API operation",
                         "configSchema", List.of(
-                            Map.of("key", "resource", "label", "Resource", "type", "options", "required", true,
+                            Map.of("key", "resource", "label", "Resource", "type", "select", "required", true,
                                    "options", List.of(
-                                       Map.of("name", "Information", "value", "information"),
-                                       Map.of("name", "Social Profile", "value", "socialProfile"),
-                                       Map.of("name", "Utility", "value", "utility"),
-                                       Map.of("name", "Website", "value", "website")
+                                       Map.of("label", "Information", "value", "information"),
+                                       Map.of("label", "Social Profile", "value", "socialProfile"),
+                                       Map.of("label", "Utility", "value", "utility"),
+                                       Map.of("label", "Website", "value", "website")
                                    ), "default", "website"),
-                            Map.of("key", "operation", "label", "Operation", "type", "options", "required", true,
+                            Map.of("key", "operation", "label", "Operation", "type", "select", "required", true,
                                    "options", List.of(
-                                       Map.of("name", "Generate PDF", "value", "pdf"),
-                                       Map.of("name", "Get SEO Data", "value", "seo"),
-                                       Map.of("name", "Take Screenshot", "value", "screenshot"),
-                                       Map.of("name", "Instagram Profile", "value", "instagramProfile"),
-                                       Map.of("name", "Spotify Profile", "value", "spotifyProfile"),
-                                       Map.of("name", "Exchange Rate", "value", "exchangeRate"),
-                                       Map.of("name", "Image Metadata", "value", "imageMetadata"),
-                                       Map.of("name", "Expand URL", "value", "expandURL"),
-                                       Map.of("name", "Generate QR Code", "value", "qrCode")
+                                       Map.of("label", "Generate PDF", "value", "pdf"),
+                                       Map.of("label", "Get SEO Data", "value", "seo"),
+                                       Map.of("label", "Take Screenshot", "value", "screenshot"),
+                                       Map.of("label", "Instagram Profile", "value", "instagramProfile"),
+                                       Map.of("label", "Spotify Profile", "value", "spotifyProfile"),
+                                       Map.of("label", "Exchange Rate", "value", "exchangeRate"),
+                                       Map.of("label", "Image Metadata", "value", "imageMetadata"),
+                                       Map.of("label", "Expand URL", "value", "expandURL"),
+                                       Map.of("label", "Generate QR Code", "value", "qrCode")
                                    )),
                             Map.of("key", "url", "label", "URL", "type", "text", "required", false,
                                    "helpText", "The URL to process (for PDF, SEO, Screenshot, QR, Expand)"),

@@ -18,6 +18,21 @@ spring.datasource.query.driver-class-name=org.postgresql.Driver
 spring.jpa.show-sql=true
 logging.level.org.springframework.web=INFO
 
+# HikariCP connection pool optimization & keepalive for Docker deployment
+spring.datasource.command.hikari.maximum-pool-size=20
+spring.datasource.command.hikari.minimum-idle=5
+spring.datasource.command.hikari.connection-timeout=30000
+spring.datasource.command.hikari.idle-timeout=600000
+spring.datasource.command.hikari.max-lifetime=1800000
+spring.datasource.command.hikari.keepalive-time=120000
+
+spring.datasource.query.hikari.maximum-pool-size=20
+spring.datasource.query.hikari.minimum-idle=5
+spring.datasource.query.hikari.connection-timeout=30000
+spring.datasource.query.hikari.idle-timeout=600000
+spring.datasource.query.hikari.max-lifetime=1800000
+spring.datasource.query.hikari.keepalive-time=120000
+
 # Required for encrypting connection credentials at rest (AES-256 Base64 key)
 credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
 

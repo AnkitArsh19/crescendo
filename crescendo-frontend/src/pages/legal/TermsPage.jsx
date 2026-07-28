@@ -252,6 +252,124 @@ export default function TermsPage() {
                     <div className="legal-section">
                         <h2 className="legal-section-heading">
                             <span className="legal-section-number">10</span>
+                            Developer Applications &amp; OAuth Provider API
+                        </h2>
+                        <p>
+                            Crescendo enables developers to register applications and utilize Crescendo as an
+                            OAuth 2.0 Authorization Server to access permitted user data and workflow primitives.
+                            By registering a Developer Application or invoking public APIs, you agree to the following:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Lawful User Consent:</strong> You must explicitly disclose all requested scopes
+                                (&ldquo;workflow:read&rdquo;, &ldquo;email:send&rdquo;, etc.) on an authentic consent screen
+                                and obtain explicit, transparent user authorization before performing actions on their behalf.
+                            </li>
+                            <li>
+                                <strong>Security &amp; PKCE Enforcement:</strong> All authorization flows must implement Proof
+                                Key for Code Exchange (PKCE). You are strictly responsible for protecting issued client secrets
+                                and user access tokens against leakage or unauthorized transfer.
+                            </li>
+                            <li>
+                                <strong>Token Revocation &amp; Reuse Detection:</strong> Users reserve the right to revoke an
+                                application&rsquo;s authorization at any time. Crescendo enforces strict refresh token rotation;
+                                any detected reuse of a consumed refresh token immediately terminates all active grants for that
+                                session to protect user security.
+                            </li>
+                            <li>
+                                <strong>Abuse &amp; Rate Limits:</strong> We reserve the right to audit, rate-limit, throttle,
+                                suspend, or terminate developer applications that exhibit abusive traffic, excessive polling, or
+                                security violations without prior notice.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">11</span>
+                            Email Service &amp; Anti-Spam Policies
+                        </h2>
+                        <p>
+                            Crescendo provides an embedded transactional email sending engine, custom domain verification,
+                            audience contact management, and marketing broadcast capabilities. When utilizing our Email Service,
+                            you strictly agree to adhere to the following acceptable use and deliverability policies:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Lawful Opt-In &amp; Anti-Spam (CAN-SPAM / GDPR):</strong> You may only transmit broadcast or marketing
+                                emails to recipients who have explicitly opted-in or given demonstrated consent to receive correspondence.
+                                All promotional campaigns must include an operable, conspicuous unsubscribe mechanism.
+                            </li>
+                            <li>
+                                <strong>Prohibited Contact Lists:</strong> The use of purchased, rented, scraped, or third-party harvested
+                                contact lists in Crescendo Audience / Contacts is strictly forbidden.
+                            </li>
+                            <li>
+                                <strong>Deliverability &amp; Reputation Protections:</strong> Crescendo actively monitors domain bounce rates,
+                                spam complaints, and suppression lists. To safeguard overall system deliverability, we reserve the right to
+                                automatically throttle, quarantine, or suspend email sending privileges for accounts exceeding allowable bounce
+                                or complaint thresholds without prior notification.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">12</span>
+                            Bring Your Own Key (BYOK) &amp; Custom OAuth Credentials
+                        </h2>
+                        <p>
+                            Crescendo enables users to connect third-party integrations using their own developer API keys
+                            (e.g., OpenAI, SendGrid, Stripe) or by supplying custom OAuth Client ID and Client Secret configurations
+                            (&ldquo;BYOK&rdquo; or &ldquo;BYOA&rdquo;). When supplying your own third-party credentials:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Third-Party Compliance &amp; Rate Limits:</strong> You represent that you are the lawful owner or authorized
+                                licensee of the supplied credentials. You remain solely responsible for abiding by the respective third-party
+                                developer platform&rsquo;s Terms of Service, rate limiting tiers, and Acceptable Use Policies.
+                            </li>
+                            <li>
+                                <strong>Financial Liability &amp; Overage Disclaimer:</strong> Crescendo operates as a workflow orchestration tool
+                                executing automations under your provided API keys. Crescendo explicitly disclaims all operational and financial
+                                liability for third-party billing costs, usage overages, API token exhaustion, or developer account suspensions
+                                resulting from normal or retried workflow executions.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">13</span>
+                            Regulated Sensitive Data &amp; AI Usage Rules
+                        </h2>
+                        <p>
+                            To ensure adherence to international cyber law and statutory industry protections, users must abide by the following operational boundaries when configuring automations:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Prohibited Sensitive Data (HIPAA &amp; PCI-DSS):</strong> Unless operating under an explicitly executed enterprise Business Associate Agreement (BAA) on a dedicated single-tenant infrastructure tier, users are strictly prohibited from utilizing standard workflow queues, email broadcasts, or webhook endpoints to transmit Protected Health Information (PHI regulated by HIPAA), unencrypted credit card Primary Account Numbers (regulated by PCI-DSS), government biometric identifiers, or classified defense data.
+                            </li>
+                            <li>
+                                <strong>Artificial Intelligence &amp; Automated Decisions (EU AI Act):</strong> When integrating generative artificial intelligence nodes (e.g., Google Gemini, OpenAI, Anthropic) within automation pathways, users acknowledge that AI outputs may occasionally exhibit inaccuracies, hallucinations, or unverified assertions. You assume full operational responsibility for human verification and transparency disclosures required by law prior to deploying AI outputs for consumer decision-making, financial underwriting, or automated public broadcasts.
+                            </li>
+                            <li>
+                                <strong>Data Processing Addendum (DPA):</strong> For commercial organizations processing Personal Data of European Economic Area (EEA), UK, or California consumers, Crescendo&rsquo;s standard Data Processing Addendum incorporating European Standard Contractual Clauses (SCCs) forms an enforceable, binding component of these Terms by reference.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">14</span>
                             Governing Law
                         </h2>
                         <p>
@@ -266,7 +384,7 @@ export default function TermsPage() {
 
                     <div className="legal-section">
                         <h2 className="legal-section-heading">
-                            <span className="legal-section-number">11</span>
+                            <span className="legal-section-number">15</span>
                             Contact Us
                         </h2>
                         <p>If you have any questions about these Terms, please contact us:</p>

@@ -345,6 +345,76 @@ export default function PrivacyPage() {
                     <div className="legal-section">
                         <h2 className="legal-section-heading">
                             <span className="legal-section-number">12</span>
+                            Email Service &amp; Audience Data Processing
+                        </h2>
+                        <p>
+                            When you utilize Crescendo&rsquo;s embedded Email Service to store Audience contacts or transmit marketing
+                            and transactional broadcasts, Crescendo functions as a Data Processor on your behalf:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Contact &amp; Subscriber Storage:</strong> Contact profiles uploaded into your Audience lists (such as email addresses, first names, and custom attributes) are processed solely for executing your designated workflows and broadcast campaigns. We never sell, lease, or share your subscriber rosters with advertisers.
+                            </li>
+                            <li>
+                                <strong>Engagement Analytics &amp; Tracking:</strong> Outgoing email campaigns may incorporate standard delivery metrics, including open tracking pixels and link rewrite attribution. By sending broadcasts through Crescendo, you agree to clearly disclose any automated tracking to your email recipients in compliance with regional privacy laws (GDPR, CCPA, ePrivacy).
+                            </li>
+                            <li>
+                                <strong>Suppression Lists:</strong> Unsubscribe actions and bounce records are securely retained on global suppression lists to protect domain deliverability and ensure user opt-out preferences are strictly enforced across future campaigns.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">13</span>
+                            BYOK Credential Security &amp; Encryption at Rest
+                        </h2>
+                        <p>
+                            To protect third-party developer integration secrets when utilizing our Bring Your Own Key (BYOK) or Custom OAuth App settings, Crescendo enforces strict data security controls:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Authenticated Envelope Encryption at Rest:</strong> All user-supplied API keys, access/refresh tokens, and custom OAuth client secrets are sealed prior to database persistence using authenticated AES-256-GCM envelope encryption. Plaintext secrets are never committed to permanent disks.
+                            </li>
+                            <li>
+                                <strong>Zero-Persistence Execution Scoping:</strong> Decrypted API keys exist exclusively within volatile runtime memory during active workflow execution handshakes and token exchange protocols. Crescendo actively sanitizes execution logs, trace histories, and audit records to guarantee plaintext credentials are never recorded in execution logbooks.
+                            </li>
+                            <li>
+                                <strong>Immediate Cryptographic Erasure:</strong> When you delete a connection or custom OAuth application from your Crescendo workspace, the underlying ciphertext payload is permanently purged from active storage without retention.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">14</span>
+                            AI Model Data Non-Training &amp; Global Privacy Rights (GDPR &amp; CCPA)
+                        </h2>
+                        <p>
+                            We maintain strict operational boundary enforcement between your proprietary automation workloads and artificial intelligence provider systems:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Zero AI Model Training Disclosure:</strong> Crescendo unequivocally guarantees that your workspace workflow schemas, automation prompt instructions, step execution payloads, BYOK API secrets, and Audience recipient lists are <strong>never</strong> mined, scraped, or utilized to train, fine-tune, or prompt-reinforce internal or third-party artificial intelligence foundation models (including Google, OpenAI, Anthropic, or proprietary models).
+                            </li>
+                            <li>
+                                <strong>GDPR Right to Erasure (Right to Be Forgotten):</strong> Under Article 17 of the General Data Protection Regulation (GDPR) and equivalent CCPA/CPRA California privacy mandates, you maintain an unconditional Right to Erasure. Upon invoking account deletion via your settings dashboard or contacting privacy@crescendo.app, Crescendo initiates an immediate hard-deletion cascade purging your user identity, MFA backup tokens, connection credentials, active sessions, and stored file attachments from all primary databases within 30 calendar days.
+                            </li>
+                            <li>
+                                <strong>Data Portability &amp; Access Rights:</strong> You maintain absolute ownership of your automation schemas and operational logs, with the guaranteed ability to export your complete workspace configuration and execution logbooks in industry-standard JSON and CSV formats at any time without restriction.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">15</span>
                             Contact Us
                         </h2>
                         <p>

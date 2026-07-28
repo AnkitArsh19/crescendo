@@ -36,33 +36,72 @@ const docs = [
     },
 ];
 
+const containerVariants = {
+    hidden: {},
+    visible: {
+        transition: {
+            staggerChildren: 0.1,
+            delayChildren: 0.1,
+        },
+    },
+};
+
 const cardVariant = {
-    hidden: { opacity: 0, y: 30 },
-    visible: (index) => ({
+    hidden: { opacity: 0, y: 28 },
+    visible: {
         opacity: 1,
         y: 0,
-        transition: { duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] },
-    }),
+        transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+    },
 };
 
 export default function DocsSection() {
     return (
         <section className="docs-section" id="docs">
             <div className="docs-header">
-                <motion.p className="section-label" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+                <motion.p
+                    className="section-label"
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    transition={{ duration: 0.5 }}
+                >
                     Resources
                 </motion.p>
-                <motion.h2 className="section-title" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+                <motion.h2
+                    className="section-title"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    transition={{ duration: 0.6, delay: 0.08 }}
+                >
                     Learn &amp; <span className="font-serif" style={{ fontStyle: 'italic' }}>explore</span>
                 </motion.h2>
-                <motion.p className="section-subtitle" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }}>
+                <motion.p
+                    className="section-subtitle"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, amount: 0.2 }}
+                    transition={{ duration: 0.6, delay: 0.16 }}
+                >
                     Start with the guides, then use the live OpenAPI reference for the public surface.
                 </motion.p>
             </div>
 
-            <div className="docs-grid">
-                {docs.map((doc, index) => (
-                    <motion.div className="docs-card" key={doc.title} custom={index} variants={cardVariant} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-20px' }}>
+            <motion.div
+                className="docs-grid"
+                variants={containerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: false, amount: 0.2 }}
+            >
+                {docs.map((doc) => (
+                    <motion.div
+                        className="docs-card"
+                        key={doc.title}
+                        variants={cardVariant}
+                        whileHover={{ y: -4, transition: { duration: 0.2, ease: 'easeOut' } }}
+                    >
                         <Link to={doc.to} className="docs-card-link" aria-label={`Open ${doc.title}`}>
                             <div className="docs-icon">{doc.icon}</div>
                             <div className="docs-card-content">
@@ -72,10 +111,18 @@ export default function DocsSection() {
                         </Link>
                     </motion.div>
                 ))}
-            </div>
+            </motion.div>
 
-            <motion.div className="docs-cta" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.4 }}>
-                <Link to="/docs" className="docs-cta-link">Browse documentation <HiArrowRight /></Link>
+            <motion.div
+                className="docs-cta"
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.2 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+            >
+                <Link to="/docs" className="docs-cta-link">
+                    Browse documentation <HiArrowRight />
+                </Link>
             </motion.div>
         </section>
     );

@@ -15,22 +15,45 @@ export default function ToastProvider() {
 
   return (
     <div className="toast-container">
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
+            layout
             className={`toast-item ${toast.type}`}
-            initial={{ opacity: 0, x: 80, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 80, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: 35, scale: 0.88, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.85, filter: 'blur(8px)', transition: { duration: 0.2, ease: 'easeIn' } }}
+            transition={{ 
+              type: 'spring', 
+              damping: 24, 
+              stiffness: 320, 
+              mass: 0.8,
+              layout: { duration: 0.25, ease: [0.22, 1, 0.36, 1] }
+            }}
             onClick={() => removeToast(toast.id)}
+            whileHover={{ scale: 1.02, y: -2 }}
           >
-            <span className="toast-icon">{iconMap[toast.type] || iconMap.info}</span>
+            <motion.span 
+              className="toast-icon"
+              initial={{ scale: 0, rotate: -30 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 400 }}
+            >
+              {iconMap[toast.type] || iconMap.info}
+            </motion.span>
             <span className="toast-message">{toast.message}</span>
             <button className="toast-dismiss" onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}>
               <HiX />
             </button>
+            
+            {/* Animated countdown progress bar */}
+            <motion.div
+              className="toast-progress-bar"
+              initial={{ width: '100%' }}
+              animate={{ width: '0%' }}
+              transition={{ duration: (toast.duration || 3500) / 1000, ease: 'linear' }}
+            />
           </motion.div>
         ))}
       </AnimatePresence>

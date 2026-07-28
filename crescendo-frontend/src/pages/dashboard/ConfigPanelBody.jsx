@@ -4,6 +4,7 @@ import { resourceApi } from '../../api/workflowApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import SearchableSelect from '../../components/ui/SearchableSelect';
+import AnimatedCircularProgressBar from '../../components/ui/AnimatedCircularProgressBar';
 import TestResultPanel from './TestResultPanel';
 import useToastStore from '../../store/toastStore';
 import useAuthStore from '../../store/authStore';
@@ -745,6 +746,28 @@ export default function ConfigPanelBody({
         return val != null && String(val).trim() !== '';
     });
 
+    const progressPercent = useMemo(() => {
+        let percent = 0;
+        if (data.appKey && hasConnection) percent += 17;
+        if (actionOrTriggerKey) percent += 17;
+        if (setupComplete) {
+            const requiredFields = configSchema.filter(f => f.required);
+            if (requiredFields.length === 0) {
+                percent += 33;
+            } else {
+                const filledCount = requiredFields.filter(f => {
+                    const val = (data.configuration || {})[f.key];
+                    return val != null && String(val).trim() !== '';
+                }).length;
+                percent += Math.round((filledCount / requiredFields.length) * 33);
+            }
+        }
+        if (configComplete && (activeTab === 2 || data.tested || data.lastTestResult)) {
+            percent += 33;
+        }
+        return Math.min(100, Math.max(0, percent));
+    }, [data.appKey, hasConnection, actionOrTriggerKey, setupComplete, configSchema, data.configuration, configComplete, activeTab, data.tested, data.lastTestResult]);
+
     // ── Previous step variables for data passing ──
     const previousStepVariables = useMemo(() => {
         if (!allNodes || !configNode) return [];
@@ -932,6 +955,31 @@ export default function ConfigPanelBody({
                         </div>
                     )}
                     <button className="canvas-config-close" onClick={onClose}><HiX /></button>
+                </div>
+            </div>
+
+            <div className="cpb-progress-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'var(--bg-elevated, rgba(255, 255, 255, 0.03))', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
+                        Configuration Progress
+                    </span>
+                    <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                        {progressPercent === 100 ? 'All steps completed! Ready to execute.' :
+                         progressPercent >= 67 ? 'Step 3: Test & verify your connection.' :
+                         progressPercent >= 34 ? 'Step 2: Fill required configuration fields.' :
+                         'Step 1: Connect your account & select event.'}
+                    </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <AnimatedCircularProgressBar
+                        max={100}
+                        min={0}
+                        value={progressPercent}
+                        size={48}
+                        strokeWidth={7}
+                        gaugePrimaryColor="var(--text-primary, #ffffff)"
+                        gaugeSecondaryColor="var(--border-secondary, rgba(255, 255, 255, 0.15))"
+                    />
                 </div>
             </div>
 

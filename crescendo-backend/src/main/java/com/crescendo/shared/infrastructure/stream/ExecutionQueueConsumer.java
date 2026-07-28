@@ -88,7 +88,9 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
             return;
         }
 
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
+                Thread.ofVirtual().name("lock-heartbeat-", 0).factory()
+        );
         ScheduledFuture<?> heartbeat = scheduler.scheduleAtFixedRate(() -> {
             try {
                 lockService.extend(lockKey, lockToken.get(), 300_000); // Extend by 5 min

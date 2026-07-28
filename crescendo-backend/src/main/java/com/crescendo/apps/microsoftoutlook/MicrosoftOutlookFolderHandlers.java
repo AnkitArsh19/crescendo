@@ -17,7 +17,7 @@ public class MicrosoftOutlookFolderHandlers {
     private static final String GRAPH_API = MicrosoftOutlookSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "createFolder")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "createFolder")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -37,7 +37,7 @@ public class MicrosoftOutlookFolderHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "deleteFolder")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "deleteFolder")
     public ActionResult delete(ActionContext context) {
         String folderId = MicrosoftOutlookSupport.require(context.configuration(), "folderId");
         if (folderId == null) return ActionResult.failure("'folderId' is required");
@@ -54,7 +54,7 @@ public class MicrosoftOutlookFolderHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getFolder")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getFolder")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String folderId = MicrosoftOutlookSupport.require(context.configuration(), "folderId");
@@ -72,7 +72,7 @@ public class MicrosoftOutlookFolderHandlers {
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getAllFolders")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getAllFolders")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         int maxResults = MicrosoftOutlookSupport.parseIntOpt(context.configuration(), "maxResults", 50);
@@ -89,7 +89,7 @@ public class MicrosoftOutlookFolderHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "updateFolder")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "updateFolder")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

@@ -35,17 +35,17 @@ public class ImapEmailApp implements AppDefinition {
                                 "description", "Triggers when a new email is received",
                                 "configSchema", List.of(
                                         Map.of("key", "mailbox", "label", "Mailbox Name", "type", "text", "required", true, "default", "INBOX"),
-                                        Map.of("key", "postProcessAction", "label", "Action", "type", "options", "required", false,
+                                        Map.of("key", "postProcessAction", "label", "Action", "type", "select", "required", false,
                                                 "options", List.of(
-                                                        Map.of("name", "Mark as Read", "value", "read"),
-                                                        Map.of("name", "Nothing", "value", "nothing")
+                                                        Map.of("label", "Mark as Read", "value", "read"),
+                                                        Map.of("label", "Nothing", "value", "nothing")
                                                 )),
                                         Map.of("key", "downloadAttachments", "label", "Download Attachments", "type", "boolean", "required", false),
-                                        Map.of("key", "format", "label", "Format", "type", "options", "required", false,
+                                        Map.of("key", "format", "label", "Format", "type", "select", "required", false,
                                                 "options", List.of(
-                                                        Map.of("name", "RAW", "value", "raw"),
-                                                        Map.of("name", "Resolved", "value", "resolved"),
-                                                        Map.of("name", "Simple", "value", "simple")
+                                                        Map.of("label", "RAW", "value", "raw"),
+                                                        Map.of("label", "Resolved", "value", "resolved"),
+                                                        Map.of("label", "Simple", "value", "simple")
                                                 )),
                                         Map.of("key", "dataPropertyAttachmentsPrefixName", "label", "Property Prefix Name", "type", "text", "required", false, "placeholder", "attachment_"),
                                         Map.of("key", "customEmailConfig", "label", "Custom Email Rules (JSON array)", "type", "text", "required", false, "placeholder", "[\"UNSEEN\"]"),

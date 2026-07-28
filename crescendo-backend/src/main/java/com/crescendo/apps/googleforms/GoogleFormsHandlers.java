@@ -46,7 +46,7 @@ public class GoogleFormsHandlers {
      * Create a new Google Form.
      * Config: title (required), documentTitle (optional)
      */
-    @ActionMapping(appKey = "googleforms", actionKey = "createForm")
+    @ActionMapping(appKey = "google-forms", actionKey = "createForm")
     @SuppressWarnings("unchecked")
     public ActionResult createForm(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -84,7 +84,7 @@ public class GoogleFormsHandlers {
      * Get a Google Form by form ID.
      * Config: formId (required)
      */
-    @ActionMapping(appKey = "googleforms", actionKey = "getForm")
+    @ActionMapping(appKey = "google-forms", actionKey = "getForm")
     @SuppressWarnings("unchecked")
     public ActionResult getForm(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -116,7 +116,7 @@ public class GoogleFormsHandlers {
      * List responses for a Google Form.
      * Config: formId (required), pageSize (int, default 50)
      */
-    @ActionMapping(appKey = "googleforms", actionKey = "listResponses")
+    @ActionMapping(appKey = "google-forms", actionKey = "listResponses")
     @SuppressWarnings("unchecked")
     public ActionResult listResponses(ActionContext context) {
         Map<String, Object> config = context.configuration();

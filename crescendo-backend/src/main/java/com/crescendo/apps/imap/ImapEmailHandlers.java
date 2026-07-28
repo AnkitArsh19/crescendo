@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ImapEmailHandlers {
 
-    @ActionMapping(appKey = "imap", actionKey = "imap:fetchEmails")
+    @ActionMapping(appKey = "imap-email", actionKey = "imap:fetchEmails")
     public Object fetchEmails(ActionContext context) throws Exception {
         // Retrieve credentials
         String user = context.getCredential("user");

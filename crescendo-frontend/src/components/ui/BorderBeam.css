@@ -1,0 +1,37 @@
+/* ═══════════════════════════════════════════════════════════
+   Border Beam — Monochrome glowing animated border along perimeter
+   ═══════════════════════════════════════════════════════════ */
+
+.border-beam-container {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--border-beam-width, 2px);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.border-beam-element {
+  position: absolute;
+  top: calc(50% - 1500px);
+  left: calc(50% - 1500px);
+  width: 3000px;
+  height: 3000px;
+  transform-origin: center center;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 220deg,
+    var(--color-to) 290deg,
+    var(--color-from) 360deg
+  );
+}

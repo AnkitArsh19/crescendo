@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 import java.util.HashMap;
 import java.util.Map;
 
-@ActionMapping(appKey = "jokeapi", actionKey = "get-joke")
+@ActionMapping(appKey = "joke-api", actionKey = "get-joke")
 public class JokeApiGetJokeHandler implements ActionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(JokeApiGetJokeHandler.class);

@@ -41,8 +41,55 @@ services:
       postgres:
         condition: service_healthy
 
+  # Crescendo AI/ML Microservice
+  crescendo-aiml:
+    build:
+      context: ./crescendo-aiml
+      dockerfile: Dockerfile
+    container_name: crescendo-aiml
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    networks:
+      - crescendo-network
+
+  # Prometheus Telemetry Collector
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crescendo-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_docker:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - crescendo-network
+
+  # Grafana Visual Dashboard (accessible on http://localhost:3001, default admin / crescendo)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crescendo-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=crescendo
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data_docker:/var/lib/grafana
+    networks:
+      - crescendo-network
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data_docker:
+  prometheus_data_docker:
+  grafana_data_docker:
 
 networks:
   crescendo-network:

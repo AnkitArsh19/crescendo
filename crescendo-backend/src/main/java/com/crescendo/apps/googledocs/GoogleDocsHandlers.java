@@ -48,7 +48,7 @@ public class GoogleDocsHandlers {
      * Create a new Google Doc.
      * Config: title (required), folderId (optional — moves doc into that Drive folder after creation)
      */
-    @ActionMapping(appKey = "googledocs", actionKey = "create")
+    @ActionMapping(appKey = "google-docs", actionKey = "create")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -93,7 +93,7 @@ public class GoogleDocsHandlers {
      * Get a Google Doc by document ID.
      * Config: documentId (required)
      */
-    @ActionMapping(appKey = "googledocs", actionKey = "get")
+    @ActionMapping(appKey = "google-docs", actionKey = "get")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -125,7 +125,7 @@ public class GoogleDocsHandlers {
      * Append text to the end of a Google Doc (n8n "update" operation).
      * Config: documentId (required), text (required)
      */
-    @ActionMapping(appKey = "googledocs", actionKey = "appendText")
+    @ActionMapping(appKey = "google-docs", actionKey = "appendText")
     @SuppressWarnings("unchecked")
     public ActionResult appendText(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -170,7 +170,7 @@ public class GoogleDocsHandlers {
      * Config: documentId (required), searchText (required), replaceText (required),
      *         matchCase (bool, default false)
      */
-    @ActionMapping(appKey = "googledocs", actionKey = "replaceText")
+    @ActionMapping(appKey = "google-docs", actionKey = "replaceText")
     @SuppressWarnings("unchecked")
     public ActionResult replaceText(ActionContext context) {
         Map<String, Object> config = context.configuration();

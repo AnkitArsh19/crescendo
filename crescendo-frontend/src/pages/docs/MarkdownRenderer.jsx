@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -22,15 +23,7 @@ function CopyButton({ text }) {
     );
 }
 
-// A custom component for CodeTabs that we can use inside MDX (or via some custom logic)
-// Since we are using standard Markdown, we can't easily embed React components directly without MDX.
-// BUT we can use a trick: if multiple code blocks are back-to-back, we can group them. 
-// For simplicity in standard markdown, we will just render standard code blocks beautifully.
-// To actually support Tabs in pure Markdown, we'd need a remark plugin or a complex AST transform.
-// Alternatively, we can just render the language label nicely and developers can see all languages sequentially.
-// Let's implement a clean code block with a top bar showing the language and copy button.
-
-export default function MarkdownRenderer({ content }) {
+export default function MarkdownRenderer({ content, prevItem, nextItem }) {
     return (
         <motion.div 
             className="docs-markdown-body"
@@ -64,11 +57,6 @@ export default function MarkdownRenderer({ content }) {
                     code(props) {
                         const { className, children, ...rest } = props;
                         const match = /language-(\w+)/.exec(className || '');
-                        
-                        // If it has a language match, it's definitely a code block.
-                        // If it doesn't, but its parent is a 'pre', it's also a code block.
-                        // react-markdown v9+ passes node which we can inspect, but an easier way is to just 
-                        // check if it has a match, or if it has newlines (which inline code rarely does).
                         const isBlock = match || String(children).includes('\n');
                         
                         if (isBlock) {
@@ -102,6 +90,23 @@ export default function MarkdownRenderer({ content }) {
             >
                 {content}
             </ReactMarkdown>
+
+            {(prevItem || nextItem) && (
+                <nav className="docs-nav-footer" aria-label="Documentation Page Navigation">
+                    {prevItem ? (
+                        <Link to={`/docs${prevItem.id ? '/' + prevItem.id : ''}`} className="docs-nav-btn prev">
+                            <span className="docs-nav-btn-label">&larr; Previous</span>
+                            <span className="docs-nav-btn-title">{prevItem.title}</span>
+                        </Link>
+                    ) : <div />}
+                    {nextItem && (
+                        <Link to={`/docs${nextItem.id ? '/' + nextItem.id : ''}`} className="docs-nav-btn next">
+                            <span className="docs-nav-btn-label">Next &rarr;</span>
+                            <span className="docs-nav-btn-title">{nextItem.title}</span>
+                        </Link>
+                    )}
+                </nav>
+            )}
         </motion.div>
     );
 }

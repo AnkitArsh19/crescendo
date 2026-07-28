@@ -56,6 +56,7 @@ import {
 import WorkflowNode from './nodes/WorkflowNode';
 import BranchNode from './nodes/BranchNode';
 import DeleteableEdge from './nodes/DeleteableEdge';
+import { Dock, DockIcon } from '../../components/ui/Dock';
 import './WorkflowCanvas.css';
 
 // 'branch' handles logic:if and logic:switch — these nodes render named output ports
@@ -408,7 +409,7 @@ export default function WorkflowCanvas() {
                 setIsLoadingWorkflow(false);
             }
         })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [routeWorkflowId, loadedWorkflow, isLoadingDetail, isDetailError]);
 
     // Handle naming modal — just set name and close. Workflow is created on first save.
@@ -883,6 +884,34 @@ export default function WorkflowCanvas() {
         [configNode, lastSelectedNodeId, vertical, nodes, edges, clearTriggerNode, commitGraph]
     );
 
+    // Helper: update node data fields for a specific node ID
+    const updateNodeData = useCallback(
+        (nodeIdToUpdate, patch) => {
+            setNodes((prevNodes) => {
+                const updated = prevNodes.map((n) => {
+                    if (n.id !== nodeIdToUpdate) return n;
+                    const nextData = { ...n.data, ...patch };
+                    if (patch.appName || patch.actionName || patch.label) {
+                        nextData.label = patch.label || patch.actionName || patch.appName || n.data.label;
+                    }
+                    return { ...n, data: nextData };
+                });
+                draftRef.current?.markChanged(nodeIdToUpdate);
+                pushHistory(updated, edges);
+                return updated;
+            });
+
+            setConfigNode((prevConfig) => {
+                if (!prevConfig || prevConfig.id !== nodeIdToUpdate) return prevConfig;
+                return {
+                    ...prevConfig,
+                    data: { ...prevConfig.data, ...patch },
+                };
+            });
+        },
+        [setNodes, edges, pushHistory]
+    );
+
     // Node click → open config panel (but NOT if clicking a handle)
     const onNodeClick = useCallback(
         (event, node) => {
@@ -1000,7 +1029,7 @@ export default function WorkflowCanvas() {
         if (nodes.length > 0) {
             pushHistory(nodes, edges);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isLoadingWorkflow]);
 
     // ── Warn on browser tab close if unsaved ──
@@ -1058,7 +1087,7 @@ export default function WorkflowCanvas() {
                         accountName: event.data.connectionName || '',
                     });
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         };
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
@@ -1096,9 +1125,10 @@ export default function WorkflowCanvas() {
             <div className="canvas-naming-overlay">
                 <motion.div
                     className="canvas-naming-modal"
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    initial={{ opacity: 0, scale: 0.65, y: 40 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.25 }}
+                    exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                 >
                     <button className="canvas-naming-close" onClick={handleCancelCreate}>
                         <HiX />
@@ -1173,44 +1203,42 @@ export default function WorkflowCanvas() {
                     )}
                 </div>
 
-                <div className="canvas-topbar-center">
-                    <button
-                        className="canvas-tb-btn"
+                <Dock direction="middle" className="canvas-topbar-center canvas-topbar-dock" iconSize={34} iconMagnification={44} iconDistance={90}>
+                    <DockIcon
+                        className="canvas-dock-btn"
                         title="Undo (Ctrl+Z)"
                         onClick={handleUndo}
                         disabled={!canUndo}
                         data-tooltip="Undo"
                     >
                         <HiOutlineReply />
-                    </button>
-                    <button
-                        className="canvas-tb-btn"
+                    </DockIcon>
+                    <DockIcon
+                        className="canvas-dock-btn"
                         title="Redo (Ctrl+Shift+Z)"
                         onClick={handleRedo}
                         disabled={!canRedo}
                         data-tooltip="Redo"
                     >
                         <HiRefresh style={{ transform: 'scaleX(-1)' }} />
-                    </button>
-                    <div className="canvas-tb-divider" />
-                    <button
-                        className="canvas-tb-btn"
+                    </DockIcon>
+                    <div className="canvas-dock-divider" />
+                    <DockIcon
+                        className="canvas-dock-btn"
                         title="Add Action Step"
-                        data-tooltip="Add Step"
                         onClick={() => addActionNode(null, null, { openConfig: true })}
+                        data-tooltip="Add Step"
                     >
                         <HiPlus />
-                    </button>
-                    <div className="canvas-split-control">
-                        <button
-                            className="canvas-tb-btn"
-                            title={lastSelectedNodeId ? 'Split selected step' : 'Select a step to split'}
-                            data-tooltip="Split"
-                            onClick={() => setShowSplitMenu((open) => !open)}
-                            disabled={!lastSelectedNodeId}
-                        >
-                            <HiOutlineShare />
-                        </button>
+                    </DockIcon>
+                    <DockIcon
+                        className="canvas-dock-btn canvas-split-control"
+                        title={lastSelectedNodeId ? 'Split selected step' : 'Select a step to split'}
+                        onClick={() => setShowSplitMenu((open) => !open)}
+                        disabled={!lastSelectedNodeId}
+                        data-tooltip="Split"
+                    >
+                        <HiOutlineShare />
                         <AnimatePresence>
                             {showSplitMenu && lastSelectedNodeId && (
                                 <motion.div
@@ -1219,13 +1247,15 @@ export default function WorkflowCanvas() {
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -4, scale: 0.96 }}
                                     transition={{ duration: 0.14 }}
+                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     {[2, 3, 4].map((count) => (
                                         <button
                                             key={count}
                                             className="canvas-toolbar-split-btn"
                                             title={`Create ${count} branches`}
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 splitNode(lastSelectedNodeId, count);
                                                 setShowSplitMenu(false);
                                             }}
@@ -1236,47 +1266,54 @@ export default function WorkflowCanvas() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                    </div>
-                    <button
-                        className="canvas-tb-btn"
+                    </DockIcon>
+                    <DockIcon
+                        className="canvas-dock-btn"
                         title={vertical ? 'Switch to Horizontal Layout' : 'Switch to Vertical Layout'}
-                        data-tooltip={vertical ? 'Horizontal' : 'Vertical'}
                         onClick={toggleOrientation}
+                        data-tooltip={vertical ? 'Horizontal' : 'Vertical'}
                     >
                         {vertical ? <HiOutlineSwitchHorizontal /> : <HiOutlineSwitchVertical />}
-                    </button>
-                    <button
-                        className="canvas-tb-btn"
+                    </DockIcon>
+                    <DockIcon
+                        className="canvas-dock-btn"
                         title="Fit workflow to canvas (F)"
-                        data-tooltip="Fit view"
                         onClick={fitWorkflow}
+                        data-tooltip="Fit view"
                     >
                         <HiOutlineArrowsExpand />
-                    </button>
-                    <div className="canvas-tb-divider" />
-                    <button
-                        className="canvas-tb-btn"
+                    </DockIcon>
+                    <div className="canvas-dock-divider" />
+                    <DockIcon
+                        className={`canvas-dock-save-btn ${savedAt && !isSaving && !saveError ? 'is-saved' : ''}`}
                         title="Save workflow (Ctrl+S)"
-                        data-tooltip="Save"
                         onClick={handleSave}
                         disabled={isSaving}
+                        data-tooltip="Save"
                     >
-                        {isSaving ? <span className="canvas-spinner" /> : <HiOutlineSave />}
-                        {savedAt && !isSaving && !saveError ? ' Saved' : ''}
-                    </button>
+                        <div className="canvas-dock-item-content">
+                            {isSaving ? <span className="canvas-spinner" /> : <HiOutlineSave className="dock-action-icon" />}
+                            <span className="dock-action-text">
+                                {isSaving ? 'Saving...' : savedAt && !saveError ? 'Saved' : 'Save'}
+                            </span>
+                        </div>
+                    </DockIcon>
                     {saveError && (
                         <span className="canvas-save-error" title={saveError}>⚠</span>
                     )}
-                    <button
-                        className="canvas-tb-btn canvas-tb-btn-primary"
+                    <DockIcon
+                        className="canvas-dock-run-btn"
                         title="Save and run this workflow"
-                        data-tooltip="Run"
                         onClick={handleRunWorkflow}
                         disabled={isRunning || isSaving}
+                        data-tooltip="Run"
                     >
-                        {isRunning ? <span className="canvas-spinner" /> : <HiOutlinePlay />} Run
-                    </button>
-                </div>
+                        <div className="canvas-dock-item-content">
+                            {isRunning ? <span className="canvas-spinner" /> : <HiOutlinePlay className="dock-action-icon" />}
+                            <span className="dock-action-text">Run</span>
+                        </div>
+                    </DockIcon>
+                </Dock>
 
                 <div className="canvas-topbar-right">
                     <button className="canvas-topbar-icon-btn" onClick={toggleTheme} title="Toggle theme">
@@ -1410,10 +1447,10 @@ export default function WorkflowCanvas() {
                             />
                             <motion.div
                                 className="canvas-config-modal"
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 30 }}
-                                transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+                                initial={{ opacity: 0, scale: 0.65, y: 40 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.75, y: 20 }}
+                                transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                             >
                                 <ConfigPanelBody
                                     configNode={configNode}

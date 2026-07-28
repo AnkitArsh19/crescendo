@@ -47,7 +47,7 @@ public class GoogleSlidesHandlers {
      * Create a new Google Slides presentation.
      * Config: title (required)
      */
-    @ActionMapping(appKey = "googleslides", actionKey = "create")
+    @ActionMapping(appKey = "google-slides", actionKey = "create")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -80,7 +80,7 @@ public class GoogleSlidesHandlers {
      * Get a Google Slides presentation by ID.
      * Config: presentationId (required)
      */
-    @ActionMapping(appKey = "googleslides", actionKey = "get")
+    @ActionMapping(appKey = "google-slides", actionKey = "get")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -115,7 +115,7 @@ public class GoogleSlidesHandlers {
      * TITLE_ONLY, SECTION_HEADER, SECTION_TITLE_AND_DESCRIPTION, ONE_COLUMN_TEXT,
      * MAIN_POINT, BIG_NUMBER
      */
-    @ActionMapping(appKey = "googleslides", actionKey = "addSlide")
+    @ActionMapping(appKey = "google-slides", actionKey = "addSlide")
     @SuppressWarnings("unchecked")
     public ActionResult addSlide(ActionContext context) {
         Map<String, Object> config = context.configuration();

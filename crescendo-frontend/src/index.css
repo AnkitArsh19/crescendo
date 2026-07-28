@@ -244,3 +244,22 @@ img {
 [data-theme="light"] .app-logo-img {
   filter: grayscale(1);
 }
+
+/* ───────────── View Transitions (MagicUI / Theme Toggle) ───────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+html[data-magicui-theme-vt="active"]::view-transition-group(root) {
+  animation-duration: var(--magicui-theme-toggle-vt-duration);
+}

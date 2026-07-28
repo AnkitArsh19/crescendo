@@ -17,7 +17,7 @@ public class MicrosoftOutlookDraftHandlers {
     private static final String GRAPH_API = MicrosoftOutlookSupport.GRAPH_API;
 
     // ── create ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "createDraft")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "createDraft")
     @SuppressWarnings("unchecked")
     public ActionResult create(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -41,7 +41,7 @@ public class MicrosoftOutlookDraftHandlers {
     }
 
     // ── delete ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "deleteDraft")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "deleteDraft")
     public ActionResult delete(ActionContext context) {
         String draftId = MicrosoftOutlookSupport.require(context.configuration(), "draftId");
         if (draftId == null) return ActionResult.failure("'draftId' is required");
@@ -58,7 +58,7 @@ public class MicrosoftOutlookDraftHandlers {
     }
 
     // ── get ───────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "getDraft")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "getDraft")
     @SuppressWarnings("unchecked")
     public ActionResult get(ActionContext context) {
         String draftId = MicrosoftOutlookSupport.require(context.configuration(), "draftId");
@@ -76,7 +76,7 @@ public class MicrosoftOutlookDraftHandlers {
     }
 
     // ── send ──────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "sendDraft")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "sendDraft")
     public ActionResult send(ActionContext context) {
         String draftId = MicrosoftOutlookSupport.require(context.configuration(), "draftId");
         if (draftId == null) return ActionResult.failure("'draftId' is required");
@@ -93,7 +93,7 @@ public class MicrosoftOutlookDraftHandlers {
     }
 
     // ── update ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftoutlook", actionKey = "updateDraft")
+    @ActionMapping(appKey = "microsoft-outlook", actionKey = "updateDraft")
     @SuppressWarnings("unchecked")
     public ActionResult update(ActionContext context) {
         Map<String, Object> config = context.configuration();

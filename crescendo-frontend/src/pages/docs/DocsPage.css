@@ -487,3 +487,56 @@
     font-size: 0.95rem;
     color: var(--text-primary);
 }
+
+/* Page Navigation Footer (Previous / Next Buttons) */
+.docs-nav-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 3.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-primary);
+    gap: 1rem;
+}
+
+.docs-nav-btn {
+    display: flex;
+    flex-direction: column;
+    padding: 0.85rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+    min-width: 200px;
+    box-shadow: var(--shadow-sm);
+}
+
+.docs-nav-btn.next {
+    margin-left: auto;
+    text-align: right;
+}
+
+.docs-nav-btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--text-accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.docs-nav-btn-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.docs-nav-btn-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-accent);
+}
+

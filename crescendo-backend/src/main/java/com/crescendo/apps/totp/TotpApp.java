@@ -36,14 +36,7 @@ public class TotpApp implements AppDefinition {
                 """,
                 "/icons/totp.png", // Generic icon
                 AuthType.NONE,
-                List.of(
-                        Map.of(
-                                "key", "totpApi",
-                                "label", "TOTP API Credentials",
-                                "type", "string",
-                                "required", true
-                        )
-                ),
+                List.of(),
                 List.of(
                         Map.of(
                                 "actionKey", "totp:generateSecret",
@@ -54,6 +47,13 @@ public class TotpApp implements AppDefinition {
                                 )
                         )
                 )
-        ).category("logic-and-flow");
+        ).credentialSchema(List.of(
+                Map.of(
+                        "key", "totpApi",
+                        "label", "TOTP API Credentials",
+                        "type", "string",
+                        "required", true
+                )
+        )).category("logic-and-flow");
     }
 }

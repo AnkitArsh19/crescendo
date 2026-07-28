@@ -419,14 +419,28 @@ ${bodyContent}
 // ─── Main Editor Component ─────────────────────────────────────────────────────
 
 export default function TemplateBlockEditor({ template, onClose, onSaved }) {
-  const [name, setName]               = useState(template?.name || 'Untitled Template');
-  const [subject, setSubject]         = useState(template?.subject || '');
+  const backupKey = `crescendo_email_draft_${template?.id || 'new'}`;
+  const getInitialDraft = () => {
+    try {
+      const saved = localStorage.getItem(backupKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.blocks && parsed.blocks.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+  const initialDraft = getInitialDraft();
+
+  const [name, setName]               = useState(initialDraft?.name ?? (template?.name || 'Untitled Template'));
+  const [subject, setSubject]         = useState(initialDraft?.subject ?? (template?.subject || ''));
   const [fromAddress, setFromAddress] = useState('Crescendo <hello@crescendo.run>');
   const [replyTo, setReplyTo]         = useState('');
   const [previewText, setPreviewText] = useState('');
   const [editorMode, setEditorMode]   = useState('visual'); // 'visual' | 'code'
 
-  const [blocks, setBlocks]           = useState(() => initBlocks(template));
+  const [blocks, setBlocks]           = useState(() => initialDraft?.blocks ?? initBlocks(template));
+  const [autoSaveStatus, setAutoSaveStatus] = useState(initialDraft ? 'Restored from local backup' : 'All changes saved');
   const [history, setHistory]         = useState([]);
   const [future, setFuture]           = useState([]);
   const [selectedBlockId, setSelectedBlockId] = useState(null);
@@ -484,6 +498,39 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     }
   }, [blocks, pageStyle, globalTheme, globalCss, editorMode]);
 
+  // ── Autosave Engine (Crash Recovery & Background Preservation) ──
+  useEffect(() => {
+    const backup = {
+      name,
+      subject,
+      blocks,
+      pageStyle,
+      globalTheme,
+      timestamp: Date.now(),
+      templateId: template?.id || 'new'
+    };
+    try {
+      localStorage.setItem(backupKey, JSON.stringify(backup));
+      setAutoSaveStatus('Autosaving...');
+      const timer = setTimeout(async () => {
+        if (template?.id && template.status !== 'PUBLISHED') {
+          try {
+            const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss);
+            await templatesApi.update(template.id, { name: name.trim() || 'Untitled Template', subject: subject.trim(), htmlBody: html });
+            setAutoSaveStatus('All changes saved');
+          } catch (e) {
+            setAutoSaveStatus('Saved to local backup');
+          }
+        } else {
+          setAutoSaveStatus('Saved to local backup');
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    } catch {
+      setAutoSaveStatus('Storage full - unable to backup');
+    }
+  }, [name, subject, blocks, pageStyle, globalTheme, template?.id, template?.status, editorMode, rawHtmlCode, globalCss, backupKey]);
+
   // Helper to update a single padding side or all
   const updatePadding = useCallback((side, val) => {
     if (pageStyle.paddingLinked) {
@@ -501,6 +548,8 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
       const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss);
       const payload = { name: name.trim(), subject: subject.trim(), htmlBody: html };
       const saved = !template?.id ? await templatesApi.create(payload) : await templatesApi.update(template.id, payload);
+      localStorage.removeItem(backupKey);
+      setAutoSaveStatus('All changes saved');
       onSaved(saved);
     } catch (e) {
       setErr(e.response?.data?.message || 'Failed to save template');
@@ -512,6 +561,8 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     setPublishing(true); setErr('');
     try {
       const saved = await templatesApi.publish(template.id);
+      localStorage.removeItem(backupKey);
+      setAutoSaveStatus('Published');
       onSaved(saved);
     } catch (e) {
       setErr(e.response?.data?.message || 'Failed to publish.');
@@ -661,6 +712,10 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                 {template.status}
               </span>
             )}
+            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: autoSaveStatus === 'All changes saved' || autoSaveStatus === 'Published' ? '#10b981' : '#f59e0b' }} />
+              {autoSaveStatus}
+            </span>
           </div>
         <div className="tbe-topbar-actions">
             <button className="tbe-btn-ghost" title="Undo (Ctrl+Z)" onClick={undo} disabled={history.length === 0}>

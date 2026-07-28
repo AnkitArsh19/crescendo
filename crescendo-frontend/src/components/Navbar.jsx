@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineSun, HiOutlineMoon, HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineSun, HiOutlineMoon, HiOutlineMenu, HiOutlineX, HiOutlineLightningBolt, HiOutlineCode, HiOutlineBookOpen, HiOutlineSparkles, HiOutlineCollection } from 'react-icons/hi';
 import { useTheme } from './ThemeContext';
+import { Dock, DockIcon } from './ui/Dock';
 import './Navbar.css';
 
 export default function Navbar() {
@@ -16,10 +17,21 @@ export default function Navbar() {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    const handleThemeClick = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        toggleTheme({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+            currentTarget: e.currentTarget
+        });
+    };
+
     const links = [
-        { label: 'Features', href: '#features' },
-        { label: 'API', href: '#api' },
-        { label: 'Docs', href: '#docs' },
+        { label: 'Features', href: '#features', icon: <HiOutlineLightningBolt /> },
+        { label: 'Integrations', href: '#features', icon: <HiOutlineCollection /> },
+        { label: 'AI Builder', href: '#ai-builder', icon: <HiOutlineSparkles /> },
+        { label: 'API', href: '#api', icon: <HiOutlineCode /> },
+        { label: 'Docs', href: '#docs', icon: <HiOutlineBookOpen /> },
     ];
 
     const logoSrc = theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg';
@@ -38,19 +50,24 @@ export default function Navbar() {
                 </a>
 
                 <div className="navbar-center">
-                    <ul className="navbar-links">
+                    <Dock iconSize={36} iconMagnification={46}>
                         {links.map((link) => (
-                            <li key={link.label}>
-                                <a href={link.href} className="navbar-link">
+                            <DockIcon key={link.label} onClick={() => window.location.hash = link.href}>
+                                <a href={link.href} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                                     {link.label}
                                 </a>
-                            </li>
+                            </DockIcon>
                         ))}
-                    </ul>
+                    </Dock>
                 </div>
 
                 <div className="navbar-actions">
-                    <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+                    <button className="theme-toggle" onClick={handleThemeClick} aria-label="Toggle theme" style={{ position: 'relative' }}>
+                        <span
+                            id="theme-toggle-anchor"
+                            style={{ position: 'absolute', top: '50%', left: '50%', width: 0, height: 0, pointerEvents: 'none', overflow: 'hidden' }}
+                            aria-hidden="true"
+                        />
                         <AnimatePresence mode="wait">
                             {theme === 'dark' ? (
                                 <motion.span

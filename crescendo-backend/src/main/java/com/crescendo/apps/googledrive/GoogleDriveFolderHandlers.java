@@ -49,7 +49,7 @@ public class GoogleDriveFolderHandlers {
      * Config: name (required), folderId (optional — parent folder ID),
      *         driveId (optional — shared drive ID)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "createFolder")
+    @ActionMapping(appKey = "google-drive", actionKey = "createFolder")
     @SuppressWarnings("unchecked")
     public ActionResult createFolder(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -90,7 +90,7 @@ public class GoogleDriveFolderHandlers {
      * Permanently delete a folder (and all its contents).
      * Config: folderId (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "deleteFolder")
+    @ActionMapping(appKey = "google-drive", actionKey = "deleteFolder")
     public ActionResult deleteFolder(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -122,7 +122,7 @@ public class GoogleDriveFolderHandlers {
      * Config: folderId (required), email (required), role (reader|writer|commenter, default "reader"),
      *         type (user|group|domain|anyone, default "user")
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "shareFolder")
+    @ActionMapping(appKey = "google-drive", actionKey = "shareFolder")
     @SuppressWarnings("unchecked")
     public ActionResult shareFolder(ActionContext context) {
         Map<String, Object> config = context.configuration();

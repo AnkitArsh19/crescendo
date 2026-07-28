@@ -47,7 +47,7 @@ public class GoogleFormsApp implements AppDefinition {
                                         "helpText", "Select the form to watch for responses")))),
                 List.of(
                         Map.of(
-                                "actionKey", "create-form",
+                                "actionKey", "createForm",
                                 "name", "Create Form",
                                 "description", "Create a new Google Form",
                                 "configSchema", List.of(
@@ -60,7 +60,7 @@ public class GoogleFormsApp implements AppDefinition {
                                                 "placeholder", "feedback-form",
                                                 "helpText", "Name in Google Drive (defaults to form title)"))),
                         Map.of(
-                                "actionKey", "list-responses",
+                                "actionKey", "listResponses",
                                 "name", "List Responses",
                                 "description", "Retrieve responses from a form",
                                 "configSchema", List.of(
@@ -78,7 +78,7 @@ public class GoogleFormsApp implements AppDefinition {
                                                 "placeholder", "20",
                                                 "helpText", "Maximum responses to return"))),
                         Map.of(
-                                "actionKey", "get-form",
+                                "actionKey", "getForm",
                                 "name", "Get Form",
                                 "description", "Get form metadata and questions",
                                 "configSchema", List.of(

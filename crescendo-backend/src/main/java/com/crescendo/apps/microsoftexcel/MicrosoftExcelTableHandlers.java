@@ -18,7 +18,7 @@ public class MicrosoftExcelTableHandlers {
     private static final String GRAPH_API = MicrosoftExcelSupport.GRAPH_API;
 
     // ── appendRow ─────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "appendRow")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "appendRow")
     public ActionResult appendRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String driveItemId = MicrosoftExcelSupport.require(config, "driveItemId");

@@ -48,7 +48,7 @@ public class GoogleDriveDriveHandlers {
      * Create a new shared drive.
      * Config: name (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "createDrive")
+    @ActionMapping(appKey = "google-drive", actionKey = "createDrive")
     @SuppressWarnings("unchecked")
     public ActionResult createDrive(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -83,7 +83,7 @@ public class GoogleDriveDriveHandlers {
      * Delete a shared drive (must be empty).
      * Config: driveId (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "deleteDrive")
+    @ActionMapping(appKey = "google-drive", actionKey = "deleteDrive")
     public ActionResult deleteDrive(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String accessToken = resolveToken(context);
@@ -114,7 +114,7 @@ public class GoogleDriveDriveHandlers {
      * Get a shared drive by ID.
      * Config: driveId (required)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "getDrive")
+    @ActionMapping(appKey = "google-drive", actionKey = "getDrive")
     @SuppressWarnings("unchecked")
     public ActionResult getDrive(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -146,7 +146,7 @@ public class GoogleDriveDriveHandlers {
      * List all shared drives the user has access to.
      * Config: pageSize (int, default 20)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "listDrives")
+    @ActionMapping(appKey = "google-drive", actionKey = "listDrives")
     @SuppressWarnings("unchecked")
     public ActionResult listDrives(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -177,7 +177,7 @@ public class GoogleDriveDriveHandlers {
      * Update a shared drive's properties.
      * Config: driveId (required), name (optional)
      */
-    @ActionMapping(appKey = "googledrive", actionKey = "updateDrive")
+    @ActionMapping(appKey = "google-drive", actionKey = "updateDrive")
     @SuppressWarnings("unchecked")
     public ActionResult updateDrive(ActionContext context) {
         Map<String, Object> config = context.configuration();

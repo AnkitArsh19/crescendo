@@ -24,7 +24,7 @@ public class MicrosoftExcelWorksheetHandlers {
     private static final String GRAPH_API = MicrosoftExcelSupport.GRAPH_API;
 
     // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "getAllWorksheets")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "getAllWorksheets")
     @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         String driveItemId = MicrosoftExcelSupport.require(context.configuration(), "driveItemId");
@@ -42,7 +42,7 @@ public class MicrosoftExcelWorksheetHandlers {
     }
 
     // ── readRows ──────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "readRows")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "readRows")
     @SuppressWarnings("unchecked")
     public ActionResult readRows(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -102,7 +102,7 @@ public class MicrosoftExcelWorksheetHandlers {
     }
 
     // ── findRow ───────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "findRow")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "findRow")
     @SuppressWarnings("unchecked")
     public ActionResult findRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
@@ -156,7 +156,7 @@ public class MicrosoftExcelWorksheetHandlers {
     }
 
     // ── updateRow ─────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "updateRow")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "updateRow")
     public ActionResult updateRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String driveItemId = MicrosoftExcelSupport.require(config, "driveItemId");
@@ -189,7 +189,7 @@ public class MicrosoftExcelWorksheetHandlers {
     }
 
     // ── deleteRow ─────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "microsoftexcel", actionKey = "deleteRow")
+    @ActionMapping(appKey = "microsoft-excel", actionKey = "deleteRow")
     public ActionResult deleteRow(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String driveItemId = MicrosoftExcelSupport.require(config, "driveItemId");

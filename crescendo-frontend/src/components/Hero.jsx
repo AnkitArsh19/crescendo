@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 import {
     HiArrowRight,
     HiOutlineLightningBolt,
@@ -15,6 +15,9 @@ import {
     SiGithub, SiRedis,
 } from 'react-icons/si';
 import { FaSlack } from 'react-icons/fa';
+import { useTypewriter } from '../hooks/useTypewriter';
+import { useTheme } from './ThemeContext';
+import { AnimatedBeam } from './ui/AnimatedBeam';
 import './Hero.css';
 
 /* ── Animation variants ── */
@@ -24,10 +27,10 @@ const staggerContainer = {
 };
 
 const fadeUp = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: 32 },
     visible: {
         opacity: 1, y: 0,
-        transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] },
     },
 };
 
@@ -43,6 +46,15 @@ const integrations = [
     { icon: <SiRedis />, name: 'Redis' },
     { icon: <HiOutlineGlobe />, name: 'Webhooks' },
     { icon: <HiOutlineClock />, name: 'Schedules' },
+];
+
+/* ── Typewriter phrases ── */
+const TYPEWRITER_PHRASES = [
+    'workflows',
+    'automations',
+    'integrations',
+    'pipelines',
+    'campaigns',
 ];
 
 /* ── Workflow execution cycle ── */
@@ -100,18 +112,105 @@ function TravelingDot({ pathId, active, delay = 0, duration = 1.5 }) {
     return <circle ref={dotRef} className="flow-dot" r="3.5" opacity="0" />;
 }
 
+/* ── Floating ambient orb ── */
+function AmbientOrb({ className, delay = 0 }) {
+    return (
+        <motion.div
+            className={`ambient-orb ${className}`}
+            animate={{
+                y: [0, -24, 0],
+                x: [0, 12, -8, 0],
+                scale: [1, 1.06, 0.96, 1],
+            }}
+            transition={{
+                duration: 8 + delay,
+                ease: 'easeInOut',
+                repeat: Infinity,
+                delay,
+            }}
+        />
+    );
+}
+
+/* ── Cursor-follow glow on canvas ── */
+function CanvasGlow({ containerRef }) {
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+    const springX = useSpring(mouseX, { damping: 30, stiffness: 200 });
+    const springY = useSpring(mouseY, { damping: 30, stiffness: 200 });
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const handleMove = (e) => {
+            const rect = el.getBoundingClientRect();
+            mouseX.set(e.clientX - rect.left);
+            mouseY.set(e.clientY - rect.top);
+        };
+        el.addEventListener('mousemove', handleMove);
+        return () => el.removeEventListener('mousemove', handleMove);
+    }, [containerRef, mouseX, mouseY]);
+
+    return (
+        <motion.div
+            className="canvas-cursor-glow"
+            style={{ left: springX, top: springY }}
+        />
+    );
+}
+
+/* ── Animated counter stat ── */
+function AnimatedStat({ target, suffix, label }) {
+    const [count, setCount] = useState(0);
+    const ref = useRef(null);
+    const started = useRef(false);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && !started.current) {
+                    started.current = true;
+                    const duration = 1800;
+                    const steps = 60;
+                    const increment = target / steps;
+                    let current = 0;
+                    const timer = setInterval(() => {
+                        current = Math.min(current + increment, target);
+                        setCount(Math.floor(current));
+                        if (current >= target) clearInterval(timer);
+                    }, duration / steps);
+                }
+            },
+            { threshold: 0.5 }
+        );
+        if (ref.current) observer.observe(ref.current);
+        return () => observer.disconnect();
+    }, [target]);
+
+    return (
+        <div ref={ref} className="hero-stat">
+            <span className="hero-stat-number">{count.toLocaleString()}{suffix}</span>
+            <span className="hero-stat-label">{label}</span>
+        </div>
+    );
+}
+
 export default function Hero() {
     const wf = useWorkflowAnimation();
-
-    // SVG path coordinates (within viewBox 560 x 350-ish, offset by header 36px)
-    // Trigger center-right: ~180, 157 (center of canvas area)
-    // Action1 center-left: ~385, 85
-    // Action2 center-left: ~385, 229
-    const pathTop = "M 180 157 C 260 157, 310 85, 385 85";
-    const pathBottom = "M 180 157 C 260 157, 310 229, 385 229";
+    const { displayText, isTyping } = useTypewriter(TYPEWRITER_PHRASES, 65, 35, 2000);
+    const { theme } = useTheme();
+    const canvasRef = useRef(null);
+    const triggerRef = useRef(null);
+    const action1Ref = useRef(null);
+    const action2Ref = useRef(null);
 
     return (
         <section className="hero" id="hero">
+            {/* ── Ambient background orbs ── */}
+            <AmbientOrb className="orb-1" delay={0} />
+            <AmbientOrb className="orb-2" delay={2.5} />
+            <AmbientOrb className="orb-3" delay={1.2} />
+
             <div className="hero-inner">
                 {/* ── Left — Text ── */}
                 <motion.div
@@ -128,7 +227,10 @@ export default function Hero() {
                     <motion.h1 variants={fadeUp} className="hero-title">
                         Automate your
                         <br />
-                        <span className="hero-title-serif">workflows</span>
+                        <span className="hero-title-serif typewriter-word">
+                            {displayText}
+                            <span className={`typewriter-cursor ${isTyping ? 'blinking' : 'solid'}`}>|</span>
+                        </span>
                         <br />
                         with confidence
                     </motion.h1>
@@ -143,6 +245,15 @@ export default function Hero() {
                         </Link>
                         <Link to="/docs" className="hero-btn-secondary">View Documentation</Link>
                     </motion.div>
+
+                    {/* ── Animated stats ── */}
+                    <motion.div variants={fadeUp} className="hero-stats">
+                        <AnimatedStat target={114} suffix="+" label="Integrations" />
+                        <div className="hero-stat-divider" />
+                        <AnimatedStat target={868} suffix="+" label="Actions" />
+                        <div className="hero-stat-divider" />
+                        <AnimatedStat target={99} suffix="%" label="Uptime SLA" />
+                    </motion.div>
                 </motion.div>
 
                 {/* ── Right — Canvas Workflow ── */}
@@ -152,16 +263,19 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 >
-                    <div className="workflow-canvas">
+                    <div className="workflow-canvas" ref={canvasRef}>
+                        {/* Cursor-follow glow */}
+                        <CanvasGlow containerRef={canvasRef} />
+
                         {/* Dot grid */}
                         <div className="canvas-grid" />
 
                         {/* Header bar */}
                         <div className="canvas-header">
                             <div className="canvas-dots">
-                                <span className="canvas-dot" />
-                                <span className="canvas-dot" />
-                                <span className="canvas-dot" />
+                                <span className="canvas-dot canvas-dot-red" />
+                                <span className="canvas-dot canvas-dot-yellow" />
+                                <span className="canvas-dot canvas-dot-green" />
                             </div>
                             <span className="canvas-filename">lead-follow-up.flow</span>
                             <span className="canvas-status">
@@ -170,35 +284,33 @@ export default function Hero() {
                             </span>
                         </div>
 
-                        {/* SVG connector paths */}
-                        <svg className="canvas-connectors" viewBox="0 0 560 314" preserveAspectRatio="none">
-                            {/* Static paths */}
-                            <path d={pathTop} className="connector-path" />
-                            <path d={pathBottom} className="connector-path" />
-
-                            {/* Animated dash overlay */}
-                            <path
-                                d={pathTop}
-                                className={`connector-pulse ${wf.flowActive ? 'active' : ''}`}
-                            />
-                            <path
-                                d={pathBottom}
-                                className={`connector-pulse ${wf.flowActive ? 'active' : ''}`}
-                            />
-
-                            {/* Traveling dots */}
-                            <TravelingDot pathId="path-top-hidden" active={wf.flowActive} delay={0} duration={2} />
-                            <TravelingDot pathId="path-bottom-hidden" active={wf.flowActive} delay={400} duration={2} />
-
-                            {/* Hidden paths for getPointAtLength */}
-                            <path id="path-top-hidden" d={pathTop} fill="none" stroke="none" />
-                            <path id="path-bottom-hidden" d={pathBottom} fill="none" stroke="none" />
-                        </svg>
+                        {/* Dynamic Animated Beams connecting workflow nodes in monochrome tones */}
+                        <AnimatedBeam
+                            containerRef={canvasRef}
+                            fromRef={triggerRef}
+                            toRef={action1Ref}
+                            curvature={0}
+                            duration={3.2}
+                            gradientStartColor={theme === 'dark' ? '#71717a' : '#a1a1aa'}
+                            gradientStopColor={theme === 'dark' ? '#ffffff' : '#18181b'}
+                            pathColor={theme === 'dark' ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.12)'}
+                        />
+                        <AnimatedBeam
+                            containerRef={canvasRef}
+                            fromRef={triggerRef}
+                            toRef={action2Ref}
+                            curvature={0}
+                            duration={3.2}
+                            delay={1.6}
+                            gradientStartColor={theme === 'dark' ? '#71717a' : '#a1a1aa'}
+                            gradientStopColor={theme === 'dark' ? '#ffffff' : '#18181b'}
+                            pathColor={theme === 'dark' ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.12)'}
+                        />
 
                         {/* Nodes */}
                         <div className="canvas-nodes">
                             {/* Trigger — left */}
-                            <div className={`hero-wf-node hero-wf-node-trigger ${wf.triggerDone ? 'completed' : ''}`}>
+                            <div ref={triggerRef} className={`hero-wf-node hero-wf-node-trigger ${wf.triggerDone ? 'completed' : ''}`}>
                                 <div className="hero-wf-node-icon">
                                     <HiOutlineLightningBolt />
                                 </div>
@@ -213,7 +325,7 @@ export default function Hero() {
                             </div>
 
                             {/* Action 1 — top right */}
-                            <div className={`hero-wf-node hero-wf-node-action-1 ${wf.action1Done ? 'completed' : ''}`}>
+                            <div ref={action1Ref} className={`hero-wf-node hero-wf-node-action-1 ${wf.action1Done ? 'completed' : ''}`}>
                                 <div className="hero-wf-node-icon">
                                     <HiOutlineMail />
                                 </div>
@@ -229,7 +341,7 @@ export default function Hero() {
                             </div>
 
                             {/* Action 2 — bottom right */}
-                            <div className={`hero-wf-node hero-wf-node-action-2 ${wf.action2Done ? 'completed' : ''}`}>
+                            <div ref={action2Ref} className={`hero-wf-node hero-wf-node-action-2 ${wf.action2Done ? 'completed' : ''}`}>
                                 <div className="hero-wf-node-icon">
                                     <HiOutlineDatabase />
                                 </div>
