@@ -1,7 +1,7 @@
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.7.0
-python-dotenv>=1.0.1
+python-dotenv>=1.2.2
 groq>=0.9.0
 langgraph>=0.2.0
 langgraph-checkpoint-redis>=0.1.0
