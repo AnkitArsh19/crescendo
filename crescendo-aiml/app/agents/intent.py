@@ -1,21 +1,22 @@
 """
-Stage 1 — Intent Classifier
-============================
-Uses llama-3.1-8b-instant (fast / cheap) to parse a natural-language prompt
-into structured intent: trigger description, action descriptions, and whether
+Stage 1 — Intent Classifier  (async)
+======================================
+Uses llama-3.1-8b-instant to parse a natural-language prompt into structured
+intent: trigger description, action descriptions, branching flag, and whether
 clarification is needed.
 
-User input is wrapped in <user_request>…</user_request> XML delimiters here
-to prevent prompt injection from bleeding into instruction context.
+Phase 3 changes:
+  - Fully async (uses AsyncGroq)
+  - Detects conditional/branching intent (has_branching)
 """
 
 import json
 import logging
-import os
 from typing import Optional
 
-from groq import Groq
+from groq import AsyncGroq
 
+from app.agents.client import get_groq_client
 from app.schemas.workflow import IntentResult
 from app.audit.logger import audit_log
 
@@ -35,26 +36,32 @@ RULES:
 1. Respond with ONLY valid JSON — no markdown fences, no extra text.
 2. The JSON must conform exactly to this schema:
    {
-     "trigger_description":   "string — what event should trigger the workflow",
-     "action_descriptions":   ["string — what should happen (one item per action step)"],
-     "needs_clarification":   true/false,
-     "clarifying_questions":  ["string"] // only if needs_clarification is true
+     "trigger_description":  "string — what event should trigger the workflow",
+     "action_descriptions":  ["string — what should happen (one item per action step)"],
+     "needs_clarification":  true/false,
+     "clarifying_questions": ["string"],  // only if needs_clarification=true, else []
+     "has_branching":        true/false,
+     "branch_description":   "string | null"
    }
-3. Set needs_clarification=true if:
+3. Set needs_clarification=true ONLY if:
    - The trigger is too vague to identify a specific app or event
    - The desired action is ambiguous (e.g. "notify me" with no channel specified)
    - Multiple conflicting interpretations are equally plausible
-4. If needs_clarification=true, populate clarifying_questions with specific,
-   concise questions (max 3).
-5. If the intent is clear enough, set needs_clarification=false and return
-   empty clarifying_questions.
+4. If needs_clarification=true, populate clarifying_questions with ≤3 specific questions.
+5. Set has_branching=true when the user describes conditional logic, for example:
+   - "If X, do Y, otherwise do Z"
+   - "Only run the next step when condition is met"
+   - "Depending on whether … send to A or B"
+6. When has_branching=true, set branch_description to a plain-English summary of
+   the conditional logic (e.g. "If email subject contains 'urgent', post to #alerts,
+   else save to Notion").  Otherwise set it to null.
 """
 
 
-def classify_intent(
+async def classify_intent(
     sanitized_prompt: str,
     user_id: str,
-    groq_client: Optional[Groq] = None,
+    groq_client: Optional[AsyncGroq] = None,
 ) -> IntentResult:
     """
     Stage 1: classify the user intent from the sanitized prompt.
@@ -62,25 +69,16 @@ def classify_intent(
     Parameters
     ----------
     sanitized_prompt:
-        User input already wrapped in <user_request>…</user_request> by the sanitizer.
+        User input already wrapped in <user_request>…</user_request>.
     user_id:
         For audit logging.
     groq_client:
-        Optional pre-built Groq client (for testing / reuse). If None, a new
-        client is built from GROQ_API_KEY env var.
-
-    Returns
-    -------
-    IntentResult — always returns a valid object; raises on unrecoverable error.
+        Optional pre-built AsyncGroq client.  Falls back to shared singleton.
     """
-    if groq_client is None:
-        api_key = os.getenv("GROQ_API_KEY", "")
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set")
-        groq_client = Groq(api_key=api_key)
+    client = groq_client or get_groq_client()
 
     try:
-        response = groq_client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": _INTENT_SYSTEM},
