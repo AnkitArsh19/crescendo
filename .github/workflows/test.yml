@@ -40,7 +40,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Run Backend Tests
-        run: ./mvnw -q test
+        run: |
+          chmod +x mvnw
+          cp src/main/resources/application.properties.example src/main/resources/application.properties
+          ./mvnw -q test
         working-directory: crescendo-backend
 
   frontend-test:

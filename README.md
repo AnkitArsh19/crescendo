@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="crescendo-frontend/public/logo.png" alt="Crescendo" width="140" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="crescendo-frontend/public/logo-readme-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="crescendo-frontend/public/logo-readme-light.svg">
+    <img alt="Crescendo" src="crescendo-frontend/public/logo-readme-light.svg" width="450">
+  </picture>
 </p>
 
 # Crescendo

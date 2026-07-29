@@ -50,6 +50,7 @@ jobs:
         run: |
           cd crescendo-backend
           chmod +x mvnw
+          cp src/main/resources/application.properties.example src/main/resources/application.properties
           ./mvnw -q spring-boot:run -DskipTests -Dspring.profiles.active=ci -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
           echo $! > ../backend.pid
           for i in $(seq 1 40); do
@@ -71,7 +72,7 @@ jobs:
 
       - name: Fetch OpenAPI Spec
         run: |
-          curl --fail --show-error --silent --max-time 30 "http://localhost:8080/api-docs/crescendo-public-api-v1" -o openapi.json
+          curl --fail --show-error --silent --max-time 30 "http://localhost:8080/v3/api-docs/crescendo-public-api-v1" -o openapi.json
 
       - name: Stop backend
         if: always()
