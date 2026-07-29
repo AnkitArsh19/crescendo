@@ -52,8 +52,15 @@ services:
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/1}
+      - JAVA_BACKEND_URL=http://crescendo-backend:8080/internal/catalog
     networks:
       - crescendo-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      crescendo-backend:
+        condition: service_started
 
   # Prometheus Telemetry Collector
   prometheus:

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -73,11 +74,13 @@ public class WorkflowDraftController {
         Map<String, Object> enrichedContext =
             aiContextService.buildContext(resolvedUserId, request.context());
 
-        Map<String, Object> body = Map.of(
-                "userId",  resolvedUserId.toString(),
-                "prompt",  request.prompt(),
-                "context", enrichedContext
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("userId", resolvedUserId.toString());
+        body.put("prompt", request.prompt());
+        body.put("context", enrichedContext);
+        if (request.session_id() != null && !request.session_id().isBlank()) {
+            body.put("session_id", request.session_id());
+        }
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl(trimTrailingSlash(pythonBaseUrl))
@@ -130,7 +133,8 @@ public class WorkflowDraftController {
 
     public record WorkflowDraftRequest(
             @NotBlank @Size(max = 8000) String prompt,
-            Map<String, Object> context
+            Map<String, Object> context,
+            String session_id
     ) {}
 }
 

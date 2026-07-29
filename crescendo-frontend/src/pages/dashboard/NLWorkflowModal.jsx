@@ -32,20 +32,62 @@ export default function NLWorkflowModal({ onClose }) {
     const [error, setError] = useState(null);
     const [unavailable, setUnavailable] = useState(false);
 
+    // Multi-turn clarification state
+    const [sessionId, setSessionId] = useState(null);
+    const [clarifyingQuestions, setClarifyingQuestions] = useState([]);
+    const [suggestedOptions, setSuggestedOptions] = useState([]);
+    const [selectedOption, setSelectedOption] = useState('');
+
+    // Default fallback options if AI asks open-ended questions without explicit list
+    const DEFAULT_APP_OPTIONS = [
+        { label: 'Slack (Post Message / Notification)', value: 'Slack' },
+        { label: 'Gmail (Send Email / Watch Inbox)', value: 'Gmail' },
+        { label: 'GitHub (Repository / PR / Issues)', value: 'GitHub' },
+        { label: 'Notion (Create Page / Database Row)', value: 'Notion' },
+        { label: 'Discord (Webhook / Channel Message)', value: 'Discord' },
+        { label: 'Google Sheets (Add Row / Update)', value: 'Google Sheets' },
+        { label: 'Webhook (HTTP Trigger / Action)', value: 'Webhook' }
+    ];
+
     // ── Generate & Create Workflow from AI ────────────────────────────────────
-    async function handleGenerate() {
-        if (!prompt.trim()) return;
+    async function handleGenerate(overridePrompt = null) {
+        const textToSubmit = overridePrompt || selectedOption || prompt;
+        if (!textToSubmit.trim()) return;
+
         setGenerating(true);
         setError(null);
         setUnavailable(false);
 
         try {
-            // 1. Fetch draft from AI
-            const data = await aiApi.createWorkflowDraft(prompt.trim());
+            // 1. Fetch draft from AI (passing active sessionId if in multi-turn mode)
+            const data = await aiApi.createWorkflowDraft(textToSubmit.trim(), {}, sessionId);
+
+            if (data.session_id) {
+                setSessionId(data.session_id);
+            }
+
+            // Check if AI requires clarification / options
+            if (!data.workflow_spec && (data.clarifying_questions?.length > 0 || data.suggested_options?.length > 0)) {
+                setClarifyingQuestions(data.clarifying_questions || []);
+                const optionsList = data.suggested_options && data.suggested_options.length > 0
+                    ? data.suggested_options
+                    : DEFAULT_APP_OPTIONS;
+                setSuggestedOptions(optionsList);
+                if (optionsList.length > 0) {
+                    setSelectedOption(optionsList[0].value || optionsList[0].label);
+                }
+                return;
+            }
+
             const spec = data.workflow_spec;
             if (!spec) {
-                throw new Error("No workflow generated. Try rephrasing your prompt.");
+                throw new Error("No workflow generated. Try rephrasing your prompt or selecting an option below.");
             }
+
+            // Reset clarification state on success
+            setClarifyingQuestions([]);
+            setSuggestedOptions([]);
+            setSelectedOption('');
 
             // 2. Create the empty workflow
             const created = await workflowApi.create({ name: spec.workflow_name || 'AI Generated Workflow' });
@@ -59,9 +101,9 @@ export default function NLWorkflowModal({ onClose }) {
                 graphSteps.push({
                     clientId,
                     type: 'TRIGGER',
-                    name: spec.trigger.trigger_type,
-                    actionKey: spec.trigger.trigger_type,
-                    appKey: spec.trigger.app_name,
+                    name: spec.trigger.trigger_key || spec.trigger.app_key || 'Trigger',
+                    actionKey: spec.trigger.trigger_key || spec.trigger.app_key,
+                    appKey: spec.trigger.app_key,
                     parentStepId: null,
                     configuration: spec.trigger.config || {}
                 });
@@ -75,10 +117,10 @@ export default function NLWorkflowModal({ onClose }) {
                     graphSteps.push({
                         clientId,
                         type: 'ACTION',
-                        name: action.action_type,
-                        actionKey: action.action_type,
-                        appKey: action.app_name,
-                        parentStepId: null, // Linear steps do not use parentStepId in this engine
+                        name: action.action_key || action.app_key || 'Action',
+                        actionKey: action.action_key || action.app_key,
+                        appKey: action.app_key,
+                        parentStepId: null,
                         configuration: action.config || {}
                     });
                 }
@@ -171,6 +213,67 @@ export default function NLWorkflowModal({ onClose }) {
                         ))}
                     </div>
                 </div>
+
+                {/* Clarification / Dropdown Selector Block */}
+                {clarifyingQuestions.length > 0 && (
+                    <div className="nlwf-clarification-box" style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '8px'
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#ffffff', fontSize: '0.9rem' }}>
+                            Clarification Required
+                        </div>
+                        {clarifyingQuestions.map((q, idx) => (
+                            <p key={idx} style={{ fontSize: '0.85rem', color: '#cccccc', marginBottom: '0.5rem' }}>{q}</p>
+                        ))}
+
+                        <label style={{ display: 'block', fontSize: '0.8rem', color: '#888888', marginBottom: '0.3rem' }}>
+                            Select Target Option
+                        </label>
+                        <select
+                            value={selectedOption}
+                            onChange={(e) => setSelectedOption(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '0.5rem 0.75rem',
+                                background: '#121212',
+                                color: '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.18)',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                outline: 'none'
+                            }}
+                        >
+                            {suggestedOptions.map((opt, i) => {
+                                const val = typeof opt === 'string' ? opt : (opt.value || opt.label);
+                                const lbl = typeof opt === 'string' ? opt : (opt.label || opt.value);
+                                return <option key={i} value={val}>{lbl}</option>;
+                            })}
+                        </select>
+
+                        <button
+                            type="button"
+                            onClick={() => handleGenerate(selectedOption)}
+                            style={{
+                                marginTop: '0.85rem',
+                                padding: '0.45rem 0.9rem',
+                                background: '#ffffff',
+                                color: '#000000',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                transition: 'opacity 0.2s ease'
+                            }}
+                        >
+                            Continue with Selected Option
+                        </button>
+                    </div>
+                )}
 
                 {/* Unavailable notice */}
                 {unavailable && (

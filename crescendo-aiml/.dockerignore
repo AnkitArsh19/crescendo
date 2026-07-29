@@ -1,0 +1,35 @@
+# Security: Never copy environment files into the Docker image payload
+.env
+.env.*
+!.env.example
+
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Development tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pdm-build/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

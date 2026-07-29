@@ -2,12 +2,12 @@
 Redis-backed LangGraph checkpointer with MemorySaver fallback
 ==============================================================
 Connects to the SAME Redis instance the Java backend already uses.
-Python session keys use the langgraph: prefix — no collision with the
+Python session keys use the langgraph prefix: no collision with the
 Java crescendo:* keyspace.
 
 Environment variables:
-  REDIS_URL            — default: redis://localhost:6379
-  SESSION_TTL_SECONDS  — default: 86400 (24 h); applied as checkpoint TTL
+  REDIS_URL             default: redis://localhost:6379
+  SESSION_TTL_SECONDS   default: 86400 (24 h); applied as checkpoint TTL
 """
 
 import logging
@@ -42,7 +42,7 @@ async def init_checkpointer() -> None:
 
     except Exception as exc:
         logger.warning(
-            "Redis unavailable (%s) — falling back to in-memory checkpointer. "
+            "Redis unavailable (%s), falling back to in-memory checkpointer. "
             "Multi-turn sessions will NOT survive server restarts.", exc
         )
         from langgraph.checkpoint.memory import MemorySaver

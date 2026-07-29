@@ -231,6 +231,39 @@ public class WorkflowActivationValidator {
         }
     }
 
+    private void validateAgentClusterNodes(List<Steps_command> steps, Map<UUID, Steps_command> stepsById) {
+        for (Steps_command step : steps) {
+            Map<String, Object> config = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
+            Object agentConfigObj = config.get("agentConfig");
+            if (agentConfigObj instanceof Map<?, ?> agentConfig) {
+                // Validate toolRefs
+                Object toolRefsObj = agentConfig.get("toolRefs");
+                if (toolRefsObj instanceof List<?> toolRefs) {
+                    for (Object ref : toolRefs) {
+                        try {
+                            UUID refId = UUID.fromString(String.valueOf(ref));
+                            if (!stepsById.containsKey(refId)) {
+                                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                        "Agent step " + step.getName() + " references missing tool sub-node: " + ref);
+                            }
+                        } catch (IllegalArgumentException ignored) {}
+                    }
+                }
+                // Validate memoryRef
+                Object memoryRefObj = agentConfig.get("memoryRef");
+                if (memoryRefObj != null && !String.valueOf(memoryRefObj).isBlank()) {
+                    try {
+                        UUID refId = UUID.fromString(String.valueOf(memoryRefObj));
+                        if (!stepsById.containsKey(refId)) {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                    "Agent step " + step.getName() + " references missing memory sub-node: " + memoryRefObj);
+                        }
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+        }
+    }
+
     private int number(Object value, int fallback) {
         if (value instanceof Number number) return number.intValue();
         try { return value != null ? Integer.parseInt(String.valueOf(value)) : fallback; }

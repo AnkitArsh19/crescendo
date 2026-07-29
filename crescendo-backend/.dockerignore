@@ -1,0 +1,15 @@
+# Ignore build outputs (except the compiled JAR which is explicitly copied)
+target/
+!target/*.jar
+
+# Ignore IDE config files
+.idea/
+.vscode/
+*.iml
+
+# Ignore local environment configs and credentials
+application-local.yml
+.env
+
+# Build dependencies
+node_modules/

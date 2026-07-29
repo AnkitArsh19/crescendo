@@ -6,13 +6,15 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+import os
+
 # Global state for catalog
 app_state: Dict[str, Any] = {
     "catalog": [],
     "catalog_version": None,
 }
 
-JAVA_BACKEND_URL = "http://localhost:8080/internal/catalog"
+JAVA_BACKEND_URL = os.getenv("JAVA_BACKEND_URL", "http://localhost:8080/internal/catalog")
 POLL_INTERVAL_SECONDS = 30
 
 def _fetch_full_catalog_sync():
