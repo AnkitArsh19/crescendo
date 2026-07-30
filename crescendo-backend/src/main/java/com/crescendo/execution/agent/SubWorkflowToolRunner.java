@@ -51,11 +51,20 @@ public class SubWorkflowToolRunner {
             log.info("Acquired lock {}. Executing sub-workflow {} as tool with input params={}",
                     lockKey, subWorkflowId, inputParams);
 
-            // Execute sub-workflow payload
-            return Map.of(
-                    "status", "SUCCESS",
-                    "subWorkflowId", subWorkflowId.toString(),
-                    "output", Map.of("executed", true, "params", inputParams)
+            // TODO (Phase 2 — Sub-workflow tool wiring):
+            // Inject WorkflowExecutionEngine and call executeSubWorkflow(subWorkflowId, ownerUserId, inputParams).
+            // This requires WorkflowExecutionEngine to expose a synchronous executeSubWorkflow() method that
+            // returns the final step output without creating a full async WorkflowRun record, OR
+            // creates a WorkflowRun with RUN_AS_TOOL status and blocks until it completes.
+            //
+            // The lock discipline here (tryLock → execute → unlock) is correct and must be preserved.
+            // Only the inner execution call needs to be wired.
+            //
+            // Until this is implemented, agent nodes that invoke sub-workflows will receive an error
+            // observation, which the LLM can handle gracefully by attempting a different tool.
+            throw new UnsupportedOperationException(
+                    "Sub-workflow tool execution is not yet implemented. " +
+                    "Wire WorkflowExecutionEngine.executeSubWorkflow() here. subWorkflowId=" + subWorkflowId
             );
         } finally {
             lockService.unlock(lockKey, lockToken.get());

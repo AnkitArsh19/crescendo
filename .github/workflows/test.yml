@@ -40,6 +40,16 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Run Backend Tests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/crescendo_test
+          SPRING_DATASOURCE_USERNAME: testuser
+          SPRING_DATASOURCE_PASSWORD: testpass
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+          SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+          SPRING_DATA_REDIS_HOST: localhost
+          SPRING_DATA_REDIS_PORT: 6379
+          CREDENTIALS_CRYPTO_KEY: dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3Q=
+          JWT_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGVzdA==
         run: |
           chmod +x mvnw
           cp src/main/resources/application.properties.example src/main/resources/application.properties

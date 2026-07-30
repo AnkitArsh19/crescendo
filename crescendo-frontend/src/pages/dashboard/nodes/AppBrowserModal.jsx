@@ -563,12 +563,19 @@ export default function AppBrowserModal({
                                     {catApps.map((app) => {
                                         const isConnected = connectedAppKeys.has(app.appKey);
                                         const needsAuth = app.authType && app.authType !== 'NONE';
+                                        // Apps flagged as coming soon are visible but not selectable.
+                                        // Remove 'agent' from this set once the Python reasoning layer is live.
+                                        const COMING_SOON_APPS = new Set(['agent']);
+                                        const isComingSoon = COMING_SOON_APPS.has(app.appKey);
 
                                         return (
                                             <button
                                                 key={app.appKey}
-                                                className={`abm-app-card ${isConnected ? 'connected' : ''}`}
+                                                className={`abm-app-card ${isConnected ? 'connected' : ''} ${isComingSoon ? 'coming-soon' : ''}`}
+                                                disabled={isComingSoon}
+                                                title={isComingSoon ? 'AI Agent is coming soon — Python reasoning layer is in progress.' : undefined}
                                                 onClick={(e) => {
+                                                    if (isComingSoon) return;
                                                     if (needsAuth && !isConnected && !connectOnly) {
                                                         handleConnectClick(e, app);
                                                         return;
@@ -596,24 +603,31 @@ export default function AppBrowserModal({
                                                     )}
                                                 </div>
                                                 <div className="abm-app-actions">
-                                                    {isConnected ? (
+                                                    {isComingSoon ? (
+                                                        <span className="abm-app-coming-soon-badge">
+                                                            Coming Soon
+                                                        </span>
+                                                    ) : isConnected ? (
                                                         <span className="abm-app-connected-badge">
                                                             <HiCheck style={{ fontSize: '0.6rem' }} /> Connected
                                                         </span>
                                                     ) : null}
-                                                    <span
-                                                        className="abm-app-connect-btn"
-                                                        role="button"
-                                                        tabIndex={0}
-                                                        onClick={(e) => handleConnectClick(e, app)}
-                                                        onKeyDown={(e) => e.key === 'Enter' && handleConnectClick(e, app)}
-                                                    >
-                                                        {(!needsAuth || isConnected) ? 'Options' : 'Connect'}
-                                                    </span>
+                                                    {!isComingSoon && (
+                                                        <span
+                                                            className="abm-app-connect-btn"
+                                                            role="button"
+                                                            tabIndex={0}
+                                                            onClick={(e) => handleConnectClick(e, app)}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handleConnectClick(e, app)}
+                                                        >
+                                                            {(!needsAuth || isConnected) ? 'Options' : 'Connect'}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </button>
                                         );
                                     })}
+
                                 </div>
                             </div>
                         ))

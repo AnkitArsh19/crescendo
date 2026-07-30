@@ -1,105 +1,48 @@
-# Workflow Studio & Interactive Canvas Manual
+# Workflow Studio
 
-The Crescendo Workflow Studio is an interactive graphical canvas where you design, configure, simulate, and deploy automated integrations between built-in services and external application providers.
+Workflow Studio is where you build a directed workflow graph. A workflow starts with a trigger, moves through actions, and can split into named paths with logic nodes.
 
----
+## Build a valid graph
 
-## Navigation & Cross-References
-* [113+ Backend Apps Catalog Index](/docs/apps-catalog-deepdive)
-* [Connections Architecture (BYOK & OAuth)](/docs/byok-vs-oauth)
-* [Workflow Runs & Diagnostic Logs](/docs/workflow-runs)
-* [AI Builder & Natural Language Automation](/docs/ai-builder)
+1. Create a workflow and add a **trigger**. A trigger is the entry point for each run.
+2. Add **actions** for the work that should happen after the trigger. An action may need a connected account selected in its configuration panel.
+3. Drag from one node’s output handle to the next node’s input handle to create an edge.
+4. Save with **Ctrl+S** or the Save control. The canvas validates the graph before it is persisted.
+5. Activate only when every connected account and required configuration field is ready.
 
----
+The canvas supports normal action nodes, branching nodes, and multiple downstream paths. It is valid for paths to reconverge when their dependencies are complete.
 
-## 1. Node Types & Graph Anatomy
+## Pass data between steps
 
-Every automated pipeline consists of three foundational node types:
+Use the variable picker next to a supported configuration field to insert data from an earlier step. It inserts a reference in the form:
 
-```
-+------------------+       +------------------+       +------------------+
-|   Trigger Node   | ----> |   Action Node    | ----> |   Branch Node    |
-| (Green Border)   |       |  (Standard Step) |       | (Logic Evaluator)|
-+------------------+       +------------------+       +------------------+
-| Event starter    |       | Integrates app   |       | Evaluates IF/ELSE|
-| (e.g. Webhook /  |       | (e.g. Post Slack |       | or SWITCH routes |
-| New Email)       |       | message)         |       | down path wires  |
-+------------------+       +------------------+       +------------------+
+```text
+{{steps.<step-number>.<field>}}
 ```
 
-1. **Trigger Node (Starter Step):** Defines the event that initiates execution. Every workflow requires exactly one trigger node (e.g., *Gmail: New Email Received* or *Custom Webhook: Payload Ingested*).
-2. **Action Node (Integration Step):** Performs an automated action against a connected service (e.g., *Slack: Send Message*, *Jira: Create Issue*, *Google Sheets: Append Row*).
-3. **Branch Node (Logic & Routing):** Evaluates conditional rules to route execution down alternative path wires (e.g., *Logic: If/Else Condition* or *Logic: Multi-Route Switch*).
+For a webhook trigger, the incoming event data is available from the trigger output. For example, a later message body can use a trigger field selected through the picker. Prefer the picker over hand-typing: field names vary by trigger and action, and the picker only shows values that are upstream of the node you are editing.
 
----
+> [!IMPORTANT]
+> A reference is evaluated at run time. Make sure the source value exists for every branch that can reach the destination node; otherwise the destination can receive an empty value.
 
-## 2. Navigating Canvas UI Controls
+## Add logic
 
-The interactive graphical studio provides full control over workflow graph topology:
+### If / else
 
-### Workspace Controls
-* **Adding Step Nodes:** Click **Add Node (+)** on the canvas toolbar or drag an integration module directly from the App Catalog drawer onto the canvas.
-* **Connecting Edge Wires:** Click the output connector handle (`out`) of an origin node and drag your mouse to the input handle (`in`) of a target destination node.
-* **Deleting Elements:** Select any node or connecting wire and press your keyboard `Delete` key, or click the contextual trash icon displayed upon hovering over elements.
-* **Auto-Layout Arrangement:** Click **Auto Layout** in the canvas utility menu to align node steps from left to right or top to bottom.
+`Logic: If` evaluates condition rows and emits either the **true** or **false** output. Connect each output handle to the path that should run for that result.
 
----
+Condition rows support equality, containment, prefix/suffix, emptiness, numeric comparisons, and regular expressions. Groups use **AND** inside a group and **OR** between groups.
 
-## 3. Configuring Steps & Dynamic Variable Interpolation
+### Switch
 
-Clicking any node step opens the side **Configuration Panel** for parameter input.
+`Logic: Switch` routes to the first matching rule in rules mode, or to a numeric output in expression mode. Its output handles are named `output_0`, `output_1`, and so on. Keep the number of rules and the connected outputs aligned so a match has a destination.
 
-### Dynamic Variable Binding Grammar
-To pass outputs from previous steps into subsequent action parameters, use Crescendo dynamic interpolation expressions:
-```json
-{{steps.<step_identifier_or_order>.<property_name>}}
-```
+## Before activation
 
-### Common Interpolation Expressions
-* `{{steps.trigger.body}}` - Accesses the complete raw body payload of an incoming Webhook trigger.
-* `{{steps.trigger.from}}` - Retrieves the sender address from an incoming email trigger.
-* `{{steps.1.issueKey}}` - Retrieves the issue key output generated by a Jira action in Step 1.
-* `{{steps.trigger.headers.authorization}}` - Inspects an incoming HTTP authorization header.
+- Select the correct connection for every provider action.
+- Resolve warnings in dynamic resource fields, such as an AI-suggested Slack channel that is not available in the selected account.
+- Check every required field and every variable reference.
+- Start with a reversible or test destination where an action has side effects.
+- After activation, use **History** to inspect the exact input, output, status, and error for each executed step.
 
-### Using the Variable Insertion Drawer
-Instead of manually typing variable expressions, click the **Variable (+)** tag button inside any text parameter box. A searchable side panel appears listing every available upstream output variable. Clicking a variable automatically inserts the correctly formatted expression into your configuration field.
-
----
-
-## 4. Visual Condition Rule Builder
-
-When configuring *Logic: If/Else* or *Logic: Switch* branch nodes, the visual Condition Rule Builder allows you to construct complex routing rules without writing code scripts.
-
-### Combinator Group Logic (AND / OR)
-* **Conditions within a Group (AND):** All criteria in a single condition group must evaluate to true simultaneously for the group to pass.
-* **Multiple Groups (OR):** You can add secondary condition groups. If any group evaluates to true, the workflow routes execution down that branch path.
-
-### Supported Evaluator Operators
-
-| Operator | Evaluator Description | Example Input & Usage |
-| :--- | :--- | :--- |
-| `equals` | Evaluates exact string or numerical equality | `{{steps.trigger.tier}}` equals `enterprise` |
-| `notEquals` | Asserts values are not identical | `{{steps.trigger.status}}` does not equal `cancelled` |
-| `contains` | Checks if a string contains a target substring | `{{steps.trigger.subject}}` contains `URGENT` |
-| `notContains` | Asserts substring is absent | `{{steps.trigger.body}}` does not contain `unsubscribe` |
-| `startsWith` | Asserts string begins with prefix | `{{steps.trigger.email}}` starts with `admin@` |
-| `endsWith` | Asserts string concludes with suffix | `{{steps.trigger.file}}` ends with `.pdf` |
-| `isEmpty` | Asserts value is null or empty string | `{{steps.trigger.phone}}` is empty |
-| `isNotEmpty` | Asserts value contains non-null data | `{{steps.trigger.customer_id}}` is not empty |
-| `greaterThan` | Numerical comparison (`>`) | `{{steps.trigger.amount}}` greater than `1000` |
-| `lessThan` | Numerical comparison (`<`) | `{{steps.trigger.risk_score}}` less than `50` |
-| `regex` | Pattern evaluation via ECMAScript regex | `{{steps.trigger.code}}` regex `^PR-[0-9]{4}$` |
-
-### Toggling Raw JSON Editor Mode
-Advanced users can click **Edit as JSON** in the upper right corner of the rule builder panel to inspect or edit the underlying JSON rule array directly. Any edits made in JSON mode automatically update the visual builder interface upon toggling back.
-
----
-
-## 5. Testing & Deploying Workflows
-
-Before activating a workflow in production, test execution flows using simulation controls:
-
-1. Click **Test Workflow** in the studio header toolbar.
-2. Enter a sample JSON test payload mimicking expected trigger inputs.
-3. Click **Run Test**. The canvas studio highlights each node step progressively as execution proceeds, displaying inline HTTP response badges (`200 OK` vs `500 Error`) and raw output payloads at every step.
-4. Once verified, flip the status toggle from **Draft** to **Active** to start processing production requests.
+See [Workflow runs](/docs/workflow-runs) for troubleshooting and [Connections and apps](/docs/apps-integrations) for provider setup.

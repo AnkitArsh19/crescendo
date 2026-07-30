@@ -1,67 +1,22 @@
-# Audience & Contact Management Manual
+# Contacts and suppressions
 
-Crescendo features a built-in CRM database layer designed to store subscriber profiles, categorize audiences into manageable segments, and enforce automated email hygiene rules.
+Contacts are the audience records used by the Email workspace. Suppressions are addresses that must not receive future messages from Crescendo.
 
----
+## Manage contacts
 
-## Navigation & Cross-References
-* [Email Marketing & Broadcasting](/docs/email-broadcasting)
-* [Analytics & Insights Dashboards](/docs/analytics-insights)
-* [Workflow Studio & Canvas](/docs/workflow-canvas)
-* [BYOK & OAuth Security](/docs/byok-vs-oauth)
+Open **Email → Contacts** to add, view, edit, or remove a contact. Use a real email address as the contact identity and keep optional fields consistent across your imports and workflows.
 
----
+When creating contacts through the API, use the Contact endpoints and grant the API key `contact:read` and/or `contact:write` as needed. The live [Audiences and Contacts reference](/docs/api/audiences) shows current request fields instead of relying on a fixed CSV-column convention.
 
-## 1. Contact Profiles & Metadata
+## Use contact data safely
 
-A Contact represents an individual subscriber profile containing identity data and custom metadata attributes.
+- Store only data you need for the message or workflow.
+- Use explicit names for custom properties so a template or workflow can map them consistently.
+- Treat contact data as personal data. Limit who can export it and do not include it in public webhook URLs or logs.
+- Before importing data, remove duplicate rows and verify that you have the necessary consent.
 
-### Creating Contacts Manually
-1. Open **Audiences** or **Contacts** from the left navigation menu.
-2. Click **Add Contact**.
-3. Supply the email address, first name, last name, and phone number.
-4. Input custom JSON metadata attributes (e.g., `{"plan": "enterprise", "industry": "fintech"}`). Custom properties can be referenced inside email templates or workflow routing logic.
+## Suppressions
 
----
+Open **Email → Suppressions** to manage addresses that should not receive mail. Suppression can result from an unsubscribe, complaint, bounce, or a manual compliance decision.
 
-## 2. Batch CSV Import Wizard
-
-For subscriber migrations, Crescendo provides an asynchronous CSV import pipeline:
-
-### CSV File Formatting Requirements
-Ensure your CSV spreadsheet uses UTF-8 encoding and includes standard header columns:
-* Required Column: `email`
-* Optional Columns: `first_name`, `last_name`, `phone`, `tags`
-
-### Import Execution Steps
-1. Go to **Audiences** and click **Import CSV**.
-2. Select your `.csv` file.
-3. Map CSV headers to corresponding Crescendo database fields.
-4. Select a duplicate resolution policy (*Update Existing*, *Skip Duplicates*, or *Overwrite*).
-5. Click **Start Import**. Progress displays in real time as records are processed.
-
----
-
-## 3. Dynamic Segmentation & Tags
-
-### Contact Tags
-Tags provide fast categorization. Multiple tags can be assigned to a contact (e.g., `vip`, `trial_user`, `q3_lead`). Workflow action steps can apply or remove tags automatically upon task completion.
-
-### Dynamic Audience Segments
-Unlike static subscriber lists, Dynamic Segments automatically evaluate contact attributes against rules:
-* Example Segment Criteria: `plan equals 'enterprise'` AND `tags contains 'active'`.
-* Whenever a workflow or API call updates a contact profile matching these rules, the contact is dynamically added to the segment.
-
----
-
-## 4. Suppressions & Bounce Hygiene
-
-To protect sender domain reputation, Crescendo automatically manages undeliverable email addresses:
-
-### Suppression Triggers
-* **Hard Bounces:** Inbox server permanently rejects delivery.
-* **Unsubscriptions:** Recipient clicks the mandatory `{{unsubscribe_url}}` footer link.
-* **Spam Complaints:** Recipient flags an email as spam in Gmail, Outlook, or Yahoo Mail.
-
-> [!NOTE]
-> Suppressed addresses are automatically blocked from future marketing dispatches across all campaigns.
+Use the public Suppressions API only from a trusted server and with the appropriate `suppression:*` scope. Adding or removing a suppression should be an intentional compliance decision; it is not a retry mechanism for a failed send.

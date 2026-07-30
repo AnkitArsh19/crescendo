@@ -704,3 +704,30 @@
     border-radius: var(--radius-md);
     border: 1px dashed var(--border-primary);
 }
+
+/* ── Coming Soon state ── */
+.abm-app-card.coming-soon {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.abm-app-card.coming-soon:hover {
+    transform: none;
+    border-color: var(--border-primary);
+    background: var(--bg-elevated);
+}
+
+.abm-app-coming-soon-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.22);
+    flex-shrink: 0;
+    white-space: nowrap;
+}

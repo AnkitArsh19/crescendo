@@ -1,39 +1,28 @@
-# Settings, Security & Workspace Administration
+# Account security and passkeys
 
-The Settings & Security console empowers workspace owners and system administrators to manage personal user profiles, configure robust passwordless authentication credentials, generate programmatic API keys, and organize team collaboration access.
+Open **Settings → Security** to manage account security features, including passkeys, multi-factor authentication where enabled, and active sessions.
 
-## WebAuthn & Passkey Biometric Authentication
+## Add a passkey
 
-Crescendo integrates natively with contemporary FIDO2 and WebAuthn security specifications, enabling passwordless authentication across mobile devices and secure modern desktop web browsers.
+1. Sign in to Crescendo and open **Settings → Security**.
+2. Start the passkey registration flow.
+3. Complete the browser or operating-system prompt with your device authenticator, a security key, or a nearby phone.
+4. Give the passkey a recognizable name if prompted.
 
-### Setting Up Passwordless Passkeys
-1. Navigate to **Settings > Security & Authentication** within your user dashboard menu.
-2. Under the **Passkeys (WebAuthn)** interface, click **Register New Passkey**.
-3. Your native operating system security prompt will activate:
-   * **Windows/macOS:** Scan your fingerprint (Touch ID / Windows Hello) or authenticate via facial recognition camera sensor.
-   * **Hardware Tokens:** Insert your USB security key (e.g., YubiKey) and touch the physical validation sensor.
-   * **Mobile Authentication:** Scan the generated QR code utilizing an authenticated iOS or Android cellular device.
-4. Assign an identifiable alias name to the credential (e.g., `MacBook Pro TouchID` or `YubiKey 5C NFC`).
+You can register more than one passkey. Keep at least one independent recovery method and another sign-in method until you have verified a new passkey on the devices you use.
 
-### Passwordless Login Benefits
-Once registered, you can log directly into your Crescendo workspace by selecting **Sign in with Passkey** on the primary login screen. Passkeys eliminate vulnerability to credential stuffing attacks and completely bypass risks associated with traditional phishing interception.
+## Sign in with a passkey
 
-## Developer API Key Administration
+On the sign-in page, enter the account email when requested and choose the passkey option. Browsers may offer the passkey automatically when a matching credential is available. The prompt comes from your browser or device; Crescendo never asks you to paste a passkey or private key.
 
-For automated systems communicating directly with Crescendo backend microservices over REST HTTPS endpoints, administrators can generate scoped programmatic authentication credentials under **Settings > Developer API**.
+## Recover access
 
-### Creating Scoped API Keys
-When generating a new programmatic secret key, select explicit role-based access scopes to adhere to zero-trust principle security architecture:
-* `workflows:read` - Allows read-only visibility into saved graph configurations and node structures.
-* `workflows:write` - Permits programmatic creation, editing, and architectural modification of workflow steps.
-* `runs:read` - Grants access to historical workflow execution logs and diagnostic run telemetry.
-* `runs:execute` - Enables remote applications to trigger workflow execution routines via API endpoint invocation.
+Use the recovery option on the sign-in page if you lose a passkey. Recovery confirms control of the account email before allowing a new passkey registration. Do not approve recovery emails or browser prompts that you did not initiate.
 
-> [!CAUTION]
-> Treat API keys with maximum confidentiality. Never embed API secrets directly inside frontend browser JavaScript code or public GitHub repositories. Always proxy automated integration requests through authenticated backend corporate architectures.
+## Keep the account secure
 
-## Workspace Preferences & Team Access
-
-Workspace administrative configuration controls ensure standardized collaboration across engineering and marketing personnel:
-* **Timezone Configuration:** Specify your local enterprise operational timezone (e.g., `Asia/Kolkata` or `America/New_York`). All scheduled campaign dispatches and timestamped execution logs align automatically with your selected regional standard time.
-* **Default Notification Routing:** Configure primary administrator email addresses for automated service incident warnings, usage quota exhaustion alerts, and security audit log deliveries.
+- Use a unique password if password login remains enabled.
+- Register a second passkey on a separate device or hardware security key.
+- Review active sessions and revoke sessions you do not recognize.
+- Do not share API keys, OAuth client secrets, backup codes, or recovery links.
+- Contact support immediately if you believe an account credential has been exposed.

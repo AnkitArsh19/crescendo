@@ -1,66 +1,45 @@
-# Email Marketing & Broadcasting Manual
+# Email delivery and broadcasts
 
-Crescendo provides a high-performance email delivery engine designed for both automated transactional notifications and high-volume marketing campaigns. This guide explains how to configure custom sender domains, design responsive email templates, and manage broadcast dispatch schedules.
+Crescendo Email provides sender domains, API keys, templates, email logs, contacts, broadcasts, analytics, and suppressions from the **Email** workspace.
 
----
+## Set up a sender domain
 
-## Navigation & Cross-References
-* [Audience & Contact Management](/docs/audiences-contacts)
-* [Analytics & Insights Dashboards](/docs/analytics-insights)
-* [Node.js / TypeScript SDK Reference](/docs/sdk-node)
-* [Python SDK Reference](/docs/sdk-python)
+1. Open **Email → Domains** and add the domain or subdomain that will appear in your From address.
+2. Copy the DNS records shown by Crescendo into your DNS provider exactly as displayed. The record names and values are generated per domain; do not copy generic SPF, DKIM, or DMARC values from another guide.
+3. Wait for DNS to propagate and select **Verify**.
+4. Send only after the domain status is verified.
 
----
+If your DNS provider supports Domain Connect, use the connection flow provided in the domain screen. It can add the provider’s generated records for you, but you should still confirm the resulting records in your DNS provider.
 
-## 1. Sender Domains & DNS Authentication
+## Create a reusable template
 
-To send emails on behalf of your domain and ensure inbox deliverability, you must configure a verified sender domain. Authenticating custom domain records prevents inbox providers (such as Gmail, Yahoo, and Outlook) from flagging your correspondence as spam.
+1. Open **Email → Templates** and create a draft.
+2. Add a subject and message content in the visual editor or HTML view.
+3. Use supported variables deliberately. The editor lists its reserved variables; use the exact spelling it provides.
+4. Send a test to an address you control, then publish when the result is correct.
 
-### Step-by-Step Domain Registration
-1. Open **Domains** from the dashboard sidebar.
-2. Click **Add Domain** and enter your sending hostname (e.g., `mail.yourcompany.com`).
-3. Upon creation, Crescendo generates three distinct DNS validation records: SPF, DKIM, and DMARC.
+Publishing makes a template available for template-based sends. Editing a published template can require a new review or publishing step, so test after each material change.
 
-### Required DNS Verification Records
+## Send with the API
 
-Add the following DNS records inside your domain registrar console (e.g., Cloudflare, GoDaddy, Namecheap, AWS Route53):
+Create an API key in **Email → API Keys** with `email:send`. Keep the key on your server.
 
-| Record Type | Host / Name | Value / Target | Purpose |
-| :--- | :--- | :--- | :--- |
-| **TXT (SPF)** | `@` or `mail` | `v=spf1 include:mail.crescendo.run ~all` | Authorizes Crescendo mail servers to dispatch email for your domain |
-| **TXT (DKIM)** | `crescendo._domainkey` | `k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQ...` | Attaches a cryptographic signature verifying message integrity |
-| **TXT (DMARC)** | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc-reports@yourcompany.com` | Instructs inbox providers on how to handle failed authentication mail |
+```javascript
+const { crescendo } = require('@crescendo/email');
 
-Once DNS propagation completes (typically 5 to 15 minutes), click **Verify Domain**. The domain status will change to **Verified**, enabling outgoing email delivery.
+const client = crescendo({ apiKey: process.env.CRESCENDO_API_KEY });
+await client.emails.send({
+  from: 'updates@your-verified-domain.example',
+  to: 'recipient@example.com',
+  subject: 'Account update',
+  htmlBody: '<p>Your account has been updated.</p>',
+  textBody: 'Your account has been updated.',
+  emailType: 'TRANSACTIONAL'
+});
+```
 
----
+See the [Emails API reference](/docs/api/emails) for the complete live request schema and examples in every supported language.
 
-## 2. Designing Email Templates
+## Contacts, broadcasts, and compliance
 
-The Template Builder allows you to create responsive HTML layouts for newsletters, marketing announcements, and transactional receipts.
-
-### Creating a Template
-1. Navigate to **Templates** and click **Create Template**.
-2. Input an internal Template Name, Email Subject Line, and Preheader Preview Text.
-3. Use the visual WYSIWYG editor or paste custom HTML code directly.
-4. Preview layouts across desktop and mobile viewports before saving.
-
-### Dynamic Variable Placeholders
-Templates support dynamic data binding using double curly brace syntax:
-* `{{contact.first_name}}` - Replaced by recipient first name.
-* `{{contact.email}}` - Recipient email address.
-* `{{company.name}}` - Your organization name.
-* `{{unsubscribe_url}}` - Mandatory unsubscribe link required for commercial compliance.
-
----
-
-## 3. Campaigns & Broadcast Dispatching
-
-A campaign dispatches a template message to selected contact audiences.
-
-### Initiating a Campaign
-1. Open **Campaigns** and click **New Campaign**.
-2. Select your verified Sender Domain and Template.
-3. Select your target **Audience Segment**.
-4. Send a test dispatch to an internal email address to verify formatting.
-5. Choose **Immediate Dispatch** or set a future UTC **Scheduled Dispatch** timestamp.
+Use **Contacts** to maintain your audience and **Broadcasts** to prepare a campaign. Confirm that recipients have the appropriate consent before sending marketing content. Crescendo’s suppression list prevents future sends to addresses that have opted out or otherwise must not receive messages; do not work around it by sending from another workflow or provider.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
     HiOutlineBookOpen, 
     HiOutlineLightningBolt, 
@@ -15,9 +15,13 @@ import {
     HiOutlineSparkles,
     HiOutlineAdjustments,
     HiOutlineCog,
-    HiOutlineTerminal
+    HiOutlineTerminal,
+    HiMoon,
+    HiSun,
+    HiArrowLeft
 } from 'react-icons/hi';
 import './DocsPage.css';
+import { useTheme } from '../../components/ThemeContext';
 
 import DocsSearch from './DocsSearch';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -52,7 +56,7 @@ const CONTENT_INDEX = [
     { title: 'AI Builder (Natural Language)', path: '/docs/ai-builder', contentSnippet: naturalLanguageMd },
     { title: 'Workflow Runs & Diagnostic Logs', path: '/docs/workflow-runs', contentSnippet: workflowRunsMd },
     { title: 'App Catalog & Integrations Overview', path: '/docs/apps-integrations', contentSnippet: appsIntegrationsMd },
-    { title: '113+ Backend Apps Catalog Index', path: '/docs/apps-catalog-deepdive', contentSnippet: appsCatalogDeepdiveMd },
+    { title: 'App Catalog Reference', path: '/docs/apps-catalog-deepdive', contentSnippet: appsCatalogDeepdiveMd },
     { title: 'BYOK & OAuth 2.0 Security Architecture', path: '/docs/byok-vs-oauth', contentSnippet: byokVsOauthMd },
     { title: 'Settings, Security & Passkeys', path: '/docs/settings-security', contentSnippet: settingsSecurityMd },
     { title: 'Node.js & TypeScript SDK (@crescendo/email)', path: '/docs/sdk-node', contentSnippet: sdkNodeMd },
@@ -66,6 +70,11 @@ const CONTENT_INDEX = [
     { title: 'Domains OpenAPI Spec', path: '/docs/api/domains', contentSnippet: 'Manage email sender domains and DNS via OpenAPI v3 definitions.' },
     { title: 'Audiences OpenAPI Spec', path: '/docs/api/audiences', contentSnippet: 'Manage contacts and audience segments via REST endpoints.' },
     { title: 'Suppressions OpenAPI Spec', path: '/docs/api/suppressions', contentSnippet: 'Manage suppressed emails and bounces via REST endpoints.' },
+    { title: 'Emails OpenAPI Spec', path: '/docs/api/emails', contentSnippet: 'Send transactional email and inspect delivery logs through the public API.' },
+    { title: 'Templates OpenAPI Spec', path: '/docs/api/templates', contentSnippet: 'Create, publish, test, and manage reusable email templates.' },
+    { title: 'Metrics OpenAPI Spec', path: '/docs/api/metrics', contentSnippet: 'Retrieve delivery metrics for verified sender domains.' },
+    { title: 'Webhooks OpenAPI Spec', path: '/docs/api/webhooks', contentSnippet: 'Manage outbound webhook subscriptions.' },
+    { title: 'Custom Events OpenAPI Spec', path: '/docs/api/custom-events', contentSnippet: 'Create and fire custom workflow events.' },
 ];
 
 const NAV_GROUPS = [
@@ -121,6 +130,11 @@ const NAV_GROUPS = [
             { id: 'api/audiences', title: 'Audiences (Contacts)', icon: <HiOutlineCode />, type: 'openapi', tag: 'Audiences (Contacts)' },
             { id: 'api/suppressions', title: 'Suppressions', icon: <HiOutlineCode />, type: 'openapi', tag: 'Suppressions' },
             { id: 'api/apps', title: 'App Catalog Schema', icon: <HiOutlineCode />, type: 'openapi', tag: 'App Catalog' },
+            { id: 'api/emails', title: 'Emails', icon: <HiOutlineCode />, type: 'openapi', tag: 'Emails' },
+            { id: 'api/templates', title: 'Templates', icon: <HiOutlineCode />, type: 'openapi', tag: 'Templates' },
+            { id: 'api/metrics', title: 'Metrics', icon: <HiOutlineCode />, type: 'openapi', tag: 'Metrics' },
+            { id: 'api/webhooks', title: 'Webhooks', icon: <HiOutlineCode />, type: 'openapi', tag: 'Webhooks' },
+            { id: 'api/custom-events', title: 'Custom Events', icon: <HiOutlineCode />, type: 'openapi', tag: 'Custom Events' },
         ]
     }
 ];
@@ -185,6 +199,7 @@ function extractToc(markdown) {
 export default function DocsPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
+    const { theme, toggleTheme } = useTheme();
 
     // Determine current content for TOC
     let currentToc = [];
@@ -210,7 +225,19 @@ export default function DocsPage() {
                 </header>
 
                 <div className="docs-topbar">
+                    <Link className="docs-back-link" to="/" aria-label="Back to Crescendo">
+                        <HiArrowLeft /> <span>Crescendo</span>
+                    </Link>
                     <DocsSearch contentIndex={CONTENT_INDEX} />
+                    <button
+                        type="button"
+                        className="docs-theme-toggle"
+                        onClick={toggleTheme}
+                        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    >
+                        {theme === 'dark' ? <HiSun /> : <HiMoon />}
+                    </button>
                 </div>
                 
                 <div className="docs-content-wrapper">
