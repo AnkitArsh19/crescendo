@@ -3,9 +3,17 @@ import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { HiOutlineDuplicate, HiCheck } from 'react-icons/hi';
 import { motion } from 'framer-motion';
+import { useTheme } from '../../components/ThemeContext';
+
+function headingId(children) {
+    return String(children)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+}
 
 function CopyButton({ text }) {
     const [copied, setCopied] = useState(false);
@@ -24,6 +32,7 @@ function CopyButton({ text }) {
 }
 
 export default function MarkdownRenderer({ content, prevItem, nextItem }) {
+    const { theme } = useTheme();
     return (
         <motion.div 
             className="docs-markdown-body"
@@ -70,7 +79,7 @@ export default function MarkdownRenderer({ content, prevItem, nextItem }) {
                                     </div>
                                     <SyntaxHighlighter
                                         {...rest}
-                                        style={vscDarkPlus}
+                                        style={theme === 'dark' ? vscDarkPlus : oneLight}
                                         language={language}
                                         PreTag="div"
                                         customStyle={{ margin: 0, borderRadius: '0 0 8px 8px', background: 'var(--bg-card)', border: 'none' }}
@@ -85,7 +94,9 @@ export default function MarkdownRenderer({ content, prevItem, nextItem }) {
                                 {children}
                             </code>
                         );
-                    }
+                    },
+                    h2: ({ children }) => <h2 id={headingId(children)}>{children}</h2>,
+                    h3: ({ children }) => <h3 id={headingId(children)}>{children}</h3>
                 }}
             >
                 {content}

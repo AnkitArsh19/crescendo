@@ -3,6 +3,19 @@ import { HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 import Fuse from 'fuse.js';
 
+function searchExcerpt(content, query) {
+    const plainText = content
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/[`#>*_|]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const matchAt = plainText.toLowerCase().indexOf(query.toLowerCase());
+    const start = matchAt > 48 ? matchAt - 48 : 0;
+    const excerpt = plainText.slice(start, start + 180).trim();
+    return `${start > 0 ? '…' : ''}${excerpt}${start + 180 < plainText.length ? '…' : ''}`;
+}
+
 export default function DocsSearch({ contentIndex }) {
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
@@ -42,15 +55,19 @@ export default function DocsSearch({ contentIndex }) {
 
     return (
         <div className="docs-search-wrapper">
-            <button className="docs-search-trigger" onClick={() => setIsOpen(true)}>
+            <button type="button" className="docs-search-trigger" onClick={() => setIsOpen(true)}>
                 <HiOutlineSearch className="docs-search-icon" />
-                <span className="docs-search-placeholder">Search documentation...</span>
-                <span className="docs-search-shortcut">⌘K</span>
+                <span className="docs-search-placeholder">Search guides and API reference</span>
+                <span className="docs-search-shortcut">Ctrl / Cmd K</span>
             </button>
 
             {isOpen && (
-                <div className="docs-search-overlay" onClick={() => setIsOpen(false)}>
-                    <div className="docs-search-modal" onClick={e => e.stopPropagation()}>
+                <div className="docs-search-overlay" onClick={() => setIsOpen(false)} role="presentation">
+                    <section className="docs-search-modal" role="dialog" aria-modal="true" aria-labelledby="docs-search-title" onClick={e => e.stopPropagation()}>
+                        <div className="docs-search-modal-intro">
+                            <p>Documentation search</p>
+                            <h2 id="docs-search-title">Find an answer</h2>
+                        </div>
                         <div className="docs-search-input-wrapper">
                             <HiOutlineSearch className="docs-search-icon-large" />
                             <input 
@@ -61,11 +78,12 @@ export default function DocsSearch({ contentIndex }) {
                                 onChange={e => setQuery(e.target.value)}
                                 className="docs-search-input"
                             />
-                            <button className="docs-search-close" onClick={() => setIsOpen(false)}>
+                            <button type="button" className="docs-search-close" onClick={() => setIsOpen(false)} aria-label="Close search">
                                 <HiOutlineX />
                             </button>
                         </div>
-                        
+
+                        {!query && <p className="docs-search-hint">Search workflow setup, passkeys, email delivery, API endpoints, SDKs, and more.</p>}
                         {query && results.length > 0 && (
                             <ul className="docs-search-results">
                                 {results.map((res) => (
@@ -76,7 +94,7 @@ export default function DocsSearch({ contentIndex }) {
                                         >
                                             <div className="docs-search-result-title">{res.item.title}</div>
                                             <div className="docs-search-result-snippet">
-                                                {res.item.contentSnippet.substring(0, 80)}...
+                                                {searchExcerpt(res.item.contentSnippet, query)}
                                             </div>
                                         </button>
                                     </li>
@@ -86,7 +104,7 @@ export default function DocsSearch({ contentIndex }) {
                         {query && results.length === 0 && (
                             <div className="docs-search-empty">No results found for "{query}"</div>
                         )}
-                    </div>
+                    </section>
                 </div>
             )}
         </div>

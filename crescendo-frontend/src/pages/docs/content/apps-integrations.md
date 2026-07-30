@@ -1,61 +1,32 @@
-# App Catalog & Integrations
+# Connections and integrations
 
-Crescendo features a dynamic integration ecosystem containing over 114 native third-party application modules. Whether you are synchronizing engineering issues, dispatching multi-channel marketing broadcasts, or executing artificial intelligence inference models, you can connect application credentials without writing boilerplate integration scripts.
+An app becomes usable in a workflow when you create a connection for it. The connection stores the account authorization that an action or trigger uses at run time.
 
-## How Connections Work
+## Connect an app
 
-Before an automation step can manipulate external provider resources, you must establish an authorized connection link within your workspace **Connections** portal.
+1. Open **Connections**.
+2. Select an app and choose the available authentication method.
+3. For OAuth, complete the provider consent screen and return to Crescendo. For API keys or tokens, enter a credential created in the provider’s own dashboard.
+4. Give the connection a clear label when you have more than one account.
+5. In Workflow Studio, select that connection on each app node that needs it.
 
-### Authentication Mechanisms
-1. **OAuth 2.0 Authorization:** Used by platforms such as Slack, GitHub, Google Drive, and Salesforce. Clicking **Connect** redirects your browser to the external provider security confirmation prompt. Upon granting access, Crescendo encrypts and stores the resulting refresh token within our secure persistent storage layer, managing short-lived token rotations automatically.
-2. **API Key & Token Injection:** Used by services such as OpenAI, Stripe, SendGrid, and Custom Webhooks. Provide your secret account API key within the connection dialog. All stored keys are encrypted at rest using AES-256 cryptographic algorithms before persistence in database records.
+Connection availability is account-specific. A Slack channel, Google Sheet, Notion database, or Spotify playlist must be selected from the resources returned for the chosen connection. If you switch connections, revisit those fields.
 
-## Comprehensive Integration Directory
+## OAuth and API keys
 
-Our 114+ supported integration modules are categorized into distinct domain domains to simplify enterprise architecture planning.
+- **OAuth** lets the provider grant Crescendo scoped access without you sharing a password. The provider decides the consent scopes and refresh behavior.
+- **API key / token** connections use a credential you generate in the provider’s dashboard. Limit its permissions and rotate it if it is exposed.
+- **Custom OAuth apps** are for organizations that need their own provider client ID and redirect configuration. Follow the provider-specific settings shown by the connection flow; redirect URIs and required scopes differ by provider.
 
-### 1. Communication, Chat & Messaging
-Automate organization notifications, incident alerts, and customer chat routing across primary team communication channels:
-* **Slack:** Send broadcast channel announcements, post threaded direct messages, manage channel invitations, and listen for keyword mentions or interactive slash command triggers.
-* **Discord:** Post rich embeds to announcement webhooks, moderate chat communities, and monitor incoming channel server activity.
-* **Microsoft Teams:** Dispatch adaptive conversational cards to collaborative team channels and schedule automated meeting invitations.
-* **WhatsApp Business & Telegram:** Deliver SMS notification fallbacks, account verification OTP codes, and instant customer service chatbot auto-replies.
-* **Twilio:** Execute automated SMS dispatch routines and initiate automated Voice call notifications for urgent escalation alerts.
+> [!CAUTION]
+> Do not paste a personal password into a connection form. Use OAuth, an API key, an access token, or another credential type explicitly supported by that app.
 
-### 2. Email Marketing & Transactional Mail Providers
-Coordinate high-volume newsletter blasts and personalized transactional communications:
-* **Gmail & Microsoft Outlook:** Read incoming mailbox threads, categorize unread attachments, and send verified transactional emails directly from authenticated enterprise accounts.
-* **Mailchimp & Brevo (Sendinblue):** Synchronize subscriber contact segments, append behavioral contact tags, and execute automated campaign sequences upon workflow events.
-* **SendGrid & Postmark:** Dispatch high-deliverability transactional invoices and monitor webhook notification loops for email delivery open or bounce analytics.
+## The app catalog is the source of truth
 
-### 3. Developer Tools, Cloud & DevOps
-Unify software engineering task pipelines, continuous integration alerting, and cloud infrastructure management:
-* **GitHub & GitLab:** Trigger automation flows upon pull request creation, commit pushes, or code review approvals. Automatically create issue tickets, tag release repositories, and merge branches.
-* **Jira & Linear:** Convert customer bug reports into actionable development sprints, assign issue owner tasks, and synchronize status transitions across engineering teams.
-* **Docker & AWS Cloud (S3/Lambda):** Upload file attachments to object storage buckets, execute remote serverless cloud functions, and monitor container architecture metrics.
-* **PostgreSQL & MongoDB:** Run safe SQL query queries or document upsert transactions to synchronize application database layers with external SaaS platforms.
+The catalog changes as integrations evolve. Each app exposes its currently supported triggers, actions, fields, connection requirements, and dynamic resource types. For programmatic access, call the App Catalog API with `app:read`; the live [App Catalog reference](/docs/api/apps) shows that schema.
 
-### 4. Artificial Intelligence & Logic Synthesis
-Leverage industry LLM inference providers and localized intelligent machine learning models:
-* **OpenAI (ChatGPT & DALL-E):** Generate natural language text summaries, analyze customer sentiment, extract structured data from unformatted inputs, and synthesize visual image assets.
-* **Google Gemini 2.0 & 3.1 Pro:** Perform multi-modal Document reasoning, code review generation, and semantic classification over extensive context lengths.
-* **Sarvam AI & Local LLM Services:** Utilize optimized Indian regional language synthesis models and voice transcription APIs for multilingual customer support automations.
-* **Anthropic Claude & DeepSeek:** Execute advanced programmatic reasoning, tabular data restructuring, and mathematical trend analysis.
+The catalog proves what Crescendo can configure. Provider permissions, selected resources, network availability, and account-specific policy are still checked during execution.
 
-### 5. Documents, Productivity & Storage
-Automate paperwork formatting, spreadsheet calculation updates, and document archival:
-* **Google Docs & Google Sheets:** Automatically create customized agreements from dynamic template schemas, append incoming contact submissions to collaborative calculation rows, and read shared workbook tables.
-* **Notion & Airtable:** Synchronize internal knowledge bases, build relational CRM databases, and generate formatted wiki documentation pages upon release completion.
-* **Microsoft Excel (OneDrive) & Trello:** Export financial accounting ledgers and shift project management cards across Kanban dashboard boards.
+## Use HTTP when an app is not available
 
-### 6. CRM, Commerce & Financial Payments
-Streamline customer lifecycle onboarding, invoicing, and revenue verification:
-* **Salesforce & HubSpot:** Create opportunities, assign account executives, update lead engagement scores, and trigger follow-up tasks upon customer conversion events.
-* **Stripe, Shopify & PayPal:** Capture immediate webhook triggers upon successful invoice processing, refund initiations, or storefront order placements to trigger fulfillment automation flows.
-* **Zoho CRM & Razorpay:** Synchronize global localized billing ledgers and maintain customer contract compliance tracking.
-
-## Universal Webhook & HTTP Request Execution
-
-For proprietary internal microservices or custom corporate applications not represented in the public catalog, use built-in universal HTTP modules:
-* **Custom Webhook Trigger Node:** Generates a permanent authenticated HTTPS ingress URL within your workspace. Configure your external systems to POST JSON payloads directly to this address to initiate automated workflow sequences.
-* **HTTP Request Action Node:** Instructs Crescendo worker executors to issue arbitrary GET, POST, PUT, PATCH, or DELETE web requests against custom URL endpoints, complete with custom request header configuration, authentication injection, and structured JSON body payload construction.
+Use the HTTP action for a documented third-party or internal API when no native action fits. Keep credentials in a connection or secure service, use a stable request body, and inspect the target API’s response before feeding it to another step. Do not use an HTTP action to send secrets to an untrusted URL.

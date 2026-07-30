@@ -1,25 +1,33 @@
-# Getting Started & Product Help Center
+# Crescendo documentation
 
-Welcome to the **Crescendo Help Center & Technical Documentation**. Crescendo is a comprehensive enterprise automation platform combining conversational AI workflow generation with high-performance email campaign management and integration orchestration.
+Crescendo combines workflow automation with an email delivery workspace. Use this guide to choose the right starting point, build a safe first workflow, and find the public API when you need to automate Crescendo itself.
 
-## Platform Overview
+## Choose your path
 
-Whether you are an email marketer scheduling multi-channel broadcast communications, an operations specialist constructing custom integration workflows, or a developer consuming programmatic REST APIs, Crescendo unifies your operations under an intuitive, reactive workspace dashboard.
+- **Build an automation:** start in **Workflows**, connect an app, add a trigger and one or more actions, then test the configuration before activating it.
+- **Send and manage email:** open **Email** for API keys, domains, templates, logs, contacts, broadcasts, analytics, and suppressions.
+- **Integrate from your server:** create an API key in **Email → API Keys**, choose only the scopes it needs, and use the [Public API](/docs/public-api) or one of the SDKs.
+- **Connect an external account:** open **Connections**, choose an app, and complete its OAuth or API-key setup. The configuration form shows the credentials that specific app supports.
 
-> [!NOTE]
-> This documentation center serves both **standard workspace users** configuring visual workflows and campaigns, as well as **technical software developers** integrating headless REST API endpoints.
+## Build your first workflow
 
-## Core Feature Capabilities
+1. Go to **Workflows** and select **Create workflow**.
+2. Add one trigger. A webhook is the quickest option for testing because you can send it a sample JSON payload.
+3. Add an action, select a connected account when required, and complete every required field in the configuration panel.
+4. Use values from earlier steps with the variable picker rather than copying data by hand.
+5. Save the workflow as a draft. Review the graph and any validation messages.
+6. Activate it only after the trigger, connected account, and action configuration are ready. Inspect **History** after the first real run.
 
-1. **Email Marketing & Broadcasting:** Authenticate dedicated custom sender domains via SPF, DKIM, and DMARC verification, build responsive HTML email layout templates, and schedule high-volume broadcast messaging campaigns.
-2. **Audiences & Contact CRM:** Organize subscriber contact databases, run high-speed automated CSV file batch imports, construct dynamic customer segmentation rules, and manage automated suppression lists for hard bounces and unsubscribes.
-3. **Interactive Workflow Studio:** Construct sophisticated multi-step automation flows using a drag-and-drop graphical canvas. Connect over 114 native SaaS application modules, route logic using the visual condition builder, and interpolate dynamic step execution variables.
-4. **AI Builder (Natural Language Automation):** Type conversational natural language instructions (e.g., "When a high-priority bug is logged in Jira, notify our #emergencies Slack channel and update the support spreadsheet") and allow our automated intelligent engine to synthesize the complete, wired workflow graph instantly.
-5. **Real-Time Diagnostics & Insights:** Inspect granular step-by-step execution latency logs, monitor campaign open and click-through engagement ratios, and safely replay failed automation runs without losing initial incoming webhooks.
+> [!TIP]
+> Begin with one action and a non-production destination such as a test Slack channel or a test email address. Add branches and side effects only after the first path is successful.
 
-## Navigating the Help Center
+## What the platform validates
 
-Use the sidebar navigation tabs to access instructional walkthroughs tailored to your exact operational responsibilities:
-* **User Guides & Operations:** Learn how to configure email broadcasts, manage audiences, build visual workflows, analyze engagement metrics, and set up biometric FIDO2 passkeys for secure workspace login.
-* **Integrations & App Catalog:** Review comprehensive configuration specs and connection rules across our 114+ communication, CRM, DevOps, and document integration modules.
-* **Developer API Reference:** Generate scoped programmatic API keys, verify idempotency request constraints, explore OpenAPI schemas, and install official Node.js or Python software development kits.
+The canvas validates graph structure and required configuration fields before saving. Third-party services still enforce their own permissions, resource IDs, rate limits, and data rules at run time. A connection that has expired or a resource selected from another account can therefore still make a run fail. The run detail is the source of truth for the affected step.
+
+## Next steps
+
+- [Workflow Studio](/docs/workflow-canvas) — graph structure, variables, branches, and testing.
+- [Connections and apps](/docs/apps-integrations) — OAuth, API keys, and the app catalog.
+- [Workflow runs](/docs/workflow-runs) — read a run and recover from a failed step.
+- [Public API](/docs/public-api) — server-side API keys, scopes, and the live reference.

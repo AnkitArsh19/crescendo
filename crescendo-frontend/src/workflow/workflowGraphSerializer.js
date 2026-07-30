@@ -444,8 +444,12 @@ const BRANCH_ACTION_KEYS = new Set(['logic:if', 'logic:switch']);
 export function resolveNodeType(step) {
     if (!step) return 'action';
     if (step.stepType === 'TRIGGER') return 'trigger';
+    // Agent cluster root — distinct type so future AgentClusterNode can be swapped in
+    // without changing serialiser logic. Currently renders as WorkflowNode.
+    if (step.appKey === 'agent') return 'agent';
     if (step.appKey === 'logic' && BRANCH_ACTION_KEYS.has(step.actionKey)) return 'branch';
     return 'action';
 }
+
 
 

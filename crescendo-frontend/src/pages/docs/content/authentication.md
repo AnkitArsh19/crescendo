@@ -1,47 +1,53 @@
-# Authentication
+# API authentication and scopes
 
-The Crescendo Public API enforces strict security standards, demanding authorized, granular API keys for all programmatic interactions and external server requests.
+The Public API accepts a Crescendo API key as a Bearer token. API keys are for trusted server-to-server requests; dashboard sessions and browser cookies are not a supported integration interface.
 
-## Generating an API Key
+## Create and protect a key
 
-You can provision secure programmatic credentials directly within your workspace under **Settings > Developer API**. When registering a secret key, assign explicit role-based scopes matching your exact software operational requirements.
+Create a key from **Email → API Keys**. Give it a descriptive name, an expiry, a rate limit, and only the scopes that the application needs. Copy the plaintext value immediately and store it as `CRESCENDO_API_KEY` in your deployment’s secret store.
 
-> [!WARNING]
-> Maintain strict confidentiality over your API secret keys. Never embed API tokens inside client-side browser scripts, public repository codebases, or frontend JavaScript frameworks. Always proxy external API requests through authenticated, private server infrastructure.
-
-## Making Authenticated Requests
-
-Provide your generated API Key inside the HTTP `Authorization` request header utilizing the standard `Bearer` authentication schema. Our production API credentials typically initiate with an explicit `re_` prefix string.
-
-```bash language-bash
-curl -X GET "https://api.crescendo.run/api/v1/public/workflows" \
-  -H "Authorization: Bearer re_1234567890abcdef"
+```bash
+export CRESCENDO_API_KEY='re_...'
 ```
 
-```python language-python
-import requests
+Keys use the `re_` prefix. Treat the full value like a password: never log it, commit it, or deliver it to a browser.
 
-url = "https://api.crescendo.run/api/v1/public/workflows"
-headers = {
-    "Authorization": "Bearer re_1234567890abcdef"
-}
+## Send the Bearer token
 
-response = requests.get(url, headers=headers)
-print(response.json())
+```http
+Authorization: Bearer re_...
 ```
 
-```javascript language-javascript
-fetch('https://api.crescendo.run/api/v1/public/workflows', {
-  headers: {
-    'Authorization': 'Bearer re_1234567890abcdef'
-  }
-})
-.then(res => res.json())
-.then(console.log);
+```javascript
+const response = await fetch('https://api.crescendo.run/api/v1/apps', {
+  headers: { authorization: `Bearer ${process.env.CRESCENDO_API_KEY}` }
+});
+
+if (!response.ok) throw new Error(await response.text());
+const apps = await response.json();
 ```
 
-## Dashboard Sessions & Internal Cookies
+## Scope names
 
-When monitoring web browser HTTP network transmissions, you may observe internal administrative traffic running against endpoints initiated with `/settings/...` or `/api/v1/private/...` utilizing session cookies or short-lived JSON Web Tokens (JWT).
+Scopes use singular resource names. The most common ones are:
 
-Do not target these browser session endpoints in external custom applications. They are designed strictly to support internal interactive dashboard state mechanics and remain subject to structural updates without general deprecation notification. Always utilize designated `/api/v1/public/...` endpoints for stable, version-controlled developer programming.
+| Resource | Read | Write / operation |
+| --- | --- | --- |
+| Workflows | `workflow:read` | `workflow:write`, `workflow:trigger` |
+| Runs | `run:read` | `run:cancel` |
+| Connections | `connection:read` | `connection:write` |
+| Apps | `app:read` | — |
+| Email | — | `email:send` |
+| Templates | `template:read` | `template:write` |
+| Domains | `domain:read` | `domain:write` |
+| Contacts | `contact:read` | `contact:write` |
+| Suppressions | `suppression:read` | `suppression:write`, `suppression:import` |
+| Webhooks | `webhook:read` | `webhook:write` |
+| Custom events | `customevent:read` | `customevent:write` |
+| Logs and metrics | `logs:read`, `metrics:read` | — |
+
+When a key is missing a scope, the API returns `403 Forbidden`. A missing, revoked, expired, or malformed key returns an authentication error.
+
+## Rotate safely
+
+Rotate keys on a schedule and immediately when a key may have been exposed. Update the secret in your service first, deploy it, verify a low-risk request, and then revoke the old key. Keep separate keys for development, staging, and production so a test integration cannot affect production resources.

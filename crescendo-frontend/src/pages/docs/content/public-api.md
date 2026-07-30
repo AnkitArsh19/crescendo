@@ -1,92 +1,59 @@
-# Developer API Reference
+# Public API overview
 
-Crescendo operates as both an interactive visual automation suite and a scalable headless processing engine. Our comprehensive REST Public API enables enterprise developers to manage account resources, orchestrate execution instances, and query step telemetry programmatically without accessing the visual dashboard UI.
+The Crescendo Public API lets a trusted server manage workflows, connections, email, templates, domains, contacts, app metadata, webhooks, and workflow runs. Its canonical base URL is:
 
-## Authentication & Authorization
+```text
+https://api.crescendo.run
+```
 
-All Developer API endpoints enforce strict token-based authorization and demand a valid Bearer token within every HTTP request header:
+The API paths begin with `/api/v1`. For example, workflows are available at `/api/v1/workflows` — not at `/api/v1/public/workflows`.
+
+## Before you call the API
+
+1. In Crescendo, open **Email → API Keys** and create an API key.
+2. Give the key only the scopes needed by your service.
+3. Store the plaintext key in a server-side secret manager or environment variable. It is shown only once.
+4. Send it in the `Authorization` header from your backend. Do not put it in browser code, a mobile app, or a public repository.
+
 ```bash
-Authorization: Bearer <YOUR_API_KEY>
+curl --request GET 'https://api.crescendo.run/api/v1/workflows' \
+  --header "Authorization: Bearer $CRESCENDO_API_KEY"
 ```
 
-You can provision Secret API Keys within your user dashboard under **Settings > Developer API**.
+## Core API areas
 
-### Role-Based API Scopes
-When registering a new API secret key, you must specify explicit role-based permission boundaries to enforce secure access control:
-* `workflows:read` : Grant read-only access to workflow configurations and canvas node structures.
-* `workflows:write` : Permit programmatic creation, editing, and architectural modification of workflows.
-* `runs:read` : Authorize access to execution logs, latency statistics, and diagnostic run traces.
-* `runs:execute` : Enable remote server systems to initiate workflow execution instances programmatically.
+| Area | Use it for | Typical scope |
+| --- | --- | --- |
+| Workflows | Create, read, update, activate, deactivate, and trigger workflows | `workflow:read`, `workflow:write`, `workflow:trigger` |
+| Runs | List, inspect, and cancel workflow runs | `run:read`, `run:cancel` |
+| Connections and apps | Configure provider accounts and read the catalog schema | `connection:read`, `connection:write`, `app:read` |
+| Emails | Send transactional email and inspect message logs | `email:send`, `logs:read` |
+| Templates | Manage reusable email templates | `template:read`, `template:write` |
+| Domains, contacts, suppressions | Manage sending infrastructure and audiences | the matching `domain:*`, `contact:*`, and `suppression:*` scopes |
+| Outbound webhooks and custom events | Subscribe to outbound events or define and fire custom events | `webhook:*`, `customevent:*` |
 
-> [!CAUTION]
-> Protect your secret API keys with maximum security. Never expose credentials inside client-side browser frameworks (such as frontend React application bundles) or public version control repositories. Always route automated programmatic calls through secure corporate backend servers.
+The exact endpoint, request schema, response schema, and required scope are shown in the live [OpenAPI reference](/docs/api/workflows). That reference is generated from the deployed public API contract, so it is more precise than copied examples.
 
-## Triggering Workflow Executions Programmatically
+## A safe workflow trigger
 
-To trigger an automated workflow via HTTP request invocation, the target workflow must exist in an **Active** state and contain an initialized **Webhook / API Trigger** starting node.
+An active workflow can be triggered programmatically. The request body is the trigger data made available to the workflow; pass the object directly, rather than wrapping it in a second `triggerData` field.
 
-### `POST /api/v1/public/workflows/{workflowId}/execute`
-
-**Request Headers:**
-```http
-Authorization: Bearer re_1234567890abcdef
-Content-Type: application/json
-Idempotency-Key: req_unique_id_998877
+```bash
+curl --request POST 'https://api.crescendo.run/api/v1/workflows/<workflowId>/trigger' \
+  --header "Authorization: Bearer $CRESCENDO_API_KEY" \
+  --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: order-1234-paid-v1' \
+  --data '{"orderId":"1234","event":"payment.succeeded"}'
 ```
 
-**Request Body (JSON Payload):**
-```json
-{
-  "triggerData": {
-    "customerId": "cus_98765",
-    "event": "subscription_upgraded",
-    "tier": "enterprise_plus",
-    "timestamp": 1785000000
-  }
-}
-```
+The API accepts the request and runs the workflow asynchronously. Save the returned run identifier and use the workflow-runs endpoints to inspect the result.
 
-**Response (202 Accepted):**
-```json
-{
-  "runId": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "PENDING",
-  "message": "Workflow execution queued successfully in event streaming architecture."
-}
-```
+## SDKs and HTTP clients
 
-Because Crescendo utilizes a high-performance event-driven, stream-based distributed processing engine, API executions function asynchronously. The API returns an instantaneous acknowledgment containing a unique `runId`, queuing the requested background tasks without keeping your HTTP socket blocked during lengthy third-party integration sequences.
+Use the Node.js or Python SDK for a hand-written client experience. The Java, Go, PHP, Ruby, Rust, and .NET clients are generated from the same OpenAPI contract. If you use another language, the live reference has request examples for common HTTP clients.
 
-## Polling Execution Run Status
-
-To retrieve execution results or inspect individual node step completion timestamps, query the run tracking endpoint utilizing your received `runId`.
-
-### `GET /api/v1/public/runs/{runId}`
-
-**Response (200 OK):**
-```json
-{
-  "runId": "550e8400-e29b-41d4-a716-446655440000",
-  "workflowId": "wf_88990011",
-  "status": "SUCCESS",
-  "stepsExecuted": 4,
-  "startedAt": "2026-07-28T10:00:00.104Z",
-  "completedAt": "2026-07-28T10:00:01.420Z",
-  "stepResults": [
-    {
-      "stepOrder": 1,
-      "appKey": "slack",
-      "actionKey": "post_message",
-      "status": "SUCCESS",
-      "latencyMs": 142
-    }
-  ]
-}
-```
-
-## Official SDKs & Libraries
-
-To simplify corporate backend engineering integrations, we provide officially supported software development kits featuring automatic token management and typed schema interfaces:
-* **Node.js & TypeScript:** Install via npm package manager (`npm install @crescendo/node`).
-* **Python (3.10+):** Install via Python Package Index (`pip install crescendo-sdk`).
-* **Java & Spring Boot:** Reference our standard OpenAPI v3 JSON specification directly to auto-generate client communication beans using standard Swagger or OpenFeign REST code generator plugins.
+- [Node.js / TypeScript SDK](/docs/sdk-node)
+- [Python SDK](/docs/sdk-python)
+- [Generated SDKs and CLI](/docs/sdk-multi-language)
+- [Authentication and scopes](/docs/authentication)
+- [Idempotency and errors](/docs/api-governance)

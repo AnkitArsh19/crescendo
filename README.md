@@ -160,18 +160,22 @@ Great APIs require great client libraries. We provide an ecosystem of 8 official
 - **Automated Generation at Scale:** For Java, Go, Rust, PHP, Ruby, and .NET, we utilize a fully automated `openapi-generator-cli` pipeline.
 - **Cross-Repo CI/CD:** To prevent the massive volume of auto-generated code (240,000+ lines) from bloating the backend git history, the architecture is strictly decoupled. When the Spring Boot backend CI detects an API surface change, it spins up an ephemeral, isolated backend instance (with its own PostgreSQL and Redis service containers), extracts the generated `openapi.json` spec, and securely pushes it directly into the `crescendo-sdk` repository. This triggers the SDK generation pipeline downstream, completely isolating the generated noise from the core engine and avoiding any reliance on live, deployed environments.
 
-### Natural Language Workflow Builder (AI-ML)
+### 9. AI/ML Integration: Design-Time and Run-Time Agents
 
-Crescendo features a robust natural language-to-workflow pipeline (`crescendo-aiml`) designed to translate conversational user intents into fully executable workflows.
+Crescendo features a robust AI/ML microservice (`crescendo-aiml`) that powers two distinct agentic paradigms:
 
-Rather than relying on a fragile single-shot LLM call, the AI-ML service implements a sophisticated multi-stage resolution architecture:
+**1. The Natural Language Workflow Builder (Design-Time)**
+Translates conversational user intents into fully executable workflows via a multi-stage LangGraph pipeline:
+- **Intent Classification & Clarification:** Rapid processing to determine if a prompt is actionable or requires clarifying questions back to the user.
+- **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog (`appKeys`, `actionKeys`), eliminating integration hallucinations.
+- **Graceful Error Propagation:** Robust failure boundaries ensure AI limitations or ambiguities surface gracefully.
 
-1. **Intent Classification & Clarification:** Rapid initial processing to determine if a prompt is actionable or requires clarifying questions back to the user.
-2. **App & Action Resolution:** The model (e.g. LLaMA-3.3-70B) resolves the user's intent against Crescendo's live, dynamic app catalog, picking the exact trigger and actions needed.
-3. **Configuration Inference:** Per-step configuration generation mapped precisely to the required schemas for the chosen actions.
-4. **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog (`appKeys`, `actionKeys`), completely eliminating integration hallucinations before they reach the execution engine.
-5. **Prompt Injection Defense:** Strict XML delimiting of user input to protect the system prompt and maintain workflow generation integrity.
-6. **Graceful Error Propagation:** Robust failure boundaries that ensure AI limitations or ambiguities fail gracefully and surface back to the user interface appropriately.
+**2. The Agentic AI Node (Run-Time)**
+A first-class workflow node that evaluates incoming payloads against a system prompt and dynamically selects tools to call using a ReAct loop:
+- **Stateless Python Reasoning:** The Java engine maintains loop state, security, and idempotency, calling a stateless Python endpoint (`/v1/agent/next-step`) for reasoning decisions on each turn.
+- **Pre-Execution Budgeting:** Token budgets are enforced *before* any LLM calls or tool actions, ensuring no runaway external side effects.
+- **Defense in Depth:** Output sanitization strips known prompt-injection vectors (e.g., "ignore previous instructions") from third-party tool responses before feeding them back into the LLM context window.
+
 
 ## Design patterns and architectural patterns implemented
 

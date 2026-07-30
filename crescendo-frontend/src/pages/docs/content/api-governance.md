@@ -1,60 +1,40 @@
-# API Governance & Error Handling
+# Reliability, idempotency, and errors
 
-The Crescendo API enforces rigorous enterprise governance rules designed to preserve high infrastructure availability, protect backend integrations from duplicate execution errors, and deliver standardized diagnostic error schemas.
+## Idempotency for side effects
 
-## Request Idempotency
+Use an `Idempotency-Key` on public operations that create or trigger something, especially when your HTTP client retries after a timeout. Crescendo currently enforces duplicate detection for workflow triggers, template creation, and outbound webhook creation.
 
-Network disruptions happen. In distributed architectures, an external client server might transmit an HTTP `POST` request that triggers a workflow execution cleanly, yet encounter an unexpected network socket disconnection before receiving our `202 Accepted` confirmation response. To prevent accidentally duplicating workflow operations during subsequent client retry loops, Crescendo fully supports request idempotency verification.
-
-Include a custom `Idempotency-Key` string within your HTTP headers on all state-mutating `POST`, `PUT`, or `PATCH` request invocations:
-
-```bash language-bash
-curl -X POST "https://api.crescendo.run/api/v1/public/workflows/wf_12345/execute" \
-  -H "Authorization: Bearer re_1234567890abcdef" \
-  -H "Idempotency-Key: unique_transaction_hash_887766" \
-  -H "Content-Type: application/json" \
-  -d '{"triggerData": {"order_id": "ord_54321"}}'
+```bash
+curl --request POST 'https://api.crescendo.run/api/v1/workflows/<workflowId>/trigger' \
+  --header "Authorization: Bearer $CRESCENDO_API_KEY" \
+  --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: payment-<paymentId>-succeeded' \
+  --data '{"paymentId":"<paymentId>","event":"payment.succeeded"}'
 ```
 
-> [!IMPORTANT]
-> **Strict Cryptographic Conflict Evaluation**
-> We securely cache successful API response payloads mapped against your submitted `Idempotency-Key` for a duration of 24 hours. Furthermore, our engine computes a cryptographic SHA-256 hash across your transmitted JSON request body. If a subsequent request reuses a previously processed `Idempotency-Key` while submitting a **different request payload**, our server rejects the attempt and explicitly returns a `409 Conflict` status code. We never silently serve cached response payloads for mismatched data inputs.
+Use one stable, unique key per logical operation. Do not reuse a key for unrelated requests. A repeated key for the same workflow trigger is rejected with `409 Conflict` for 24 hours; create a new key after the retention period or for a genuinely new event.
 
-## Standardized Error Architecture
+## Retry policy
 
-Crescendo API endpoints maintain secure application boundaries and never leak internal JVM stack traces to external client callers. All client error responses (`4xx`) and internal server warnings (`5xx`) strictly comply with industry-standard RFC 7807 problem detail structured formatting:
+- Retry only transient failures such as connection errors, `429`, and selected `5xx` responses.
+- Use exponential backoff with jitter. Do not retry validation (`400`), authentication (`401`), or scope (`403`) errors until the request or credentials are corrected.
+- Preserve the same idempotency key during a retry of the same logical operation.
+- Respect each API key’s configured requests-per-minute limit.
 
-```json language-json
-{
-  "type": "https://docs.crescendo.run/errors/idempotency-conflict",
-  "title": "Idempotency Conflict Detected",
-  "status": 409,
-  "detail": "The submitted Idempotency-Key has already been processed with an incompatible request body payload.",
-  "timestamp": "2026-07-28T10:05:00.000Z",
-  "path": "/api/v1/public/workflows/wf_12345/execute"
-}
-```
+## Read error responses
 
-## Opaque Cursor Pagination
+The status code is the reliable programmatic signal. The response body contains a human-readable explanation where available.
 
-When querying extensive data collections (such as historical contact audiences, verified domains, or execution run logs), endpoints wrap returned lists inside a clean paginated data envelope:
+| Status | Meaning | Next action |
+| --- | --- | --- |
+| `400` | Invalid path, query, header, or request body | Correct the request against the live schema. |
+| `401` | Missing, invalid, expired, or revoked credentials | Check the server-side key and its deployment. |
+| `403` | The key lacks the required scope or cannot access that resource | Add the minimal needed scope or use the correct account. |
+| `404` | The resource is not present for this account | Verify the identifier and ownership. |
+| `409` | Duplicate idempotency key or a conflicting state | Reuse only for an actual retry; otherwise resolve the conflict. |
+| `429` | Rate limit reached | Back off and retry later. |
+| `5xx` | Unexpected service failure | Retry cautiously with the same idempotency key for supported operations. |
 
-```json language-json
-{
-  "data": [
-    { "id": "uuid-0001", "name": "mail.example.com", "status": "VERIFIED" },
-    { "id": "uuid-0002", "name": "notify.demo.org", "status": "VERIFIED" }
-  ],
-  "has_more": true,
-  "next_cursor": "T2Zmc2V0OjEwMA=="
-}
-```
+## Pagination and filtering
 
-To fetch the succeeding sequence page, submit the received `next_cursor` string back to the corresponding API endpoint using the `after` query parameter:
-
-```bash language-bash
-curl "https://api.crescendo.run/api/v1/public/domains?limit=100&after=T2Zmc2V0OjEwMA=="
-```
-
-> [!NOTE]
-> Do not attempt to decode, modify, or engineer custom `next_cursor` values manually. Cursor strings are deliberately opaque to support high-performance database indexing and internal sharding optimizations.
+List endpoints define their own query parameters in the OpenAPI reference. Do not assume that every endpoint supports the same cursor, page-size, or filter names. Use the response and the endpoint-specific schema to determine how to request the next page.

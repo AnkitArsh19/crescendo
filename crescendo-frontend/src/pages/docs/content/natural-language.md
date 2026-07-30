@@ -1,28 +1,29 @@
-# AI Builder & Natural Language Automation
+# Build workflows with natural language
 
-Building complex integration logic by manually placing nodes and tracing connecting wires across extensive canvases can sometimes be time-consuming. Crescendo addresses this by incorporating a powerful **AI Builder** that synthesizes conversational natural language text descriptions directly into fully wired, executable workflow graphs.
+The AI builder turns a written request into a workflow draft. It uses the Crescendo app catalog, the connections already available in your workspace, and selected live resource lists where they are available. It is a drafting tool, not a replacement for review.
 
-## How the AI Builder Operates
+## Write a useful prompt
 
-Powered by the Crescendo intelligent integration registry and deep LLM inference engines, the AI Builder possesses exhaustive structural awareness of every native trigger, action, configuration parameter, and schema across our 114+ supported SaaS applications. When you submit an instruction text prompt, the engine performs three synchronous automation steps:
-1. **Intent Parsing & Module Matching:** Identifies the primary triggering event and maps secondary subsequent tasks to appropriate third-party app integration modules.
-2. **Graph Scaffold Topology Creation:** Connects sequential node handles and constructs conditional routing branches (such as If/Else or Switch statements) where logical decisions occur.
-3. **Dynamic Parameter Mapping:** Automatically generates variable binding expressions (such as `{{steps.trigger.email}}` or `{{steps.1.issue_id}}`), connecting data output variables from preceding steps directly into corresponding input field boxes of downstream action nodes.
+Include the trigger, the source data, the destination, and any routing rule. Name the connected accounts and resources when that matters.
 
-## Example Natural Language Prompts
+```text
+When a GitHub pull request is opened in the engineering repository,
+post its title and URL to the #reviews Slack channel. If the title starts
+with "urgent:", also create a high-priority Linear issue.
+```
 
-You can input instructions ranging from elementary notifications to complex multi-branch routing logic:
-* *"When a GitHub pull request is labeled 'ready-for-review', post an alert in the #engineering Slack channel and create a tracking task in Jira."*
-* *"Every morning at 8:00 AM, fetch daily sales aggregates from Stripe and append the summary totals into our Accounting Google Sheet."*
-* *"Listen for incoming customer support webhooks. If the customer_tier parameter equals 'enterprise', dispatch an urgent escalation SMS via Twilio; otherwise, deliver a standard welcome notification using Gmail."*
+For scheduled work, include a timezone and schedule. For a webhook, describe the expected fields. For a branch, say what happens on both the matching and non-matching paths.
 
-## Step-by-Step AI Graph Generation
+## Review every draft
 
-1. Open the **Workflows** studio console from your dashboard interface and select **Generate with AI**.
-2. A modal dialog will appear. Enter a clear, conversational description of your intended automation sequence into the text prompt field and click **Generate Graph**.
-3. **Review the Synthesized Studio Canvas:** Within seconds, the AI engine constructs a complete visual graph on your studio canvas, showing all configured node triggers, action sequence blocks, and interconnected routing wires.
-4. **Authorize Connected Credentials:** If the synthesized graph contains third-party application modules requiring account authentication (such as Slack, GitHub, or Google Workspace), an orange **Action Required** indicator badge will display on the affected nodes. Click each marked node to open its configuration panel and select your authenticated enterprise account connection from the dropdown menu.
-5. **Test & Activate:** Execute an automated simulation run using sample test payloads. Once verified, toggle the workflow status from **Draft** to **Active** to begin handling production executions.
+1. Confirm the selected trigger and actions match your intent.
+2. Select an authenticated connection for every provider node.
+3. Check resource fields such as Slack channels, Notion databases, or Google Sheets. If a suggestion does not exist in the selected account, choose the correct option from the dropdown.
+4. Inspect variable references and condition rules in the configuration panel.
+5. Save the draft and test with a safe destination before activation.
 
-> [!WARNING]
-> While the AI Builder creates structurally sound and accurately wired workflow graphs, specialized custom database formatting or non-standard custom variable transformations may benefit from manual verification and fine-tuning inside individual node configuration side panels before active deployment.
+The builder can create if and switch nodes, but it cannot know business-specific data formats, provider permissions, or whether a side effect is appropriate. Those decisions remain yours.
+
+## When to use the canvas directly
+
+Use the canvas for a small edit, a custom HTTP request, precise JSON configuration, or a workflow where a provider’s API details matter. You can also generate a draft and then finish the exact configuration manually.

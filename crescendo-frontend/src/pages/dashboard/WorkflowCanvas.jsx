@@ -62,7 +62,10 @@ import './WorkflowCanvas.css';
 // 'branch' handles logic:if and logic:switch — these nodes render named output ports
 // ('true'/'false' for If; 'output_0'…'output_N' for Switch) so the execution engine
 // can route edges by sourceHandle. All other nodes use the generic WorkflowNode.
-const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode, branch: BranchNode };
+// 'agent' uses WorkflowNode for now — a dedicated AgentClusterNode is planned once
+// the Python reasoning layer is live and the cluster sub-node UI is implemented.
+const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode, branch: BranchNode, agent: WorkflowNode };
+
 // edgeTypes registered after removeEdge is defined (passed via data.onDelete)
 
 const NODE_GAP_X = 330;
