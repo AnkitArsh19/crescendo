@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from app.catalog_sync import start_catalog_sync
 from app.routers.workflow_builder import router
+from app.routers.agent_executor import router as agent_router
 from app.session.checkpointer import init_checkpointer, get_checkpointer
 from app.agents.graph import init_graph
 from app.templates.matcher import encode_templates_at_startup
@@ -77,6 +78,7 @@ def health_check():
 
 
 app.include_router(router)
+app.include_router(agent_router)
 
 
 if __name__ == "__main__":
