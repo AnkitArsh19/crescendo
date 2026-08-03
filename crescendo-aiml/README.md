@@ -4,17 +4,25 @@ The AI/ML microservice for Crescendo is a high-performance Python FastAPI servic
 
 ## Core Capabilities & Features
 
-- **Natural Language Workflow Synthesis**: Converts conversational user goals into fully formed, validated multi-step Crescendo workflow JSON structures. Automatically connects appropriate trigger nodes, logical branch conditions, data transformation steps, and integration action handlers.
+- **Natural Language Workflow Builder**: A robust LangGraph-powered state machine that converts conversational user goals into fully formed, validated multi-step Crescendo workflow JSON structures. It supports multi-turn conversation memory, dynamic resource binding, and true DAG conditional branching.
+- **Agentic AI Node (`/v1/agent/next-step`)**: An intelligent ReAct loop executor that acts as a runtime oracle for Crescendo workflows. It evaluates context, validates tool schemas, and manages conversation token windows to dynamically call catalog tools and return intelligent final answers.
 - **Integration Catalog Enrichment & Sync**: Continually scans and indexes Crescendo's application catalog (`catalog_sync.py`), aligning action schemas, required input attributes, and data definitions with the core Java backend engine.
-- **Contextual AI Builder Assistance**: Provides intelligent recommendations for field mapping, expression resolution (`{{steps.step_id.output_field}}`), and error diagnosis within the interactive visual canvas.
 - **Asynchronous FastAPI Engine**: Powered by Starlette and Pydantic, ensuring non-blocking execution, strong payload schema validation, and concurrent API routing under high request volume.
+
+## Technologies, Frameworks, and Tools
+
+- **FastAPI & Uvicorn**: High-performance asynchronous API framework and ASGI server.
+- **LangGraph**: Framework used for building the stateful, multi-agent Natural Language Workflow Builder.
+- **Redis**: Provides distributed checkpointer memory for LangGraph, allowing the AI to persist multi-turn conversational context seamlessly.
+- **Groq API**: Lightning-fast LLM inference engine. We utilize `llama-3.1-8b-instant` for rapid intent classification and `llama-3.3-70b-versatile` for complex app resolution and ReAct agent tool-calling.
+- **Pydantic**: Enforces strict payload validation and JSON contract consistency between Python and Java.
 
 ## Technical Architecture & Integration
 
-The AI/ML service functions as a stateless integration partner to the primary Java backend and frontend SPA:
-1. **Request Reception**: Receives natural language generation requests from the frontend canvas modal or backend orchestrator via authenticated REST endpoints.
-2. **Catalog Conditioning**: Pre-loads system prompts with real-time indexing of all 114 supported applications and built-in logic modules to eliminate hallucinated app integrations or non-existent action keys.
-3. **Structured Schema Output**: Enforces strict JSON output formatting on LLM responses, ensuring generated workflows conform precisely to Crescendo's Directed Acyclic Graph (DAG) canvas schema and step ordering constraints.
+The AI/ML service functions as the intelligent brain for the primary Java backend:
+1. **Request Reception**: Receives natural language generation requests from the frontend canvas modal or runtime tool-calling requests from the Java `AgentExecutionService` orchestrator.
+2. **Stateful Graph Execution**: For the workflow builder, it leverages LangGraph and Redis to handle asynchronous, multi-turn clarifications with the user before finalizing a workflow.
+3. **Structured Schema Output**: Enforces strict JSON output formatting on LLM responses, ensuring generated workflows conform precisely to Crescendo's Directed Acyclic Graph (DAG) schema and that Agent tool arguments are strictly typed.
 4. **Security Enforcement**: Implements bearer token validation and strict CORS policies to protect generation endpoints from unauthorized access.
 
 ## Directory & File Structure

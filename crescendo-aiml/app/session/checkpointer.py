@@ -29,14 +29,11 @@ async def init_checkpointer() -> None:
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 
     try:
-        import redis.asyncio as aioredis
         from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 
-        redis_client = aioredis.from_url(redis_url, decode_responses=False)
-        # Ping to verify connectivity before committing
-        await redis_client.ping()
-        saver = AsyncRedisSaver(redis_client)
-        await saver.setup()      # creates required index structures
+        # LangGraph v0.5.1 API: pass the URL string directly (not a client object)
+        saver = AsyncRedisSaver(redis_url)
+        await saver.asetup()     # v0.5.1: asetup() replaced setup()
         _checkpointer = saver
         logger.info("LangGraph checkpointer: AsyncRedisSaver connected to %s", redis_url)
 

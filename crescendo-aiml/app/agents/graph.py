@@ -34,6 +34,7 @@ from langgraph.graph import END, StateGraph
 from app.agents.nodes import (
     clarify_node,
     configurator_node,
+    continuation_node,
     correction_node,
     explainer_node,
     intent_node,
@@ -58,6 +59,7 @@ def build_graph(checkpointer: Any) -> Any:
 
     # Register all nodes
     g.add_node("template",      template_node)
+    g.add_node("continuation",  continuation_node)
     g.add_node("intent",        intent_node)
     g.add_node("clarify",       clarify_node)
     g.add_node("resolver",      resolver_node)
@@ -73,8 +75,11 @@ def build_graph(checkpointer: Any) -> Any:
     g.add_conditional_edges(
         "template",
         route_template,
-        {"intent": "intent", "configurator": "configurator", "end": END},
+        {"continuation": "continuation", "intent": "intent", "configurator": "configurator", "end": END},
     )
+
+    # Continuation always terminates (returns refined spec with explanation)
+    g.add_edge("continuation", END)
 
     # Intent → clarify or resolver
     g.add_conditional_edges(

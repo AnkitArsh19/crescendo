@@ -75,6 +75,7 @@ class AgentNextStepRequest(BaseModel):
     tool_definitions: List[ToolDefinition]   # scoped to toolRefs only
     conversation_history: List[ConversationTurn]
     input_data: Dict[str, Any]              # trigger payload / prior step output
+    model: Optional[str] = None             # override LLM model; falls back to default if omitted
 
 
 class ToolCall(BaseModel):

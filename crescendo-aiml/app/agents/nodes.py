@@ -15,6 +15,7 @@ from langgraph.graph import END
 
 from app.agents.client import get_groq_client
 from app.agents.configurator import configure_steps
+from app.agents.continuation import apply_workflow_update, is_refinement_prompt
 from app.agents.explainer import generate_explanation
 from app.agents.intent import classify_intent
 from app.agents.resolver import resolve_steps, resolve_steps_corrected
@@ -37,6 +38,22 @@ from app.schemas.workflow import (
 from app.templates.matcher import match_template
 
 logger = logging.getLogger(__name__)
+
+
+def _unpack_lc(value: Any) -> Any:
+    """
+    Safely unwrap a value that may be a LangChain checkpoint dict.
+
+    LangGraph v0.5+ serialises Pydantic objects in checkpoints as:
+        {"lc": 1, "type": "constructor", "id": [...], "kwargs": {...}}
+    When we read `state.get("intent")` on a resumed session the value may be
+    this raw dict rather than the hydrated IntentResult.  This helper detects
+    the sentinel and extracts the inner kwargs so callers can work with a plain
+    dict regardless of whether the checkpoint was hydrated or not.
+    """
+    if isinstance(value, dict) and value.get("lc") == 1 and "kwargs" in value:
+        return value["kwargs"]
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +107,73 @@ def _clean_prompt(sanitized_prompt: str) -> str:
         .replace("</user_request>", "")
         .strip()
     )
+
+
+# ---------------------------------------------------------------------------
+# Node: continuation fast-path (focused edit on an existing session spec)
+# ---------------------------------------------------------------------------
+
+async def continuation_node(state: PipelineState) -> dict:
+    """
+    Fast-path for obvious refinement prompts (e.g. "also add Slack").
+    Applies a bounded LLM edit directly to the prior workflow_spec without
+    running the full intent → resolver → configurator chain.
+    Falls back to returning the original spec if parsing fails.
+    """
+    prior_response = _unpack_lc(state.get("prior_final_response"))
+    current_spec: Optional[WorkflowSpec] = None
+    if isinstance(prior_response, dict):
+        raw_spec = prior_response.get("workflow_spec")
+        if isinstance(raw_spec, dict):
+            try:
+                current_spec = WorkflowSpec(**raw_spec)
+            except Exception:
+                current_spec = None
+        elif isinstance(raw_spec, WorkflowSpec):
+            current_spec = raw_spec
+    elif prior_response is not None:
+        current_spec = getattr(prior_response, "workflow_spec", None)
+
+    if current_spec is None:
+        # No prior spec in state — fall through to full pipeline via error
+        return {
+            "final_response": WorkflowDraftResponse(
+                success=False,
+                error="Cannot apply refinement: no prior workflow spec found in session.",
+                session_id=state.get("session_id"),
+            )
+        }
+
+    try:
+        updated_spec = await apply_workflow_update(
+            current_spec=current_spec,
+            sanitized_prompt=state["sanitized_prompt"],
+            user_id=state["user_id"],
+            groq_client=get_groq_client(),
+        )
+    except Exception as exc:
+        logger.error("continuation_node failed for user %s: %s", state["user_id"], exc)
+        return {
+            "final_response": WorkflowDraftResponse(
+                success=False,
+                error=f"Workflow update failed: {exc}",
+                session_id=state.get("session_id"),
+            )
+        }
+
+    explanation = await generate_explanation(updated_spec, state["user_id"], get_groq_client())
+    response = WorkflowDraftResponse(
+        success=True,
+        workflow_spec=updated_spec,
+        explanation=explanation,
+        session_id=state.get("session_id"),
+    )
+    return {
+        "workflow_spec": updated_spec,
+        "explanation": explanation,
+        "final_response": response,
+        "prior_final_response": response,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -147,11 +231,32 @@ async def template_node(state: PipelineState) -> dict:
 # ---------------------------------------------------------------------------
 
 async def intent_node(state: PipelineState) -> dict:
+    # Extract multi-turn context from the persisted prior response (if any)
+    prior_response = _unpack_lc(state.get("prior_final_response"))
+    previous_questions: List[str] = []
+    previous_spec = None
+    if isinstance(prior_response, dict):
+        previous_questions = prior_response.get("clarifying_questions") or []
+        previous_spec = prior_response.get("workflow_spec")
+    elif prior_response is not None:
+        previous_questions = getattr(prior_response, "clarifying_questions", []) or []
+        previous_spec = getattr(prior_response, "workflow_spec", None)
+
+    previous_intent = _unpack_lc(state.get("intent"))
+
     try:
         intent = await classify_intent(
-            state["sanitized_prompt"], state["user_id"], get_groq_client()
+            state["sanitized_prompt"], state["user_id"], get_groq_client(),
+            previous_questions=previous_questions,
+            previous_spec=previous_spec,
+            previous_intent=previous_intent,
         )
-        return {"intent": intent}
+        return {
+            "intent": intent,
+            # Reset final_response so the stale clarify response from the prior
+            # turn doesn't cause route_after_intent to terminate prematurely.
+            "final_response": None,
+        }
     except Exception as exc:
         logger.error("intent_node failed for user %s: %s", state["user_id"], exc)
         return {
@@ -169,12 +274,16 @@ async def intent_node(state: PipelineState) -> dict:
 
 async def clarify_node(state: PipelineState) -> dict:
     intent: IntentResult = state["intent"]
+    response = WorkflowDraftResponse(
+        success=True,
+        clarifying_questions=intent.clarifying_questions,
+        session_id=state.get("session_id"),
+    )
     return {
-        "final_response": WorkflowDraftResponse(
-            success=True,
-            clarifying_questions=intent.clarifying_questions,
-            session_id=state.get("session_id"),
-        )
+        "final_response": response,
+        # Persist so intent_node can extract prior questions on the next turn.
+        # Key must NOT start with _ (LangGraph serializer skips private-looking keys).
+        "prior_final_response": response,
     }
 
 
@@ -343,10 +452,25 @@ async def explainer_node(state: PipelineState) -> dict:
 # ---------------------------------------------------------------------------
 
 def route_template(state: PipelineState) -> str:
-    """After template_node: go to configurator on hit, intent on miss."""
+    """After template_node: go to continuation on refinement hit, configurator on
+    template hit, or intent on miss."""
+    # Fast-path: focused edit on an existing checkpointed session
+    if state.get("is_continuation") and is_refinement_prompt(state.get("sanitized_prompt", "")):
+        # Only use the continuation path if a prior validated spec exists in state.
+        prior = _unpack_lc(state.get("prior_final_response"))
+        has_prior_spec = (
+            (isinstance(prior, dict) and prior.get("workflow_spec") is not None)
+            or (prior is not None and getattr(prior, "workflow_spec", None) is not None)
+        )
+        if has_prior_spec:
+            return "continuation"
+
     if state.get("template_hit"):
         return "configurator"
-    if state.get("final_response"):   # template_node error
+    # Only route to 'end' on a genuine template error: final_response is set
+    # AND template_hit is explicitly False (not just absent/None).
+    # A normal cache-miss sets template_hit=False with no final_response.
+    if state.get("final_response") and state.get("template_hit") is False:
         return "end"
     return "intent"
 

@@ -26,3 +26,4 @@ __pycache__/
 .Trashes
 ehthumbs.db
 Thumbs.db
+audit.jsonl
