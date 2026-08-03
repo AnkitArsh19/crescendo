@@ -23,6 +23,7 @@ class PipelineState(TypedDict, total=False):
     user_id: str
     context: Dict[str, Any]      # enriched context from AiContextService
     session_id: str
+    is_continuation: bool     # True only when caller supplied an existing session_id
 
     # ── fast-path flag ───────────────────────────────────────────────────────
     template_hit: bool           # True = skipped intent + resolver via template match
@@ -33,6 +34,7 @@ class PipelineState(TypedDict, total=False):
     action_steps: List[ResolvedStep]
     resolved_edges: List[WorkflowEdge]   # edges output by resolver or from template
     workflow_spec: Optional[WorkflowSpec]
+    continuation_spec: Optional[WorkflowSpec]  # focused edit, validated without rebuilding it
 
     # ── validation ───────────────────────────────────────────────────────────
     validation_errors: List[str]
@@ -43,3 +45,9 @@ class PipelineState(TypedDict, total=False):
 
     # ── final packaged response ───────────────────────────────────────────────
     final_response: Optional[WorkflowDraftResponse]
+
+    # ── multi-turn persistence ────────────────────────────────────────────────
+    # Stores the last clarification response across turns so intent_node can
+    # extract prior questions and intent context from the checkpoint on resume.
+    # NOTE: NOT prefixed with _ — LangGraph's serializer skips private-looking keys.
+    prior_final_response: Optional[WorkflowDraftResponse]

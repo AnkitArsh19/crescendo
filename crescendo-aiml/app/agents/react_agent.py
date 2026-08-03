@@ -22,7 +22,7 @@ Design decisions:
 
 import json
 import logging
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from app.agents.client import get_groq_client
 from app.audit.logger import audit_log
@@ -35,6 +35,15 @@ from app.schemas.agent import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Maximum number of (assistant tool-call + tool observation) pairs to keep in
+# the sliding window before pruning the oldest ones.
+# With 10-iter cap and typical 600-token tool outputs, 5 pairs caps context
+# growth and prevents Groq 8k-limit errors on long runs.
+_WINDOW_MAX_TOOL_PAIRS = 5
+
+# Default model — configurable per request via AgentNextStepRequest.model
+_DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 
 # ---------------------------------------------------------------------------
@@ -75,17 +84,20 @@ def _build_messages(
     input_data: dict,
 ) -> list:
     """
-    Build the messages list for the Groq API call.
+    Build the messages list for the Groq API call with sliding-window pruning.
+
+    Window strategy:
+      - system message and the first user message (input_data) are ALWAYS kept.
+      - Regular user/assistant turns are kept in full.
+      - When there are more than _WINDOW_MAX_TOOL_PAIRS (assistant tool-call +
+        tool observation) pairs, the oldest pairs are pruned from the middle of
+        the history to prevent Groq 8k token limit errors on long agent runs.
+        The most recent pairs (containing the most useful context) are retained.
 
     Phase 2 multi-turn format:
-      - If an assistant turn has a tool_call_id AND tool_name, it is
-        reconstructed as an assistant message with a tool_calls array.
-        This is what Groq expects when the assistant previously called a tool.
-      - Tool observation turns (role == "tool") must have tool_call_id set
-        to the id from the preceding assistant message — Java is responsible
-        for propagating this correctly.
-      - If history is empty, the input_data is injected as the first user message
-        so the agent has context to reason about on the first iteration.
+      - assistant turns with tool_call_id + tool_name are reconstructed with
+        a tool_calls array (required by Groq to accept subsequent tool messages).
+      - tool observation turns reference the tool_call_id from their assistant.
     """
     messages = [{"role": "system", "content": system_prompt}]
 
@@ -97,19 +109,50 @@ def _build_messages(
         })
         return messages
 
-    # Guard: if history exists but doesn't start with a user turn, inject
-    # input_data first so the message sequence is always system → user → ...
-    # This handles the edge case where Java sends only assistant+tool turns.
-    if history and history[0].role != "user":
+    # Guard: ensure the history always starts with a user message
+    if history[0].role != "user":
         messages.append({
             "role": "user",
             "content": json.dumps(input_data, ensure_ascii=False),
         })
 
-    for turn in history:
+    # --- Sliding-window pruning -------------------------------------------------
+    # Identify contiguous (assistant tool-call, tool observation) pairs.
+    # We keep the first user turn + any plain user/assistant turns, then
+    # only the most recent _WINDOW_MAX_TOOL_PAIRS tool pairs.
+    tool_pair_indices: List[Tuple[int, int]] = []  # (assistant_idx, tool_idx)
+    i = 0
+    while i < len(history) - 1:
+        cur = history[i]
+        nxt = history[i + 1]
+        if (
+            cur.role == "assistant" and cur.tool_call_id and cur.tool_name
+            and nxt.role == "tool" and nxt.tool_call_id == cur.tool_call_id
+        ):
+            tool_pair_indices.append((i, i + 1))
+            i += 2
+        else:
+            i += 1
+
+    pruned_pair_indices: set = set()
+    if len(tool_pair_indices) > _WINDOW_MAX_TOOL_PAIRS:
+        pairs_to_drop = tool_pair_indices[: len(tool_pair_indices) - _WINDOW_MAX_TOOL_PAIRS]
+        for a_idx, t_idx in pairs_to_drop:
+            pruned_pair_indices.add(a_idx)
+            pruned_pair_indices.add(t_idx)
+        logger.info(
+            "Sliding window: pruned %d oldest tool pairs from history (total pairs=%d)",
+            len(pairs_to_drop),
+            len(tool_pair_indices),
+        )
+    # ---------------------------------------------------------------------------
+
+    for idx, turn in enumerate(history):
+        if idx in pruned_pair_indices:
+            continue  # skip pruned turns
+
         if turn.role == "assistant" and turn.tool_call_id and turn.tool_name:
             # Phase 2: reconstruct assistant message with tool_calls array
-            # Required for Groq to accept the subsequent "tool" observation message
             messages.append({
                 "role": "assistant",
                 "content": turn.content or "",
@@ -125,17 +168,42 @@ def _build_messages(
                 ],
             })
         elif turn.role == "tool":
-            # Tool observation — must reference the assistant's tool_call_id
             messages.append({
                 "role": "tool",
                 "tool_call_id": turn.tool_call_id or "",
                 "content": turn.content,
             })
         else:
-            # Regular user or assistant message
             messages.append({"role": turn.role, "content": turn.content or ""})
 
     return messages
+
+
+def _validate_arguments(
+    arguments: dict,
+    tool_id: str,
+    tool_defs: List[ToolDefinition],
+) -> List[str]:
+    """
+    Validate tool call arguments against the tool's JSON Schema parameters.
+    Returns a list of human-readable error strings (empty = valid).
+
+    Only checks 'required' fields — full JSON Schema validation would require
+    jsonschema library. This lightweight check catches the most common
+    hallucination: missing required parameters.
+    """
+    schema: Dict = {}
+    for t in tool_defs:
+        if t.tool_id == tool_id:
+            schema = t.parameters or {}
+            break
+
+    required_fields: List[str] = schema.get("required", [])
+    errors: List[str] = []
+    for field in required_fields:
+        if field not in arguments or arguments[field] is None or arguments[field] == "":
+            errors.append(f"Required parameter '{field}' is missing or empty")
+    return errors
 
 
 # ---------------------------------------------------------------------------
@@ -162,17 +230,17 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
         request.input_data,
     )
 
+    # Use model from request if provided, otherwise fall back to default
+    model = request.model or _DEFAULT_MODEL
+
     kwargs: dict = {
-        "model": "llama-3.3-70b-versatile",  # 3.3 > 3.1 for function-calling; 3.1-70b is deprecated
+        "model": model,
         "messages": messages,
         "max_tokens": 1024,
         "temperature": 0.2,
     }
 
     # Only attach tools if the agent node has toolRefs configured.
-    # An empty tool list causes Groq to always produce a text completion
-    # (final_answer), which is the correct behaviour for a reasoning-only
-    # agent node with no connected action steps.
     if tools:
         kwargs["tools"] = tools
         kwargs["tool_choice"] = "auto"
@@ -199,7 +267,7 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
     audit_log(
         user_id=request.session_id,   # session_id is the agent-run identifier
         stage=f"agent_iter_{request.iteration}",
-        model="llama-3.3-70b-versatile",
+        model=model,
         prompt_tokens=usage.prompt_tokens if usage else 0,
         completion_tokens=usage.completion_tokens if usage else 0,
         validation_passed=True,
@@ -223,6 +291,78 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
                 tc.function.arguments,
             )
             arguments = {}
+
+        # ── Schema validation + internal retry ─────────────────────────────
+        # Validate the LLM's arguments against the tool's required fields.
+        # If required params are missing, do ONE internal retry with a correction
+        # message before returning to Java.  This avoids the expensive round-trip
+        # (Python → Java → tool handler → error observation → Python) for a
+        # predictable class of hallucination errors.
+        validation_errors = _validate_arguments(
+            arguments, tc.function.name, request.tool_definitions
+        )
+        if validation_errors:
+            logger.warning(
+                "session=%s iter=%d — tool args validation failed for %s: %s — retrying internally",
+                request.session_id,
+                request.iteration,
+                tc.function.name,
+                validation_errors,
+            )
+            # Inject a correction turn and call Groq once more
+            correction_messages = messages + [
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [{
+                        "id": "retry_call",
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments or "{}",
+                        },
+                    }],
+                },
+                {
+                    "role": "tool",
+                    "tool_call_id": "retry_call",
+                    "content": (
+                        f"Error: your previous call to '{tc.function.name}' had invalid arguments. "
+                        f"Issues: {'; '.join(validation_errors)}. "
+                        "Please retry with all required parameters correctly filled in."
+                    ),
+                },
+            ]
+            try:
+                retry_response = await client.chat.completions.create(
+                    model=model,
+                    messages=correction_messages,
+                    tools=tools,
+                    tool_choice="auto",
+                    max_tokens=1024,
+                    temperature=0.2,
+                )
+                retry_choice = retry_response.choices[0]
+                retry_usage = retry_response.usage
+                tokens_used += retry_usage.total_tokens if retry_usage else 0
+
+                if retry_choice.finish_reason == "tool_calls" and retry_choice.message.tool_calls:
+                    rtc = retry_choice.message.tool_calls[0]
+                    try:
+                        arguments = json.loads(rtc.function.arguments)
+                        tc = rtc   # use the corrected tool call
+                        logger.info(
+                            "session=%s iter=%d — internal retry succeeded for %s",
+                            request.session_id, request.iteration, tc.function.name,
+                        )
+                    except (json.JSONDecodeError, TypeError):
+                        arguments = {}
+            except Exception as retry_exc:
+                logger.warning(
+                    "session=%s iter=%d — internal retry call failed: %s",
+                    request.session_id, request.iteration, retry_exc,
+                )
+        # ───────────────────────────────────────────────────────────────
 
         app_key, action_key = _resolve_tool_fields(
             tc.function.name, request.tool_definitions
@@ -251,7 +391,13 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
         )
 
     # ── Final answer decision ───────────────────────────────────────────────
-    final = choice.message.content or ""
+    final = (choice.message.content or "").strip()
+    if not final:
+        final = "[Agent completed — no text response generated]"
+        logger.warning(
+            "session=%s iter=%d — LLM returned empty final_answer (finish_reason=%s)",
+            request.session_id, request.iteration, choice.finish_reason,
+        )
     logger.info(
         "session=%s iter=%d → final_answer  length=%d tokens=%d",
         request.session_id,

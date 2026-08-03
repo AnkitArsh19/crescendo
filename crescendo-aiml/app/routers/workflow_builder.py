@@ -88,15 +88,17 @@ async def create_workflow_draft(
         "user_id": body.userId,
         "context": body.context,
         "session_id": session_id,
+        "is_continuation": body.session_id is not None,   # True = existing session, enables fast-path
         "template_hit": False,
         "intent": None,
         "trigger_step": None,
         "action_steps": [],
         "resolved_edges": [],
-        "workflow_spec": None,
+        # NOTE: workflow_spec and explanation are intentionally omitted here.
+        # Including them as None would wipe previously checkpointed values via
+        # LangGraph's default 'replace' reducer on multi-turn continuations.
         "validation_errors": [],
         "correction_attempted": False,
-        "explanation": None,
         "final_response": None,
     }
 

@@ -12,7 +12,7 @@ Phase 3 changes:
 
 import json
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from groq import AsyncGroq
 
@@ -43,10 +43,11 @@ RULES:
      "has_branching":        true/false,
      "branch_description":   "string | null"
    }
-3. Set needs_clarification=true ONLY if:
-   - The trigger is too vague to identify a specific app or event
-   - The desired action is ambiguous (e.g. "notify me" with no channel specified)
-   - Multiple conflicting interpretations are equally plausible
+3. CRITICAL RULE for needs_clarification:
+   You MUST set needs_clarification=true if ANY of the following apply:
+   - The trigger does not explicitly name a specific application (e.g. "when a file is uploaded" -> which app? Dropbox? Google Drive? -> MUST clarify).
+   - The action does not explicitly name a specific application (e.g. "alert me", "send a message", "do onboarding" -> which app? Slack? Jira? -> MUST clarify).
+   - Missing configurations or settings can be skipped, but if the APP NAME itself is missing from the user's prompt, YOU MUST ASK FOR CLARIFICATION.
 4. If needs_clarification=true, populate clarifying_questions with ≤3 specific questions.
 5. Set has_branching=true when the user describes conditional logic, for example:
    - "If X, do Y, otherwise do Z"
@@ -55,6 +56,9 @@ RULES:
 6. When has_branching=true, set branch_description to a plain-English summary of
    the conditional logic (e.g. "If email subject contains 'urgent', post to #alerts,
    else save to Notion").  Otherwise set it to null.
+7. Do NOT duplicate actions that are already present in the existing workflow
+   unless the user explicitly asks for a duplicate step. If the user is refining
+   or extending an existing workflow, only extract the NEW or CHANGED intent.
 """
 
 
@@ -62,6 +66,9 @@ async def classify_intent(
     sanitized_prompt: str,
     user_id: str,
     groq_client: Optional[AsyncGroq] = None,
+    previous_questions: Optional[list] = None,
+    previous_spec: Optional[Any] = None,
+    previous_intent: Optional[Any] = None,
 ) -> IntentResult:
     """
     Stage 1: classify the user intent from the sanitized prompt.
@@ -74,14 +81,56 @@ async def classify_intent(
         For audit logging.
     groq_client:
         Optional pre-built AsyncGroq client.  Falls back to shared singleton.
+    previous_questions:
+        Clarifying questions asked on the prior turn (if any), for context.
+    previous_spec:
+        The WorkflowSpec from the prior turn, to prevent accidental duplication.
+    previous_intent:
+        The IntentResult from the prior turn, as additional context.
     """
     client = groq_client or get_groq_client()
+
+    # Build context block for multi-turn sessions
+    context_lines = []
+    if previous_questions:
+        context_lines.append(
+            "PREVIOUS CLARIFYING QUESTIONS ASKED:\n"
+            + "\n".join(f"  - {q}" for q in previous_questions)
+        )
+    if previous_intent:
+        trigger = (
+            previous_intent.get("trigger_description", "")
+            if isinstance(previous_intent, dict)
+            else getattr(previous_intent, "trigger_description", "")
+        )
+        actions = (
+            previous_intent.get("action_descriptions", [])
+            if isinstance(previous_intent, dict)
+            else getattr(previous_intent, "action_descriptions", [])
+        )
+        if trigger or actions:
+            context_lines.append(
+                f"PREVIOUSLY UNDERSTOOD INTENT:\n"
+                f"  Trigger: {trigger}\n"
+                + "\n".join(f"  Action: {a}" for a in (actions or []))
+            )
+    multi_turn_context = ("\n\n" + "\n\n".join(context_lines)) if context_lines else ""
+
+    logger.debug(
+        "Stage 1 system prompt:\n%s",
+        _INTENT_SYSTEM,
+    )
+    logger.debug(
+        "Stage 1 user prompt (user=%s):\n%s",
+        user_id,
+        sanitized_prompt,
+    )
 
     try:
         response = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": _INTENT_SYSTEM},
+                {"role": "system", "content": _INTENT_SYSTEM + multi_turn_context},
                 {"role": "user",   "content": sanitized_prompt},
             ],
             temperature=0.1,
@@ -104,7 +153,7 @@ async def classify_intent(
     )
 
     raw = response.choices[0].message.content or ""
-    logger.debug("Stage 1 raw JSON: %s", raw)
+    logger.debug("Stage 1 raw JSON (user=%s):\n%s", user_id, raw)
 
     try:
         data = json.loads(raw)

@@ -113,6 +113,14 @@ Engineering focus areas:
 - XYFlow/React (node/flow style workflow UI)
 - ESLint 9
 
+### AI/ML Microservice (`crescendo-aiml`)
+
+- **FastAPI & Uvicorn**: Asynchronous web server and API framework.
+- **LangGraph**: Framework for building stateful, multi-agent AI applications.
+- **Redis Checkpointer**: Distributed memory management for multi-turn conversational AI context.
+- **Groq API**: Lightning-fast LLM inference utilizing `llama-3.1-8b-instant` and `llama-3.3-70b-versatile`.
+- **Pydantic**: Strict schema validation to guarantee AI JSON outputs conform to the Java backend contracts.
+
 ### Infrastructure and developer tooling
 
 - Docker
@@ -166,15 +174,16 @@ Crescendo features a robust AI/ML microservice (`crescendo-aiml`) that powers tw
 
 **1. The Natural Language Workflow Builder (Design-Time)**
 Translates conversational user intents into fully executable workflows via a multi-stage LangGraph pipeline:
-- **Intent Classification & Clarification:** Rapid processing to determine if a prompt is actionable or requires clarifying questions back to the user.
-- **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog (`appKeys`, `actionKeys`), eliminating integration hallucinations.
-- **Graceful Error Propagation:** Robust failure boundaries ensure AI limitations or ambiguities surface gracefully.
+- **Stateful Conversational Memory:** Utilizes a Redis checkpointer to remember multi-turn conversational history when clarifying ambiguous prompts, eliminating the need to reset context.
+- **Intent Classification & Strict Clarification:** Rapid processing (Llama-3.1-8b) to enforce clarity. If a user provides an ambiguous prompt lacking specific application names, the model strictly halts and asks clarifying questions instead of hallucinating configurations.
+- **True DAG Conditional Branching:** The LLM goes beyond linear steps and correctly generates multi-branch Directed Acyclic Graphs with logical conditions natively mapped to the execution engine.
+- **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog schemas and dynamic user resources.
 
 **2. The Agentic AI Node (Run-Time)**
 A first-class workflow node that evaluates incoming payloads against a system prompt and dynamically selects tools to call using a ReAct loop:
 - **Stateless Python Reasoning:** The Java engine maintains loop state, security, and idempotency, calling a stateless Python endpoint (`/v1/agent/next-step`) for reasoning decisions on each turn.
-- **Pre-Execution Budgeting:** Token budgets are enforced *before* any LLM calls or tool actions, ensuring no runaway external side effects.
-- **Defense in Depth:** Output sanitization strips known prompt-injection vectors (e.g., "ignore previous instructions") from third-party tool responses before feeding them back into the LLM context window.
+- **Pre-Execution Budgeting & Context Windows:** Token budgets are enforced *before* any LLM calls, and a sliding context window ensures long-running agent loops never exceed Groq API token limits.
+- **Strict Schema Enforcement:** Dynamically filters tool access so the agent only sees the tools explicitly connected by the user on the canvas, while rigorously validating required arguments.
 
 
 ## Design patterns and architectural patterns implemented
