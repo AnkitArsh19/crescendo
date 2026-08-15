@@ -42,6 +42,19 @@ public class EmailTemplate_query {
     @Column(name = "textBody")
     private String textBody;
 
+    @Column(name = "fromAddress", length = 1000)
+    private String fromAddress;
+
+    @Column(name = "replyTo", length = 1000)
+    private String replyTo;
+
+    @Column(name = "previewText", length = 1000)
+    private String previewText;
+
+    @Lob
+    @Column(name = "editorDocument")
+    private String editorDocument;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private TemplateStatus status = TemplateStatus.DRAFT;
@@ -91,6 +104,18 @@ public class EmailTemplate_query {
 
     public String getTextBody() { return textBody; }
     public void setTextBody(String textBody) { this.textBody = textBody; }
+
+    public String getFromAddress() { return fromAddress; }
+    public void setFromAddress(String fromAddress) { this.fromAddress = fromAddress; }
+
+    public String getReplyTo() { return replyTo; }
+    public void setReplyTo(String replyTo) { this.replyTo = replyTo; }
+
+    public String getPreviewText() { return previewText; }
+    public void setPreviewText(String previewText) { this.previewText = previewText; }
+
+    public String getEditorDocument() { return editorDocument; }
+    public void setEditorDocument(String editorDocument) { this.editorDocument = editorDocument; }
 
     public TemplateStatus getStatus() { return status; }
     public void setStatus(TemplateStatus status) { this.status = status; }

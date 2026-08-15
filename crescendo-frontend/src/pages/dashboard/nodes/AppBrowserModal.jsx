@@ -564,8 +564,7 @@ export default function AppBrowserModal({
                                         const isConnected = connectedAppKeys.has(app.appKey);
                                         const needsAuth = app.authType && app.authType !== 'NONE';
                                         // Apps flagged as coming soon are visible but not selectable.
-                                        // Remove 'agent' from this set once the Python reasoning layer is live.
-                                        const COMING_SOON_APPS = new Set(['agent']);
+                                        const COMING_SOON_APPS = new Set();
                                         const isComingSoon = COMING_SOON_APPS.has(app.appKey);
 
                                         return (

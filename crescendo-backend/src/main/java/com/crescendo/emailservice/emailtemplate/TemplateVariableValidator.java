@@ -32,7 +32,7 @@ public class TemplateVariableValidator {
 
     /** Reserved variable names — always available at runtime without explicit declaration. */
     private static final Set<String> RESERVED = Set.of(
-            "FIRST_NAME", "LAST_NAME", "EMAIL", "CRESCENDO_UNSUBSCRIBE_URL"
+            "FIRST_NAME", "LAST_NAME", "EMAIL", "COMPANY_NAME", "CRESCENDO_UNSUBSCRIBE_URL", "UNSUBSCRIBE_URL", "CURRENT_YEAR"
     );
 
     // ── Publish validation ───────────────────────────────────────────────────

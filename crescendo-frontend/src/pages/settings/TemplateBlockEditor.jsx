@@ -39,6 +39,28 @@ const GOOGLE_FONTS = [
   { label: 'Merriweather', value: '"Merriweather", serif' },
 ];
 
+const GOOGLE_FONT_URL_NAMES = {
+  Inter: 'Inter',
+  Roboto: 'Roboto',
+  'Open Sans': 'Open+Sans',
+  Lato: 'Lato',
+  Poppins: 'Poppins',
+  Nunito: 'Nunito',
+  Montserrat: 'Montserrat',
+  'Source Sans 3': 'Source+Sans+3',
+  'Playfair Display': 'Playfair+Display',
+  Merriweather: 'Merriweather',
+};
+
+// Keep the email-safe choices first. The remaining fonts are loaded in the
+// generated HTML for clients that support web fonts, with sensible fallbacks.
+const INLINE_FONT_OPTIONS = [
+  { label: 'System Sans', value: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  ...GOOGLE_FONTS.filter(font => !['System Sans-Serif', 'Georgia (Serif)'].includes(font.label)),
+];
+
 const FONT_WEIGHT_OPTIONS = [
   { label: 'Light (300)', value: '300' },
   { label: 'Normal (400)', value: '400' },
@@ -121,18 +143,42 @@ const DEFAULT_GLOBAL_CSS = `/* Custom CSS for your email */
   /* body { background-color: #1a1a1a !important; } */
 }`;
 
+function readEditorDocument(template) {
+  if (!template?.editorDocument) return null;
+  try {
+    const document = JSON.parse(template.editorDocument);
+    return document && typeof document === 'object' ? document : null;
+  } catch {
+    return null;
+  }
+}
+
+function htmlToPlainText(html) {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character]));
+}
+
 const BLOCK_TYPES = [
   { type: 'heading',     label: 'Heading',         icon: 'H',  description: 'Large section title' },
   { type: 'text',        label: 'Paragraph',       icon: '¶',  description: 'Body text paragraph' },
   { type: 'button',      label: 'Button',          icon: '▶',  description: 'Call to action button' },
-  { type: 'image',       label: 'Image',           icon: '🖼', description: 'Image banner or logo' },
-  { type: 'media',       label: 'Media / File',    icon: '📎', description: 'Attach a file or media link' },
+  { type: 'badge',       label: 'Badge / Tag',     icon: '🏷', description: 'Status pill or category tag' },
+  { type: 'image',       label: 'Image',           icon: '▣',  description: 'Image banner or logo' },
+  { type: 'quote',       label: 'Blockquote',      icon: '❝',  description: 'Highlighted quotation with citation' },
+  { type: 'code',        label: 'Code Block',      icon: '<>', description: 'Syntax-formatted code snippet' },
+  { type: 'social',      label: 'Social Links',    icon: '🔗', description: 'Row of social media links' },
+  { type: 'media',       label: 'Media / File',    icon: '▤',  description: 'Attach a file or media link' },
   { type: 'divider',     label: 'Divider',         icon: '—',  description: 'Horizontal separator' },
   { type: 'columns',     label: '2 Columns',       icon: '⊞',  description: 'Two-column layout' },
   { type: '3columns',    label: '3 Columns',       icon: '☰',  description: 'Three-column layout' },
   { type: 'section',     label: 'Section',         icon: '▢',  description: 'Highlighted section container' },
   { type: 'spacer',      label: 'Spacer',          icon: '↕',  description: 'Vertical spacing' },
-  { type: 'unsubscribe', label: 'Unsubscribe',     icon: '⚓',  description: 'Footer unsubscribe link' },
+  { type: 'unsubscribe', label: 'Unsubscribe',     icon: '↗',  description: 'Footer unsubscribe link' },
 ];
 
 const RESERVED_VARIABLES = [
@@ -141,6 +187,8 @@ const RESERVED_VARIABLES = [
   { key: 'EMAIL', desc: "Recipient's email address" },
   { key: 'COMPANY_NAME', desc: 'Your company name' },
   { key: 'CRESCENDO_UNSUBSCRIBE_URL', desc: 'Unsubscribe link URL' },
+  { key: 'UNSUBSCRIBE_URL', desc: 'Standard unsubscribe URL' },
+  { key: 'CURRENT_YEAR', desc: 'Current 4-digit calendar year' },
 ];
 
 // ─── Default Block Creator ────────────────────────────────────────────────────
@@ -149,9 +197,13 @@ function createBlock(type) {
   const id = crypto.randomUUID();
   const base = { id, type };
   switch (type) {
-    case 'heading':    return { ...base, content: 'Your Heading', level: 'h1', align: 'left', color: '#111827', fontSize: 28 };
-    case 'text':       return { ...base, content: 'Your paragraph text goes here. Use {{FIRST_NAME}} for dynamic content.', align: 'left', color: '#374151', fontSize: 15, lineHeight: 1.55 };
+    case 'heading':    return { ...base, content: 'Your Heading', level: 'h1', align: 'left', color: '#111827', fontSize: 28, fontWeight: '700', marginBottom: 16 };
+    case 'text':       return { ...base, content: 'Your paragraph text goes here. Use {{FIRST_NAME}} for dynamic content.', align: 'left', color: '#374151', fontSize: 15, lineHeight: 1.55, marginBottom: 16 };
     case 'button':     return { ...base, content: 'Click Here', href: 'https://', align: 'center', bgColor: '#0f172a', textColor: '#ffffff', borderRadius: 8, paddingV: 12, paddingH: 24 };
+    case 'badge':      return { ...base, content: 'NEW UPDATE', align: 'left', bgColor: '#e0e7ff', textColor: '#4338ca', borderRadius: 9999, fontSize: 11, fontWeight: '700', paddingV: 4, paddingH: 10, marginBottom: 12 };
+    case 'quote':      return { ...base, content: 'Simplicity is prerequisite for reliability.', author: 'Edsger W. Dijkstra', align: 'left', borderColor: '#6366f1', bgColor: '#f8fafc', textColor: '#334155', fontSize: 15, fontStyle: 'italic', marginBottom: 16 };
+    case 'code':       return { ...base, content: 'const client = new Crescendo({\n  apiKey: "cr_live_..."\n});', language: 'javascript', bgColor: '#0f172a', textColor: '#e2e8f0', fontSize: 13, borderRadius: 8, marginBottom: 16 };
+    case 'social':     return { ...base, align: 'center', links: [{ platform: '𝕏 Twitter', url: 'https://x.com' }, { platform: 'GitHub', url: 'https://github.com' }, { platform: 'LinkedIn', url: 'https://linkedin.com' }], bgColor: '#f1f5f9', textColor: '#475569', marginBottom: 16 };
     case 'image':      return { ...base, src: '', alt: '', align: 'center', width: '100%' };
     case 'media':      return { ...base, src: '', filename: 'file.pdf', align: 'center' };
     case 'divider':    return { ...base, color: '#e2e8f0', thickness: 1, margin: 24 };
@@ -181,28 +233,34 @@ function blockToHtmlStr(block, globalTheme) {
         `    text-align:${block.align};`,
         `    color:${block.color};`,
         `    font-size:${block.fontSize}px;`,
-        `    font-weight:700;`,
-        `    font-family:${globalTheme.titleFont || globalTheme.textFont || 'sans-serif'};`,
-        `    margin:0 0 16px 0;`,
+        `    font-weight:${block.fontWeight || globalTheme.headingWeight || '700'};`,
+        `    font-family:${block.fontFamily || globalTheme.titleFont || globalTheme.textFont || 'sans-serif'};`,
+        `    letter-spacing:${block.letterSpacing ?? globalTheme.letterSpacing ?? 0}em;`,
+        `    margin:0 0 ${block.marginBottom ?? 16}px 0;`,
         `  "`,
         `>`,
         `  ${block.content}`,
         `</${block.level}>`,
       ].join('\n');
-    case 'text':
+    case 'text': {
+      const tag = block.richHtml ? 'div' : 'p';
       return [
-        `<p`,
+        `<${tag}`,
         `  style="`,
         `    text-align:${block.align};`,
         `    color:${block.color};`,
         `    font-size:${block.fontSize}px;`,
+        `    font-weight:${block.fontWeight || globalTheme.textWeight || '400'};`,
+        `    font-family:${block.fontFamily || globalTheme.textFont || 'sans-serif'};`,
         `    line-height:${block.lineHeight || 1.6};`,
-        `    margin:0 0 16px 0;`,
+        `    letter-spacing:${block.letterSpacing ?? globalTheme.letterSpacing ?? 0}em;`,
+        `    margin:0 0 ${block.marginBottom ?? 16}px 0;`,
         `  "`,
         `>`,
         `  ${block.content}`,
-        `</p>`,
+        `</${tag}>`,
       ].join('\n');
+    }
     case 'button':
       return [
         `<table`,
@@ -230,6 +288,90 @@ function blockToHtmlStr(block, globalTheme) {
         `          "`,
         `        >${block.content}</a>`,
         `      </td>`,
+        `    </tr>`,
+        `  </tbody>`,
+        `</table>`,
+      ].join('\n');
+    case 'badge':
+      return [
+        `<table`,
+        `  align="${block.align || 'left'}"`,
+        `  border="0"`,
+        `  cellpadding="0"`,
+        `  cellspacing="0"`,
+        `  role="presentation"`,
+        `  style="margin:0 0 ${block.marginBottom ?? 12}px 0;"`,
+        `>`,
+        `  <tbody>`,
+        `    <tr>`,
+        `      <td style="background-color:${block.bgColor || '#e0e7ff'};color:${block.textColor || '#4338ca'};padding:${block.paddingV || 4}px ${block.paddingH || 10}px;border-radius:${block.borderRadius || 9999}px;font-size:${block.fontSize || 11}px;font-weight:${block.fontWeight || '700'};text-transform:uppercase;letter-spacing:0.05em;display:inline-block;font-family:${globalTheme.textFont || 'sans-serif'};">`,
+        `        ${block.content}`,
+        `      </td>`,
+        `    </tr>`,
+        `  </tbody>`,
+        `</table>`,
+      ].join('\n');
+    case 'quote':
+      return [
+        `<table`,
+        `  align="${block.align || 'left'}"`,
+        `  border="0"`,
+        `  cellpadding="0"`,
+        `  cellspacing="0"`,
+        `  role="presentation"`,
+        `  style="width:100%;margin:0 0 ${block.marginBottom ?? 16}px 0;"`,
+        `>`,
+        `  <tbody>`,
+        `    <tr>`,
+        `      <td style="border-left:3px solid ${block.borderColor || '#6366f1'};background-color:${block.bgColor || '#f8fafc'};padding:12px 16px;border-radius:0 6px 6px 0;">`,
+        `        <p style="margin:0;font-size:${block.fontSize || 15}px;font-style:${block.fontStyle || 'italic'};color:${block.textColor || '#334155'};line-height:1.6;font-family:${block.fontFamily || globalTheme.textFont || 'sans-serif'};">`,
+        `          ${block.content}`,
+        `        </p>`,
+        block.author ? `        <p style="margin:6px 0 0 0;font-size:13px;font-weight:600;color:${block.textColor || '#475569'};font-style:normal;font-family:${block.fontFamily || globalTheme.textFont || 'sans-serif'};">— ${block.author}</p>` : '',
+        `      </td>`,
+        `    </tr>`,
+        `  </tbody>`,
+        `</table>`,
+      ].filter(Boolean).join('\n');
+    case 'code':
+      return [
+        `<table`,
+        `  align="center"`,
+        `  width="100%"`,
+        `  border="0"`,
+        `  cellpadding="0"`,
+        `  cellspacing="0"`,
+        `  role="presentation"`,
+        `  style="margin:0 0 ${block.marginBottom ?? 16}px 0;"`,
+        `>`,
+        `  <tbody>`,
+        `    <tr>`,
+        `      <td style="background-color:${block.bgColor || '#0f172a'};color:${block.textColor || '#e2e8f0'};padding:14px 16px;border-radius:${block.borderRadius ?? 8}px;font-family:'Fira Code',Consolas,Monaco,monospace;font-size:${block.fontSize || 13}px;line-height:1.55;white-space:pre-wrap;word-break:break-all;">`,
+        `        <code>${escapeHtml(block.content)}</code>`,
+        `      </td>`,
+        `    </tr>`,
+        `  </tbody>`,
+        `</table>`,
+      ].join('\n');
+    case 'social':
+      return [
+        `<table`,
+        `  align="${block.align || 'center'}"`,
+        `  border="0"`,
+        `  cellpadding="0"`,
+        `  cellspacing="0"`,
+        `  role="presentation"`,
+        `  style="margin:16px 0;"`,
+        `>`,
+        `  <tbody>`,
+        `    <tr>`,
+        ...(block.links || []).map(l => [
+          `      <td style="padding:0 6px;">`,
+          `        <a href="${l.url}" target="_blank" rel="noopener" style="display:inline-block;background-color:${block.bgColor || '#f1f5f9'};color:${block.textColor || '#475569'};text-decoration:none;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;font-family:${globalTheme.textFont || 'sans-serif'};">`,
+          `          ${l.platform}`,
+          `        </a>`,
+          `      </td>`,
+        ].join('\n')),
         `    </tr>`,
         `  </tbody>`,
         `</table>`,
@@ -334,22 +476,18 @@ function blockToHtmlStr(block, globalTheme) {
   }
 }
 
-function blocksToHtml(blocks, pageStyle, globalTheme, globalCss) {
-  const fontName = (() => {
-    if (globalTheme.textFont.includes('Inter')) return 'Inter';
-    if (globalTheme.textFont.includes('Roboto')) return 'Roboto';
-    if (globalTheme.textFont.includes('Poppins')) return 'Poppins';
-    if (globalTheme.textFont.includes('Open Sans')) return 'Open+Sans';
-    if (globalTheme.textFont.includes('Lato')) return 'Lato';
-    if (globalTheme.textFont.includes('Montserrat')) return 'Montserrat';
-    if (globalTheme.textFont.includes('Nunito')) return 'Nunito';
-    if (globalTheme.textFont.includes('Playfair')) return 'Playfair+Display';
-    if (globalTheme.textFont.includes('Merriweather')) return 'Merriweather';
-    return null;
-  })();
-  const fontImport = fontName
-    ? `@import url('https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;600;700&display=swap');`
-    : '';
+function blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText = '') {
+  const fontSources = [
+    globalTheme.textFont,
+    globalTheme.titleFont,
+    ...blocks.map(block => block.fontFamily),
+    // Inline selection formatting is retained as style attributes in content.
+    ...blocks.map(block => block.content || ''),
+  ].filter(Boolean);
+  const fontImports = Object.entries(GOOGLE_FONT_URL_NAMES)
+    .filter(([family]) => fontSources.some(source => source.includes(family)))
+    .map(([, urlName]) => `@import url('https://fonts.googleapis.com/css2?family=${urlName}:wght@300;400;500;600;700&display=swap');`)
+    .join('\n      ');
 
   const bodyContent = blocks
     .map(b => indent(blockToHtmlStr(b, globalTheme), 8))
@@ -367,7 +505,7 @@ function blocksToHtml(blocks, pageStyle, globalTheme, globalCss) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email</title>
     <style>
-      ${fontImport}
+      ${fontImports}
       body {
         margin: 0;
         padding: 0;
@@ -407,6 +545,7 @@ function blocksToHtml(blocks, pageStyle, globalTheme, globalCss) {
               line-height:${globalTheme.lineHeight || 1.6};
             "
           >
+${previewText ? `            <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${escapeHtml(previewText)}</div>` : ''}
 ${bodyContent}
           </td>
         </tr>
@@ -431,15 +570,19 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     return null;
   };
   const initialDraft = getInitialDraft();
+  const persistedDocument = readEditorDocument(template);
+  const restored = initialDraft || persistedDocument || {};
 
-  const [name, setName]               = useState(initialDraft?.name ?? (template?.name || 'Untitled Template'));
-  const [subject, setSubject]         = useState(initialDraft?.subject ?? (template?.subject || ''));
-  const [fromAddress, setFromAddress] = useState('Crescendo <hello@crescendo.run>');
-  const [replyTo, setReplyTo]         = useState('');
-  const [previewText, setPreviewText] = useState('');
+  const [name, setName]               = useState(restored.name ?? (template?.name || 'Untitled Template'));
+  const [subject, setSubject]         = useState(restored.subject ?? (template?.subject || ''));
+  const [fromAddress, setFromAddress] = useState(restored.fromAddress ?? template?.fromAddress ?? '');
+  const [replyTo, setReplyTo]         = useState(restored.replyTo ?? template?.replyTo ?? '');
+  const [previewText, setPreviewText] = useState(restored.previewText ?? template?.previewText ?? '');
+  const [variables, setVariables]     = useState(restored.variables ?? template?.variables ?? []);
+  const [plainText, setPlainText]     = useState(restored.plainText ?? template?.textBody ?? '');
   const [editorMode, setEditorMode]   = useState('visual'); // 'visual' | 'code'
 
-  const [blocks, setBlocks]           = useState(() => initialDraft?.blocks ?? initBlocks(template));
+  const [blocks, setBlocks]           = useState(() => restored.blocks ?? initBlocks(template));
   const [autoSaveStatus, setAutoSaveStatus] = useState(initialDraft ? 'Restored from local backup' : 'All changes saved');
   const [history, setHistory]         = useState([]);
   const [future, setFuture]           = useState([]);
@@ -450,7 +593,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const [imageUploadBlock, setImageUploadBlock] = useState(null);
 
   // Page & Body style
-  const [pageStyle, setPageStyle] = useState({
+  const [pageStyle, setPageStyle] = useState(restored.pageStyle || {
     background: '#f4f4f5',
     bodyBackground: '#ffffff',
     bodyWidth: 600,
@@ -465,7 +608,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   });
 
   // Global Theme
-  const [globalTheme, setGlobalTheme] = useState({
+  const [globalTheme, setGlobalTheme] = useState(restored.globalTheme || {
     textFont: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     titleFont: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     textSize: 15,
@@ -479,22 +622,27 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     headingWeight: '700',
   });
 
-  const [globalCss, setGlobalCss] = useState(DEFAULT_GLOBAL_CSS);
-  const [rawHtmlCode, setRawHtmlCode] = useState(() => blocksToHtml([], pageStyle, globalTheme, globalCss));
+  const [globalCss, setGlobalCss] = useState(restored.globalCss || DEFAULT_GLOBAL_CSS);
+  const [rawHtmlCode, setRawHtmlCode] = useState(() => blocksToHtml([], pageStyle, globalTheme, globalCss, previewText));
 
   const [testSendOpen, setTestSendOpen] = useState(false);
   const [testEmail, setTestEmail]     = useState('');
+  const [testVariables, setTestVariables] = useState({});
   const [saving, setSaving]           = useState(false);
   const [publishing, setPublishing]   = useState(false);
   const [err, setErr]                 = useState('');
   const [copiedCode, setCopiedCode]   = useState(false);
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId) || null;
+  const editorDocument = () => JSON.stringify({ blocks, pageStyle, globalTheme, globalCss, fromAddress, replyTo, previewText, variables, plainText });
+  const addVariable = () => setVariables(current => [...current, { name: 'CUSTOM_VALUE', type: 'STRING', fallbackValue: '' }]);
+  const updateVariable = (index, patch) => setVariables(current => current.map((variable, variableIndex) => variableIndex === index ? { ...variable, ...patch } : variable));
+  const removeVariable = index => setVariables(current => current.filter((_, variableIndex) => variableIndex !== index));
 
   // Sync rawHtmlCode when blocks or style change in visual mode
   useEffect(() => {
     if (editorMode === 'visual') {
-      setRawHtmlCode(blocksToHtml(blocks, pageStyle, globalTheme, globalCss));
+      setRawHtmlCode(blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText));
     }
   }, [blocks, pageStyle, globalTheme, globalCss, editorMode]);
 
@@ -503,9 +651,15 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     const backup = {
       name,
       subject,
+      fromAddress,
+      replyTo,
+      previewText,
+      variables,
+      plainText,
       blocks,
       pageStyle,
       globalTheme,
+      globalCss,
       timestamp: Date.now(),
       templateId: template?.id || 'new'
     };
@@ -513,12 +667,12 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
       localStorage.setItem(backupKey, JSON.stringify(backup));
       setAutoSaveStatus('Autosaving...');
       const timer = setTimeout(async () => {
-        if (template?.id && template.status !== 'PUBLISHED') {
+        if (template?.id) {
           try {
-            const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss);
-            await templatesApi.update(template.id, { name: name.trim() || 'Untitled Template', subject: subject.trim(), htmlBody: html });
+            const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText);
+            await templatesApi.update(template.id, { name: name.trim() || 'Untitled Template', subject: subject.trim(), htmlBody: html, textBody: plainText || htmlToPlainText(html), variables, fromAddress, replyTo, previewText, editorDocument: editorDocument() });
             setAutoSaveStatus('All changes saved');
-          } catch (e) {
+          } catch {
             setAutoSaveStatus('Saved to local backup');
           }
         } else {
@@ -529,7 +683,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     } catch {
       setAutoSaveStatus('Storage full - unable to backup');
     }
-  }, [name, subject, blocks, pageStyle, globalTheme, template?.id, template?.status, editorMode, rawHtmlCode, globalCss, backupKey]);
+  }, [name, subject, fromAddress, replyTo, previewText, blocks, pageStyle, globalTheme, template?.id, template?.status, editorMode, rawHtmlCode, globalCss, plainText, variables, backupKey]);
 
   // Helper to update a single padding side or all
   const updatePadding = useCallback((side, val) => {
@@ -545,8 +699,8 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     if (!name.trim()) { setErr('Template name is required'); return; }
     setSaving(true); setErr('');
     try {
-      const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss);
-      const payload = { name: name.trim(), subject: subject.trim(), htmlBody: html };
+      const html = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText);
+      const payload = { name: name.trim(), subject: subject.trim(), htmlBody: html, textBody: plainText || htmlToPlainText(html), variables, fromAddress, replyTo, previewText, editorDocument: editorDocument() };
       const saved = !template?.id ? await templatesApi.create(payload) : await templatesApi.update(template.id, payload);
       localStorage.removeItem(backupKey);
       setAutoSaveStatus('All changes saved');
@@ -572,7 +726,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const handleTestSend = async () => {
     if (!template?.id || !testEmail.trim()) return;
     try {
-      await templatesApi.testSend(template.id, { toAddress: testEmail.trim(), variables: {} });
+      await templatesApi.testSend(template.id, { toAddress: testEmail.trim(), variables: testVariables });
       setTestSendOpen(false);
     } catch (e) {
       setErr(e.response?.data?.message || 'Test send failed');
@@ -684,7 +838,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const currentPreviewHtml = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss);
+  const currentPreviewHtml = editorMode === 'code' ? rawHtmlCode : blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText);
 
   const applyThemePreset = (presetKey) => {
     setGlobalTheme(prev => ({ ...prev, ...THEME_PRESETS[presetKey] }));
@@ -759,6 +913,13 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
             >
               <HiOutlineCode />
             </button>
+            <button
+              className={`tbe-dock-btn ${editorMode === 'plain' ? 'active' : ''}`}
+              onClick={() => setEditorMode('plain')}
+              title="Plain-text version"
+            >
+              <HiOutlineDocumentText />
+            </button>
 
             {editorMode === 'visual' && (
               <>
@@ -799,7 +960,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                 <div className="tbe-popover-body">
                   {activeDockTool === 'blocks' && (
                     <div className="tbe-popover-grid">
-                      {BLOCK_TYPES.filter(b => ['heading', 'text', 'button', 'image', 'media', 'divider', 'spacer', 'unsubscribe'].includes(b.type)).map(b => (
+                      {BLOCK_TYPES.filter(b => ['heading', 'text', 'button', 'badge', 'quote', 'code', 'social', 'image', 'media', 'divider', 'spacer', 'unsubscribe'].includes(b.type)).map(b => (
                         <button key={b.type} className="tbe-popover-item" onClick={() => addBlock(b.type)}>
                           <span className="tbe-popover-icon">{b.icon}</span>
                           <div>
@@ -825,7 +986,30 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                   )}
                   {activeDockTool === 'vars' && (
                     <div className="tbe-vars-list">
-                      <p className="tbe-vars-hint">Click a variable to copy. Use <code>{'{{VAR}}'}</code> inside text blocks.</p>
+                      {(() => {
+                        const check = scanVariables();
+                        if (check.undeclared.length > 0) {
+                          return (
+                            <div className="tbe-var-scan-badge">
+                              <HiOutlineSparkles />
+                              <span>{check.undeclared.length} undeclared variable(s) found.</span>
+                              <button className="tbe-btn-ghost tbe-btn-xs" style={{ marginLeft: 'auto' }} onClick={() => autoDeclareAll(check.undeclared)}>
+                                Declare All
+                              </button>
+                            </div>
+                          );
+                        }
+                        if (check.detected.length > 0) {
+                          return (
+                            <div className="tbe-var-scan-badge clean">
+                              <HiOutlineCheck />
+                              <span>All {check.detected.length} template variables declared.</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <p className="tbe-vars-hint">Variables are validated when publishing. Use them in the subject, preview text, or body.</p>
                       {RESERVED_VARIABLES.map(v => (
                         <div key={v.key} className="tbe-var-row" onClick={() => navigator.clipboard.writeText(`{{${v.key}}}`)}>
                           <div>
@@ -835,6 +1019,23 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                           <span className="tbe-var-copy">Copy</span>
                         </div>
                       ))}
+                      <div className="tbe-variable-manager">
+                        <div className="tbe-variable-manager-header">
+                          <strong>Custom variables</strong>
+                          <button className="tbe-btn-secondary" onClick={addVariable}><HiOutlinePlusSm /> Add</button>
+                        </div>
+                        {variables.length === 0 && <p className="tbe-vars-hint">No custom variables yet.</p>}
+                        {variables.map((variable, index) => (
+                          <div className="tbe-variable-form" key={`${variable.name}-${index}`}>
+                            <input className="tbe-text-input" value={variable.name} aria-label="Variable name" onChange={e => updateVariable(index, { name: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })} />
+                            <select className="tbe-select" value={variable.type} aria-label="Variable type" onChange={e => updateVariable(index, { type: e.target.value })}>
+                              <option value="STRING">Text</option><option value="NUMBER">Number</option>
+                            </select>
+                            <input className="tbe-text-input" value={variable.fallbackValue ?? ''} aria-label="Fallback value" placeholder="Fallback (optional)" onChange={e => updateVariable(index, { fallbackValue: e.target.value || null })} />
+                            <button className="tbe-btn-icon" title="Remove variable" onClick={() => removeVariable(index)}><HiOutlineTrash /></button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -854,6 +1055,12 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                     padding: `${pageStyle.paddingTop}px ${pageStyle.paddingRight}px ${pageStyle.paddingBottom}px ${pageStyle.paddingLeft}px`,
                     borderRadius: pageStyle.borderRadius,
                     border: pageStyle.borderWidth > 0 ? `${pageStyle.borderWidth}px ${pageStyle.borderStyle} ${pageStyle.borderColor}` : 'none',
+                    fontFamily: globalTheme.textFont,
+                    fontSize: globalTheme.textSize,
+                    fontWeight: globalTheme.textWeight,
+                    lineHeight: globalTheme.lineHeight,
+                    letterSpacing: `${globalTheme.letterSpacing}em`,
+                    color: globalTheme.textColor,
                   }}
                 >
                   {/* Canvas Email Header - Each field on its own row */}
@@ -888,6 +1095,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                     <BlockRow
                       key={block.id}
                       block={block}
+                      globalTheme={globalTheme}
                       isSelected={selectedBlockId === block.id}
                       isFirst={idx === 0}
                       isLast={idx === blocks.length - 1}
@@ -903,6 +1111,13 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                 </div>
               </div>
             </div>
+          ) : editorMode === 'plain' ? (
+            <div className="tbe-split-code-wrap">
+              <div className="tbe-code-editor-pane" style={{ flex: 1 }}>
+                <div className="tbe-code-toolbar"><span className="tbe-code-title"><HiOutlineDocumentText /> Plain-text version</span></div>
+                <textarea className="tbe-code-textarea" value={plainText || htmlToPlainText(blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText))} onChange={e => setPlainText(e.target.value)} placeholder="Accessible plain-text fallback…" />
+              </div>
+            </div>
           ) : (
             /* ── Split HTML Code View ── */
             <div className="tbe-split-code-wrap">
@@ -914,7 +1129,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                     <button className="tbe-code-btn" onClick={handleCopyCode}>
                       {copiedCode ? <HiOutlineCheck /> : <HiOutlineClipboard />} {copiedCode ? 'Copied!' : 'Copy HTML'}
                     </button>
-                    <button className="tbe-code-btn" onClick={() => setRawHtmlCode(blocksToHtml(blocks, pageStyle, globalTheme, globalCss))}>
+                    <button className="tbe-code-btn" onClick={() => setRawHtmlCode(blocksToHtml(blocks, pageStyle, globalTheme, globalCss, previewText))}>
                       <HiOutlineRefresh /> Sync from Visual
                     </button>
                   </div>
@@ -1222,6 +1437,23 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                   Recipient Address
                   <input className="tbe-form-input" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="you@example.com" />
                 </label>
+                {variables.length > 0 && (
+                  <div className="tbe-test-variable-fields">
+                    <p className="tbe-modal-desc">Preview personalization with example values.</p>
+                    {variables.map(variable => (
+                      <label className="tbe-form-label" key={variable.name}>
+                        {variable.name}
+                        <input
+                          className="tbe-form-input"
+                          type={variable.type === 'NUMBER' ? 'number' : 'text'}
+                          value={testVariables[variable.name] ?? variable.fallbackValue ?? ''}
+                          onChange={e => setTestVariables(current => ({ ...current, [variable.name]: variable.type === 'NUMBER' ? Number(e.target.value) : e.target.value }))}
+                          placeholder={variable.fallbackValue || 'Example value'}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="tbe-modal-footer">
                 <button className="tbe-btn-secondary" onClick={() => setTestSendOpen(false)}>Cancel</button>
@@ -1230,6 +1462,16 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
             </motion.div>
           </motion.div>
         )}
+        <PreflightModal
+          isOpen={preflightModalOpen}
+          onClose={() => setPreflightModalOpen(false)}
+          checkData={scanVariables()}
+          onAutoDeclareAll={autoDeclareAll}
+          onAutoDeclareOne={autoDeclareOne}
+          onPublish={executePublish}
+          publishing={publishing}
+          isDraftOnly={!template?.id}
+        />
         {imageUploadOpen && (
           <ImageUploadModal
             onClose={() => { setImageUploadOpen(false); setImageUploadBlock(null); }}
@@ -1247,7 +1489,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
 
 // ─── Block Row — inline toolbar ───────────────────────────────────────────────
 
-function BlockRow({ block, isSelected, isFirst, isLast, onSelect, onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate, onOpenImageUpload }) {
+function BlockRow({ block, globalTheme, isSelected, isFirst, isLast, onSelect, onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate, onOpenImageUpload }) {
   return (
     <div
       className={`tbe-block-row ${isSelected ? 'selected' : ''}`}
@@ -1303,7 +1545,7 @@ function BlockRow({ block, isSelected, isFirst, isLast, onSelect, onUpdate, onDe
         </div>
       )}
       <div className="tbe-block-content">
-        <BlockContent block={block} onUpdate={onUpdate} isSelected={isSelected} />
+        <BlockContent block={block} globalTheme={globalTheme} onUpdate={onUpdate} />
       </div>
     </div>
   );
@@ -1311,13 +1553,29 @@ function BlockRow({ block, isSelected, isFirst, isLast, onSelect, onUpdate, onDe
 
 // ─── Rich Text Block ── uses innerHTML + execCommand for word-level editing ────
 
+function ensurePreviewFontLoaded(fontFamily) {
+  if (typeof document === 'undefined') return;
+  const entry = Object.entries(GOOGLE_FONT_URL_NAMES).find(([family]) => fontFamily.includes(family));
+  if (!entry) return;
+  const [family, urlName] = entry;
+  const selector = `link[data-template-editor-font="${family}"]`;
+  if (document.head.querySelector(selector)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${urlName}:wght@300;400;500;600;700&display=swap`;
+  link.dataset.templateEditorFont = family;
+  document.head.appendChild(link);
+}
+
 function RichTextBlock({ className, style, html, onCommit, placeholder }) {
   const ref = useRef(null);
   const [showToolbar, setShowToolbar] = useState(false);
   const [linkMode, setLinkMode] = useState(false);
   const [linkUrl, setLinkUrl] = useState('https://');
   const [showVarMenu, setShowVarMenu] = useState(false);
+  const [showFontMenu, setShowFontMenu] = useState(false);
   const savedRange = useRef(null);
+  const fontPreview = useRef(null);
 
   // Only set innerHTML on mount or when html prop changes externally
   useEffect(() => {
@@ -1334,6 +1592,87 @@ function RichTextBlock({ className, style, html, onCommit, placeholder }) {
   const restoreSelection = () => {
     const sel = window.getSelection();
     if (savedRange.current) { sel.removeAllRanges(); sel.addRange(savedRange.current); }
+  };
+
+  const selectionIsInEditor = (range) => {
+    const node = range?.commonAncestorContainer;
+    return Boolean(node && ref.current && (node === ref.current || ref.current.contains(node)));
+  };
+
+  const selectionOffsets = (range) => {
+    const before = range.cloneRange();
+    before.selectNodeContents(ref.current);
+    before.setEnd(range.startContainer, range.startOffset);
+    return { start: before.toString().length, end: before.toString().length + range.toString().length };
+  };
+
+  const restoreSelectionOffsets = ({ start, end }) => {
+    const walker = document.createTreeWalker(ref.current, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let node;
+    let cursor = 0;
+    while ((node = walker.nextNode())) {
+      nodes.push({ node, start: cursor, end: cursor + node.textContent.length });
+      cursor += node.textContent.length;
+    }
+    const locate = offset => nodes.find(item => offset >= item.start && offset <= item.end) || nodes[nodes.length - 1];
+    const startNode = locate(start);
+    const endNode = locate(end);
+    if (!startNode || !endNode) return;
+    const range = document.createRange();
+    range.setStart(startNode.node, Math.max(0, Math.min(start - startNode.start, startNode.node.textContent.length)));
+    range.setEnd(endNode.node, Math.max(0, Math.min(end - endNode.start, endNode.node.textContent.length)));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedRange.current = range.cloneRange();
+  };
+
+  const applySelectionStyle = (styles, commit = true) => {
+    ref.current?.focus();
+    restoreSelection();
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return false;
+    const range = sel.getRangeAt(0);
+    if (range.collapsed || !selectionIsInEditor(range)) return false;
+
+    const span = document.createElement('span');
+    Object.assign(span.style, styles);
+    try {
+      range.surroundContents(span);
+    } catch {
+      const fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    }
+    const appliedRange = document.createRange();
+    appliedRange.selectNodeContents(span);
+    sel.removeAllRanges();
+    sel.addRange(appliedRange);
+    savedRange.current = appliedRange.cloneRange();
+    if (commit) onCommit(ref.current.innerHTML);
+    return true;
+  };
+
+  const clearFontPreview = () => {
+    if (!fontPreview.current || !ref.current) return;
+    const snapshot = fontPreview.current;
+    ref.current.innerHTML = snapshot.html;
+    fontPreview.current = null;
+    restoreSelectionOffsets(snapshot);
+  };
+
+  const previewFont = (fontFamily) => {
+    if (!ref.current || !savedRange.current) return;
+    ensurePreviewFontLoaded(fontFamily);
+    clearFontPreview();
+    fontPreview.current = { html: ref.current.innerHTML, ...selectionOffsets(savedRange.current) };
+    applySelectionStyle({ fontFamily }, false);
+  };
+
+  const applyFont = (fontFamily) => {
+    clearFontPreview();
+    if (applySelectionStyle({ fontFamily })) setShowFontMenu(false);
   };
 
   const execCmd = (cmd, value = null) => {
@@ -1387,6 +1726,47 @@ function RichTextBlock({ className, style, html, onCommit, placeholder }) {
               <button className="tbe-rt-btn" title="Bold" onMouseDown={e => { e.preventDefault(); execCmd('bold'); }}>B</button>
               <button className="tbe-rt-btn tbe-rt-italic" title="Italic" onMouseDown={e => { e.preventDefault(); execCmd('italic'); }}>I</button>
               <button className="tbe-rt-btn tbe-rt-under" title="Underline" onMouseDown={e => { e.preventDefault(); execCmd('underline'); }}>U</button>
+              <button className="tbe-rt-btn" title="Clear inline formatting" onMouseDown={e => { e.preventDefault(); execCmd('removeFormat'); }}>Tx</button>
+              <div className="tbe-rt-sep" />
+              <div className="tbe-rt-font-wrap" onMouseLeave={clearFontPreview}>
+                <button className="tbe-rt-btn tbe-rt-font-trigger" title="Font family" onMouseDown={e => { e.preventDefault(); saveSelection(); setShowFontMenu(v => !v); }}>
+                  Font <HiOutlineChevronDown />
+                </button>
+                {showFontMenu && (
+                  <div className="tbe-rt-font-menu">
+                    <span className="tbe-rt-menu-label">Preview on selected text</span>
+                    {INLINE_FONT_OPTIONS.map(font => (
+                      <button
+                        key={font.label}
+                        className="tbe-rt-font-item"
+                        style={{ fontFamily: font.value }}
+                        onMouseEnter={() => previewFont(font.value)}
+                        onMouseDown={e => { e.preventDefault(); applyFont(font.value); }}
+                      >
+                        {font.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <select
+                className="tbe-rt-size-select"
+                title="Font size"
+                defaultValue=""
+                onMouseDown={saveSelection}
+                onChange={e => {
+                  if (e.target.value) applySelectionStyle({ fontSize: `${e.target.value}px` });
+                  e.target.value = '';
+                }}
+              >
+                <option value="">Size</option>
+                {[12, 14, 16, 18, 20, 24, 28, 32, 40].map(size => <option key={size} value={size}>{size}px</option>)}
+              </select>
+              <label className="tbe-rt-color" title="Text colour" onMouseDown={saveSelection}>
+                <input type="color" defaultValue="#111827" onChange={e => applySelectionStyle({ color: e.target.value })} />
+              </label>
+              <button className="tbe-rt-btn" title="Bulleted list" onMouseDown={e => { e.preventDefault(); execCmd('insertUnorderedList'); }}>•</button>
+              <button className="tbe-rt-btn" title="Numbered list" onMouseDown={e => { e.preventDefault(); execCmd('insertOrderedList'); }}>1.</button>
               <div className="tbe-rt-sep" />
               <button className="tbe-rt-btn" title="Add link" onMouseDown={e => { e.preventDefault(); saveSelection(); setLinkMode(true); }}><HiOutlineLink /></button>
               <button className="tbe-rt-btn" title="Remove link" onMouseDown={e => { e.preventDefault(); execCmd('unlink'); setShowToolbar(false); }}><span style={{fontSize:11}}>No link</span></button>
@@ -1426,7 +1806,8 @@ function RichTextBlock({ className, style, html, onCommit, placeholder }) {
         style={style}
         onMouseUp={handleSelection}
         onKeyUp={handleSelection}
-        onBlur={() => { onCommit(ref.current.innerHTML); setShowToolbar(false); setLinkMode(false); }}
+        onInput={() => onCommit(ref.current.innerHTML)}
+        onBlur={() => { onCommit(ref.current.innerHTML); setShowToolbar(false); setLinkMode(false); setShowFontMenu(false); clearFontPreview(); }}
         data-placeholder={placeholder}
       />
     </div>
@@ -1435,13 +1816,110 @@ function RichTextBlock({ className, style, html, onCommit, placeholder }) {
 
 // ─── Block Content ─────────────────────────────────────────────────────────────
 
-function BlockContent({ block, onUpdate, isSelected }) {
+function BlockContent({ block, globalTheme, onUpdate }) {
   switch (block.type) {
+    case 'badge':
+      return (
+        <div style={{ textAlign: block.align || 'left' }}>
+          <span
+            style={{
+              display: 'inline-block',
+              backgroundColor: block.bgColor || '#e0e7ff',
+              color: block.textColor || '#4338ca',
+              padding: `${block.paddingV || 4}px ${block.paddingH || 10}px`,
+              borderRadius: `${block.borderRadius ?? 9999}px`,
+              fontSize: `${block.fontSize || 11}px`,
+              fontWeight: block.fontWeight || '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              outline: 'none',
+            }}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={e => onUpdate({ content: e.currentTarget.textContent })}
+            dangerouslySetInnerHTML={{ __html: block.content }}
+          />
+        </div>
+      );
+    case 'quote':
+      return (
+        <div style={{ borderLeft: `3px solid ${block.borderColor || '#6366f1'}`, backgroundColor: block.bgColor || '#f8fafc', padding: '12px 16px', borderRadius: '0 6px 6px 0', textAlign: block.align || 'left' }}>
+          <RichTextBlock
+            className="tbe-block-quote"
+            style={{ fontStyle: block.fontStyle || 'italic', color: block.textColor || '#334155', fontSize: `${block.fontSize || 15}px`, margin: 0, lineHeight: 1.6, fontFamily: block.fontFamily || globalTheme.textFont }}
+            html={block.content}
+            onCommit={html => onUpdate({ content: html })}
+            placeholder="Type quote text..."
+          />
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: block.textColor || '#475569' }}>— </span>
+            <span
+              contentEditable
+              suppressContentEditableWarning
+              style={{ fontSize: 13, fontWeight: 600, color: block.textColor || '#475569', outline: 'none' }}
+              onBlur={e => onUpdate({ author: e.currentTarget.textContent })}
+              dangerouslySetInnerHTML={{ __html: block.author || 'Author Name' }}
+            />
+          </div>
+        </div>
+      );
+    case 'code':
+      return (
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 6, right: 10, fontSize: 10, textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', fontWeight: 600, pointerEvents: 'none' }}>
+            {block.language || 'code'}
+          </div>
+          <pre
+            style={{
+              backgroundColor: block.bgColor || '#0f172a',
+              color: block.textColor || '#e2e8f0',
+              padding: '14px 16px',
+              borderRadius: `${block.borderRadius ?? 8}px`,
+              fontFamily: "'Fira Code', Consolas, Monaco, monospace",
+              fontSize: `${block.fontSize || 13}px`,
+              lineHeight: 1.55,
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              outline: 'none',
+            }}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={e => onUpdate({ content: e.currentTarget.textContent })}
+            dangerouslySetInnerHTML={{ __html: escapeHtml(block.content) }}
+          />
+        </div>
+      );
+    case 'social':
+      return (
+        <div style={{ textAlign: block.align || 'center', padding: '6px 0' }}>
+          <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, justifyContent: block.align === 'left' ? 'flex-start' : block.align === 'right' ? 'flex-end' : 'center' }}>
+            {(block.links || []).map((l, i) => (
+              <span
+                key={i}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  backgroundColor: block.bgColor || '#f1f5f9',
+                  color: block.textColor || '#475569',
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: globalTheme.textFont || 'sans-serif'
+                }}
+              >
+                {l.platform}
+              </span>
+            ))}
+          </div>
+        </div>
+      );
     case 'heading':
       return (
         <RichTextBlock
           className="tbe-block-heading"
-          style={{ textAlign: block.align, color: block.color, fontSize: block.fontSize }}
+          style={{ textAlign: block.align, color: block.color, fontSize: block.fontSize, fontFamily: block.fontFamily || globalTheme.titleFont || globalTheme.textFont, fontWeight: block.fontWeight || globalTheme.headingWeight, letterSpacing: `${block.letterSpacing ?? globalTheme.letterSpacing ?? 0}em`, marginBottom: block.marginBottom ?? 16 }}
           html={block.content}
           onCommit={html => onUpdate({ content: html })}
           placeholder="Type your heading..."
@@ -1451,7 +1929,7 @@ function BlockContent({ block, onUpdate, isSelected }) {
       return (
         <RichTextBlock
           className="tbe-block-text"
-          style={{ textAlign: block.align, color: block.color, fontSize: block.fontSize, lineHeight: block.lineHeight }}
+          style={{ textAlign: block.align, color: block.color, fontSize: block.fontSize, fontFamily: block.fontFamily || globalTheme.textFont, fontWeight: block.fontWeight || globalTheme.textWeight, lineHeight: block.lineHeight, letterSpacing: `${block.letterSpacing ?? globalTheme.letterSpacing ?? 0}em`, marginBottom: block.marginBottom ?? 16 }}
           html={block.content}
           onCommit={html => onUpdate({ content: html })}
           placeholder="Type your paragraph text..."
@@ -1530,12 +2008,12 @@ function BlockContent({ block, onUpdate, isSelected }) {
       return (
         <div style={{ textAlign: block.align }}>
           <div className="tbe-block-media-placeholder">
-            <span style={{ fontSize: 22 }}>📎</span>
+            <HiOutlineDocumentText style={{ fontSize: 20, color: '#64748b' }} />
             <div className="tbe-block-media-info">
               {block.src ? (
                 <a href={block.src} style={{ color: '#374151', textDecoration: 'underline', fontFamily: 'inherit' }}>{block.filename || 'Attached file'}</a>
               ) : (
-                <span style={{ color: '#9ca3af', fontFamily: 'inherit' }}>Add file URL and filename in Inspector →</span>
+                <span style={{ color: '#9ca3af', fontFamily: 'inherit' }}>Add a file URL and filename in the inspector.</span>
               )}
             </div>
           </div>
@@ -1568,7 +2046,7 @@ function BlockInspector({ block, onUpdate, onDeselect }) {
         <button className="tbe-btn-icon" onClick={onDeselect}><HiOutlineX /></button>
       </div>
       <div className="tbe-inspector-body">
-        {['heading', 'text', 'button', 'image', 'unsubscribe'].includes(block.type) && (
+        {['heading', 'text', 'button', 'image', 'quote', 'badge', 'social', 'unsubscribe'].includes(block.type) && (
           <InspField label="Alignment">
             <div className="tbe-align-group">
               {[{val:'left',label:'Left'},{val:'center',label:'Center'},{val:'right',label:'Right'}].map(({val,label}) => (
@@ -1592,6 +2070,30 @@ function BlockInspector({ block, onUpdate, onDeselect }) {
               <div className="tbe-range-row">
                 <input type="range" className="tbe-range" min={12} max={64} value={block.fontSize} onChange={e => onUpdate({ fontSize: Number(e.target.value) })} />
                 <span className="tbe-range-val">{block.fontSize}px</span>
+              </div>
+            </InspField>
+            <InspField label="Font Family">
+              <select className="tbe-select" value={block.fontFamily || ''} onChange={e => onUpdate({ fontFamily: e.target.value || undefined })}>
+                <option value="">Inherit from theme</option>
+                {INLINE_FONT_OPTIONS.map(font => <option key={font.label} value={font.value}>{font.label}</option>)}
+              </select>
+            </InspField>
+            <InspField label="Font Weight">
+              <select className="tbe-select" value={block.fontWeight || ''} onChange={e => onUpdate({ fontWeight: e.target.value || undefined })}>
+                <option value="">Inherit from theme</option>
+                {FONT_WEIGHT_OPTIONS.map(weight => <option key={weight.value} value={weight.value}>{weight.label}</option>)}
+              </select>
+            </InspField>
+            <InspField label="Letter Spacing">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={-0.05} max={0.2} step={0.01} value={block.letterSpacing ?? 0} onChange={e => onUpdate({ letterSpacing: parseFloat(e.target.value) })} />
+                <span className="tbe-range-val">{(block.letterSpacing ?? 0).toFixed(2)}em</span>
+              </div>
+            </InspField>
+            <InspField label="Space Below">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={0} max={64} value={block.marginBottom ?? 16} onChange={e => onUpdate({ marginBottom: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.marginBottom ?? 16}px</span>
               </div>
             </InspField>
           </>
@@ -1708,6 +2210,176 @@ function BlockInspector({ block, onUpdate, onDeselect }) {
               <div className="tbe-range-row">
                 <input type="range" className="tbe-range" min={0} max={32} value={block.borderRadius} onChange={e => onUpdate({ borderRadius: Number(e.target.value) })} />
                 <span className="tbe-range-val">{block.borderRadius}px</span>
+              </div>
+            </InspField>
+          </>
+        )}
+
+                {block.type === 'badge' && (
+          <>
+            <InspField label="Badge Text">
+              <input className="tbe-text-input" value={block.content} onChange={e => onUpdate({ content: e.target.value })} />
+            </InspField>
+            <InspField label="Background Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.bgColor} onChange={e => onUpdate({ bgColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.bgColor} onChange={e => onUpdate({ bgColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Text Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.textColor} onChange={e => onUpdate({ textColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.textColor} onChange={e => onUpdate({ textColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Font Size">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={9} max={16} value={block.fontSize || 11} onChange={e => onUpdate({ fontSize: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.fontSize || 11}px</span>
+              </div>
+            </InspField>
+            <InspField label="Border Radius">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={0} max={9999} step={2} value={block.borderRadius ?? 9999} onChange={e => onUpdate({ borderRadius: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.borderRadius >= 9000 ? 'Pill' : `${block.borderRadius}px`}</span>
+              </div>
+            </InspField>
+            <InspField label="Padding (V / H)">
+              <div className="tbe-two-col">
+                <input type="number" className="tbe-num-input" value={block.paddingV ?? 4} min={0} max={20} onChange={e => onUpdate({ paddingV: Number(e.target.value) })} />
+                <input type="number" className="tbe-num-input" value={block.paddingH ?? 10} min={0} max={40} onChange={e => onUpdate({ paddingH: Number(e.target.value) })} />
+              </div>
+            </InspField>
+          </>
+        )}
+
+        {block.type === 'quote' && (
+          <>
+            <InspField label="Author / Attribution">
+              <input className="tbe-text-input" value={block.author || ''} onChange={e => onUpdate({ author: e.target.value })} placeholder="e.g., Steve Jobs, CEO" />
+            </InspField>
+            <InspField label="Border Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.borderColor || '#6366f1'} onChange={e => onUpdate({ borderColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.borderColor || '#6366f1'} onChange={e => onUpdate({ borderColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Background Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.bgColor || '#f8fafc'} onChange={e => onUpdate({ bgColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.bgColor || '#f8fafc'} onChange={e => onUpdate({ bgColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Text Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.textColor || '#334155'} onChange={e => onUpdate({ textColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.textColor || '#334155'} onChange={e => onUpdate({ textColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Font Size">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={12} max={24} value={block.fontSize || 15} onChange={e => onUpdate({ fontSize: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.fontSize || 15}px</span>
+              </div>
+            </InspField>
+          </>
+        )}
+
+        {block.type === 'code' && (
+          <>
+            <InspField label="Language Tag">
+              <select className="tbe-select" value={block.language || 'javascript'} onChange={e => onUpdate({ language: e.target.value })}>
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
+                <option value="bash">Bash / Shell</option>
+                <option value="json">JSON</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="sql">SQL</option>
+              </select>
+            </InspField>
+            <InspField label="Code Content">
+              <textarea className="tbe-css-textarea" style={{ minHeight: 100 }} value={block.content} onChange={e => onUpdate({ content: e.target.value })} />
+            </InspField>
+            <InspField label="Background Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.bgColor || '#0f172a'} onChange={e => onUpdate({ bgColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.bgColor || '#0f172a'} onChange={e => onUpdate({ bgColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Text Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.textColor || '#e2e8f0'} onChange={e => onUpdate({ textColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.textColor || '#e2e8f0'} onChange={e => onUpdate({ textColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Font Size">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={10} max={18} value={block.fontSize || 13} onChange={e => onUpdate({ fontSize: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.fontSize || 13}px</span>
+              </div>
+            </InspField>
+            <InspField label="Border Radius">
+              <div className="tbe-range-row">
+                <input type="range" className="tbe-range" min={0} max={20} value={block.borderRadius ?? 8} onChange={e => onUpdate({ borderRadius: Number(e.target.value) })} />
+                <span className="tbe-range-val">{block.borderRadius ?? 8}px</span>
+              </div>
+            </InspField>
+          </>
+        )}
+
+        {block.type === 'social' && (
+          <>
+            <InspField label="Social Links">
+              <div className="tbe-social-list">
+                {(block.links || []).map((l, i) => (
+                  <div key={i} className="tbe-social-item">
+                    <input
+                      className="tbe-social-platform-input"
+                      value={l.platform}
+                      onChange={e => {
+                        const updated = (block.links || []).map((link, li) => li === i ? { ...link, platform: e.target.value } : link);
+                        onUpdate({ links: updated });
+                      }}
+                    />
+                    <input
+                      className="tbe-social-url-input"
+                      value={l.url}
+                      onChange={e => {
+                        const updated = (block.links || []).map((link, li) => li === i ? { ...link, url: e.target.value } : link);
+                        onUpdate({ links: updated });
+                      }}
+                      placeholder="https://..."
+                    />
+                    <button
+                      className="tbe-btn-icon"
+                      title="Remove"
+                      onClick={() => onUpdate({ links: (block.links || []).filter((_, li) => li !== i) })}
+                    >
+                      <HiOutlineTrash />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="tbe-btn-secondary tbe-btn-sm"
+                  style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                  onClick={() => onUpdate({ links: [...(block.links || []), { platform: 'Link', url: 'https://' }] })}
+                >
+                  <HiOutlinePlusSm /> Add Link
+                </button>
+              </div>
+            </InspField>
+            <InspField label="Background Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.bgColor || '#f1f5f9'} onChange={e => onUpdate({ bgColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.bgColor || '#f1f5f9'} onChange={e => onUpdate({ bgColor: e.target.value })} maxLength={7} />
+              </div>
+            </InspField>
+            <InspField label="Text Color">
+              <div className="tbe-color-row">
+                <input type="color" className="tbe-color-swatch" value={block.textColor || '#475569'} onChange={e => onUpdate({ textColor: e.target.value })} />
+                <input className="tbe-color-hex" value={block.textColor || '#475569'} onChange={e => onUpdate({ textColor: e.target.value })} maxLength={7} />
               </div>
             </InspField>
           </>
@@ -1912,5 +2584,94 @@ function initBlocks(template) {
     return [createBlock('heading'), createBlock('text')];
   }
   const html = template.htmlBody || template.contentHtml || '';
-  return [{ id: crypto.randomUUID(), type: 'text', content: html, color: '#374151', fontSize: 15, align: 'left', lineHeight: 1.6 }];
+  // Starter templates and imported content often contain more than a paragraph.
+  // Retain that semantic markup rather than wrapping headings, lists, or tables
+  // inside a <p>, which produces invalid email HTML in several clients.
+  const richHtml = /<(?:h[1-6]|p|div|table|ul|ol|img|section)\b/i.test(html);
+  return [{ id: crypto.randomUUID(), type: 'text', content: html, richHtml, color: '#374151', fontSize: 15, align: 'left', lineHeight: 1.6, marginBottom: 16 }];
+}
+
+// ─── Preflight Modal ───────────────────────────────────────────────────────────
+
+function PreflightModal({ isOpen, onClose, checkData, onAutoDeclareAll, onAutoDeclareOne, onPublish, publishing, isDraftOnly }) {
+  if (!isOpen) return null;
+  const { undeclared = [], detected = [], subjectValid = true, subject = '' } = checkData;
+  const allResolved = undeclared.length === 0;
+
+  return (
+    <motion.div className="tbe-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div className="tbe-modal tbe-modal-md" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={e => e.stopPropagation()}>
+        <div className="tbe-modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>📋</span>
+            <h2>Template Preflight Check</h2>
+          </div>
+          <button className="tbe-btn-icon" onClick={onClose}><HiOutlineX /></button>
+        </div>
+        <div className="tbe-modal-body">
+          <p className="tbe-modal-desc">
+            We validate your template before publishing to ensure all variables, HTML structure, and deliverability requirements are satisfied.
+          </p>
+
+          <div className="tbe-preflight-list">
+            <div className={`tbe-preflight-item ${subjectValid ? 'passed' : 'failed'}`}>
+              <div className="tbe-preflight-icon">
+                {subjectValid ? <HiOutlineCheck style={{ color: '#10b981' }} /> : <HiOutlineX style={{ color: '#ef4444' }} />}
+              </div>
+              <div className="tbe-preflight-info">
+                <strong>Subject Line</strong>
+                <span>{subjectValid ? `Subject is set ("${subject}")` : 'Subject line is required before publishing'}</span>
+              </div>
+            </div>
+
+            <div className={`tbe-preflight-item ${allResolved ? 'passed' : 'warning'}`}>
+              <div className="tbe-preflight-icon">
+                {allResolved ? <HiOutlineCheck style={{ color: '#10b981' }} /> : <HiOutlineVariable style={{ color: '#f59e0b' }} />}
+              </div>
+              <div className="tbe-preflight-info">
+                <strong>Variable Declarations</strong>
+                <span>
+                  {allResolved
+                    ? `All ${detected.length} referenced variables are safely declared`
+                    : `${undeclared.length} variable(s) found in template that are not declared`}
+                </span>
+              </div>
+            </div>
+
+            {!allResolved && (
+              <div className="tbe-preflight-undeclared-box">
+                <div className="tbe-preflight-box-header">
+                  <span>Undeclared Variables Detected:</span>
+                  <button className="tbe-btn-secondary tbe-btn-sm" onClick={() => onAutoDeclareAll(undeclared)}>
+                    <HiOutlineSparkles /> Declare All ({undeclared.length})
+                  </button>
+                </div>
+                <div className="tbe-preflight-vars-grid">
+                  {undeclared.map(v => (
+                    <div key={v} className="tbe-preflight-var-row">
+                      <code>{'{{' + v + '}}'}</code>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="tbe-btn-ghost tbe-btn-xs" onClick={() => onAutoDeclareOne(v, 'STRING')}>+ Text</button>
+                        <button className="tbe-btn-ghost tbe-btn-xs" onClick={() => onAutoDeclareOne(v, 'NUMBER')}>+ Number</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="tbe-modal-footer">
+          <button className="tbe-btn-secondary" onClick={onClose}>Back to Editor</button>
+          <button
+            className="tbe-btn-primary"
+            onClick={onPublish}
+            disabled={!allResolved || !subjectValid || publishing || isDraftOnly}
+          >
+            <HiOutlineCheck /> {publishing ? 'Publishing...' : 'Publish Template'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }

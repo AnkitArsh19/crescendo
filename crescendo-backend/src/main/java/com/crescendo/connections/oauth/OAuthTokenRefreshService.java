@@ -45,16 +45,19 @@ public class OAuthTokenRefreshService {
     private final ConnectionCredentialsCryptoService cryptoService;
     private final IntegrationOAuthConfig oauthConfig;
     private final DistributedLockService lockService;
+    private final com.crescendo.settings.oauth.UserOAuthAppService userOAuthAppService;
     private final RestTemplate restTemplate;
 
     public OAuthTokenRefreshService(Connections_commandRepository connectionRepo,
                                      ConnectionCredentialsCryptoService cryptoService,
                                      IntegrationOAuthConfig oauthConfig,
-                                     DistributedLockService lockService) {
+                                     DistributedLockService lockService,
+                                     com.crescendo.settings.oauth.UserOAuthAppService userOAuthAppService) {
         this.connectionRepo = connectionRepo;
         this.cryptoService = cryptoService;
         this.oauthConfig = oauthConfig;
         this.lockService = lockService;
+        this.userOAuthAppService = userOAuthAppService;
         this.restTemplate = new RestTemplate();
     }
 
@@ -159,8 +162,19 @@ public class OAuthTokenRefreshService {
 
             IntegrationOAuthConfig.ProviderConfig config = oauthConfig.getProvider(providerKey);
 
+            String effectiveClientId = config.getClientId();
+            String effectiveClientSecret = config.getClientSecret();
+            if (connection.getUser() != null && userOAuthAppService != null) {
+                com.crescendo.settings.oauth.UserOAuthAppDto.DecryptedOAuthApp userApp =
+                        userOAuthAppService.getDecrypted(connection.getUser().getId(), providerKey);
+                if (userApp != null) {
+                    effectiveClientId = userApp.clientId();
+                    effectiveClientSecret = userApp.clientSecret();
+                }
+            }
+
             // Exchange refresh token for new access token
-            Map<String, Object> tokenResponse = exchangeRefreshToken(config, refreshToken, providerKey);
+            Map<String, Object> tokenResponse = exchangeRefreshToken(config, refreshToken, providerKey, effectiveClientId, effectiveClientSecret);
 
             // Build updated credentials
             Map<String, Object> updated = new HashMap<>(latestCreds);
@@ -203,14 +217,16 @@ public class OAuthTokenRefreshService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> exchangeRefreshToken(IntegrationOAuthConfig.ProviderConfig config,
                                                        String refreshToken,
-                                                       String providerKey) {
+                                                       String providerKey,
+                                                       String clientId,
+                                                       String clientSecret) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
         // Notion requires Basic auth for token exchange
         if (isBasicAuthProvider(providerKey)) {
             String basic = Base64.getEncoder().encodeToString(
-                    (config.getClientId() + ":" + config.getClientSecret()).getBytes(StandardCharsets.UTF_8)
+                    (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8)
             );
             headers.set(HttpHeaders.AUTHORIZATION, "Basic " + basic);
         }
@@ -223,8 +239,8 @@ public class OAuthTokenRefreshService {
         body.add("refresh_token", refreshToken);
 
         if (!isBasicAuthProvider(providerKey)) {
-            body.add("client_id", config.getClientId());
-            body.add("client_secret", config.getClientSecret());
+            body.add("client_id", clientId);
+            body.add("client_secret", clientSecret);
         }
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);

@@ -223,8 +223,17 @@ public class IntegrationOAuthService {
         // Retrieve PKCE code_verifier if applicable
         String codeVerifier = pkceVerifiers.remove(state);
 
+        // Resolve user custom OAuth app credentials if configured
+        String effectiveClientId = config.getClientId();
+        String effectiveClientSecret = config.getClientSecret();
+        UserOAuthAppDto.DecryptedOAuthApp userApp = userOAuthAppService.getDecrypted(userId, providerKey);
+        if (userApp != null) {
+            effectiveClientId = userApp.clientId();
+            effectiveClientSecret = userApp.clientSecret();
+        }
+
         // Exchange authorization code for tokens
-        Map<String, Object> tokenResponse = exchangeCodeForTokens(config, code, redirectUri, providerKey, codeVerifier);
+        Map<String, Object> tokenResponse = exchangeCodeForTokens(config, code, redirectUri, providerKey, codeVerifier, effectiveClientId, effectiveClientSecret);
 
         // Encrypt and store credentials
         Map<String, Object> credentials = new HashMap<>();
@@ -344,7 +353,7 @@ public class IntegrationOAuthService {
     private Map<String, Object> exchangeCodeForTokens(
             IntegrationOAuthConfig.ProviderConfig config,
             String code, String redirectUri, String providerKey,
-            String codeVerifier) {
+            String codeVerifier, String clientId, String clientSecret) {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
@@ -356,7 +365,7 @@ public class IntegrationOAuthService {
 
         if (useBasicAuth) {
             String basic = java.util.Base64.getEncoder().encodeToString(
-                    (config.getClientId() + ":" + config.getClientSecret())
+                    (clientId + ":" + clientSecret)
                             .getBytes(java.nio.charset.StandardCharsets.UTF_8));
             headers.set(HttpHeaders.AUTHORIZATION, "Basic " + basic);
         }
@@ -377,8 +386,8 @@ public class IntegrationOAuthService {
             body.add("code", code);
             body.add("redirect_uri", redirectUri);
             if (!useBasicAuth) {
-                body.add("client_id", config.getClientId());
-                body.add("client_secret", config.getClientSecret());
+                body.add("client_id", clientId);
+                body.add("client_secret", clientSecret);
             }
             // PKCE code_verifier — sent during token exchange
             if (codeVerifier != null) {

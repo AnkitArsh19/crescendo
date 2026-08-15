@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.time.Year;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,17 +138,36 @@ public class CrescendoMailSendHandlers {
             EmailTemplate_command template = templateRepo.findById(templateId).orElse(null);
             if (template == null) return ActionResult.failure("Template not found: " + templateId);
 
-            // Merge step config variables into input for interpolation
-            Map<String, Object> vars = new HashMap<>(input);
+            // 1. Seed fallback values declared on template
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("CURRENT_YEAR", String.valueOf(Year.now().getValue()));
+            vars.put("COMPANY_NAME", "Crescendo");
+            vars.put("UNSUBSCRIBE_URL", "{{CRESCENDO_UNSUBSCRIBE_URL}}");
+
+            if (template.getVariables() != null) {
+                for (var v : template.getVariables()) {
+                    if (v.fallbackValue() != null && !v.fallbackValue().isBlank()) {
+                        vars.put(v.name(), v.fallbackValue());
+                    }
+                }
+            }
+
+            // 2. Overlay workflow input and config variables
+            vars.putAll(input);
             Object configVars = cfg.get("variables");
             if (configVars instanceof Map<?, ?> m) {
                 m.forEach((k, v) -> vars.put(String.valueOf(k), v));
             }
 
-            String subject = TemplateInterpolator.interpolate(template.getSubject(), vars);
-            String html    = TemplateInterpolator.interpolate(template.getHTMLBody(), vars);
-            String text    = template.getTextBody() != null
-                    ? TemplateInterpolator.interpolate(template.getTextBody(), vars) : null;
+            // 3. Resolve snapshot if published
+            var snapshot = template.getPublishedVersionSnapshot();
+            String rawSubject = (snapshot != null && snapshot.subject() != null) ? snapshot.subject() : template.getSubject();
+            String rawHtml = (snapshot != null && snapshot.htmlBody() != null) ? snapshot.htmlBody() : template.getHTMLBody();
+            String rawText = (snapshot != null && snapshot.textBody() != null) ? snapshot.textBody() : template.getTextBody();
+
+            String subject = TemplateInterpolator.interpolate(rawSubject, vars);
+            String html    = TemplateInterpolator.interpolate(rawHtml, vars);
+            String text    = rawText != null ? TemplateInterpolator.interpolate(rawText, vars) : null;
 
             EmailType emailType = resolveEmailType(cfg, input);
             if (emailType == null) emailType = EmailType.TRANSACTIONAL;
@@ -182,10 +202,14 @@ public class CrescendoMailSendHandlers {
         private static final int MAX_BATCH = 100;
 
         private final EmailLogRepository emailLogRepo;
+        private final EmailTemplate_commandRepository templateRepo;
         private final OutboxEventRepository outboxRepo;
 
-        public SendBatchHandler(EmailLogRepository emailLogRepo, OutboxEventRepository outboxRepo) {
+        public SendBatchHandler(EmailLogRepository emailLogRepo,
+                                EmailTemplate_commandRepository templateRepo,
+                                OutboxEventRepository outboxRepo) {
             this.emailLogRepo = emailLogRepo;
+            this.templateRepo = templateRepo;
             this.outboxRepo = outboxRepo;
         }
 
@@ -205,9 +229,30 @@ public class CrescendoMailSendHandlers {
             String from    = interpolate(cfg, "from",    input);
             String subject = interpolate(cfg, "subject", input);
             String html    = interpolate(cfg, "htmlBody", input);
+            String templateIdStr = ctx.getString("templateId");
+
+            EmailTemplate_command template = null;
+            UUID templateId = null;
+            if (!blank(templateIdStr)) {
+                try {
+                    templateId = UUID.fromString(templateIdStr);
+                    template = templateRepo.findById(templateId).orElse(null);
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            if (template != null) {
+                var snapshot = template.getPublishedVersionSnapshot();
+                if (blank(subject)) {
+                    subject = (snapshot != null && snapshot.subject() != null) ? snapshot.subject() : template.getSubject();
+                }
+                if (blank(html)) {
+                    html = (snapshot != null && snapshot.htmlBody() != null) ? snapshot.htmlBody() : template.getHTMLBody();
+                }
+            }
+
             if (blank(from))    return ActionResult.failure("crescendomail:send-batch requires 'from'");
-            if (blank(subject)) return ActionResult.failure("crescendomail:send-batch requires 'subject'");
-            if (blank(html))    return ActionResult.failure("crescendomail:send-batch requires 'htmlBody'");
+            if (blank(subject)) return ActionResult.failure("crescendomail:send-batch requires 'subject' (or valid templateId)");
+            if (blank(html))    return ActionResult.failure("crescendomail:send-batch requires 'htmlBody' (or valid templateId)");
 
             EmailType emailType = resolveEmailType(cfg, input);
             if (emailType == null) emailType = EmailType.TRANSACTIONAL;
@@ -219,6 +264,17 @@ public class CrescendoMailSendHandlers {
             for (Object recipientRaw : recipientList) {
                 String to;
                 Map<String, Object> perRecipientVars = new HashMap<>(input);
+                perRecipientVars.put("CURRENT_YEAR", String.valueOf(Year.now().getValue()));
+                perRecipientVars.put("COMPANY_NAME", "Crescendo");
+                perRecipientVars.put("UNSUBSCRIBE_URL", "{{CRESCENDO_UNSUBSCRIBE_URL}}");
+
+                if (template != null && template.getVariables() != null) {
+                    for (var v : template.getVariables()) {
+                        if (v.fallbackValue() != null && !v.fallbackValue().isBlank()) {
+                            perRecipientVars.put(v.name(), v.fallbackValue());
+                        }
+                    }
+                }
 
                 if (recipientRaw instanceof Map<?, ?> recipientMap) {
                     to = String.valueOf(recipientMap.get("to"));
@@ -234,9 +290,12 @@ public class CrescendoMailSendHandlers {
 
                 UUID emailId = UUID.randomUUID();
                 EmailLog emailLog = new EmailLog(emailId, userId, appKeyId, from, to, resolvedSubject, EmailStatus.PENDING, emailType);
+                if (templateId != null) emailLog.setTemplateId(templateId);
+                if (ctx.workflowRunId() != null) emailLog.addTag("workflowRunId", ctx.workflowRunId().toString());
+                if (ctx.stepId()        != null) emailLog.addTag("stepId",        ctx.stepId().toString());
                 emailLogRepo.save(emailLog);
 
-                Map<String, Object> payload = buildQueuePayload(emailId, userId, to, from, resolvedSubject, resolvedHtml, null, null);
+                Map<String, Object> payload = buildQueuePayload(emailId, userId, to, from, resolvedSubject, resolvedHtml, null, templateId);
                 outboxRepo.save(new OutboxEvent(UUID.randomUUID(), RedisStreamConfig.STREAM_EMAIL_QUEUE, payload));
                 queued++;
             }

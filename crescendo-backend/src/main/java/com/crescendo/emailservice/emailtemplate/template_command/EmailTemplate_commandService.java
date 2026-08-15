@@ -5,6 +5,7 @@ import com.crescendo.emailservice.broadcast.BroadcastRepository;
 import com.crescendo.emailservice.email_log.EmailLog;
 import com.crescendo.emailservice.email_log.EmailLogRepository;
 import com.crescendo.emailservice.emailtemplate.EmailTemplateDto;
+import com.crescendo.emailservice.emailtemplate.EmailTemplateHtmlSanitizer;
 import com.crescendo.emailservice.emailtemplate.TemplateVariableValidator;
 import com.crescendo.emailservice.emailtemplate.template_query.EmailTemplate_query;
 import com.crescendo.emailservice.emailtemplate.template_query.EmailTemplate_queryRepository;
@@ -14,6 +15,7 @@ import com.crescendo.logbook.outbox.OutboxEvent;
 import com.crescendo.logbook.outbox.OutboxEventRepository;
 import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.shared.util.TemplateInterpolator;
+import com.crescendo.user.user_command.User_commandRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,8 @@ public class EmailTemplate_commandService {
     private final BroadcastRepository             broadcastRepo;
     private final EmailLogRepository              emailLogRepo;
     private final OutboxEventRepository           outboxRepo;
+    private final User_commandRepository          userRepo;
+    private final EmailTemplateHtmlSanitizer       htmlSanitizer;
 
     public EmailTemplate_commandService(
             EmailTemplate_commandRepository commandRepo,
@@ -58,13 +62,17 @@ public class EmailTemplate_commandService {
             TemplateVariableValidator validator,
             BroadcastRepository broadcastRepo,
             EmailLogRepository emailLogRepo,
-            OutboxEventRepository outboxRepo) {
+                                     OutboxEventRepository outboxRepo,
+                                     User_commandRepository userRepo,
+                                     EmailTemplateHtmlSanitizer htmlSanitizer) {
         this.commandRepo   = commandRepo;
         this.queryRepo     = queryRepo;
         this.validator     = validator;
         this.broadcastRepo = broadcastRepo;
         this.emailLogRepo  = emailLogRepo;
         this.outboxRepo    = outboxRepo;
+        this.userRepo      = userRepo;
+        this.htmlSanitizer = htmlSanitizer;
     }
 
     // ── Create ───────────────────────────────────────────────────────────────
@@ -79,13 +87,15 @@ public class EmailTemplate_commandService {
 
         UUID templateId = UUID.randomUUID();
         EmailTemplate_command template = new EmailTemplate_command(
-                templateId, userId, req.name(), req.subject(), req.htmlBody(), req.textBody());
+                templateId, userId, req.name(), req.subject(), htmlSanitizer.sanitize(req.htmlBody()), req.textBody());
         if (req.variables() != null) template.setVariables(req.variables());
+        applyEditorMetadata(template, req.fromAddress(), req.replyTo(), req.previewText(), req.editorDocument());
         commandRepo.save(template);
 
         EmailTemplate_query queryModel = new EmailTemplate_query(
-                templateId, userId, req.name(), req.subject(), req.htmlBody(), req.textBody());
+                templateId, userId, req.name(), req.subject(), htmlSanitizer.sanitize(req.htmlBody()), req.textBody());
         if (req.variables() != null) queryModel.setVariables(new ArrayList<>(req.variables()));
+        applyEditorMetadata(queryModel, req.fromAddress(), req.replyTo(), req.previewText(), req.editorDocument());
         queryRepo.save(queryModel);
 
         return toResponse(template);
@@ -99,22 +109,25 @@ public class EmailTemplate_commandService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Template not found"));
 
         if (req.name() == null && req.subject() == null && req.htmlBody() == null
-                && req.textBody() == null && req.variables() == null) {
+                && req.textBody() == null && req.variables() == null && req.fromAddress() == null
+                && req.replyTo() == null && req.previewText() == null && req.editorDocument() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one field must be provided");
         }
 
         if (req.name()      != null) template.setName(req.name());
         if (req.subject()   != null) template.setSubject(req.subject());
-        if (req.htmlBody()  != null) template.setHTMLBody(req.htmlBody());
+        if (req.htmlBody()  != null) template.setHTMLBody(htmlSanitizer.sanitize(req.htmlBody()));
         if (req.textBody()  != null) template.setTextBody(req.textBody());
         if (req.variables() != null) template.setVariables(req.variables());
+        applyEditorMetadata(template, req.fromAddress(), req.replyTo(), req.previewText(), req.editorDocument());
 
         queryRepo.findByIdAndUserId(templateId, userId).ifPresent(q -> {
             if (req.name()      != null) q.setName(req.name());
             if (req.subject()   != null) q.setSubject(req.subject());
-            if (req.htmlBody()  != null) q.setHTMLBody(req.htmlBody());
+            if (req.htmlBody()  != null) q.setHTMLBody(htmlSanitizer.sanitize(req.htmlBody()));
             if (req.textBody()  != null) q.setTextBody(req.textBody());
             if (req.variables() != null) q.setVariables(new ArrayList<>(req.variables()));
+            applyEditorMetadata(q, req.fromAddress(), req.replyTo(), req.previewText(), req.editorDocument());
             queryRepo.save(q);
         });
 
@@ -168,13 +181,34 @@ public class EmailTemplate_commandService {
         EmailTemplate_command template = commandRepo.findByIdAndUserId(templateId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Template not found"));
 
-        Map<String, Object> vars = req.variables() != null ? new HashMap<>(req.variables()) : new HashMap<>();
+        String verifiedRecipient = userRepo.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"))
+                .getEmailId();
+        if (!verifiedRecipient.equalsIgnoreCase(req.toAddress())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Test emails may only be sent to your verified account address");
+        }
+
+        Map<String, Object> vars = new HashMap<>();
+        for (var v : template.getVariables()) {
+            if (v.fallbackValue() != null) vars.put(v.name(), v.fallbackValue());
+        }
+        if (req.variables() != null) vars.putAll(req.variables());
+        if (!vars.containsKey("FIRST_NAME")) vars.put("FIRST_NAME", "Jane");
+        if (!vars.containsKey("LAST_NAME")) vars.put("LAST_NAME", "Doe");
+        if (!vars.containsKey("EMAIL")) vars.put("EMAIL", req.toAddress());
+        if (!vars.containsKey("COMPANY_NAME")) vars.put("COMPANY_NAME", "Acme Corp");
+        if (!vars.containsKey("CRESCENDO_UNSUBSCRIBE_URL")) vars.put("CRESCENDO_UNSUBSCRIBE_URL", "#unsubscribe");
+        if (!vars.containsKey("UNSUBSCRIBE_URL")) vars.put("UNSUBSCRIBE_URL", "#unsubscribe");
+        if (!vars.containsKey("CURRENT_YEAR")) vars.put("CURRENT_YEAR", String.valueOf(java.time.Year.now().getValue()));
+
         String subject  = TemplateInterpolator.interpolate(template.getSubject(),  vars);
         String htmlBody = TemplateInterpolator.interpolate(template.getHTMLBody(), vars);
 
         UUID emailId  = UUID.randomUUID();
         UUID appKeyId = new UUID(0, 0);
-        String from   = "test@crescendo.run";
+        String from = template.getFromAddress() == null || template.getFromAddress().isBlank()
+                ? "test@crescendo.run" : template.getFromAddress();
 
         EmailLog log = new EmailLog(emailId, userId, appKeyId, from, req.toAddress(),
                 subject, EmailStatus.PENDING, EmailType.TRANSACTIONAL);
@@ -190,6 +224,7 @@ public class EmailTemplate_commandService {
         payload.put("from",     from);
         payload.put("subject",  subject);
         payload.put("htmlBody", htmlBody);
+        payload.put("textBody", template.getTextBody());
         payload.put("templateId", templateId.toString());
 
         outboxRepo.save(new OutboxEvent(UUID.randomUUID(), RedisStreamConfig.STREAM_EMAIL_QUEUE, payload));
@@ -221,12 +256,14 @@ public class EmailTemplate_commandService {
                 source.getTextBody()
         );
         clone.setVariables(new ArrayList<>(source.getVariables()));
+        applyEditorMetadata(clone, source.getFromAddress(), source.getReplyTo(), source.getPreviewText(), source.getEditorDocument());
         commandRepo.save(clone);
 
         EmailTemplate_query queryModel = new EmailTemplate_query(
                 newId, userId, clone.getName(), clone.getSubject(),
                 clone.getHTMLBody(), clone.getTextBody());
         queryModel.setVariables(new ArrayList<>(source.getVariables()));
+        applyEditorMetadata(queryModel, source.getFromAddress(), source.getReplyTo(), source.getPreviewText(), source.getEditorDocument());
         queryRepo.save(queryModel);
 
         return toResponse(clone);
@@ -251,6 +288,10 @@ public class EmailTemplate_commandService {
                 t.getSubject(),
                 t.getHTMLBody(),
                 t.getTextBody(),
+                t.getFromAddress(),
+                t.getReplyTo(),
+                t.getPreviewText(),
+                t.getEditorDocument(),
                 t.getStatus().name(),
                 t.getVariables() != null ? t.getVariables() : List.of(),
                 snap != null,
@@ -258,6 +299,22 @@ public class EmailTemplate_commandService {
                 t.getCreatedAt(),
                 t.getUpdatedAt()
         );
+    }
+
+    private void applyEditorMetadata(EmailTemplate_command template, String fromAddress, String replyTo,
+                                     String previewText, String editorDocument) {
+        if (fromAddress != null) template.setFromAddress(fromAddress);
+        if (replyTo != null) template.setReplyTo(replyTo);
+        if (previewText != null) template.setPreviewText(previewText);
+        if (editorDocument != null) template.setEditorDocument(editorDocument);
+    }
+
+    private void applyEditorMetadata(EmailTemplate_query template, String fromAddress, String replyTo,
+                                     String previewText, String editorDocument) {
+        if (fromAddress != null) template.setFromAddress(fromAddress);
+        if (replyTo != null) template.setReplyTo(replyTo);
+        if (previewText != null) template.setPreviewText(previewText);
+        if (editorDocument != null) template.setEditorDocument(editorDocument);
     }
 }
 

@@ -90,6 +90,9 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
                 String eventName = switch (eventType) {
                     case "EmailDeliveredEvent" -> "delivered";
                     case "EmailBouncedEvent" -> "bounced";
+                    case "EmailOpenedEvent" -> "opened";
+                    case "EmailClickedEvent" -> "clicked";
+                    case "EmailComplainedEvent" -> "complained";
                     default -> null;
                 };
                 if (eventName != null && suspensionService != null) {

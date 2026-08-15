@@ -1,0 +1,35 @@
+# ─── Crescendo robots.txt ───────────────────────────────────────────────────
+# Public crawlers: allow marketing/docs pages, block all auth + dashboard routes.
+# https://app.crescendo.run
+
+User-agent: *
+
+# ── Allow: public-facing pages ──
+Allow: /
+Allow: /terms
+Allow: /privacy
+Allow: /docs/
+Allow: /developer
+
+# ── Block: auth flow (no value crawling login forms) ──
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /mfa/
+Disallow: /auth/
+
+# ── Block: all dashboard & settings (private user data) ──
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /shared/
+
+# ── Block: OAuth endpoints ──
+Disallow: /oauth/
+
+# ── Block: API / webhook endpoints (backend, served separately, but belt-and-suspenders) ──
+Disallow: /api/
+Disallow: /webhooks/
+
+# Sitemap
+Sitemap: https://app.crescendo.run/sitemap.xml

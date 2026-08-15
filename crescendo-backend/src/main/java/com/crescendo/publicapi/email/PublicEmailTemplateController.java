@@ -54,7 +54,7 @@ public class PublicEmailTemplateController {
         }
 
         var internalReq = new EmailTemplateDto.CreateTemplateRequest(
-                req.name(), req.subject(), req.htmlBody(), req.textBody(), req.variables()
+                req.name(), req.subject(), req.htmlBody(), req.textBody(), req.variables(), null, null, null, null
         );
         var resp = commandService.createTemplate(userId, internalReq);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToPublic(resp));
@@ -82,7 +82,7 @@ public class PublicEmailTemplateController {
             Authentication auth) {
         require(auth, TEMPLATE_WRITE);
         var internalReq = new EmailTemplateDto.UpdateTemplateRequest(
-                req.name(), req.subject(), req.htmlBody(), req.textBody(), req.variables()
+                req.name(), req.subject(), req.htmlBody(), req.textBody(), req.variables(), null, null, null, null
         );
         var resp = commandService.updateTemplate(userId(auth), templateId, internalReq);
         return ResponseEntity.ok(mapToPublic(resp));

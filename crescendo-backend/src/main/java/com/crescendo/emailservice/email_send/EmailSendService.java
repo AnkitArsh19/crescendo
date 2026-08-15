@@ -74,7 +74,13 @@ public class EmailSendService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template is not published: " + req.templateId());
             }
 
-            Map<String, Object> data = req.templateData() != null ? req.templateData() : Map.of();
+            Map<String, Object> data = new HashMap<>();
+            if (template.getVariables() != null) {
+                for (var v : template.getVariables()) {
+                    if (v.fallbackValue() != null) data.put(v.name(), v.fallbackValue());
+                }
+            }
+            if (req.templateData() != null) data.putAll(req.templateData());
             var snapshot = template.getPublishedVersionSnapshot();
             subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
             htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);
@@ -148,7 +154,13 @@ public class EmailSendService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template is not published: " + req.templateId());
         }
 
-        Map<String, Object> data = req.templateData() != null ? req.templateData() : Map.of();
+        Map<String, Object> data = new HashMap<>();
+        if (template.getVariables() != null) {
+            for (var v : template.getVariables()) {
+                if (v.fallbackValue() != null) data.put(v.name(), v.fallbackValue());
+            }
+        }
+        if (req.templateData() != null) data.putAll(req.templateData());
         var snapshot = template.getPublishedVersionSnapshot();
         String subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
         String htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);

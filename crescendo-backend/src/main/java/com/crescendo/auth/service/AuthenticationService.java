@@ -182,7 +182,7 @@ public class AuthenticationService {
         User_command user = userRepo.findByEmailIgnoreCase(req.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         UserCredential cred = credentialRepo.findByUser_Id(user.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No password set — please use OAuth login"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
         if (!passwordEncoder.matches(req.password(), cred.getPasswordHash()))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         return user;

@@ -3,6 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastProvider from './components/ToastProvider';
+import ErrorPage from './pages/errors/ErrorPage';
+import usePageMeta from './hooks/usePageMeta';
 import './App.css';
 
 // Landing
@@ -67,6 +69,10 @@ import SuppressionsPage from './pages/dashboard/email/SuppressionsPage';
 import DocsPage from './pages/docs/DocsPage';
 
 function LandingPage() {
+  usePageMeta(
+    'Crescendo — Workflow Automation',
+    'Build, orchestrate, and monitor complex workflows with Crescendo\'s visual builder. Connect Gmail, Slack, Google Sheets, Discord, and more.',
+  );
   return (
     <>
       <DotCanvas />
@@ -114,6 +120,20 @@ function App() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/docs/*" element={<DocsPage />} />
+
+      {/* Custom Error & Easter Egg Routes */}
+      <Route path="/404" element={<ErrorPage code={404} />} />
+      <Route path="/401" element={<ErrorPage code={401} />} />
+      <Route path="/403" element={<ErrorPage code={403} />} />
+      <Route path="/429" element={<ErrorPage code={429} />} />
+      <Route path="/500" element={<ErrorPage code={500} />} />
+      <Route path="/503" element={<ErrorPage code={503} />} />
+      <Route path="/inactive" element={<ErrorPage code="workflow-inactive" />} />
+      <Route path="/webhook" element={<ErrorPage code="webhook-browser" />} />
+      <Route path="/error" element={<ErrorPage showSwitcher={true} />} />
+      <Route path="/error/:code" element={<ErrorPage showSwitcher={true} />} />
+      <Route path="/errors" element={<ErrorPage showSwitcher={true} />} />
+      <Route path="/errors/:code" element={<ErrorPage showSwitcher={true} />} />
 
       {/* Auth */}
       <Route element={<AuthLayout />}>
@@ -174,6 +194,9 @@ function App() {
         </Route>
       </Route>
       </Route>
+
+      {/* Catch-all — unknown routes → 404 */}
+      <Route path="*" element={<ErrorPage code={404} />} />
     </Routes>
     </>
   );

@@ -31,6 +31,7 @@ const TRIGGER_OUTPUT_FIELDS = {
     'google-forms': ['responseId', 'answers', 'respondentEmail'],
     'google-slides': ['presentationId', 'title', 'slideCount'],
     'crescendo-webhook': ['body', 'headers', 'method', 'url'],
+    'crescendomail': ['emailId', 'event', 'recipient', 'from', 'subject', 'timestamp', 'contactId', 'domainName', 'status', 'ip', 'userAgent', 'url'],
     'rss': ['title', 'link', 'description', 'pubDate'],
     'spotify': ['trackName', 'artistName', 'albumName', 'addedAt'],
     'linkedin': ['postId', 'author', 'content', 'timestamp'],
@@ -68,6 +69,7 @@ const ACTION_OUTPUT_FIELDS = {
     'gemini': ['response', 'text', 'model'],
     'http': ['response', 'statusCode', 'headers', 'body'],
     'crescendo-webhook': ['provider', 'url', 'response'],
+    'crescendomail': ['emailId', 'to', 'from', 'subject', 'status', 'queued', 'total', 'broadcastId', 'domainId', 'suppressed', 'openCount', 'clickCount'],
     'crescendo-email': ['provider', 'to', 'subject', 'response'],
     'airtable': ['response', 'id', 'fields'],
     'notion': ['response', 'id', 'url', 'title'],
@@ -710,6 +712,7 @@ export default function ConfigPanelBody({
 }) {
     const { data } = configNode;
     const isTrigger = configNode.type === 'trigger';
+    const isAgentNode = configNode.type === 'agent';
     const [activeTab, setActiveTab] = useState(0);
     const [editingName, setEditingName] = useState(false);
     const [stepName, setStepName] = useState('');
@@ -718,6 +721,41 @@ export default function ConfigPanelBody({
 
     const user = useAuthStore(state => state.user);
     const isAdmin = user?.role === 'ADMIN';
+
+    // ── Agent node auto-init ──
+    // When a saved agent node opens without its appKey populated (e.g. loaded from
+    // a workflow saved before this fix), silently seed the node data so the action
+    // dropdown renders immediately without the user having to reopen the app browser.
+    // Also auto-selects the single 'agent:ai_agent' action since it's the only option.
+    useEffect(() => {
+        if (!isAgentNode || data.appKey) return;
+        const agentMeta = (catalogApps || []).find((a) => a.appKey === 'agent');
+        updateNodeData(configNode.id, {
+            appKey: 'agent',
+            app: 'agent',
+            appName: agentMeta?.name || 'AI Agent',
+            iconUrl: agentMeta?.logoUrl || '/icons/agent.svg',
+            actionKey: 'agent:ai_agent',
+            action: 'agent:ai_agent',
+            actionName: 'AI Agent',
+            label: 'AI Agent',
+        });
+        ensureAppDetail('agent');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAgentNode, configNode.id]);
+
+    // ── For agent nodes: auto-select the action once catalog detail loads ──
+    // Handles the edge case where data.appKey is already 'agent' but actionKey
+    // was never set (e.g. older saved workflows with partial data).
+    useEffect(() => {
+        if (!isAgentNode || !data.appKey || data.actionKey) return;
+        updateNodeData(configNode.id, {
+            actionKey: 'agent:ai_agent',
+            action: 'agent:ai_agent',
+            actionName: 'AI Agent',
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAgentNode, data.appKey, data.actionKey, configNode.id]);
 
     // ── Resolve configSchema ──
     const appDetail = appDetailsByKey?.[data.appKey];
@@ -1012,32 +1050,50 @@ export default function ConfigPanelBody({
                 {/* ═══ SETUP TAB ═══ */}
                 {activeTab === 0 && (
                     <div className="cpb-section">
-                        {/* App selector — card style that opens browser modal */}
+                        {/* App selector — locked badge for agent nodes, clickable browser for all others */}
                         <div className="cpb-field">
                             <label className="cpb-label">{isTrigger ? 'Trigger App' : 'Action App'}</label>
-                            <button
-                                type="button"
-                                className={`cpb-app-select-btn ${data.appKey ? 'selected' : ''}`}
-                                onClick={onOpenAppBrowser}
-                            >
-                                <div className="cpb-app-select-icon">
-                                    {data.appKey ? (
-                                        <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt={data.appName || ''} className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                                    ) : (
-                                        <HiOutlineBolt />
-                                    )}
-                                    <HiOutlineBolt style={{ display: 'none' }} />
-                                </div>
-                                <div className="cpb-app-select-text">
-                                    <div className="cpb-app-select-name">
-                                        {data.appName || data.appKey || 'Choose an app…'}
+                            {isAgentNode ? (
+                                <div className="cpb-app-select-btn selected" style={{ cursor: 'default', pointerEvents: 'none' }}>
+                                    <div className="cpb-app-select-icon">
+                                        <img
+                                            src={data.iconUrl || '/icons/agent.svg'}
+                                            alt="AI Agent"
+                                            className="app-logo-img"
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                        />
+                                        <HiOutlineBolt style={{ display: 'none' }} />
                                     </div>
-                                    {!data.appKey && (
-                                        <div className="cpb-app-select-hint">Browse all available apps</div>
-                                    )}
+                                    <div className="cpb-app-select-text">
+                                        <div className="cpb-app-select-name">AI Agent</div>
+                                        <div className="cpb-app-select-hint">Autonomous reasoning node</div>
+                                    </div>
                                 </div>
-                                <HiChevronRight className="cpb-app-select-chevron" />
-                            </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className={`cpb-app-select-btn ${data.appKey ? 'selected' : ''}`}
+                                    onClick={onOpenAppBrowser}
+                                >
+                                    <div className="cpb-app-select-icon">
+                                        {data.appKey ? (
+                                            <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt={data.appName || ''} className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                        ) : (
+                                            <HiOutlineBolt />
+                                        )}
+                                        <HiOutlineBolt style={{ display: 'none' }} />
+                                    </div>
+                                    <div className="cpb-app-select-text">
+                                        <div className="cpb-app-select-name">
+                                            {data.appName || data.appKey || 'Choose an app…'}
+                                        </div>
+                                        {!data.appKey && (
+                                            <div className="cpb-app-select-hint">Browse all available apps</div>
+                                        )}
+                                    </div>
+                                    <HiChevronRight className="cpb-app-select-chevron" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Account — Zapier-style card with Change + 3-dot menu */}
@@ -1161,16 +1217,23 @@ export default function ConfigPanelBody({
                             </div>
                         )}
 
-                        {/* Action/Trigger selector — show when app selected AND (connection exists OR no-auth) */}
+                        {/* Action/Trigger selector — locked badge for agent nodes, dropdown for all others */}
                         {data.appKey && hasConnection && (
                             <div className="cpb-field">
                                 <label className="cpb-label">{isTrigger ? 'Trigger Event' : 'Action'}</label>
-                                <SearchableSelect
-                                    options={operationOptions}
-                                    value={actionOrTriggerKey || ''}
-                                    onChange={handleOperationSelect}
-                                    placeholder={isTrigger ? 'Choose trigger…' : 'Choose action…'}
-                                />
+                                {isAgentNode ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.875rem' }}>
+                                        <HiCheck style={{ color: '#22c55e', flexShrink: 0 }} />
+                                        <span>AI Agent — autonomous reasoning &amp; tool selection</span>
+                                    </div>
+                                ) : (
+                                    <SearchableSelect
+                                        options={operationOptions}
+                                        value={actionOrTriggerKey || ''}
+                                        onChange={handleOperationSelect}
+                                        placeholder={isTrigger ? 'Choose trigger…' : 'Choose action…'}
+                                    />
+                                )}
                             </div>
                         )}
 

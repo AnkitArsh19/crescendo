@@ -21,6 +21,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
 import PasskeyNudge from '../../components/PasskeyNudge';
+import Breadcrumbs from '../../components/Breadcrumbs';
+import usePageMeta from '../../hooks/usePageMeta';
 import useWorkflowEventStream from '../../hooks/useWorkflowEventStream';
 import './DashboardLayout.css';
 
@@ -59,6 +61,8 @@ export default function DashboardLayout() {
     };
 
     const title = getTitle();
+    // Dynamic browser-tab title per route: e.g. "Workflows | Crescendo"
+    usePageMeta(title || 'Dashboard');
 
     return (
         <div className="dashboard">
@@ -190,13 +194,13 @@ export default function DashboardLayout() {
                                         Settings
                                     </Link>
                                     <div className="dash-dropdown-divider" />
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setDropdownOpen(false);
                                             logout();
                                             navigate('/login');
-                                        }} 
-                                        className="dash-dropdown-item" 
+                                        }}
+                                        className="dash-dropdown-item"
                                         style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left', fontFamily: 'inherit', fontSize: 'inherit' }}
                                     >
                                         <span className="dash-nav-icon"><HiOutlineLogout /></span>
@@ -225,7 +229,10 @@ export default function DashboardLayout() {
                 {!isCanvas && (
                     <div className="dash-topbar">
                         <div className="dash-topbar-left">
-                            <span className="dash-topbar-title">{title}</span>
+                            <div className="dash-topbar-title-group">
+                                <span className="dash-topbar-title">{title}</span>
+                                <Breadcrumbs />
+                            </div>
                         </div>
                         <div className="dash-topbar-right">
                             <button className="dash-topbar-btn" onClick={toggleTheme}>

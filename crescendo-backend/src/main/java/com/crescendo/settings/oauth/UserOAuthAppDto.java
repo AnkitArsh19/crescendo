@@ -33,6 +33,7 @@ public class UserOAuthAppDto {
      */
     public record OAuthAppSummary(
             String providerKey,
+            String clientId,
             String scopes,
             boolean enabled,
             Instant createdAt,

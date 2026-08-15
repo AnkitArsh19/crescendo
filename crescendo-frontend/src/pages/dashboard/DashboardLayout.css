@@ -313,6 +313,7 @@
     gap: 14px;
 }
 
+
 .dash-topbar-toggle {
     width: 32px;
     height: 32px;
@@ -333,10 +334,17 @@
     color: var(--text-accent);
 }
 
+.dash-topbar-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
 .dash-topbar-title {
     font-size: 1rem;
     font-weight: 700;
     color: var(--text-accent);
+    line-height: 1.3;
 }
 
 .dash-topbar-right {
@@ -364,7 +372,6 @@
     background: var(--bg-card);
     color: var(--text-accent);
 }
-
 /* Content area */
 .dash-content {
     flex: 1;
@@ -453,7 +460,7 @@
     }
 }
 
-/* ── Banners ── */
+/* Banners */
 .dash-banner {
     display: flex;
     align-items: center;
