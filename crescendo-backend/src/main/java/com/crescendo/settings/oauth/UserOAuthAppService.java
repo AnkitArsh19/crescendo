@@ -44,13 +44,21 @@ public class UserOAuthAppService {
     public List<UserOAuthAppDto.OAuthAppSummary> list(UUID userId) {
         return repo.findByUserId(userId)
                 .stream()
-                .map(a -> new UserOAuthAppDto.OAuthAppSummary(
-                        a.getProviderKey(),
-                        a.getScopes(),
-                        a.isEnabled(),
-                        a.getCreatedAt(),
-                        a.getUpdatedAt()
-                ))
+                .map(a -> {
+                    String decryptedClientId = "";
+                    try {
+                        Map<String, Object> decryptedId = crypto.open(fromJson(a.getEncryptedClientId()));
+                        decryptedClientId = (String) decryptedId.get("v");
+                    } catch (Exception ignored) {}
+                    return new UserOAuthAppDto.OAuthAppSummary(
+                            a.getProviderKey(),
+                            decryptedClientId,
+                            a.getScopes(),
+                            a.isEnabled(),
+                            a.getCreatedAt(),
+                            a.getUpdatedAt()
+                    );
+                })
                 .toList();
     }
 

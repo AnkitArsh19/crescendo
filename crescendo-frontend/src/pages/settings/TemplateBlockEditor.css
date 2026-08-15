@@ -1170,7 +1170,11 @@
   padding: 4px 8px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
   font-family: var(--font-sans, 'Funnel Display', sans-serif);
+  max-width: min(100%, 640px);
+  flex-wrap: wrap;
 }
+.tbe-test-variable-fields { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.tbe-test-variable-fields .tbe-modal-desc { margin: 0; }
 
 .tbe-rt-btn {
   background: transparent;
@@ -1193,6 +1197,87 @@
 
 .tbe-rt-italic { font-style: italic; }
 .tbe-rt-under  { text-decoration: underline; }
+
+.tbe-rt-font-wrap { position: relative; }
+.tbe-rt-font-trigger { gap: 3px; white-space: nowrap; }
+.tbe-rt-font-trigger svg { width: 13px; height: 13px; }
+
+.tbe-rt-font-menu {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  width: 190px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding: 5px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.55);
+  z-index: 120;
+}
+.tbe-rt-menu-label {
+  display: block;
+  padding: 5px 7px 7px;
+  color: #a1a1aa;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tbe-rt-font-item {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: #f4f4f5;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.tbe-rt-font-item:hover { background: rgba(255,255,255,0.12); }
+
+.tbe-rt-size-select {
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #e4e4e7;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.tbe-rt-size-select:hover { background: rgba(255,255,255,0.12); }
+.tbe-rt-size-select option { color: #18181b; background: #fff; }
+
+.tbe-rt-color {
+  position: relative;
+  width: 24px;
+  height: 26px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.tbe-rt-color:hover { background: rgba(255,255,255,0.12); }
+.tbe-rt-color::after {
+  content: 'A';
+  color: #f4f4f5;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 3px solid #e4e4e7;
+  line-height: 13px;
+}
+.tbe-rt-color input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 
 .tbe-rt-sep {
   width: 1px;
@@ -1249,6 +1334,101 @@
   background: rgba(255,255,255,0.1);
   color: #ffffff;
 }
+
+.tbe-variable-manager {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-primary, #27272a);
+}
+.tbe-variable-manager-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text-accent, #fafafa); font-size: 12px; }
+.tbe-variable-manager-header .tbe-btn-secondary { min-height: 28px; padding: 0 8px; font-size: 11px; }
+.tbe-variable-form { display: grid; grid-template-columns: minmax(0, 1fr) 76px 28px; gap: 6px; margin-top: 8px; }
+.tbe-variable-form > :nth-child(3) { grid-column: 1 / 3; }
+.tbe-variable-form .tbe-btn-icon { grid-column: 3; grid-row: 1 / 3; align-self: center; }
+
+/* ─── Image Upload Modal Details ───────────────────────────────────────────── */
+
+.tbe-modal-md {
+  width: 500px;
+  max-width: 90vw;
+}
+
+.tbe-upload-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-primary, #1e1e24);
+  background: rgba(0,0,0,0.2);
+}
+
+.tbe-upload-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #8e8e96);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+.tbe-upload-tab:hover {
+  color: var(--text-accent, #fafafa);
+}
+.tbe-upload-tab.active {
+  color: var(--text-accent, #fafafa);
+  border-bottom-color: var(--text-accent, #fafafa);
+  font-weight: 600;
+}
+
+.tbe-upload-area {
+  border: 2px dashed var(--border-secondary, #2a2a32);
+  border-radius: 10px;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-secondary, #8e8e96);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+.tbe-upload-area:hover {
+  border-color: var(--border-hover, #3a3a44);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-accent, #fafafa);
+}
+
+.tbe-upload-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border-primary, #1e1e24);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.tbe-upload-preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary, #555560);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+
+/* ─── Scrollbars ────────────────────────────────────────────────────────────── */
+
+.tbe-inspector-body::-webkit-scrollbar,
+.tbe-popover-body::-webkit-scrollbar,
+.tbe-canvas-wrap::-webkit-scrollbar,
+.tbe-code-textarea::-webkit-scrollbar { width: 4px; }
+
+.tbe-inspector-body::-webkit-scrollbar-track,
+.tbe-canvas-wrap::-webkit-scrollbar-track { background: transparent; }
+
 
 /* ─── Image Upload Modal Details ───────────────────────────────────────────── */
 
@@ -1341,4 +1521,185 @@
 .tbe-inspector-body::-webkit-scrollbar-thumb:hover,
 .tbe-canvas-wrap::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover, #3a3a44);
+}
+
+/* ─── Button Sizes ──────────────────────────────────────────────────────────── */
+
+.tbe-btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.tbe-btn-xs {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+}
+
+/* ─── Preflight Checklist Modal ─────────────────────────────────────────────── */
+
+.tbe-preflight-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.tbe-preflight-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: var(--bg-card, #141416);
+  border: 1px solid var(--border-primary, #1e1e24);
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+
+.tbe-preflight-item.passed {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.tbe-preflight-item.warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.tbe-preflight-item.failed {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.tbe-preflight-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tbe-preflight-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.tbe-preflight-info strong {
+  font-size: 13px;
+  color: var(--text-accent, #fafafa);
+}
+
+.tbe-preflight-info span {
+  font-size: 12px;
+  color: var(--text-secondary, #8e8e96);
+}
+
+.tbe-preflight-undeclared-box {
+  margin-top: 6px;
+  padding: 12px;
+  background: var(--bg-card, #141416);
+  border: 1px solid var(--border-secondary, #2a2a32);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tbe-preflight-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #e8e8ed);
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+
+.tbe-preflight-vars-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tbe-preflight-var-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-primary, #1e1e24);
+  border-radius: 6px;
+}
+
+.tbe-preflight-var-row code {
+  font-family: monospace;
+  font-size: 12px;
+  color: #f59e0b;
+}
+
+/* ─── Variable Live Scan & Pills ────────────────────────────────────────────── */
+
+.tbe-var-scan-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #f59e0b;
+  margin-bottom: 12px;
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+
+.tbe-var-scan-badge.clean {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+/* ─── Social Links Inspector & Canvas ────────────────────────────────────────── */
+
+.tbe-social-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tbe-social-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-card, #141416);
+  border: 1px solid var(--border-primary, #1e1e24);
+  border-radius: 6px;
+}
+
+.tbe-social-platform-input {
+  width: 90px;
+  height: 28px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-primary, #1e1e24);
+  border-radius: 5px;
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--text-accent, #fafafa);
+  font-family: var(--font-sans, 'Funnel Display', sans-serif);
+}
+
+.tbe-social-url-input {
+  flex: 1;
+  height: 28px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-primary, #1e1e24);
+  border-radius: 5px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-primary, #e8e8ed);
+  font-family: monospace;
 }

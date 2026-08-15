@@ -12,12 +12,12 @@ import './Settings.css';
 const STARTER_TEMPLATES = [
   {
     name: 'Welcome & Onboarding',
-    subject: 'Welcome to Crescendo, {{FIRST_NAME}}! 🎉',
+    subject: 'Welcome to Crescendo, {{FIRST_NAME}}',
     contentHtml: '<h1 style="color:#0f172a;">Welcome aboard!</h1><p>Hi {{FIRST_NAME}},</p><p>We are excited to have you join us. Whether you are automating workflows or orchestrating APIs, we are here to help you succeed.</p><p><a href="https://app.crescendo.run" style="background:#6366f1;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:bold;">Go to Dashboard</a></p><p>Best regards,<br/>The Team</p>'
   },
   {
     name: 'Workflow Failure Alert',
-    subject: '🚨 Alert: Your workflow "{{WORKFLOW_NAME}}" failed',
+    subject: 'Workflow failed: {{WORKFLOW_NAME}}',
     contentHtml: '<h2 style="color:#ef4444;">Workflow Execution Notice</h2><p>Hi {{FIRST_NAME}},</p><p>Your workflow <strong>{{WORKFLOW_NAME}}</strong> encountered an error during its latest execution on {{DATE}}.</p><p style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;color:#991b1b;"><strong>Error Details:</strong> {{ERROR_MESSAGE}}</p><p>Please inspect your execution history to resolve the issue.</p><p><a href="https://app.crescendo.run/runs" style="background:#ef4444;color:#ffffff;padding:10px 20px;text-decoration:none;border-radius:6px;display:inline-block;">View Execution Log</a></p>'
   },
   {
@@ -28,7 +28,7 @@ const STARTER_TEMPLATES = [
   {
     name: 'New Security Login Alert',
     subject: 'Security notice: New login from {{DEVICE_NAME}}',
-    contentHtml: '<h2 style="color:#f59e0b;">New Login Detected</h2><p>Hi {{FIRST_NAME}},</p><p>We noticed a sign-in to your account from a new device or location:</p><ul><li><strong>Device:</strong> {{DEVICE_NAME}}</li><li><strong>Location:</strong> {{LOCATION_CITY}}, {{LOCATION_COUNTRY}}</li><li><strong>Time:</strong> {{TIME_TIMESTAMP}}</li></ul><p>If this was you, you can safely ignore this notice. If you did not perform this login, please change your password immediately.</p><p><a href="https://app.crescendo.run/settings/security" style="color:#ef4444;font-weight:bold;">Revoke Session & Secure Account →</a></p>'
+    contentHtml: '<h2 style="color:#f59e0b;">New Login Detected</h2><p>Hi {{FIRST_NAME}},</p><p>We noticed a sign-in to your account from a new device or location:</p><ul><li><strong>Device:</strong> {{DEVICE_NAME}}</li><li><strong>Location:</strong> {{LOCATION_CITY}}, {{LOCATION_COUNTRY}}</li><li><strong>Time:</strong> {{TIME_TIMESTAMP}}</li></ul><p>If this was you, you can safely ignore this notice. If you did not perform this login, please change your password immediately.</p><p><a href="https://app.crescendo.run/settings/security" style="color:#ef4444;font-weight:bold;">Review security settings</a></p>'
   }
 ];
 
@@ -100,7 +100,7 @@ export default function TemplatesSettings() {
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{starter.subject}</p>
               </div>
               <span style={{ marginTop: 12, fontSize: 12, color: 'var(--primary-color)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                Use Template →
+                Use template
               </span>
             </div>
           ))}

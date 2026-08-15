@@ -40,6 +40,6 @@ public class AgentApp implements AppDefinition {
                                 )
                         )
                 )
-        );
+        ).credentialSchema(List.of()).category("ai");
     }
 }

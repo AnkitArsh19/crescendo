@@ -20,7 +20,11 @@ public final class EmailTemplateDto {
             @NotBlank @Size(max = 1000) String subject,
             @NotBlank String htmlBody,
             String textBody,
-            List<TemplateVariable> variables  // optional at creation — can be added later
+            List<TemplateVariable> variables,
+            @Size(max = 1000) String fromAddress,
+            @Size(max = 1000) String replyTo,
+            @Size(max = 1000) String previewText,
+            String editorDocument
     ) {}
 
     public record UpdateTemplateRequest(
@@ -28,7 +32,11 @@ public final class EmailTemplateDto {
             @Size(max = 1000) String subject,
             String htmlBody,
             String textBody,
-            List<TemplateVariable> variables
+            List<TemplateVariable> variables,
+            @Size(max = 1000) String fromAddress,
+            @Size(max = 1000) String replyTo,
+            @Size(max = 1000) String previewText,
+            String editorDocument
     ) {}
 
     /**
@@ -48,6 +56,10 @@ public final class EmailTemplateDto {
             String subject,
             String htmlBody,
             String textBody,
+            String fromAddress,
+            String replyTo,
+            String previewText,
+            String editorDocument,
             String status,                       // DRAFT | PUBLISHED
             List<TemplateVariable> variables,
             boolean hasPublishedSnapshot,        // true if template has been published at least once

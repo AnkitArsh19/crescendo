@@ -51,6 +51,10 @@ public class AuthenticationController {
     @Value("${app.cookie.secure:false}")
     private boolean secureCookie;
 
+    /// Matches AuthRateLimitingFilter — only honor X-Forwarded-For when running behind a trusted proxy.
+    @Value("${app.security.trust-forwarded-headers:false}")
+    private boolean trustForwardedHeaders;
+
     /// Matches jwt.refresh.expiration — used to compute the cookie maxAge.
     @Value("${jwt.refresh.expiration}")
     private long refreshExpirationMs;
@@ -242,10 +246,11 @@ public class AuthenticationController {
     }
 
     private String clientIp(HttpServletRequest request) {
-        // Simple extraction for the controller; production environments might check X-Forwarded-For if configured.
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+        if (trustForwardedHeaders) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return forwarded.split(",")[0].trim();
+            }
         }
         return request.getRemoteAddr();
     }

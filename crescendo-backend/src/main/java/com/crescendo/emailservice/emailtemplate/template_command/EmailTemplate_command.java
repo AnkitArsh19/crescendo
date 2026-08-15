@@ -69,6 +69,20 @@ public class EmailTemplate_command {
     @Column(name = "textBody")
     private String textBody;
 
+    @Column(name = "fromAddress", length = 1000)
+    private String fromAddress;
+
+    @Column(name = "replyTo", length = 1000)
+    private String replyTo;
+
+    @Column(name = "previewText", length = 1000)
+    private String previewText;
+
+    /** Editor-owned JSON document. The rendered HTML remains the canonical send artifact. */
+    @Lob
+    @Column(name = "editorDocument")
+    private String editorDocument;
+
     /** Draft/Published lifecycle. All templates start as DRAFT. */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -129,6 +143,18 @@ public class EmailTemplate_command {
 
     public String getTextBody() { return textBody; }
     public void setTextBody(String textBody) { this.textBody = textBody; }
+
+    public String getFromAddress() { return fromAddress; }
+    public void setFromAddress(String fromAddress) { this.fromAddress = fromAddress; }
+
+    public String getReplyTo() { return replyTo; }
+    public void setReplyTo(String replyTo) { this.replyTo = replyTo; }
+
+    public String getPreviewText() { return previewText; }
+    public void setPreviewText(String previewText) { this.previewText = previewText; }
+
+    public String getEditorDocument() { return editorDocument; }
+    public void setEditorDocument(String editorDocument) { this.editorDocument = editorDocument; }
 
     public TemplateStatus getStatus() { return status; }
     public void setStatus(TemplateStatus status) { this.status = status; }

@@ -285,6 +285,11 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **SSE Push Channel + Redis Pub/Sub Fan-out**: `WorkflowSseService` holds per-instance SSE emitters. Mutations publish to a Redis Pub/Sub channel (`workflow-events:{userId}`). Every backend instance subscribes and fans notifications to its own locally registered emitters. This ensures cross-tab and multi-instance invalidation without the per-request blocklist overhead.
 - **Layered Redundancy for Disconnects**: `EventSource` reconnects automatically after network drops. Events missed during a disconnect are caught by `refetchOnWindowFocus`, which fires on laptop wake. The two mechanisms are complementary, not redundant.
 
+### 17. OAuth 2.0 Authorization Server & Personal Custom OAuth Apps (BYOA)
+
+- **Crescendo as OAuth 2.0 Provider**: Implements a full RFC 6749 / RFC 7636 Authorization Server using Spring Authorization Server. External developer applications can authenticate via PKCE authorization code flows to securely access `/api/v1/*` public APIs with fine-grained granular scopes (`workflow:read`, `email:send`, `domains:write`, `connections:read`, etc.).
+- **Bring-Your-Own-App (BYOA) Integration**: Users can register their own custom OAuth App credentials (Client ID & Client Secret) for third-party SaaS providers (Google, Slack, GitHub, Spotify, etc.) directly in Settings. The token exchange and automated background token refresh pipelines (`OAuthTokenRefreshService`) dynamically resolve and inject the user's encrypted custom credentials instead of shared platform defaults, giving developers full ownership over quotas and consent screens.
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads
@@ -296,11 +301,25 @@ Crescendo intentionally uses production-style patterns instead of simple request
 
 ## Local development
 
-Typical setup:
+### Quick Start Script (Windows)
+
+Launch all microservices concurrently in organized Windows Terminal tabs with a single command:
+
+```powershell
+.\dev.ps1
+```
+
+This automatically orchestrates:
+- **Backend (Spring Boot)** -> `http://localhost:8080`
+- **AI/ML Engine (FastAPI)** -> `http://localhost:8000`
+- **Frontend (Vite / React)** -> `http://localhost:5173`
+
+### Manual Setup
 
 1. Start dependencies (PostgreSQL, Redis) via Docker Compose
 2. Run backend via `./mvnw spring-boot:run` from `crescendo-backend`
-3. Run frontend via `npm install && npm run dev` from `crescendo-frontend`
+3. Run AI/ML service via `uvicorn app.main:app --port 8000` from `crescendo-aiml`
+4. Run frontend via `npm install && npm run dev` from `crescendo-frontend`
 
 Containerized option:
 

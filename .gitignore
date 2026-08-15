@@ -5,6 +5,7 @@
 .agents/
 .ui-ux-pro-max-skill/
 graphify-out/
+Test/
 
 ### Environment Variables ###
 **/.env
@@ -31,3 +32,7 @@ public_key.pem
 keys-server/
 template.schema.json
 benchmark
+
+# Standalone Repositories
+crescendo-sdk/
+

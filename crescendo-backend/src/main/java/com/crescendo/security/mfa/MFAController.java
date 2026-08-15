@@ -132,7 +132,12 @@ public class MFAController {
         User_command user = userRepo.findByEmailIgnoreCase(req.email())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
-        int code = Integer.parseInt(req.code());
+        int code;
+        try {
+            code = Integer.parseInt(req.code().trim());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid 6-digit code format");
+        }
         String clientIp = servReq.getHeader("X-Forwarded-For");
         if (clientIp == null) clientIp = servReq.getRemoteAddr();
         else clientIp = clientIp.split(",")[0].trim();

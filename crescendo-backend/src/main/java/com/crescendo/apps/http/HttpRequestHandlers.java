@@ -58,6 +58,9 @@ public ActionResult execute(ActionContext context) {
             boolean fullResponse = booleanValue(options.get("fullResponse"), false);
             String responseFormat = String.valueOf(options.getOrDefault("responseFormat", "autodetect"));
 
+            // Validate URL against SSRF / cloud metadata targets
+            validateTargetUrl(String.valueOf(config.get("url")), config, options);
+
             String paginationMode = String.valueOf(config.getOrDefault("paginationMode", "none"));
             int maxPages = Math.max(1, intValue(config.get("maxPages"), 1));
             if ("none".equalsIgnoreCase(paginationMode)) {
@@ -363,6 +366,33 @@ public ActionResult execute(ActionContext context) {
             // fallback to json object key if present, otherwise try parsing paramListKey as JSON string
             Object val = config.getOrDefault(paramListKey, config.get(legacyJsonObjKey));
             return new LinkedHashMap<>(objectMap(val));
+        }
+    }
+
+    private void validateTargetUrl(String url, Map<String, Object> config, Map<String, Object> options) {
+        boolean allowPrivate = booleanValue(options.getOrDefault("allowPrivateNetwork", config.get("allowPrivateNetwork")), false)
+                || booleanValue(options.getOrDefault("allowLocalhost", config.get("allowLocalhost")), false);
+        if (allowPrivate) {
+            return;
+        }
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                throw new IllegalArgumentException("Unsupported URL scheme: " + scheme + " (only http and https are permitted)");
+            }
+            String host = uri.getHost();
+            if (host == null || host.isBlank()) {
+                throw new IllegalArgumentException("Invalid URL: missing host");
+            }
+            String lower = host.toLowerCase(java.util.Locale.ROOT);
+            if (lower.equals("localhost") || lower.equals("127.0.0.1") || lower.equals("::1") || lower.equals("0.0.0.0")
+                    || lower.startsWith("169.254.") || lower.equals("instance-data") || lower.equals("metadata.google.internal")) {
+                throw new IllegalArgumentException("Requests to local or cloud metadata addresses (" + host + ") are blocked for security. Set options.allowPrivateNetwork=true if intentional.");
+            }
+        } catch (Exception e) {
+            if (e instanceof IllegalArgumentException iae) throw iae;
+            throw new IllegalArgumentException("Invalid target URL: " + e.getMessage());
         }
     }
 }

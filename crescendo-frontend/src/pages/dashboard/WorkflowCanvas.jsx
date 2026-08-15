@@ -52,6 +52,7 @@ import {
     HiSun,
     HiMoon,
     HiMenuAlt2,
+    HiOutlineChip,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
 import BranchNode from './nodes/BranchNode';
@@ -748,6 +749,46 @@ export default function WorkflowCanvas() {
         [nodes, edges, vertical, configNode, commitGraph]
     );
 
+    // Add an AI Agent node — pre-seeded with appKey='agent' so the config panel
+    // immediately loads the catalog detail and shows the action dropdown without
+    // requiring the user to go through the app browser first.
+    const addAgentNode = useCallback(
+        (position, sourceId = null) => {
+            const id = String(nodeId++);
+            const ordered = orderedNodesFromGraph(nodes, edges);
+            const fallbackSource = ordered[ordered.length - 1]?.id || nodes[nodes.length - 1]?.id || null;
+            const parentId = sourceId || configNode?.id || fallbackSource;
+            const parent = nodes.find((n) => n.id === parentId) || ordered[ordered.length - 1] || null;
+            const agentMeta = catalogApps.find((a) => a.appKey === 'agent');
+            const newNode = {
+                id,
+                type: 'agent',
+                position: position || {
+                    x: parent ? parent.position.x + (vertical ? 0 : NODE_GAP_X) : 250,
+                    y: parent ? parent.position.y + (vertical ? NODE_GAP_Y : 0) : 200,
+                },
+                data: {
+                    label: 'AI Agent',
+                    appKey: 'agent',
+                    app: 'agent',
+                    appName: agentMeta?.name || 'AI Agent',
+                    iconUrl: agentMeta?.logoUrl || '/icons/agent.svg',
+                    stepIndex: nodes.length + 1,
+                    _vertical: vertical,
+                    _isNew: true,
+                },
+            };
+            const nextNodes = [...nodes, newNode];
+            const nextEdges = parentId ? [...edges, makeEdge(parentId, id)] : edges;
+            commitGraph(nextNodes, nextEdges, { relayout: !position });
+            // Pre-load catalog detail so the action dropdown appears immediately
+            ensureAppDetail('agent');
+            setConfigNode(newNode);
+            return id;
+        },
+        [nodes, edges, vertical, configNode, commitGraph, catalogApps, ensureAppDetail]
+    );
+
     // Add branch from a node
     const addBranch = useCallback(
         (sourceId) => {
@@ -1235,13 +1276,21 @@ export default function WorkflowCanvas() {
                         <HiPlus />
                     </DockIcon>
                     <DockIcon
+                        className="canvas-dock-btn"
+                        title="Add AI Agent Step"
+                        onClick={() => addAgentNode()}
+                        data-tooltip="AI Agent"
+                    >
+                        <HiOutlineChip />
+                    </DockIcon>
+                    <DockIcon
                         className="canvas-dock-btn canvas-split-control"
                         title={lastSelectedNodeId ? 'Split selected step' : 'Select a step to split'}
                         onClick={() => setShowSplitMenu((open) => !open)}
                         disabled={!lastSelectedNodeId}
                         data-tooltip="Split"
                     >
-                        <HiOutlineShare />
+                        <HiOutlineSwitchHorizontal />
                         <AnimatePresence>
                             {showSplitMenu && lastSelectedNodeId && (
                                 <motion.div
@@ -1403,7 +1452,7 @@ export default function WorkflowCanvas() {
                                 <HiPlus /> Add next step
                             </button>
                             <div className="canvas-ctx-split">
-                                <span className="canvas-ctx-split-label"><HiOutlineShare /> Split into</span>
+                                <span className="canvas-ctx-split-label"><HiOutlineSwitchHorizontal /> Split into</span>
                                 <div className="canvas-ctx-split-options" role="group" aria-label="Number of branches">
                                     {[2, 3, 4].map((count) => (
                                         <button
