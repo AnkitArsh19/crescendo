@@ -55,4 +55,37 @@ public class SlackSupport {
     public static tools.jackson.databind.ObjectMapper getMapper() {
         return mapper;
     }
+
+    @SuppressWarnings("unchecked")
+    public static ActionResult parseSlackResponse(String responseStr, Map<String, Object> additionalOutput) {
+        if (responseStr == null || responseStr.isBlank()) {
+            return ActionResult.failure("Empty response from Slack");
+        }
+        try {
+            Map<String, Object> respMap = mapper.readValue(responseStr, Map.class);
+            if (Boolean.FALSE.equals(respMap.get("ok"))) {
+                String error = String.valueOf(respMap.get("error"));
+                String humanError = switch (error) {
+                    case "not_in_channel" -> "The Slack app/bot is not a member of the selected channel. Please go to the channel in Slack and type '/invite @Crescendo' (or your bot's name) to add it.";
+                    case "channel_not_found" -> "Slack channel not found. Please verify the channel ID or name, and ensure the app has access.";
+                    case "is_archived" -> "The specified Slack channel is archived.";
+                    case "msg_too_long" -> "Message text exceeds Slack's maximum character limit.";
+                    case "invalid_auth", "account_inactive", "token_revoked" -> "Slack authentication expired or invalid. Please reconnect your Slack account in Crescendo.";
+                    case "ratelimited" -> "Slack rate limit reached. Please wait a moment before sending more messages.";
+                    default -> "Slack API returned error: '" + error + "'";
+                };
+                return ActionResult.failure(humanError);
+            }
+            Map<String, Object> output = new java.util.HashMap<>(respMap);
+            if (additionalOutput != null) {
+                output.putAll(additionalOutput);
+            }
+            return ActionResult.success(output);
+        } catch (Exception e) {
+            Map<String, Object> output = new java.util.HashMap<>();
+            if (additionalOutput != null) output.putAll(additionalOutput);
+            output.put("response", responseStr);
+            return ActionResult.success(output);
+        }
+    }
 }

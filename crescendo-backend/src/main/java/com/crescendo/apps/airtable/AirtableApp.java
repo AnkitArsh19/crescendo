@@ -50,6 +50,6 @@ public class AirtableApp implements AppDefinition {
                 )
         ).credentialSchema(List.of(
                 Map.of("key", "apiToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).altAuthType(AuthType.OAUTH2).category("docs-workspace");
+        )).altAuthType(AuthType.OAUTH2).category("database");
     }
 }

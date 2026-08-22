@@ -6,6 +6,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -17,11 +19,13 @@ class DomainConnectServiceTest {
     private DomainConnectService service;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         service = new DomainConnectService();
-        // Point to the real test key in the repo root
-        ReflectionTestUtils.setField(service, "privateKeyPath", "../private_key.pem");
-        service.init();
+        // Generate an in-memory 2048-bit RSA test key so tests are 100% self-contained and don't depend on external disk files
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        KeyPair pair = keyGen.generateKeyPair();
+        ReflectionTestUtils.setField(service, "privateKey", pair.getPrivate());
     }
 
     @Test
@@ -48,9 +52,7 @@ class DomainConnectServiceTest {
         assertTrue(applyUrl.contains("key=key1"));
         assertTrue(applyUrl.contains("sig="));
 
-        // Basic check that sig is URL Encoded (should not contain raw '+', '=', etc unless encoded)
-        // Wait, Base64 sig has padding '=', which URL Encoded becomes '%3D'
-        // Let's decode the query string and ensure it looks somewhat sane.
+        // Basic check that sig is URL Encoded
         String[] parts = applyUrl.split("\\?");
         assertEquals(2, parts.length);
         String queryString = parts[1];

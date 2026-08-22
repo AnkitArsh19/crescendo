@@ -53,6 +53,6 @@ public class CoinGeckoApp implements AppDefinition {
                                         Map.of("key", "query", "label", "Query", "type", "text", "required", true,
                                                 "placeholder", "bitcoin")))
                 )
-        ).credentialSchema(List.of()).category("data").helpUrl("https://www.coingecko.com/en/api");
+        ).credentialSchema(List.of()).category("finance").helpUrl("https://www.coingecko.com/en/api");
     }
 }

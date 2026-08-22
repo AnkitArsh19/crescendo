@@ -52,6 +52,6 @@ public class HomeAssistantApp implements AppDefinition {
                 Map.of("key", "baseUrl", "label", "Base URL", "type", "text", "required", true,
                         "placeholder", "http://homeassistant.local:8123"),
                 Map.of("key", "accessToken", "label", "Long-Lived Access Token", "type", "password", "required", true)
-        )).category("iot").helpUrl("https://developers.home-assistant.io/docs/api/rest/");
+        )).category("messaging").helpUrl("https://developers.home-assistant.io/docs/api/rest/");
     }
 }

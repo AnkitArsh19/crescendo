@@ -55,6 +55,6 @@ public class WordPressApp implements AppDefinition {
                         "placeholder", "https://example.com"),
                 Map.of("key", "username", "label", "Username", "type", "text", "required", true),
                 Map.of("key", "applicationPassword", "label", "Application Password", "type", "password", "required", true)
-        )).category("cms").helpUrl("https://developer.wordpress.org/rest-api/");
+        )).category("marketing").helpUrl("https://developer.wordpress.org/rest-api/");
     }
 }

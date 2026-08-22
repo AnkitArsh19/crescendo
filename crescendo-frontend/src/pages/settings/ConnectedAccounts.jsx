@@ -119,6 +119,8 @@ export default function ConnectedAccounts() {
                                             className="settings-btn settings-btn-danger"
                                             style={{ fontSize: '0.78rem', padding: '6px 14px' }}
                                             onClick={() => setRevokeModal({ provider, name: meta.name })}
+                                            title={`Unlink ${meta.name} account`}
+                                            aria-label={`Unlink ${meta.name} account`}
                                         >
                                             Revoke
                                         </button>
@@ -128,6 +130,8 @@ export default function ConnectedAccounts() {
                                         className="settings-btn settings-btn-primary"
                                         style={{ fontSize: '0.78rem', padding: '6px 14px' }}
                                         onClick={() => handleConnect(provider)}
+                                        title={`Link ${meta.name} account`}
+                                        aria-label={`Link ${meta.name} account`}
                                     >
                                         Connect
                                     </button>
@@ -153,12 +157,14 @@ export default function ConnectedAccounts() {
                     <button
                         className="modal-btn modal-btn-secondary"
                         onClick={() => setRevokeModal(null)}
+                        title="Cancel revoking account"
                     >
                         Cancel
                     </button>
                     <button
                         className="modal-btn modal-btn-danger"
                         onClick={() => handleRevoke(revokeModal.provider)}
+                        title="Confirm revoking account access"
                     >
                         Revoke Access
                     </button>

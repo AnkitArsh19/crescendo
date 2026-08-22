@@ -52,7 +52,7 @@ public class DiscordMessageHandlers {
 
             return ActionResult.success(Map.of("channelId", channelId, "response", response));
         } catch (Exception e) {
-            return ActionResult.failure("Discord sendMessage failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("sendMessage", e);
         }
     }
 
@@ -91,7 +91,7 @@ public class DiscordMessageHandlers {
 
             return ActionResult.success(Map.of("channelId", channelId, "response", response));
         } catch (Exception e) {
-            return ActionResult.failure("Discord sendEmbed failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("sendEmbed", e);
         }
     }
 
@@ -130,7 +130,7 @@ public class DiscordMessageHandlers {
 
             return ActionResult.success(Map.of("userId", userId, "channelId", channelId, "response", response));
         } catch (Exception e) {
-            return ActionResult.failure("Discord sendDirectMessage failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("sendDirectMessage", e);
         }
     }
 
@@ -153,13 +153,12 @@ public class DiscordMessageHandlers {
                     .body(Map.class);
             return ActionResult.success(response);
         } catch (Exception e) {
-            return ActionResult.failure("Discord getMessage failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("getMessage", e);
         }
     }
 
     // ── getAll ────────────────────────────────────────────────────────────────
     @ActionMapping(appKey = "discord", actionKey = "getAllMessages")
-// @SuppressWarnings("unchecked")
     public ActionResult getAll(ActionContext context) {
         Map<String, Object> config = context.configuration();
         String channelId = DiscordSupport.require(config, "channelId");
@@ -182,7 +181,7 @@ public class DiscordMessageHandlers {
                     .body(Object.class); // list of messages
             return ActionResult.success(Map.of("messages", response));
         } catch (Exception e) {
-            return ActionResult.failure("Discord getAllMessages failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("getAllMessages", e);
         }
     }
 
@@ -204,7 +203,7 @@ public class DiscordMessageHandlers {
                     .toBodilessEntity();
             return ActionResult.success(Map.of("success", true, "messageId", messageId));
         } catch (Exception e) {
-            return ActionResult.failure("Discord deleteMessage failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("deleteMessage", e);
         }
     }
 
@@ -230,7 +229,7 @@ public class DiscordMessageHandlers {
                     .toBodilessEntity();
             return ActionResult.success(Map.of("success", true, "messageId", messageId, "emoji", emoji));
         } catch (Exception e) {
-            return ActionResult.failure("Discord addReaction failed: " + e.getMessage());
+            return DiscordSupport.handleDiscordError("addReaction", e);
         }
     }
 }

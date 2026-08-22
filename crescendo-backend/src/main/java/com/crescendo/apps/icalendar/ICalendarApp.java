@@ -43,6 +43,6 @@ public class ICalendarApp implements AppDefinition {
                                         Map.of("key", "description", "label", "Description", "type", "textarea", "required", false),
                                         Map.of("key", "location", "label", "Location", "type", "text", "required", false)))
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("https://icalendar.org/");
+        ).credentialSchema(List.of()).category("productivity").helpUrl("https://icalendar.org/");
     }
 }

@@ -42,7 +42,7 @@ public class SpotifyResourceProvider implements ResourceProvider {
 
     @Override
     public Set<String> supportedResourceTypes() {
-        return Set.of("playlists", "tracks");
+        return Set.of("playlists", "tracks", "search_tracks");
     }
 
     @Override
@@ -57,9 +57,52 @@ public class SpotifyResourceProvider implements ResourceProvider {
 
         return switch (resourceType) {
             case "playlists" -> listPlaylists(accessToken);
-            case "tracks" -> listTracks(accessToken, params.get("playlistId"));
+            case "tracks" -> listTracks(accessToken, params != null ? params.get("playlistId") : null);
+            case "search_tracks" -> searchTracks(accessToken, params != null ? (params.get("query") != null ? params.get("query") : params.get("trackId")) : null);
             default -> List.of();
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ResourceOption> searchTracks(String accessToken, String query) {
+        String searchQuery = (query != null && !query.isBlank()) ? query : "top";
+        try {
+            String encoded = java.net.URLEncoder.encode(searchQuery, java.nio.charset.StandardCharsets.UTF_8);
+            Map<String, Object> response = restClient(accessToken)
+                    .get()
+                    .uri(spotifyApi + "/search?q=" + encoded + "&type=track&limit=20")
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+
+            if (response == null || !response.containsKey("tracks")) return List.of();
+            Map<String, Object> tracksMap = (Map<String, Object>) response.get("tracks");
+            List<Map<String, Object>> items = (List<Map<String, Object>>) tracksMap.get("items");
+            if (items == null) return List.of();
+
+            return items.stream()
+                    .map(track -> {
+                        String artistName = "";
+                        if (track.get("artists") instanceof List<?> artists && !artists.isEmpty()) {
+                            Object first = artists.get(0);
+                            if (first instanceof Map<?, ?> a && a.get("name") != null) {
+                                artistName = a.get("name").toString();
+                            }
+                        }
+                        String albumName = "";
+                        if (track.get("album") instanceof Map<?, ?> album && album.get("name") != null) {
+                            albumName = " • " + album.get("name").toString();
+                        }
+                        return new ResourceOption(
+                                track.get("id").toString(),
+                                track.get("name").toString(),
+                                artistName + albumName
+                        );
+                    })
+                    .toList();
+        } catch (Exception e) {
+            logger.error("[spotify] Failed to search tracks: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     @SuppressWarnings("unchecked")

@@ -80,7 +80,7 @@ public class AwsS3App implements AppDefinition {
                         Map.of("key", "secretAccessKey", "label", "Secret Access Key", "type", "password", "required", true),
                         Map.of("key", "region", "label", "Region", "type", "text", "required", true, "placeholder", "us-east-1"),
                         Map.of("key", "endpoint", "label", "Custom Endpoint", "type", "text", "required", false)))
-                .category("file-storage")
+                .category("storage")
                 .helpUrl("https://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html");
     }
 }

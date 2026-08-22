@@ -52,9 +52,9 @@ public class DiscordApp implements AppDefinition {
 
                 **Who should use this:** Community managers, support teams, and developer squads who use Discord as their primary operations hub.
 
-                **Authentication:** Bot Token (for background bot actions) or OAuth 2.0 (for user-level channel discovery).
+                **Authentication:** Discord Bot Token (Recommended for all automations). Discord's API requires a Bot Token to list channels and send messages. Personal user OAuth tokens only support viewing server membership and identity.
                 """,
-                "https://www.google.com/s2/favicons?domain=discord.com&sz=128", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=discord.com&sz=128", AuthType.APIKEY,
 
                 // ═══ TRIGGERS ═══
                 List.of(

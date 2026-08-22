@@ -67,4 +67,35 @@ class WorkflowExpressionResolverTest {
         assertNull(result.get("missingKey"));
         assertNull(result.get("outOfBounds"));
     }
+
+    @Test
+    @DisplayName("Resolves dynamic time tokens {{now}}, {{now + 2m}}, {{today}}, {{timestamp}}")
+    void resolvesDynamicTimeTokens() {
+        Map<String, Object> config = Map.of(
+                "now", "{{now}}",
+                "inTwoMins", "{{now + 2m}}",
+                "inOneHour", "{{now + 1h}}",
+                "yesterday", "{{now - 1d}}",
+                "today", "{{today}}",
+                "timestamp", "{{timestamp}}",
+                "message", "Generated on {{today}} at {{now}}"
+        );
+
+        Map<String, Object> result = resolver.resolveConfiguration(config, Map.of(), Map.of());
+
+        assertNotNull(result.get("now"));
+        assertTrue(result.get("now").toString().contains("T"));
+        assertTrue(result.get("now").toString().endsWith("Z"));
+
+        assertNotNull(result.get("inTwoMins"));
+        assertTrue(result.get("inTwoMins").toString().contains("T"));
+
+        assertNotNull(result.get("today"));
+        assertTrue(result.get("today").toString().matches("\\d{4}-\\d{2}-\\d{2}"));
+
+        assertInstanceOf(Long.class, result.get("timestamp"));
+        assertTrue((Long) result.get("timestamp") > 1700000000000L);
+
+        assertTrue(result.get("message").toString().startsWith("Generated on 20"));
+    }
 }

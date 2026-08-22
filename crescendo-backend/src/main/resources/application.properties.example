@@ -253,7 +253,7 @@ crescendo.integrations.oauth.providers.slack.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.slack.client-secret=REPLACE_ME
 crescendo.integrations.oauth.providers.slack.authorize-url=https://slack.com/oauth/v2/authorize
 crescendo.integrations.oauth.providers.slack.token-url=https://slack.com/api/oauth.v2.access
-crescendo.integrations.oauth.providers.slack.scopes=channels:read channels:write channels:history chat:write files:read files:write groups:read groups:write groups:history im:read im:write im:history mpim:read mpim:history reactions:read reactions:write stars:read stars:write usergroups:read usergroups:write users:read users.profile:read users.profile:write search:read
+crescendo.integrations.oauth.providers.slack.scopes=channels:read channels:history channels:manage chat:write files:read files:write groups:read groups:write groups:history im:read im:write im:history mpim:read mpim:history mpim:write reactions:read reactions:write usergroups:read usergroups:write users:read users.profile:read search:read.public search:read.private search:read.files
 crescendo.integrations.oauth.providers.slack.pkce=true
 
 # ─── Discord ──────────────────────────────────────────────────────────────────
@@ -263,6 +263,7 @@ crescendo.integrations.oauth.providers.slack.pkce=true
 # Scopes: identify (user info), guilds (server list), guilds.join (join servers), email, bot
 crescendo.integrations.oauth.providers.discord.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.discord.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.discord.bot-token=REPLACE_ME
 crescendo.integrations.oauth.providers.discord.authorize-url=https://discord.com/oauth2/authorize
 crescendo.integrations.oauth.providers.discord.token-url=https://discord.com/api/oauth2/token
 crescendo.integrations.oauth.providers.discord.scopes=identify guilds guilds.join email bot
@@ -323,12 +324,10 @@ crescendo.integrations.oauth.providers.spotify.authorize-url=https://accounts.sp
 crescendo.integrations.oauth.providers.spotify.token-url=https://accounts.spotify.com/api/token
 crescendo.integrations.oauth.providers.spotify.scopes=user-read-playback-state playlist-read-collaborative user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private user-library-read user-library-modify user-follow-read user-read-email user-read-private
 
-# ─── Strava ───────────────────────────────────────────────────────────────────
+# ─── Strava (BYOK Only) ───────────────────────────────────────────────────────
 # App registration: https://www.strava.com/settings/api
-# Redirect URI: https://api.crescendo.run/connections/oauth/strava/callback
-# Scopes: read, activity:read_all, activity:write, profile:read_all
-crescendo.integrations.oauth.providers.strava.client-id=REPLACE_ME
-crescendo.integrations.oauth.providers.strava.client-secret=REPLACE_ME
+# Note: Strava API requires an active paid Strava subscription on the developer account.
+# Strava operates in BYOK (Bring Your Own Key) mode where users provide their own Client ID & Secret.
 crescendo.integrations.oauth.providers.strava.authorize-url=https://www.strava.com/oauth/authorize
 crescendo.integrations.oauth.providers.strava.token-url=https://www.strava.com/oauth/token
 crescendo.integrations.oauth.providers.strava.scopes=read,activity:read_all,activity:write,profile:read_all
@@ -545,3 +544,8 @@ crescendo.python-ai.service-token=
 # Used by the crescendo-email internal app for API configuration for crescendo-email app (Brevo)
 crescendo.email.provider=brevo
 brevo.api.key=xkeysib-REPLACE_ME_WITH_YOUR_API_KEY
+
+# ─── Domain Connect Configuration ─────────────────────────────────────────────
+# Optional path to private key PEM file used for Domain Connect DNS template signing
+domainconnect.private-key-path=
+

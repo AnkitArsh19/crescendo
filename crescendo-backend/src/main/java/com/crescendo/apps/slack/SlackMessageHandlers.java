@@ -71,10 +71,7 @@ public class SlackMessageHandlers {
                     .retrieve()
                     .body(String.class);
 
-            Map<String, Object> output = new HashMap<>();
-            output.put("channel", channel);
-            output.put("response", response);
-            return ActionResult.success(output);
+            return SlackSupport.parseSlackResponse(response, Map.of("channel", channel));
         } catch (Exception e) {
             return ActionResult.failure("Slack sendMessage failed: " + e.getMessage());
         }
@@ -103,7 +100,8 @@ public class SlackMessageHandlers {
                     .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             if (openResponse == null || !Boolean.TRUE.equals(openResponse.get("ok"))) {
-                return ActionResult.failure("Failed to open DM channel with user " + user);
+                String error = openResponse != null ? String.valueOf(openResponse.get("error")) : "Unknown error";
+                return ActionResult.failure("Failed to open DM channel with user " + user + " (" + error + ")");
             }
             
             @SuppressWarnings("unchecked")
@@ -130,10 +128,7 @@ public class SlackMessageHandlers {
                     .retrieve()
                     .body(String.class);
 
-            Map<String, Object> output = new HashMap<>();
-            output.put("channel", channelId);
-            output.put("response", response);
-            return ActionResult.success(output);
+            return SlackSupport.parseSlackResponse(response, Map.of("channel", channelId));
         } catch (Exception e) {
             return ActionResult.failure("Slack sendDirectMessage failed: " + e.getMessage());
         }
@@ -172,7 +167,7 @@ public class SlackMessageHandlers {
                     .retrieve()
                     .body(String.class);
 
-            return ActionResult.success(Map.of("response", response));
+            return SlackSupport.parseSlackResponse(response, Map.of("channel", channel, "ts", ts));
         } catch (Exception e) {
             return ActionResult.failure("Slack updateMessage failed: " + e.getMessage());
         }
@@ -194,7 +189,7 @@ public class SlackMessageHandlers {
                     .retrieve()
                     .body(String.class);
 
-            return ActionResult.success(Map.of("response", response));
+            return SlackSupport.parseSlackResponse(response, Map.of("channel", channel, "ts", ts));
         } catch (Exception e) {
             return ActionResult.failure("Slack deleteMessage failed: " + e.getMessage());
         }
@@ -215,6 +210,9 @@ public class SlackMessageHandlers {
                     .uri(SLACK_API + "conversations.history?channel=" + channel + "&latest=" + ts + "&limit=1&inclusive=true")
                     .retrieve()
                     .body(Map.class);
+            if (response != null && Boolean.FALSE.equals(response.get("ok"))) {
+                return ActionResult.failure("Slack getMessage failed: " + response.get("error"));
+            }
             return ActionResult.success(response);
         } catch (Exception e) {
             return ActionResult.failure("Slack getMessage failed: " + e.getMessage());
@@ -237,6 +235,9 @@ public class SlackMessageHandlers {
                     .uri(uri)
                     .retrieve()
                     .body(Map.class);
+            if (response != null && Boolean.FALSE.equals(response.get("ok"))) {
+                return ActionResult.failure("Slack getAllMessages failed: " + response.get("error"));
+            }
             return ActionResult.success(response);
         } catch (Exception e) {
             return ActionResult.failure("Slack getAllMessages failed: " + e.getMessage());
@@ -259,6 +260,9 @@ public class SlackMessageHandlers {
                     .uri(uri)
                     .retrieve()
                     .body(Map.class);
+            if (response != null && Boolean.FALSE.equals(response.get("ok"))) {
+                return ActionResult.failure("Slack searchMessages failed: " + response.get("error"));
+            }
             return ActionResult.success(response);
         } catch (Exception e) {
             return ActionResult.failure("Slack searchMessages failed: " + e.getMessage());

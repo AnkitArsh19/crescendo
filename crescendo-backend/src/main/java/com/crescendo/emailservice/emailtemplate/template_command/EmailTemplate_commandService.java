@@ -204,6 +204,8 @@ public class EmailTemplate_commandService {
 
         String subject  = TemplateInterpolator.interpolate(template.getSubject(),  vars);
         String htmlBody = TemplateInterpolator.interpolate(template.getHTMLBody(), vars);
+        String textBody = template.getTextBody() == null ? null
+                : TemplateInterpolator.interpolate(template.getTextBody(), vars);
 
         UUID emailId  = UUID.randomUUID();
         UUID appKeyId = new UUID(0, 0);
@@ -224,7 +226,7 @@ public class EmailTemplate_commandService {
         payload.put("from",     from);
         payload.put("subject",  subject);
         payload.put("htmlBody", htmlBody);
-        payload.put("textBody", template.getTextBody());
+        if (textBody != null) payload.put("textBody", textBody);
         payload.put("templateId", templateId.toString());
 
         outboxRepo.save(new OutboxEvent(UUID.randomUUID(), RedisStreamConfig.STREAM_EMAIL_QUEUE, payload));

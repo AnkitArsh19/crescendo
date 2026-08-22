@@ -223,27 +223,40 @@ public class OAuthTokenRefreshService {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-        // Notion requires Basic auth for token exchange
-        if (isBasicAuthProvider(providerKey)) {
+        boolean useBasicAuth = isBasicAuthProvider(providerKey) && clientSecret != null && !clientSecret.isBlank();
+
+        // Providers that require HTTP Basic auth for token exchange (Twitter/X, Notion, Airtable, Reddit, Spotify)
+        if (useBasicAuth) {
             String basic = Base64.getEncoder().encodeToString(
                     (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8)
             );
             headers.set(HttpHeaders.AUTHORIZATION, "Basic " + basic);
         }
 
-        // Most providers use form-urlencoded
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        HttpEntity<?> request;
+        if ("notion".equals(providerKey)) {
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            Map<String, String> jsonBody = new HashMap<>();
+            jsonBody.put("grant_type", "refresh_token");
+            jsonBody.put("refresh_token", refreshToken);
+            request = new HttpEntity<>(jsonBody, headers);
+        } else {
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("grant_type", "refresh_token");
+            body.add("refresh_token", refreshToken);
 
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "refresh_token");
-        body.add("refresh_token", refreshToken);
-
-        if (!isBasicAuthProvider(providerKey)) {
-            body.add("client_id", clientId);
-            body.add("client_secret", clientSecret);
+            if (!useBasicAuth) {
+                body.add("client_id", clientId);
+                if (clientSecret != null && !clientSecret.isBlank()) {
+                    body.add("client_secret", clientSecret);
+                }
+            } else if ("twitter".equals(providerKey) || "x".equals(providerKey)) {
+                // Twitter token endpoint accepts client_id alongside Basic auth
+                body.add("client_id", clientId);
+            }
+            request = new HttpEntity<>(body, headers);
         }
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -282,7 +295,12 @@ public class OAuthTokenRefreshService {
     }
 
     private boolean isBasicAuthProvider(String providerKey) {
-        return "notion".equals(providerKey);
+        return "notion".equals(providerKey)
+                || "airtable".equals(providerKey)
+                || "twitter".equals(providerKey)
+                || "x".equals(providerKey)
+                || "reddit".equals(providerKey)
+                || "spotify".equals(providerKey);
     }
 
     /**

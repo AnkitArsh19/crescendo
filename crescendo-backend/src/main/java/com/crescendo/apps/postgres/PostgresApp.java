@@ -102,6 +102,6 @@ public class PostgresApp implements AppDefinition {
                 Map.of("key", "database", "label", "Database", "type", "string", "required", true),
                 Map.of("key", "user", "label", "User", "type", "string", "required", true),
                 Map.of("key", "password", "label", "Password", "type", "string")
-        )).category("databases");
+        )).category("database");
     }
 }

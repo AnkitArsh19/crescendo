@@ -207,6 +207,8 @@ export default function NLWorkflowModal({ onClose }) {
                                 className="nlwf-example-chip"
                                 onClick={() => setPrompt(ex)}
                                 type="button"
+                                title={`Use prompt: "${ex}"`}
+                                aria-label={`Use prompt: ${ex}`}
                             >
                                 {ex}
                             </button>
@@ -257,6 +259,8 @@ export default function NLWorkflowModal({ onClose }) {
                         <button
                             type="button"
                             onClick={() => handleGenerate(selectedOption)}
+                            title="Continue with selected option"
+                            aria-label="Continue with Selected Option"
                             style={{
                                 marginTop: '0.85rem',
                                 padding: '0.45rem 0.9rem',
@@ -278,7 +282,7 @@ export default function NLWorkflowModal({ onClose }) {
                 {/* Unavailable notice */}
                 {unavailable && (
                     <div className="nlwf-unavailable">
-                        ⚠️ The AI service is not configured yet. Ask your team to set up the Python microservice.
+                        The AI service is not configured yet. Ask your team to set up the Python microservice.
                     </div>
                 )}
 
@@ -291,7 +295,13 @@ export default function NLWorkflowModal({ onClose }) {
 
                 {/* Footer actions */}
                 <div className="nlwf-actions">
-                    <button className="nlwf-cancel-btn" onClick={onClose} type="button">
+                    <button
+                        className="nlwf-cancel-btn"
+                        onClick={onClose}
+                        type="button"
+                        title="Cancel workflow generation"
+                        aria-label="Cancel"
+                    >
                         Cancel
                     </button>
 
@@ -300,6 +310,8 @@ export default function NLWorkflowModal({ onClose }) {
                         onClick={handleGenerate}
                         disabled={!prompt.trim() || generating}
                         type="button"
+                        title="Generate and create workflow with AI"
+                        aria-label="Generate workflow"
                     >
                         {generating ? (
                             <>

@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,7 +42,10 @@ class HttpHandlersExecutionTest {
     }
 
     private ActionContext createContext(Map<String, Object> config) {
-        return new ActionContext("http", "request", config, Map.of(), Map.of(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1);
+        Map<String, Object> mutableConfig = new HashMap<>(config);
+        // Allow localhost target for tests running against embedded local HttpServer
+        mutableConfig.putIfAbsent("allowLocalhost", true);
+        return new ActionContext("http", "request", mutableConfig, Map.of(), Map.of(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1);
     }
 
     @Test
@@ -111,6 +115,21 @@ class HttpHandlersExecutionTest {
         assertTrue(result.error().contains("500"));
     }
 
+    @Test
+    @DisplayName("HTTP Handler blocks SSRF attempts to localhost / cloud metadata by default")
+    void execute_blocksSsrfByDefault() {
+        Map<String, Object> config = Map.of(
+                "url", "http://169.254.169.254/latest/meta-data/",
+                "method", "GET"
+        );
+
+        ActionContext context = new ActionContext("http", "request", config, Map.of(), Map.of(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1);
+        ActionResult result = handler.execute(context);
+
+        assertFalse(result.success());
+        assertTrue(result.error().contains("blocked for security"));
+    }
+
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -119,4 +138,3 @@ class HttpHandlersExecutionTest {
         exchange.close();
     }
 }
-

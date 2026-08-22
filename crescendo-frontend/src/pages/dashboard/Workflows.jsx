@@ -205,6 +205,8 @@ export default function Workflows() {
                         <button
                             className={`wf-select-toggle ${selectMode ? 'active' : ''}`}
                             onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                            title={selectMode ? 'Cancel selection' : 'Select multiple workflows'}
+                            aria-label={selectMode ? 'Cancel selection' : 'Select multiple workflows'}
                         >
                             {selectMode ? 'Cancel' : 'Select'}
                         </button>
@@ -213,10 +215,17 @@ export default function Workflows() {
                         className="wf-ai-btn"
                         onClick={() => setShowAiModal(true)}
                         type="button"
+                        title="Generate a workflow using AI natural language"
+                        aria-label="Build with AI"
                     >
                         <HiOutlineSparkles /> Build with AI
                     </button>
-                    <Link to="/dashboard/workflows/new" className="wf-create-btn">
+                    <Link
+                        to="/dashboard/workflows/new"
+                        className="wf-create-btn"
+                        title="Create a new workflow from scratch"
+                        aria-label="New Workflow"
+                    >
                         <HiPlus /> New Workflow
                     </Link>
                 </div>

@@ -26,6 +26,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -81,21 +82,41 @@ public class Connections_commandService {
         User_command user = userRepo.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        UUID connectionId = UUID.randomUUID();
         AppKey appKey = AppKey.of(req.appKey());
         App app = appRepository.findById(appKey)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown appKey: " + req.appKey()));
         validateCredentialsForAuthType(app.getAuthType(), req.credentials());
         var encryptedCredentials = cryptoService.seal(req.credentials());
 
-        Connections_command connection = new Connections_command(
-            connectionId, user, appKey, req.name(), encryptedCredentials, ConnectionStatus.ACTIVE);
-        connectionRepo.save(connection);
+        List<Connections_command> existingList = connectionRepo.findByUser_IdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(c -> req.appKey().equals(c.getAppKey()))
+                .toList();
 
-        // Sync to query database (no credentials on read side)
-        projectToQuery(connection, userId);
+        Connections_command connection;
+        UUID connectionId;
+        if (!existingList.isEmpty()) {
+            connection = existingList.get(0);
+            connectionId = connection.getId();
+            connection.setName(req.name());
+            connection.setCredentials(encryptedCredentials);
+            connection.setStatus(ConnectionStatus.ACTIVE);
+            connectionRepo.save(connection);
 
-        eventPublisher.publish(new ConnectionCreatedEvent(connectionId, userId, req.appKey()));
+            connectionQueryRepo.findById(connectionId).ifPresent(q -> {
+                q.setName(req.name());
+                q.setStatus(ConnectionStatus.ACTIVE);
+                connectionQueryRepo.save(q);
+            });
+            eventPublisher.publish(new ConnectionUpdatedEvent(connectionId));
+        } else {
+            connectionId = UUID.randomUUID();
+            connection = new Connections_command(
+                connectionId, user, appKey, req.name(), encryptedCredentials, ConnectionStatus.ACTIVE);
+            connectionRepo.save(connection);
+            projectToQuery(connection, userId);
+            eventPublisher.publish(new ConnectionCreatedEvent(connectionId, userId, req.appKey()));
+        }
 
         return toResponse(connection, userId);
     }

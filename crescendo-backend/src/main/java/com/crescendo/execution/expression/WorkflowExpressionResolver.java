@@ -26,6 +26,13 @@ public class WorkflowExpressionResolver {
     private static final Pattern STEP_REFERENCE = Pattern.compile(
             "\\{\\{steps\\.([0-9a-fA-F-]{36}|\\d+)\\.([^}]+)}}");
 
+    private static final Pattern DYNAMIC_TIME_PATTERN = Pattern.compile(
+            "\\{\\{\\$?now(?:\\s*([+-])\\s*(\\d+)\\s*([a-zA-Z]+))?\\}\\}", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern TODAY_PATTERN = Pattern.compile("\\{\\{today\\}\\}", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("\\{\\{timestamp\\}\\}", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TIMESTAMP_SEC_PATTERN = Pattern.compile("\\{\\{timestamp_sec\\}\\}", Pattern.CASE_INSENSITIVE);
+
     public Map<String, Object> resolveConfiguration(Map<String, Object> configuration,
                                                      Map<UUID, Map<String, Object>> outputs,
                                                      Map<UUID, Steps_command> stepsById) {
@@ -59,11 +66,47 @@ public class WorkflowExpressionResolver {
 
     private Object resolveString(String text, Map<UUID, Map<String, Object>> outputs,
                                  Map<UUID, Steps_command> stepsById) {
-        Matcher matcher = STEP_REFERENCE.matcher(text);
-        if (!matcher.find()) return text;
+        // 1. Check exact dynamic system tokens first
+        String trimmed = text.trim();
+        if (TIMESTAMP_PATTERN.matcher(trimmed).matches()) {
+            return System.currentTimeMillis();
+        }
+        if (TIMESTAMP_SEC_PATTERN.matcher(trimmed).matches()) {
+            return java.time.Instant.now().getEpochSecond();
+        }
+        if (TODAY_PATTERN.matcher(trimmed).matches()) {
+            return java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+        }
+
+        Matcher timeMatcher = DYNAMIC_TIME_PATTERN.matcher(trimmed);
+        if (timeMatcher.matches()) {
+            return resolveDynamicTime(timeMatcher.group(1), timeMatcher.group(2), timeMatcher.group(3));
+        }
+
+        // 2. Resolve embedded dynamic time tokens inside strings
+        String processed = text;
+        processed = TODAY_PATTERN.matcher(processed).replaceAll(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString());
+        processed = TIMESTAMP_PATTERN.matcher(processed).replaceAll(String.valueOf(System.currentTimeMillis()));
+        processed = TIMESTAMP_SEC_PATTERN.matcher(processed).replaceAll(String.valueOf(java.time.Instant.now().getEpochSecond()));
+
+        Matcher embeddedTimeMatcher = DYNAMIC_TIME_PATTERN.matcher(processed);
+        if (embeddedTimeMatcher.find()) {
+            StringBuffer timeBuf = new StringBuffer();
+            embeddedTimeMatcher.reset();
+            while (embeddedTimeMatcher.find()) {
+                String resolvedTime = resolveDynamicTime(embeddedTimeMatcher.group(1), embeddedTimeMatcher.group(2), embeddedTimeMatcher.group(3));
+                embeddedTimeMatcher.appendReplacement(timeBuf, Matcher.quoteReplacement(resolvedTime));
+            }
+            embeddedTimeMatcher.appendTail(timeBuf);
+            processed = timeBuf.toString();
+        }
+
+        // 3. Resolve step variable references {{steps.N.field}}
+        Matcher matcher = STEP_REFERENCE.matcher(processed);
+        if (!matcher.find()) return processed;
 
         // Preserve objects, numbers, booleans and lists when a reference is the entire value.
-        if (matcher.start() == 0 && matcher.end() == text.length()) {
+        if (matcher.start() == 0 && matcher.end() == processed.length()) {
             return resolveReference(matcher.group(1), matcher.group(2), outputs, stepsById);
         }
 
@@ -75,6 +118,34 @@ public class WorkflowExpressionResolver {
         }
         matcher.appendTail(result);
         return result.toString();
+    }
+
+    private String resolveDynamicTime(String sign, String amountStr, String unitStr) {
+        java.time.Instant now = java.time.Instant.now();
+        if (sign == null || amountStr == null || unitStr == null) {
+            return now.toString();
+        }
+
+        long amount = Long.parseLong(amountStr);
+        String unit = unitStr.toLowerCase();
+        java.time.temporal.ChronoUnit chronoUnit;
+
+        if (unit.startsWith("s")) {
+            chronoUnit = java.time.temporal.ChronoUnit.SECONDS;
+        } else if (unit.startsWith("m") && !unit.startsWith("mo")) {
+            chronoUnit = java.time.temporal.ChronoUnit.MINUTES;
+        } else if (unit.startsWith("h")) {
+            chronoUnit = java.time.temporal.ChronoUnit.HOURS;
+        } else if (unit.startsWith("d")) {
+            chronoUnit = java.time.temporal.ChronoUnit.DAYS;
+        } else if (unit.startsWith("w")) {
+            chronoUnit = java.time.temporal.ChronoUnit.WEEKS;
+        } else {
+            chronoUnit = java.time.temporal.ChronoUnit.MINUTES;
+        }
+
+        java.time.Instant target = "+".equals(sign) ? now.plus(amount, chronoUnit) : now.minus(amount, chronoUnit);
+        return target.toString();
     }
 
     private Object resolveReference(String stepReference, String path,

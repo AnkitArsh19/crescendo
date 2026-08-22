@@ -47,6 +47,6 @@ public class ErrorHandlingApp implements AppDefinition {
                                 "configSchema", List.of()
                         )
                 )
-        ).credentialSchema(List.of()).category("logic-and-flow");
+        ).credentialSchema(List.of()).category("logic");
     }
 }

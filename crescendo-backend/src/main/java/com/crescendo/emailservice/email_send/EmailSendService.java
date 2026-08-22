@@ -4,6 +4,7 @@ import com.crescendo.emailservice.email_log.EmailLog;
 import com.crescendo.emailservice.email_log.EmailLogRepository;
 import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_command;
 import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_commandRepository;
+import com.crescendo.emailservice.emailtemplate.TemplateVariableValidator;
 import com.crescendo.emailservice.suppression.EmailSuppressionService;
 import com.crescendo.enums.EmailStatus;
 import com.crescendo.config.RedisStreamConfig;
@@ -43,6 +44,7 @@ public class EmailSendService {
     private final EmailTemplate_commandRepository templateRepo;
     private final OutboxEventRepository outboxRepo;
     private final EmailSuppressionService suppressionService;
+    private final TemplateVariableValidator templateVariableValidator;
 
     @Value("${app.tracking.base-url:}")
     private String trackingBaseUrl;
@@ -50,11 +52,13 @@ public class EmailSendService {
     public EmailSendService(EmailLogRepository emailLogRepo,
                             EmailTemplate_commandRepository templateRepo,
                             OutboxEventRepository outboxRepo,
-                            EmailSuppressionService suppressionService) {
+                            EmailSuppressionService suppressionService,
+                            TemplateVariableValidator templateVariableValidator) {
         this.emailLogRepo = emailLogRepo;
         this.templateRepo = templateRepo;
         this.outboxRepo = outboxRepo;
         this.suppressionService = suppressionService;
+        this.templateVariableValidator = templateVariableValidator;
     }
 
     @org.springframework.transaction.annotation.Transactional
@@ -81,6 +85,7 @@ public class EmailSendService {
                 }
             }
             if (req.templateData() != null) data.putAll(req.templateData());
+            templateVariableValidator.validateForSend(template, data);
             var snapshot = template.getPublishedVersionSnapshot();
             subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
             htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);
@@ -161,6 +166,7 @@ public class EmailSendService {
             }
         }
         if (req.templateData() != null) data.putAll(req.templateData());
+        templateVariableValidator.validateForSend(template, data);
         var snapshot = template.getPublishedVersionSnapshot();
         String subject = TemplateInterpolator.interpolate(snapshot.subject(), data);
         String htmlBody = TemplateInterpolator.interpolate(snapshot.htmlBody(), data);

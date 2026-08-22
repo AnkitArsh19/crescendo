@@ -191,6 +191,15 @@ public class IntegrationOAuthService {
             url.append("&access_type=offline");
             url.append("&prompt=").append(encode("select_account consent"));
             url.append("&include_granted_scopes=false");
+        } else if ("spotify".equals(providerKey)) {
+            // Force the Spotify consent dialog so newly added scopes (like user-library-modify)
+            // are actively presented and approved rather than silently skipped.
+            url.append("&show_dialog=true");
+        } else if ("discord".equals(providerKey)) {
+            // Pre-seed bot permissions so server invite prompt has all necessary message & channel permissions pre-selected
+            if (effectiveScopes != null && effectiveScopes.contains("bot")) {
+                url.append("&permissions=534723950672");
+            }
         }
 
         // PKCE support — required by Airtable, Twitter/X, and others
@@ -251,6 +260,9 @@ public class IntegrationOAuthService {
         if (tokenResponse.containsKey("token_type")) {
             credentials.put("tokenType", tokenResponse.get("token_type"));
         }
+        if (config.getBotToken() != null && !config.getBotToken().isBlank()) {
+            credentials.put("botToken", config.getBotToken());
+        }
 
         // Capture granted scopes for scope-aware UI greying.
         // Most OAuth providers return the actual granted scopes in the token response.
@@ -298,6 +310,18 @@ public class IntegrationOAuthService {
 
         UUID connectionId;
         var encryptedCredentials = cryptoService.seal(credentials);
+
+        if (reconnectConnectionId == null) {
+            // Check if a connection for this user and appKey already exists
+            List<Connections_command> existingList = connectionRepo.findByUser_IdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(c -> appKey.equals(c.getAppKey()))
+                    .toList();
+            if (!existingList.isEmpty()) {
+                // Reuse existing connection so we update tokens in place and never create duplicates
+                reconnectConnectionId = existingList.get(0).getId();
+            }
+        }
 
         if (reconnectConnectionId != null) {
             // ── RECONNECTION: update existing connection ──
@@ -359,9 +383,13 @@ public class IntegrationOAuthService {
         headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
 
         // Providers that require HTTP Basic auth for token exchange
-        boolean useBasicAuth = "notion".equals(providerKey)
+        boolean useBasicAuth = ("notion".equals(providerKey)
                 || "airtable".equals(providerKey)
-                || "twitter".equals(providerKey);
+                || "twitter".equals(providerKey)
+                || "x".equals(providerKey)
+                || "reddit".equals(providerKey)
+                || "spotify".equals(providerKey))
+                && clientSecret != null && !clientSecret.isBlank();
 
         if (useBasicAuth) {
             String basic = java.util.Base64.getEncoder().encodeToString(

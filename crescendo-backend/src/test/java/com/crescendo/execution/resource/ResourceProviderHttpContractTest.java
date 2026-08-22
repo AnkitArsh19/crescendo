@@ -84,6 +84,38 @@ class ResourceProviderHttpContractTest {
     }
 
     @Test
+    void spotifySearchTracks_usesBearerToken_andFormatsArtistAlbum() {
+        server.createContext("/v1/search", exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            assertTrue(exchange.getRequestURI().getQuery().contains("type=track"));
+            respond(exchange, """
+                    {
+                      "tracks": {
+                        "items": [
+                          {
+                            "id": "track-123",
+                            "name": "Bohemian Rhapsody",
+                            "artists": [{"name": "Queen"}],
+                            "album": {"name": "A Night at the Opera"}
+                          }
+                        ]
+                      }
+                    }
+                    """);
+        });
+
+        SpotifyResourceProvider provider = new SpotifyResourceProvider(baseUrl + "/v1");
+        List<ResourceOption> options = provider.listResources(
+                Map.of("accessToken", "spotify-test-token"), "search_tracks", Map.of("query", "Bohemian Rhapsody"));
+
+        assertEquals("Bearer spotify-test-token", authorization.get());
+        assertEquals(1, options.size());
+        assertEquals("track-123", options.getFirst().id());
+        assertEquals("Bohemian Rhapsody", options.getFirst().label());
+        assertEquals("Queen • A Night at the Opera", options.getFirst().description());
+    }
+
+    @Test
     void slackChannels_usesBearerToken_andFormatsChannelNames() {
         server.createContext("/conversations.list", exchange -> {
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));

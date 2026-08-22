@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Validates template variable completeness.
@@ -45,9 +44,18 @@ public class TemplateVariableValidator {
      * @throws ResponseStatusException 422 if any undeclared references are found
      */
     public void validateForPublish(EmailTemplate_command template) {
-        Set<String> declared = template.getVariables().stream()
-                .map(v -> v.name().toUpperCase())
-                .collect(Collectors.toSet());
+        Set<String> declared = new java.util.LinkedHashSet<>();
+        for (var variable : template.getVariables()) {
+            if (variable == null || variable.name() == null
+                    || !variable.name().matches("[A-Z][A-Z0-9_]*")) {
+                throw new ResponseStatusException(HttpStatus.valueOf(422),
+                        "Variable names must use uppercase letters, numbers, and underscores, and begin with a letter");
+            }
+            if (!declared.add(variable.name())) {
+                throw new ResponseStatusException(HttpStatus.valueOf(422),
+                        "Template declares the variable more than once: " + variable.name());
+            }
+        }
         declared.addAll(RESERVED);
 
         List<String> undeclared = new ArrayList<>();

@@ -58,6 +58,6 @@ public class LinkedInApp implements AppDefinition {
                         "description", "Retrieve your LinkedIn profile information",
                         "configSchema", List.of())
                 )
-        ).credentialSchema(List.of()).category("communication").helpUrl("https://www.linkedin.com/developers/apps");
+        ).credentialSchema(List.of()).category("social").helpUrl("https://www.linkedin.com/developers/apps");
     }
 }

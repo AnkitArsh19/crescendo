@@ -26,9 +26,11 @@ public class DiscordResourceProvider implements ResourceProvider {
     private static final String DISCORD_API = "https://discord.com/api/v10";
 
     private final RestClient restClient;
+    private final com.crescendo.connections.oauth.IntegrationOAuthConfig oauthConfig;
 
-    public DiscordResourceProvider() {
+    public DiscordResourceProvider(com.crescendo.connections.oauth.IntegrationOAuthConfig oauthConfig) {
         this.restClient = RestClient.create();
+        this.oauthConfig = oauthConfig;
     }
 
     @Override
@@ -178,30 +180,44 @@ public class DiscordResourceProvider implements ResourceProvider {
      * Builds the Authorization header, handling both bot tokens and OAuth tokens.
      */
     private String buildAuthHeader(Map<String, Object> credentials) {
-        logger.debug("[discord] Credential keys present: {}", credentials.keySet());
+        logger.debug("[discord] Credential keys present: {}", credentials != null ? credentials.keySet() : "null");
 
-        // Bot token (API key auth)
-        Object botToken = credentials.get("botToken");
-        if (botToken != null && !botToken.toString().isBlank()) {
-            String token = botToken.toString();
-            logger.debug("[discord] Using Bot token (length={})", token.length());
-            return "Bot " + token;
-        }
-        Object apiKey = credentials.get("apiKey");
-        if (apiKey != null && !apiKey.toString().isBlank()) {
-            return "Bot " + apiKey.toString();
-        }
-        // OAuth access token
-        Object accessToken = credentials.get("accessToken");
-        if (accessToken != null && !accessToken.toString().isBlank()) {
-            String token = accessToken.toString();
-            logger.debug("[discord] Using Bearer token (length={})", token.length());
-            return "Bearer " + token;
+        if (credentials != null) {
+            // 1. Bot token in credentials (BYOK or stored on connection)
+            Object botToken = credentials.get("botToken");
+            if (botToken != null && !botToken.toString().isBlank()) {
+                String token = botToken.toString();
+                logger.debug("[discord] Using connection Bot token (length={})", token.length());
+                return "Bot " + token;
+            }
+            Object apiKey = credentials.get("apiKey");
+            if (apiKey != null && !apiKey.toString().isBlank()) {
+                return "Bot " + apiKey.toString();
+            }
         }
 
-        logger.error("[discord] No valid token found in credentials. Keys: {}", credentials.keySet());
-        throw new IllegalArgumentException("Discord connection is missing both 'botToken' and 'accessToken'. "
-                + "Please edit the connection and provide a valid bot token or reconnect with OAuth.");
+        // 2. Platform default Bot token from application.properties
+        if (oauthConfig != null && oauthConfig.hasProvider("discord")) {
+            String platformBotToken = oauthConfig.getProvider("discord").getBotToken();
+            if (platformBotToken != null && !platformBotToken.isBlank()) {
+                logger.debug("[discord] Using platform-configured Bot token (length={})", platformBotToken.length());
+                return "Bot " + platformBotToken;
+            }
+        }
+
+        // 3. User OAuth access token (Fallback)
+        if (credentials != null) {
+            Object accessToken = credentials.get("accessToken");
+            if (accessToken != null && !accessToken.toString().isBlank()) {
+                String token = accessToken.toString();
+                logger.debug("[discord] Using Bearer token (length={})", token.length());
+                return "Bearer " + token;
+            }
+        }
+
+        logger.error("[discord] No valid token found in credentials or application properties.");
+        throw new IllegalArgumentException("Discord connection requires a Bot Token to list servers and channels. "
+                + "Please provide a bot token in your connection or configure crescendo.integrations.oauth.providers.discord.bot-token in application.properties.");
     }
 
     private String requireParam(Map<String, String> params, String key) {

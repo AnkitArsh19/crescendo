@@ -12,6 +12,7 @@ import { parseConfigSchema } from '../../workflow/workflowGraphSerializer';
 import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
 import ConditionRuleBuilder from './nodes/ConditionRuleBuilder';
+import { DateTimePickerField } from './fields/DateTimePickerField';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Common output fields per app — used when we don't have real test data yet
@@ -218,6 +219,41 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
                 emptyMessage={`No ${field.label.toLowerCase()} found`}
                 style={aiMismatch ? { borderColor: 'var(--color-danger, #ef4444)' } : undefined}
             />
+            {appKey === 'discord' && (field.key === 'guildId' || field.resourceType === 'guilds') && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '3px', padding: '0 2px' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                        Don&apos;t see your server?
+                    </span>
+                    <button
+                        type="button"
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--accent-primary, #60a5fa)',
+                            fontSize: '0.73rem',
+                            cursor: 'pointer',
+                            padding: '0',
+                            textDecoration: 'underline',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                        onClick={async () => {
+                            try {
+                                const { authorizationUrl } = await appCatalogApi.getOAuthUrl('discord');
+                                if (authorizationUrl) {
+                                    window.open(authorizationUrl, '_blank', 'width=600,height=700');
+                                }
+                            } catch {
+                                window.open('https://discord.com/oauth2/authorize?client_id=1482384946461937777&scope=bot&permissions=534723950672', '_blank', 'width=600,height=700');
+                            }
+                        }}
+                        title="Open Discord to invite the bot to another server"
+                    >
+                        + Add Bot to another server
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -230,6 +266,7 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
 export function VariableInsertButton({ availableVariables, onInsert }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState('steps'); // 'steps' | 'system'
     const ref = useRef(null);
 
     // Close on outside click
@@ -240,62 +277,127 @@ export function VariableInsertButton({ availableVariables, onInsert }) {
         return () => document.removeEventListener('mousedown', handler);
     }, [open]);
 
-    if (!availableVariables || availableVariables.length === 0) return null;
+    const systemTokens = [
+        { label: 'Execution Time (Now)', token: '{{now}}', desc: 'ISO 8601 UTC timestamp at workflow runtime' },
+        { label: 'Now + 2 Minutes', token: '{{now + 2m}}', desc: '2 minutes after execution begins' },
+        { label: 'Now + 5 Minutes', token: '{{now + 5m}}', desc: '5 minutes after execution begins' },
+        { label: 'Now + 15 Minutes', token: '{{now + 15m}}', desc: '15 minutes after execution begins' },
+        { label: 'Now + 1 Hour', token: '{{now + 1h}}', desc: '1 hour after execution begins' },
+        { label: 'Tomorrow (Now + 24h)', token: '{{now + 1d}}', desc: '24 hours after execution begins' },
+        { label: 'Today (Date Only)', token: '{{today}}', desc: 'YYYY-MM-DD date at execution runtime' },
+        { label: 'Unix Timestamp (ms)', token: '{{timestamp}}', desc: 'Current epoch in milliseconds' },
+        { label: 'Unix Timestamp (sec)', token: '{{timestamp_sec}}', desc: 'Current epoch in seconds' },
+    ];
 
-    const filtered = search.trim()
-        ? availableVariables.map((group) => ({
+    const hasVars = availableVariables && availableVariables.length > 0;
+
+    const filteredSteps = search.trim()
+        ? (availableVariables || []).map((group) => ({
             ...group,
-            fields: group.fields.filter((f) => f.toLowerCase().includes(search.toLowerCase())),
+            fields: group.fields.filter((f) => f.toLowerCase().includes(search.toLowerCase()) || group.appName.toLowerCase().includes(search.toLowerCase())),
         })).filter((g) => g.fields.length > 0)
-        : availableVariables;
+        : (availableVariables || []);
+
+    const filteredSystem = search.trim()
+        ? systemTokens.filter(t => t.label.toLowerCase().includes(search.toLowerCase()) || t.token.toLowerCase().includes(search.toLowerCase()))
+        : systemTokens;
 
     return (
         <div className="var-insert" ref={ref}>
             <button
                 type="button"
                 className="var-insert__btn"
-                title="Insert data from a previous step"
+                title="Insert dynamic data from a previous step or system variable"
                 onClick={() => setOpen(!open)}
             >
                 <HiLightningBolt /> <span>Insert Data</span>
             </button>
             {open && (
                 <div className="var-insert__dropdown">
-                    <div className="var-insert__search">
-                        <input
-                            type="text"
-                            placeholder="Search fields…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
-                        />
+                    <div className="var-insert__header">
+                        <div className="var-insert__tabs">
+                            <button
+                                type="button"
+                                className={`var-insert__tab ${activeTab === 'steps' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('steps')}
+                            >
+                                Step Outputs ({availableVariables?.length || 0})
+                            </button>
+                            <button
+                                type="button"
+                                className={`var-insert__tab ${activeTab === 'system' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('system')}
+                            >
+                                Dynamic Time
+                            </button>
+                        </div>
+                        <div className="var-insert__search">
+                            <input
+                                type="text"
+                                placeholder={activeTab === 'steps' ? "Search step fields…" : "Search system tokens…"}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
                     </div>
+
                     <div className="var-insert__list">
-                        {filtered.map((group) => (
-                            <div key={group.stepIndex} className="var-insert__group">
-                                <div className="var-insert__group-header">
-                                    <span className="var-insert__step-badge">{group.stepIndex}</span>
-                                    <span>{group.appName}</span>
-                                    <span className="var-insert__op-tag">{group.operationName}</span>
-                                </div>
-                                {group.fields.map((fieldName) => (
+                        {activeTab === 'steps' && (
+                            <>
+                                {filteredSteps.map((group) => (
+                                    <div key={group.stepIndex} className="var-insert__group">
+                                        <div className="var-insert__group-header">
+                                            <span className="var-insert__step-badge">{group.stepIndex}</span>
+                                            <span className="var-insert__app-name">{group.appName}</span>
+                                            <span className="var-insert__op-tag">{group.operationName}</span>
+                                        </div>
+                                        {group.fields.map((fieldName) => (
+                                            <button
+                                                key={fieldName}
+                                                type="button"
+                                                className="var-insert__field"
+                                                onClick={() => {
+                                                    onInsert(`{{steps.${group.stepIndex}.${fieldName}}}`);
+                                                    setOpen(false);
+                                                    setSearch('');
+                                                }}
+                                            >
+                                                <span className="var-insert__field-name">{fieldName}</span>
+                                                <span className="var-insert__field-ref">steps.{group.stepIndex}.{fieldName}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                                {filteredSteps.length === 0 && (
+                                    <div className="var-insert__empty">
+                                        {hasVars ? 'No matching fields found' : 'No previous steps available to select data from.'}
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {activeTab === 'system' && (
+                            <div className="var-insert__system-list">
+                                {filteredSystem.map((item) => (
                                     <button
-                                        key={fieldName}
-                                        className="var-insert__field"
+                                        key={item.token}
+                                        type="button"
+                                        className="var-insert__system-item"
                                         onClick={() => {
-                                            onInsert(`{{steps.${group.stepIndex}.${fieldName}}}`);
+                                            onInsert(item.token);
                                             setOpen(false);
                                             setSearch('');
                                         }}
                                     >
-                                        <span className="var-insert__field-name">{fieldName}</span>
-                                        <span className="var-insert__field-ref">steps.{group.stepIndex}.{fieldName}</span>
+                                        <div className="var-insert__system-title">
+                                            <span>{item.label}</span>
+                                            <code>{item.token}</code>
+                                        </div>
+                                        <div className="var-insert__system-desc">{item.desc}</div>
                                     </button>
                                 ))}
                             </div>
-                        ))}
-                        {filtered.length === 0 && (
-                            <div className="var-insert__empty">No matching fields</div>
                         )}
                     </div>
                 </div>
@@ -308,8 +410,25 @@ export function VariableInsertButton({ availableVariables, onInsert }) {
 // DynamicField — renders the correct input per field type
 // ─────────────────────────────────────────────────────────────────────────────
 
-function LogicRuleBuilder({ field, value, onChange }) {
-    const operators = ['equals', 'notEquals', 'contains', 'notContains', 'startsWith', 'endsWith', 'isEmpty', 'isNotEmpty', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual', 'regex'];
+const LOGIC_OPERATORS = [
+    { value: 'equals', label: '= Equals' },
+    { value: 'notEquals', label: '≠ Does not equal' },
+    { value: 'contains', label: '⊃ Contains text' },
+    { value: 'notContains', label: '⊅ Does not contain' },
+    { value: 'startsWith', label: '^ Starts with' },
+    { value: 'endsWith', label: '$ Ends with' },
+    { value: 'greaterThan', label: '> Greater than' },
+    { value: 'lessThan', label: '< Less than' },
+    { value: 'greaterThanOrEqual', label: '≥ Greater than or equal' },
+    { value: 'lessThanOrEqual', label: '≤ Less than or equal' },
+    { value: 'isEmpty', label: '∅ Is empty / null' },
+    { value: 'isNotEmpty', label: '✓ Is not empty' },
+    { value: 'isTrue', label: '✓ Is true (Boolean)' },
+    { value: 'isFalse', label: '✗ Is false (Boolean)' },
+    { value: 'regex', label: '* Matches regex' }
+];
+
+function LogicRuleBuilder({ field, value, onChange, availableVariables }) {
     const isSwitch = field.key === 'rules';
     const rules = Array.isArray(value) ? value : [];
     const updateRule = (index, patch) => onChange(rules.map((rule, i) => i === index ? { ...rule, ...patch } : rule));
@@ -324,34 +443,159 @@ function LogicRuleBuilder({ field, value, onChange }) {
             ...group,
             conditions: (group.conditions || []).map((condition, ci) => ci === conditionIndex ? { ...condition, ...patch } : condition),
         }));
-        return <div className="logic-rule-builder">
-            {rules.map((group, groupIndex) => <div className="logic-rule-group" key={groupIndex}>
-                <div className="logic-rule-group__header">
-                    <select value={group.combinator || 'AND'} onChange={(e) => updateRule(groupIndex, { combinator: e.target.value })}><option>AND</option><option>OR</option></select>
-                    <span>All conditions in this group must match</span>
-                    <button type="button" onClick={() => removeRule(groupIndex)} aria-label="Remove condition group"><HiX /></button>
-                </div>
-                {(group.conditions || []).map((condition, conditionIndex) => <div className="logic-rule-row" key={conditionIndex}>
-                    <input value={condition.leftValue || ''} placeholder="Value or {{steps…}}" onChange={(e) => updateCondition(groupIndex, conditionIndex, { leftValue: e.target.value })} />
-                    <select value={condition.operator || 'equals'} onChange={(e) => updateCondition(groupIndex, conditionIndex, { operator: e.target.value })}>{operators.map((operator) => <option value={operator} key={operator}>{operator}</option>)}</select>
-                    <input value={condition.rightValue || ''} placeholder="Compare with" disabled={['isEmpty', 'isNotEmpty'].includes(condition.operator)} onChange={(e) => updateCondition(groupIndex, conditionIndex, { rightValue: e.target.value })} />
-                </div>)}
-                <button type="button" className="logic-rule-add" onClick={() => updateRule(groupIndex, { conditions: [...(group.conditions || []), { leftValue: '', operator: 'equals', rightValue: '' }] })}><HiPlus /> Add condition</button>
-            </div>)}
-            <button type="button" className="logic-rule-add logic-rule-add--group" onClick={addRule}><HiPlus /> Add condition group</button>
-        </div>;
+        return (
+            <div className="logic-rule-builder">
+                {rules.map((group, groupIndex) => (
+                    <div className="logic-rule-group" key={groupIndex}>
+                        <div className="logic-rule-group__header">
+                            <select
+                                className="cpb-select logic-rule-combinator"
+                                value={group.combinator || 'AND'}
+                                onChange={(e) => updateRule(groupIndex, { combinator: e.target.value })}
+                            >
+                                <option value="AND">AND (All conditions must match)</option>
+                                <option value="OR">OR (Any condition matches)</option>
+                            </select>
+                            <button type="button" className="logic-rule-remove-group" onClick={() => removeRule(groupIndex)} aria-label="Remove condition group">
+                                <HiX />
+                            </button>
+                        </div>
+                        {(group.conditions || []).map((condition, conditionIndex) => {
+                            const isUnary = ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'].includes(condition.operator);
+                            return (
+                                <div className="logic-rule-row" key={conditionIndex}>
+                                    <div className="logic-rule-field-wrap">
+                                        <input
+                                            className="cpb-input logic-rule-input"
+                                            value={condition.leftValue || ''}
+                                            placeholder="Select step field or type value…"
+                                            onChange={(e) => updateCondition(groupIndex, conditionIndex, { leftValue: e.target.value })}
+                                        />
+                                        <VariableInsertButton
+                                            availableVariables={availableVariables}
+                                            onInsert={(tpl) => updateCondition(groupIndex, conditionIndex, { leftValue: tpl })}
+                                        />
+                                    </div>
+                                    <select
+                                        className="cpb-select logic-rule-operator"
+                                        value={condition.operator || 'equals'}
+                                        onChange={(e) => updateCondition(groupIndex, conditionIndex, { operator: e.target.value })}
+                                    >
+                                        {LOGIC_OPERATORS.map((op) => (
+                                            <option value={op.value} key={op.value}>{op.label}</option>
+                                        ))}
+                                    </select>
+                                    {!isUnary ? (
+                                        <div className="logic-rule-field-wrap">
+                                            <input
+                                                className="cpb-input logic-rule-input"
+                                                value={condition.rightValue || ''}
+                                                placeholder="Compare with value…"
+                                                onChange={(e) => updateCondition(groupIndex, conditionIndex, { rightValue: e.target.value })}
+                                            />
+                                            <VariableInsertButton
+                                                availableVariables={availableVariables}
+                                                onInsert={(tpl) => updateCondition(groupIndex, conditionIndex, { rightValue: tpl })}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="logic-rule-unary-pill">Unary check</div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="logic-rule-remove-row"
+                                        onClick={() => {
+                                            const nextConds = (group.conditions || []).filter((_, ci) => ci !== conditionIndex);
+                                            updateRule(groupIndex, { conditions: nextConds });
+                                        }}
+                                        aria-label="Remove condition"
+                                    >
+                                        <HiX />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        <button
+                            type="button"
+                            className="logic-rule-add"
+                            onClick={() => updateRule(groupIndex, { conditions: [...(group.conditions || []), { leftValue: '', operator: 'equals', rightValue: '' }] })}
+                        >
+                            <HiPlus /> Add condition
+                        </button>
+                    </div>
+                ))}
+                <button type="button" className="logic-rule-add logic-rule-add--group" onClick={addRule}>
+                    <HiPlus /> Add condition group
+                </button>
+            </div>
+        );
     }
 
-    return <div className="logic-rule-builder">
-        {rules.map((rule, index) => <div className="logic-rule-row logic-rule-row--switch" key={index}>
-            <input value={rule.value || ''} placeholder="Value or {{steps…}}" onChange={(e) => updateRule(index, { value: e.target.value })} />
-            <select value={rule.operator || 'equals'} onChange={(e) => updateRule(index, { operator: e.target.value })}>{operators.map((operator) => <option value={operator} key={operator}>{operator}</option>)}</select>
-            <input value={rule.matchValue || ''} placeholder="Match value" disabled={['isEmpty', 'isNotEmpty'].includes(rule.operator)} onChange={(e) => updateRule(index, { matchValue: e.target.value })} />
-            <input type="number" min="0" value={rule.outputIndex ?? 0} aria-label="Output index" onChange={(e) => updateRule(index, { outputIndex: Number(e.target.value) })} />
-            <button type="button" onClick={() => removeRule(index)} aria-label="Remove rule"><HiX /></button>
-        </div>)}
-        <button type="button" className="logic-rule-add" onClick={addRule}><HiPlus /> Add routing rule</button>
-    </div>;
+    return (
+        <div className="logic-rule-builder">
+            {rules.map((rule, index) => {
+                const isUnary = ['isEmpty', 'isNotEmpty', 'isTrue', 'isFalse'].includes(rule.operator);
+                return (
+                    <div className="logic-rule-row logic-rule-row--switch" key={index}>
+                        <div className="logic-rule-field-wrap">
+                            <input
+                                className="cpb-input logic-rule-input"
+                                value={rule.value || ''}
+                                placeholder="Select field to evaluate…"
+                                onChange={(e) => updateRule(index, { value: e.target.value })}
+                            />
+                            <VariableInsertButton
+                                availableVariables={availableVariables}
+                                onInsert={(tpl) => updateRule(index, { value: tpl })}
+                            />
+                        </div>
+                        <select
+                            className="cpb-select logic-rule-operator"
+                            value={rule.operator || 'equals'}
+                            onChange={(e) => updateRule(index, { operator: e.target.value })}
+                        >
+                            {LOGIC_OPERATORS.map((op) => (
+                                <option value={op.value} key={op.value}>{op.label}</option>
+                            ))}
+                        </select>
+                        {!isUnary ? (
+                            <div className="logic-rule-field-wrap">
+                                <input
+                                    className="cpb-input logic-rule-input"
+                                    value={rule.matchValue || ''}
+                                    placeholder="Match value…"
+                                    onChange={(e) => updateRule(index, { matchValue: e.target.value })}
+                                />
+                                <VariableInsertButton
+                                    availableVariables={availableVariables}
+                                    onInsert={(tpl) => updateRule(index, { matchValue: tpl })}
+                                />
+                            </div>
+                        ) : (
+                            <div className="logic-rule-unary-pill">Unary check</div>
+                        )}
+                        <div className="logic-rule-output-index">
+                            <span>Output:</span>
+                            <input
+                                type="number"
+                                min="0"
+                                className="cpb-input"
+                                value={rule.outputIndex ?? 0}
+                                aria-label="Output index"
+                                onChange={(e) => updateRule(index, { outputIndex: Number(e.target.value) })}
+                            />
+                        </div>
+                        <button type="button" className="logic-rule-remove-row" onClick={() => removeRule(index)} aria-label="Remove rule">
+                            <HiX />
+                        </button>
+                    </div>
+                );
+            })}
+            <button type="button" className="logic-rule-add" onClick={addRule}>
+                <HiPlus /> Add routing rule
+            </button>
+        </div>
+    );
 }
 
 function DynamicField({ field, appKey, connectionId, config, value, onChange, availableVariables }) {
@@ -380,7 +624,7 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
     const hasVars = availableVariables && availableVariables.length > 0;
 
     if (appKey === 'logic' && ['conditions', 'rules'].includes(field.key)) {
-        return <LogicRuleBuilder field={field} value={value} onChange={onChange} />;
+        return <LogicRuleBuilder field={field} value={value} onChange={onChange} availableVariables={availableVariables} />;
     }
 
     switch (field.type) {
@@ -679,7 +923,29 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
             );
         }
 
+        case 'datetime':
+        case 'date':
+        case 'time':
+            return (
+                <DateTimePickerField
+                    field={field}
+                    value={value}
+                    onChange={onChange}
+                    availableVariables={availableVariables}
+                />
+            );
+
         default: // text
+            if (['startDate', 'endDate', 'start', 'end', 'dueDate', 'timeMin', 'timeMax', 'dateTime', 'maxDateAndTime'].includes(field.key)) {
+                return (
+                    <DateTimePickerField
+                        field={field}
+                        value={value}
+                        onChange={onChange}
+                        availableVariables={availableVariables}
+                    />
+                );
+            }
             return (
                 <div className="cpb-input-with-vars">
                     <input
@@ -712,7 +978,7 @@ export default function ConfigPanelBody({
 }) {
     const { data } = configNode;
     const isTrigger = configNode.type === 'trigger';
-    const isAgentNode = configNode.type === 'agent';
+    const isAgentNode = configNode.type === 'agent' || data?.appKey === 'agent';
     const [activeTab, setActiveTab] = useState(0);
     const [editingName, setEditingName] = useState(false);
     const [stepName, setStepName] = useState('');
@@ -723,52 +989,169 @@ export default function ConfigPanelBody({
     const isAdmin = user?.role === 'ADMIN';
 
     // ── Agent node auto-init ──
-    // When a saved agent node opens without its appKey populated (e.g. loaded from
-    // a workflow saved before this fix), silently seed the node data so the action
-    // dropdown renders immediately without the user having to reopen the app browser.
-    // Also auto-selects the single 'agent:ai_agent' action since it's the only option.
+    // When an agent node opens without its appKey/actionKey populated, silently seed
+    // the node data and default configuration so the configuration panel is ready immediately.
     useEffect(() => {
-        if (!isAgentNode || data.appKey) return;
+        if (!isAgentNode) return;
         const agentMeta = (catalogApps || []).find((a) => a.appKey === 'agent');
-        updateNodeData(configNode.id, {
-            appKey: 'agent',
-            app: 'agent',
-            appName: agentMeta?.name || 'AI Agent',
-            iconUrl: agentMeta?.logoUrl || '/icons/agent.svg',
-            actionKey: 'agent:ai_agent',
-            action: 'agent:ai_agent',
-            actionName: 'AI Agent',
-            label: 'AI Agent',
-        });
+        const updates = {};
+        if (!data.appKey) {
+            updates.appKey = 'agent';
+            updates.app = 'agent';
+            updates.appName = agentMeta?.name || 'AI Agent';
+            updates.iconUrl = agentMeta?.logoUrl || '/icons/agent.svg';
+        }
+        if (!data.actionKey) {
+            updates.actionKey = 'agent:ai_agent';
+            updates.action = 'agent:ai_agent';
+            updates.actionName = 'AI Agent';
+            updates.label = data.label && data.label !== 'Untitled Step' && data.label !== 'Select Action' ? data.label : 'AI Agent';
+        }
+        if (!data.configuration || Object.keys(data.configuration).length === 0) {
+            updates.configuration = {
+                provider: "gemini",
+                model: "gemini-2.5-flash",
+                systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
+                prompt: "{{steps.1.data}}",
+                temperature: 0.7,
+                maxIterations: 10,
+                returnIntermediateSteps: true,
+            };
+        }
+        if (Object.keys(updates).length > 0) {
+            updateNodeData(configNode.id, updates);
+        }
         ensureAppDetail('agent');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAgentNode, configNode.id]);
-
-    // ── For agent nodes: auto-select the action once catalog detail loads ──
-    // Handles the edge case where data.appKey is already 'agent' but actionKey
-    // was never set (e.g. older saved workflows with partial data).
-    useEffect(() => {
-        if (!isAgentNode || !data.appKey || data.actionKey) return;
-        updateNodeData(configNode.id, {
-            actionKey: 'agent:ai_agent',
-            action: 'agent:ai_agent',
-            actionName: 'AI Agent',
-        });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAgentNode, data.appKey, data.actionKey, configNode.id]);
+    }, [isAgentNode, configNode.id, data.appKey, data.actionKey]);
 
     // ── Resolve configSchema ──
     const appDetail = appDetailsByKey?.[data.appKey];
     const actionOrTriggerKey = isTrigger ? (data.triggerKey || data.actionKey) : data.actionKey;
 
     const configSchema = useMemo(() => {
+        if (isAgentNode) {
+            const currentProvider = data.configuration?.provider || 'gemini';
+            let modelOptions = [
+                { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Recommended - Fast & Smart)' },
+                { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Deep Reasoning)' },
+                { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+                { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+            ];
+            if (currentProvider === 'openai') {
+                modelOptions = [
+                    { id: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
+                    { id: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast)' },
+                ];
+            } else if (currentProvider === 'groq') {
+                modelOptions = [
+                    { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)' },
+                    { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Groq)' },
+                ];
+            }
+
+            return [
+                {
+                    key: 'provider',
+                    label: 'AI Provider',
+                    type: 'dropdown',
+                    required: true,
+                    options: [
+                        { id: 'gemini', label: 'Google Gemini (Platform Default / Connected Key)' },
+                        { id: 'openai', label: 'OpenAI (Requires Connected Account)' },
+                        { id: 'groq', label: 'Groq (Requires Connected Account)' },
+                    ],
+                    default: 'gemini',
+                    helpText: 'Select AI provider: Google Gemini (default / platform key), OpenAI (BYOK), or Groq (BYOK).'
+                },
+                {
+                    key: 'model',
+                    label: 'Model',
+                    type: 'dropdown',
+                    options: modelOptions,
+                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.5-flash'),
+                    helpText: 'The LLM used for multi-step reasoning and function calling.'
+                },
+                {
+                    key: 'systemPrompt',
+                    label: 'System Prompt / Instructions',
+                    type: 'textarea',
+                    required: true,
+                    placeholder: "Instructions defining the agent's role, rules, and how it should use tools and respond...",
+                    default: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
+                    helpText: "Guides the agent's reasoning loop and tool selection behavior."
+                },
+                {
+                    key: 'prompt',
+                    label: 'User Prompt / Input Data',
+                    type: 'textarea',
+                    required: false,
+                    placeholder: 'Input or instructions passed to the agent (e.g. {{steps.1.data}})...',
+                    default: '{{steps.1.data}}',
+                    helpText: 'The main request or trigger data passed into the agent from previous steps.'
+                },
+                {
+                    key: 'temperature',
+                    label: 'Temperature (0.0 - 1.0)',
+                    type: 'number',
+                    placeholder: '0.7',
+                    default: 0.7,
+                    helpText: 'Controls randomness (0.0 = deterministic, 1.0 = creative).'
+                },
+                {
+                    key: 'maxIterations',
+                    label: 'Max Reasoning Iterations',
+                    type: 'number',
+                    placeholder: '10',
+                    default: 10,
+                    helpText: 'Maximum number of ReAct reasoning loops before stopping.'
+                },
+                {
+                    key: 'returnIntermediateSteps',
+                    label: 'Include Reasoning & Tool Observations',
+                    type: 'boolean',
+                    default: true,
+                    helpText: "When enabled, output includes the agent's step-by-step reasoning logs."
+                },
+            ];
+        }
         if (!appDetail || !actionOrTriggerKey) return [];
         const listKey = isTrigger ? 'triggers' : 'actions';
         const keyField = isTrigger ? 'triggerKey' : 'actionKey';
         const items = appDetail[listKey] || [];
         const match = items.find((i) => i[keyField] === actionOrTriggerKey);
         return parseConfigSchema(match?.configSchema || {});
-    }, [appDetail, actionOrTriggerKey, isTrigger]);
+    }, [appDetail, actionOrTriggerKey, isTrigger, isAgentNode, data.configuration]);
+
+    // ── Auto-seed schema defaults into data.configuration if not already set ──
+    useEffect(() => {
+        if (!configSchema || configSchema.length === 0) return;
+        const currentConfig = data.configuration || {};
+        let hasNewDefaults = false;
+        const nextConfig = { ...currentConfig };
+
+        configSchema.forEach((f) => {
+            if (nextConfig[f.key] === undefined || nextConfig[f.key] === null || nextConfig[f.key] === '') {
+                if (f.default !== undefined && f.default !== null && f.default !== '') {
+                    nextConfig[f.key] = f.default;
+                    hasNewDefaults = true;
+                } else if (f.type === 'select' && f.options?.length > 0 && f.required) {
+                    const firstOpt = typeof f.options[0] === 'string' ? f.options[0] : (f.options[0]?.value ?? f.options[0]?.id);
+                    if (firstOpt !== undefined && firstOpt !== '') {
+                        nextConfig[f.key] = firstOpt;
+                        hasNewDefaults = true;
+                    }
+                } else if ((f.type === 'datetime' || f.type === 'date') && f.required) {
+                    nextConfig[f.key] = '{{now}}';
+                    hasNewDefaults = true;
+                }
+            }
+        });
+
+        if (hasNewDefaults) {
+            updateNodeData(configNode.id, { configuration: nextConfig });
+        }
+    }, [configSchema, configNode.id, actionOrTriggerKey]);
 
     // ── Detect if app needs auth (connection) ──
     const selectedCatalogApp = (catalogApps || []).find((a) => a.appKey === data.appKey);
@@ -776,35 +1159,35 @@ export default function ConfigPanelBody({
 
     // ── Tab completion state ──
     const isUsingAdminKey = data.credentialSource === 'ADMIN_KEY' && appDetail?.hasPlatformKey;
-    const hasConnection = isNoAuthApp || !!data.connectionId || isUsingAdminKey;
+    const isGeminiAgent = isAgentNode && (!data.configuration?.provider || data.configuration.provider === 'gemini');
+    const hasConnection = isNoAuthApp || isGeminiAgent || !!data.connectionId || isUsingAdminKey;
     const setupComplete = !!(data.appKey && hasConnection && actionOrTriggerKey);
-    const configComplete = setupComplete && configSchema.every((f) => {
+
+    const isFieldFilled = (f) => {
         if (!f.required) return true;
-        const val = (data.configuration || {})[f.key];
+        const val = (data.configuration || {})[f.key] ?? f.default;
         return val != null && String(val).trim() !== '';
-    });
+    };
+
+    const configComplete = setupComplete && (
+        configSchema.length === 0 || configSchema.every(isFieldFilled)
+    );
 
     const progressPercent = useMemo(() => {
         let percent = 0;
-        if (data.appKey && hasConnection) percent += 17;
-        if (actionOrTriggerKey) percent += 17;
+        if (data.appKey && hasConnection) percent += 25;
+        if (actionOrTriggerKey) percent += 25;
         if (setupComplete) {
             const requiredFields = configSchema.filter(f => f.required);
             if (requiredFields.length === 0) {
-                percent += 33;
+                percent += 50;
             } else {
-                const filledCount = requiredFields.filter(f => {
-                    const val = (data.configuration || {})[f.key];
-                    return val != null && String(val).trim() !== '';
-                }).length;
-                percent += Math.round((filledCount / requiredFields.length) * 33);
+                const filledCount = requiredFields.filter(isFieldFilled).length;
+                percent += Math.round((filledCount / requiredFields.length) * 50);
             }
         }
-        if (configComplete && (activeTab === 2 || data.tested || data.lastTestResult)) {
-            percent += 33;
-        }
         return Math.min(100, Math.max(0, percent));
-    }, [data.appKey, hasConnection, actionOrTriggerKey, setupComplete, configSchema, data.configuration, configComplete, activeTab, data.tested, data.lastTestResult]);
+    }, [data.appKey, hasConnection, actionOrTriggerKey, setupComplete, configSchema, data.configuration]);
 
     // ── Previous step variables for data passing ──
     const previousStepVariables = useMemo(() => {
@@ -850,10 +1233,19 @@ export default function ConfigPanelBody({
     };
 
     // ── Connection options for SearchableSelect ──
-    const connectionOptions = selectedConnections.map((c) => ({
+    const relevantConnections = useMemo(() => {
+        if (isAgentNode && Array.isArray(allConnections) && allConnections.length > 0) {
+            const aiKeys = ['agent', 'gemini', 'openai', 'groq'];
+            const aiConns = allConnections.filter((c) => aiKeys.includes(c.appKey));
+            return aiConns.length > 0 ? aiConns : selectedConnections;
+        }
+        return selectedConnections;
+    }, [isAgentNode, allConnections, selectedConnections]);
+
+    const connectionOptions = relevantConnections.map((c) => ({
         id: c.id,
         label: c.name || c.appKey,
-        description: c.accountEmail || c.accountDisplayName || null,
+        description: c.accountEmail || c.accountDisplayName || `Provider: ${c.appKey}`,
     }));
 
     // ── App options — show ALL catalog apps, not just connected ones ──
@@ -962,8 +1354,13 @@ export default function ConfigPanelBody({
             {/* ── Header (Zapier-style) ── */}
             <div className="canvas-config-header">
                 <div className="canvas-config-header-left">
-                    {data.iconUrl && (
-                        <img src={data.iconUrl} alt="" className="canvas-config-header-icon" />
+                    {(data.iconUrl || data.appKey) && (
+                        <img
+                            src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`}
+                            alt=""
+                            className="canvas-config-header-icon app-logo-img"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                        />
                     )}
                     {editingName ? (
                         <input
@@ -987,12 +1384,35 @@ export default function ConfigPanelBody({
                 <div className="canvas-config-header-right">
                     {nodeCount > 1 && (
                         <div className="canvas-config-nav">
-                            <button className="canvas-config-nav-btn" disabled={nodeIndex <= 0} onClick={() => onNavigate?.('prev')}>‹</button>
-                            <span className="canvas-config-nav-label">Next step</span>
-                            <button className="canvas-config-nav-btn" disabled={nodeIndex >= nodeCount - 1} onClick={() => onNavigate?.('next')}>›</button>
+                            <button
+                                className="canvas-config-nav-btn"
+                                disabled={nodeIndex <= 0}
+                                onClick={() => onNavigate?.('prev')}
+                                title="Previous step"
+                                aria-label="Previous step"
+                            >
+                                ‹
+                            </button>
+                            <span className="canvas-config-nav-label">Step {nodeIndex + 1} of {nodeCount}</span>
+                            <button
+                                className="canvas-config-nav-btn"
+                                disabled={nodeIndex >= nodeCount - 1}
+                                onClick={() => onNavigate?.('next')}
+                                title="Next step"
+                                aria-label="Next step"
+                            >
+                                ›
+                            </button>
                         </div>
                     )}
-                    <button className="canvas-config-close" onClick={onClose}><HiX /></button>
+                    <button
+                        className="canvas-config-close"
+                        onClick={onClose}
+                        title="Close panel (Esc)"
+                        aria-label="Close configuration panel"
+                    >
+                        <HiX />
+                    </button>
                 </div>
             </div>
 
@@ -1002,9 +1422,8 @@ export default function ConfigPanelBody({
                         Configuration Progress
                     </span>
                     <span style={{ fontSize: '0.84rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                        {progressPercent === 100 ? 'All steps completed! Ready to execute.' :
-                         progressPercent >= 67 ? 'Step 3: Test & verify your connection.' :
-                         progressPercent >= 34 ? 'Step 2: Fill required configuration fields.' :
+                        {configComplete ? 'All configuration complete! Ready to execute.' :
+                         setupComplete ? 'Step 2: Fill required configuration fields.' :
                          'Step 1: Connect your account & select event.'}
                     </span>
                 </div>
@@ -1024,7 +1443,7 @@ export default function ConfigPanelBody({
             {/* ── Stepper Tabs ── */}
             <div className="cpb-stepper">
                 {TABS.map((tab, idx) => {
-                    const isComplete = idx === 0 ? setupComplete : idx === 1 ? configComplete : false;
+                    const isComplete = idx === 0 ? setupComplete : idx === 1 ? configComplete : (data.tested || !!data.lastTestResult);
                     const isCurrent = activeTab === idx;
                     const isAccessible = idx === 0 || (idx === 1 && setupComplete) || (idx === 2 && setupComplete);
 
@@ -1034,6 +1453,8 @@ export default function ConfigPanelBody({
                             className={`cpb-step ${isCurrent ? 'active' : ''} ${isComplete ? 'complete' : ''} ${!isAccessible ? 'disabled' : ''}`}
                             onClick={() => isAccessible && setActiveTab(idx)}
                             disabled={!isAccessible}
+                            title={isAccessible ? `Go to Step ${idx + 1}: ${tab}` : `Complete previous steps to access ${tab}`}
+                            aria-label={`Step ${idx + 1}: ${tab}`}
                         >
                             <span className="cpb-step-indicator">
                                 {isComplete ? <HiCheck /> : idx + 1}
@@ -1135,8 +1556,8 @@ export default function ConfigPanelBody({
                                     const conn = selectedConnections.find(c => c.id === data.connectionId);
                                     return (
                                         <div className="cpb-account-card">
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <div className="cpb-app-select-icon" style={{ width: '24px', height: '24px' }}>
+                                            <div className="cpb-account-left">
+                                                <div className="cpb-app-select-icon" style={{ width: '28px', height: '28px' }}>
                                                     <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
                                                     <HiOutlineBolt style={{ display: 'none' }} />
                                                 </div>
@@ -1145,35 +1566,37 @@ export default function ConfigPanelBody({
                                                     {conn?.name && <span className="cpb-account-hint">{conn.name}</span>}
                                                 </div>
                                             </div>
-                                            <button type="button" className="cpb-account-change" onClick={() => {
-                                                updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
-                                            }}>Change</button>
-                                            <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
-                                                <button type="button" className="cpb-account-dots" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
-                                                {accountMenuOpen && (
-                                                    <div className="cpb-account-menu">
-                                                        <button type="button" onClick={async () => {
-                                                            setAccountMenuOpen(false);
-                                                            const addToast = useToastStore.getState().addToast;
-                                                            addToast('Testing connection…', 'info', 5000);
-                                                            try {
-                                                                const result = await connectionsApi.test(data.connectionId);
-                                                                if (result.success) {
-                                                                    addToast(result.message || 'Connection works!', 'success');
-                                                                } else {
-                                                                    addToast(result.message || 'Connection test failed', 'error', 5000);
+                                            <div className="cpb-account-actions">
+                                                <button type="button" className="cpb-account-change" title="Change or switch account" aria-label="Change account" onClick={() => {
+                                                    updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
+                                                }}>Change</button>
+                                                <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
+                                                    <button type="button" className="cpb-account-dots" title="Connection options" aria-label="Connection options" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
+                                                    {accountMenuOpen && (
+                                                        <div className="cpb-account-menu">
+                                                            <button type="button" onClick={async () => {
+                                                                setAccountMenuOpen(false);
+                                                                const addToast = useToastStore.getState().addToast;
+                                                                addToast('Testing connection…', 'info', 5000);
+                                                                try {
+                                                                    const result = await connectionsApi.test(data.connectionId);
+                                                                    if (result.success) {
+                                                                        addToast(result.message || 'Connection works!', 'success');
+                                                                    } else {
+                                                                        addToast(result.message || 'Connection test failed', 'error', 5000);
+                                                                    }
+                                                                } catch (err) {
+                                                                    addToast('Test failed: ' + (err?.response?.data?.message || err.message), 'error', 5000);
                                                                 }
-                                                            } catch (err) {
-                                                                addToast('Test failed: ' + (err?.response?.data?.message || err.message), 'error', 5000);
-                                                            }
-                                                        }}>
-                                                            Test connection
-                                                        </button>
-                                                        <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
-                                                            Reconnect
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                            }}>
+                                                                Test connection
+                                                            </button>
+                                                            <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
+                                                                Reconnect
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -1328,7 +1751,11 @@ export default function ConfigPanelBody({
                         <HiOutlineTrash />
                     </button>
                 )}
-                <button className="canvas-config-btn canvas-config-btn-save" onClick={() => {
+                <button
+                    className="canvas-config-btn canvas-config-btn-save"
+                    title="Save step configuration and close panel"
+                    aria-label="Save and close configuration"
+                    onClick={() => {
                     const appMeta = catalogApps.find(a => a.appKey === data.appKey);
                     const appName = appMeta?.name || data.appName || data.appKey;
                     if (!isTrigger && data.appKey && data.actionKey) {

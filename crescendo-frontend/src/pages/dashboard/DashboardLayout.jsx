@@ -84,6 +84,8 @@ export default function DashboardLayout() {
                             key={item.to}
                             to={item.to}
                             end={item.end}
+                            title={item.label}
+                            aria-label={item.label}
                             className={({ isActive }) =>
                                 `dash-nav-item ${isActive ? 'active' : ''}`
                             }
@@ -98,6 +100,8 @@ export default function DashboardLayout() {
                             <div className="dash-nav-section">Services</div>
                             <NavLink
                                 to="/dashboard/email"
+                                title="Email Service"
+                                aria-label="Email Service"
                                 className={({ isActive }) =>
                                     `dash-nav-item ${isActive ? 'active' : ''}`
                                 }
@@ -109,6 +113,8 @@ export default function DashboardLayout() {
                             <div className="dash-nav-section">Account</div>
                             <NavLink
                                 to="/dashboard/settings"
+                                title="Settings & Security"
+                                aria-label="Settings & Security"
                                 className={({ isActive }) =>
                                     `dash-nav-item ${isActive ? 'active' : ''}`
                                 }
@@ -125,6 +131,8 @@ export default function DashboardLayout() {
                             <div className="dash-nav-section">Admin</div>
                             <NavLink
                                 to="/dashboard/admin"
+                                title="Admin Panel"
+                                aria-label="Admin Panel"
                                 className={({ isActive }) =>
                                     `dash-nav-item ${isActive ? 'active' : ''}`
                                 }
@@ -212,6 +220,10 @@ export default function DashboardLayout() {
                         <div
                             className="dash-user-card"
                             onClick={() => setDropdownOpen(!dropdownOpen)}
+                            title="Account profile & settings"
+                            aria-label="Account profile & settings"
+                            role="button"
+                            tabIndex={0}
                         >
                             <div className="dash-user-avatar">{user?.username ? user.username.charAt(0).toUpperCase() : 'U'}</div>
                             <div className="dash-user-info">
@@ -229,16 +241,22 @@ export default function DashboardLayout() {
                 {!isCanvas && (
                     <div className="dash-topbar">
                         <div className="dash-topbar-left">
-                            <div className="dash-topbar-title-group">
-                                <span className="dash-topbar-title">{title}</span>
-                                <Breadcrumbs />
-                            </div>
+                            <Breadcrumbs />
                         </div>
                         <div className="dash-topbar-right">
-                            <button className="dash-topbar-btn" onClick={toggleTheme}>
+                            <button
+                                className="dash-topbar-btn"
+                                onClick={toggleTheme}
+                                title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                                aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+                            >
                                 {theme === 'dark' ? <HiSun /> : <HiMoon />}
                             </button>
-                            <button className="dash-topbar-btn">
+                            <button
+                                className="dash-topbar-btn"
+                                title="Notifications"
+                                aria-label="Notifications"
+                            >
                                 <HiOutlineBell />
                             </button>
                         </div>

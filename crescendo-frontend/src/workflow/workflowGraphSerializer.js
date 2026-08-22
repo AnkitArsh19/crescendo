@@ -372,30 +372,34 @@ export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
 export function stepsToGraph(steps, backendEdges = [], vertical = false) {
     const sorted = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    const nodes = sorted.map((s, idx) => ({
-        id: s.id,
-        type: resolveNodeType(s),
-        position: vertical
-            ? { x: 250, y: 60 + idx * 220 }
-            : { x: 120 + idx * 330, y: 200 },
-        data: {
-            stepIndex: idx + 1,
-            label: s.name,
-            appKey: s.appKey,
-            app: s.appKey,
-            appName: s.appKey,
-            actionKey: s.actionKey,
-            action: s.actionKey,
-            actionName: s.type !== 'TRIGGER' ? s.name : undefined,
-            triggerKey: s.type === 'TRIGGER' ? s.actionKey : undefined,
-            triggerName: s.type === 'TRIGGER' ? s.name : undefined,
-            operationKey: s.actionKey,
-            connectionId: s.connectionId || null,
-            configuration: s.configuration,
-            _backendId: s.id,
-            _vertical: vertical,
-        },
-    }));
+    const nodes = sorted.map((s, idx) => {
+        const nodeType = resolveNodeType(s);
+        const isTrigger = nodeType === 'trigger';
+        return {
+            id: s.id,
+            type: nodeType,
+            position: vertical
+                ? { x: 250, y: 60 + idx * 220 }
+                : { x: 120 + idx * 330, y: 200 },
+            data: {
+                stepIndex: idx + 1,
+                label: s.name,
+                appKey: s.appKey,
+                app: s.appKey,
+                appName: s.appKey,
+                actionKey: s.actionKey,
+                action: s.actionKey,
+                actionName: !isTrigger ? s.name : undefined,
+                triggerKey: isTrigger ? s.actionKey : undefined,
+                triggerName: isTrigger ? s.name : undefined,
+                operationKey: s.actionKey,
+                connectionId: s.connectionId || null,
+                configuration: s.configuration,
+                _backendId: s.id,
+                _vertical: vertical,
+            },
+        };
+    });
 
     // Build edges from backend edge data (preferred), fall back to linear chain
     let edges;
@@ -443,7 +447,8 @@ const BRANCH_ACTION_KEYS = new Set(['logic:if', 'logic:switch']);
 
 export function resolveNodeType(step) {
     if (!step) return 'action';
-    if (step.stepType === 'TRIGGER') return 'trigger';
+    const typeUpper = String(step.type || step.stepType || '').toUpperCase();
+    if (typeUpper === 'TRIGGER') return 'trigger';
     // Agent cluster root — distinct type so future AgentClusterNode can be swapped in
     // without changing serialiser logic. Currently renders as WorkflowNode.
     if (step.appKey === 'agent') return 'agent';

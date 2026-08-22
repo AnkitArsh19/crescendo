@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static com.crescendo.security.AuthenticatedUser.userId;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,6 +36,9 @@ import java.util.UUID;
  * returns
  * the raw output or error.
  */
+import com.crescendo.connections.connections_command.Connections_command;
+import com.crescendo.connections.connections_command.Connections_commandRepository;
+
 @RestController
 @RequestMapping("/workflows/steps/test")
 public class StepTestController {
@@ -46,17 +50,20 @@ public class StepTestController {
     private final PlatformKeyRepository platformKeyRepo;
     private final ConnectionCredentialsCryptoService cryptoService;
     private final ObjectMapper objectMapper;
+    private final Connections_commandRepository connectionRepo;
 
     public StepTestController(ActionHandlerRegistry handlerRegistry,
             OAuthTokenRefreshService tokenService,
             PlatformKeyRepository platformKeyRepo,
             ConnectionCredentialsCryptoService cryptoService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            Connections_commandRepository connectionRepo) {
         this.handlerRegistry = handlerRegistry;
         this.tokenService = tokenService;
         this.platformKeyRepo = platformKeyRepo;
         this.cryptoService = cryptoService;
         this.objectMapper = objectMapper;
+        this.connectionRepo = connectionRepo;
     }
 
     public record TestStepRequest(
@@ -114,10 +121,28 @@ public class StepTestController {
         }
 
         try {
-            // 3. Load credentials (user connection or platform key fallback)
+            // 3. Load credentials (user connection, active connection fallback, or platform key)
             Map<String, Object> credentials = Map.of();
             if (request.connectionId() != null) {
-                credentials = tokenService.getValidCredentials(request.connectionId(), userId);
+                try {
+                    credentials = tokenService.getValidCredentials(request.connectionId(), userId);
+                } catch (Exception e) {
+                    logger.debug("[step-test] Could not load credentials for connectionId={}: {}", request.connectionId(), e.getMessage());
+                }
+            }
+            if (credentials.isEmpty()) {
+                // Fallback to the user's latest active connection for this app
+                List<Connections_command> userConns = connectionRepo.findByUser_IdOrderByCreatedAtDesc(userId)
+                        .stream()
+                        .filter(c -> request.appKey().equals(c.getAppKey()))
+                        .toList();
+                if (!userConns.isEmpty()) {
+                    try {
+                        credentials = tokenService.getValidCredentials(userConns.get(0).getId(), userId);
+                    } catch (Exception e) {
+                        logger.debug("[step-test] Could not load credentials for active connection: {}", e.getMessage());
+                    }
+                }
             }
             if (credentials.isEmpty()) {
                 credentials = loadPlatformCredentials(request.appKey());

@@ -50,6 +50,6 @@ public class TwitterApp implements AppDefinition {
                             Map.of("key", "tweetId", "label", "Tweet ID", "type", "text", "required", true,
                                    "placeholder", "1234567890", "helpText", "ID of the tweet to delete")))
                 )
-        ).credentialSchema(List.of()).category("communication").helpUrl("https://developer.x.com/en/portal/dashboard");
+        ).credentialSchema(List.of()).category("social").helpUrl("https://developer.x.com/en/portal/dashboard");
     }
 }

@@ -27,9 +27,9 @@ public class StravaApp implements AppDefinition {
 
                 **Who should use this:** Athletes tracking their training data, fitness communities sharing progress, and anyone automating their health metrics.
 
-                **Authentication:** OAuth 2.0 (connect your Strava account).
+                **Authentication:** Bring Your Own Key (BYOK) / Custom OAuth 2.0. Strava requires developer accounts to have an active paid Strava subscription. Provide your personal Strava Developer Client ID & Secret from your Strava API Settings.
                 """,
-                "https://www.google.com/s2/favicons?domain=strava.com&sz=128", AuthType.OAUTH2,
+                "/icons/strava.svg", AuthType.OAUTH2,
                 List.of(
                     Map.of("triggerKey", "activity-created", "name", "New Activity",
                         "description", "Triggers when a new activity is recorded",
@@ -43,24 +43,40 @@ public class StravaApp implements AppDefinition {
                         "description", "Log a new manual activity",
                         "configSchema", List.of(
                             Map.of("key", "name", "label", "Activity Name", "type", "text", "required", true,
-                                   "placeholder", "Morning Run", "helpText", "Activity title"),
-                            Map.of("key", "type", "label", "Type", "type", "select", "required", true,
+                                   "placeholder", "Morning Workout", "helpText", "Activity title"),
+                            Map.of("key", "type", "label", "Activity Type", "type", "select", "required", true,
                                    "options", List.of(
                                        Map.of("value", "Run", "label", "Run"),
-                                       Map.of("value", "Ride", "label", "Ride"),
+                                       Map.of("value", "Ride", "label", "Ride / Cycling"),
                                        Map.of("value", "Walk", "label", "Walk"),
                                        Map.of("value", "Swim", "label", "Swim"),
                                        Map.of("value", "Hike", "label", "Hike"),
-                                       Map.of("value", "Workout", "label", "Workout")
-                                   ), "helpText", "Activity type"),
-                            Map.of("key", "startDate", "label", "Start Time", "type", "text", "required", true,
-                                   "placeholder", "2025-03-15T08:00:00Z", "helpText", "ISO 8601 start time"),
-                            Map.of("key", "duration", "label", "Duration (seconds)", "type", "text", "required", true,
-                                   "placeholder", "3600", "helpText", "Elapsed time in seconds"),
+                                       Map.of("value", "Workout", "label", "General Workout"),
+                                       Map.of("value", "WeightTraining", "label", "Weight Training"),
+                                       Map.of("value", "Yoga", "label", "Yoga"),
+                                       Map.of("value", "VirtualRide", "label", "Virtual Ride (Zwift)"),
+                                       Map.of("value", "VirtualRun", "label", "Virtual Run"),
+                                       Map.of("value", "Crossfit", "label", "Crossfit"),
+                                       Map.of("value", "Rowing", "label", "Rowing"),
+                                       Map.of("value", "Elliptical", "label", "Elliptical"),
+                                       Map.of("value", "StairStepper", "label", "Stair Stepper"),
+                                       Map.of("value", "Golf", "label", "Golf")
+                                   ), "helpText", "Select workout type"),
+                            Map.of("key", "startDate", "label", "Start Time", "type", "datetime", "required", true,
+                                   "default", "{{now}}", "placeholder", "{{now}} or pick a date/time", "helpText", "When activity started (defaults to workflow execution time)"),
+                            Map.of("key", "duration", "label", "Duration (seconds)", "type", "select", "required", true,
+                                   "options", List.of(
+                                       Map.of("value", "900", "label", "15 minutes (900s)"),
+                                       Map.of("value", "1800", "label", "30 minutes (1,800s)"),
+                                       Map.of("value", "2700", "label", "45 minutes (2,700s)"),
+                                       Map.of("value", "3600", "label", "1 hour (3,600s)"),
+                                       Map.of("value", "5400", "label", "1.5 hours (5,400s)"),
+                                       Map.of("value", "7200", "label", "2 hours (7,200s)")
+                                   ), "default", "1800", "helpText", "Duration in seconds"),
                             Map.of("key", "distance", "label", "Distance (meters)", "type", "text", "required", false,
-                                   "placeholder", "5000", "helpText", "Distance in meters"),
+                                   "placeholder", "5000", "helpText", "Distance in meters (optional)"),
                             Map.of("key", "description", "label", "Description", "type", "textarea", "required", false,
-                                   "helpText", "Activity notes"))),
+                                   "helpText", "Activity notes or notes from earlier step"))),
                     Map.of("actionKey", "strava:activity:update", "name", "Update Activity",
                         "description", "Edit an existing activity",
                         "configSchema", List.of(
@@ -77,6 +93,15 @@ public class StravaApp implements AppDefinition {
                         "description", "Retrieve the authenticated athlete's profile",
                         "configSchema", List.of())
                 )
-        ).credentialSchema(List.of()).category("fun").helpUrl("https://www.strava.com/settings/api");
+        )
+        .altAuthType(AuthType.APIKEY)
+        .credentialSchema(List.of(
+            Map.of("key", "clientId", "label", "Client ID", "type", "text", "required", true,
+                   "placeholder", "e.g. 140396", "helpText", "Your Strava API Application Client ID", "authType", "APIKEY"),
+            Map.of("key", "clientSecret", "label", "Client Secret", "type", "password", "required", true,
+                   "placeholder", "e.g. 03e44618...", "helpText", "Your Strava API Application Client Secret", "authType", "APIKEY")
+        ))
+        .category("fun")
+        .helpUrl("https://www.strava.com/settings/api");
     }
 }

@@ -1,5 +1,7 @@
 package com.crescendo.emailservice.emailtemplate.template_command;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -28,22 +30,24 @@ public class EmailTemplate_command {
      * A single template variable — resolved at send time.
      * Reserved names: FIRST_NAME, LAST_NAME, EMAIL, CRESCENDO_UNSUBSCRIBE_URL.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record TemplateVariable(
-            String name,
-            VariableType type,
-            String fallbackValue  // nullable — if null, value MUST be supplied at send time
+            @JsonProperty("name") String name,
+            @JsonProperty("type") VariableType type,
+            @JsonProperty("fallbackValue") String fallbackValue  // nullable — if null, value MUST be supplied at send time
     ) {}
 
     /**
      * Frozen copy of the template content captured at publish time.
      * Guarantees that later draft edits don't retroactively change emails already sent.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record PublishedSnapshot(
-            String subject,
-            String htmlBody,
-            String textBody,
-            List<TemplateVariable> variables,
-            Instant publishedAt
+            @JsonProperty("subject") String subject,
+            @JsonProperty("htmlBody") String htmlBody,
+            @JsonProperty("textBody") String textBody,   // nullable — absent in snapshots predating this field
+            @JsonProperty("variables") List<TemplateVariable> variables,
+            @JsonProperty("publishedAt") Instant publishedAt
     ) {}
 
     // ── Fields ──────────────────────────────────────────────────────────────
@@ -61,12 +65,10 @@ public class EmailTemplate_command {
     @Column(name = "subject", nullable = false, length = 1000)
     private String subject;
 
-    @Lob
-    @Column(name = "HTMLBody", nullable = false)
+    @Column(name = "HTMLBody", columnDefinition = "TEXT", nullable = false)
     private String HTMLBody;
 
-    @Lob
-    @Column(name = "textBody")
+    @Column(name = "textBody", columnDefinition = "TEXT")
     private String textBody;
 
     @Column(name = "fromAddress", length = 1000)
@@ -79,8 +81,7 @@ public class EmailTemplate_command {
     private String previewText;
 
     /** Editor-owned JSON document. The rendered HTML remains the canonical send artifact. */
-    @Lob
-    @Column(name = "editorDocument")
+    @Column(name = "editorDocument", columnDefinition = "TEXT")
     private String editorDocument;
 
     /** Draft/Published lifecycle. All templates start as DRAFT. */

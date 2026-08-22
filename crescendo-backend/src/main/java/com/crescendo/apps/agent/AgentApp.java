@@ -27,7 +27,7 @@ public class AgentApp implements AppDefinition {
                 Operates during active workflow execution to classify, route, and execute actions dynamically.
                 """,
                 "/icons/agent.svg",
-                AuthType.NONE,
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(
@@ -35,11 +35,86 @@ public class AgentApp implements AppDefinition {
                                 "name", "AI Agent",
                                 "description", "Autonomous agent that dynamically chooses tools and routes items during workflow execution.",
                                 "configSchema", List.of(
-                                        Map.of("key", "systemPrompt", "label", "System Prompt / Instructions", "type", "string", "required", true, "default", "You are a helpful AI assistant. Analyze the incoming data and pick the right tool to complete the task."),
-                                        Map.of("key", "agentConfig", "label", "Cluster Configuration", "type", "json")
+                                        Map.of(
+                                                "key", "provider",
+                                                "label", "AI Provider",
+                                                "type", "dropdown",
+                                                "required", true,
+                                                "default", "gemini",
+                                                "options", List.of(
+                                                        "gemini",
+                                                        "openai",
+                                                        "groq"
+                                                ),
+                                                "helpText", "Select AI provider: Google Gemini (default / platform key), OpenAI (BYOK), or Groq (BYOK)."
+                                        ),
+                                        Map.of(
+                                                "key", "model",
+                                                "label", "Model",
+                                                "type", "dropdown",
+                                                "required", false,
+                                                "default", "gemini-2.5-flash",
+                                                "options", List.of(
+                                                        "gemini-2.5-flash",
+                                                        "gemini-2.5-pro",
+                                                        "gemini-1.5-flash",
+                                                        "gemini-1.5-pro",
+                                                        "gpt-4o",
+                                                        "gpt-4o-mini",
+                                                        "llama-3.3-70b-versatile",
+                                                        "llama-3.1-8b-instant"
+                                                ),
+                                                "helpText", "The LLM used for multi-step reasoning and function calling."
+                                        ),
+                                        Map.of(
+                                                "key", "systemPrompt",
+                                                "label", "System Prompt / Instructions",
+                                                "type", "textarea",
+                                                "required", true,
+                                                "placeholder", "Instructions defining the agent's role, rules, and how it should use tools...",
+                                                "default", "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
+                                                "helpText", "Guides the agent's reasoning loop and tool selection behavior."
+                                        ),
+                                        Map.of(
+                                                "key", "prompt",
+                                                "label", "User Prompt / Input Data",
+                                                "type", "textarea",
+                                                "required", false,
+                                                "placeholder", "Input data or instructions passed into the agent (e.g. {{steps.1.data}})...",
+                                                "default", "{{steps.1.data}}",
+                                                "helpText", "The main request or trigger data passed into the agent from previous steps."
+                                        ),
+                                        Map.of(
+                                                "key", "temperature",
+                                                "label", "Temperature",
+                                                "type", "number",
+                                                "required", false,
+                                                "placeholder", "0.7",
+                                                "default", 0.7,
+                                                "helpText", "Controls randomness (0.0 = deterministic, 1.0 = creative)."
+                                        ),
+                                        Map.of(
+                                                "key", "maxIterations",
+                                                "label", "Max Reasoning Iterations",
+                                                "type", "number",
+                                                "required", false,
+                                                "placeholder", "10",
+                                                "default", 10,
+                                                "helpText", "Maximum number of ReAct reasoning and tool-calling loops before stopping."
+                                        ),
+                                        Map.of(
+                                                "key", "returnIntermediateSteps",
+                                                "label", "Include Reasoning & Tool Observations",
+                                                "type", "boolean",
+                                                "required", false,
+                                                "default", true,
+                                                "helpText", "When enabled, output includes the agent's step-by-step reasoning and tool call logs."
+                                        )
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).category("ai");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiKey", "label", "API Key (optional if using platform Gemini)", "type", "password", "required", false)
+        )).category("ai");
     }
 }

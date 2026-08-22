@@ -178,28 +178,24 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <!-- Header -->
-                    <tr><td style="background-color:#6366f1;padding:32px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:24px;">Welcome to {{company_name}}!</h1>
-                    </td></tr>
-                    <!-- Body -->
-                    <tr><td style="padding:40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">Hi {{first_name}},</p>
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 24px;">We're thrilled to have you on board. Your account is all set up and ready to go.</p>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                        <tr><td style="background-color:#6366f1;border-radius:6px;padding:12px 32px;">
-                          <a href="{{dashboard_url}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;">Get Started</a>
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+                    <tr><td style="background:linear-gradient(90deg, #6366f1, #a855f7);height:4px;"></td></tr>
+                    <tr><td style="padding:40px 36px 20px 36px;">
+                      <span style="display:inline-block;padding:4px 10px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px;">Welcome</span>
+                      <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 16px;">Welcome to {{company_name}}, {{first_name}}!</h1>
+                      <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 24px;">We're thrilled to have you join our automation community. Your account is ready to build workflows and orchestrate AI agents.</p>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
+                        <tr><td align="center" style="background:linear-gradient(135deg, #6366f1, #4f46e5);border-radius:8px;padding:12px 28px;">
+                          <a href="{{dashboard_url}}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Open Dashboard &rarr;</a>
                         </td></tr>
                       </table>
-                      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:24px 0 0;">If you have any questions, reply to this email — we're happy to help.</p>
+                      <p style="color:#71717a;font-size:13px;line-height:1.5;margin:0;">If you have any questions, reply to this email &mdash; we're happy to help.</p>
                     </td></tr>
-                    <!-- Footer -->
-                    <tr><td style="background-color:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}. All rights reserved.</p>
+                    <tr><td style="background:#121215;padding:20px 36px;border-top:1px solid #27272a;text-align:center;">
+                      <p style="color:#52525b;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}. All rights reserved.</p>
                     </td></tr>
                   </table>
                 </td></tr>
@@ -214,25 +210,21 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <tr><td style="background-color:#ef4444;padding:32px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:24px;">Password Reset</h1>
-                    </td></tr>
-                    <tr><td style="padding:40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">Hi {{first_name}},</p>
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 24px;">We received a request to reset your password. Click the button below to choose a new one.</p>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                        <tr><td style="background-color:#ef4444;border-radius:6px;padding:12px 32px;">
-                          <a href="{{reset_link}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;">Reset Password</a>
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+                    <tr><td style="background:#ef4444;height:4px;"></td></tr>
+                    <tr><td style="padding:36px;">
+                      <span style="display:inline-block;padding:4px 10px;background:#451a1a;color:#fca5a5;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:14px;">Security Notice</span>
+                      <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 14px;">Reset your password</h1>
+                      <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px;">Hi {{first_name}}, we received a request to reset your password. Click below to choose a secure new one.</p>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+                        <tr><td style="background:#ef4444;border-radius:6px;padding:10px 24px;">
+                          <a href="{{reset_link}}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Reset Password &rarr;</a>
                         </td></tr>
                       </table>
-                      <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:24px 0 0;">This link expires in {{expiry_hours}} hours. If you didn't request this, you can safely ignore this email.</p>
-                    </td></tr>
-                    <tr><td style="background-color:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}</p>
+                      <p style="color:#71717a;font-size:12px;margin:0;">This link expires in {{expiry_hours}} hours. If you didn't request this, you can safely ignore this email.</p>
                     </td></tr>
                   </table>
                 </td></tr>
@@ -247,33 +239,23 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <tr><td style="background-color:#10b981;padding:32px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:24px;">Order Confirmed &#10003;</h1>
-                    </td></tr>
-                    <tr><td style="padding:40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">Hi {{first_name}},</p>
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 24px;">Your order <strong>#{{order_id}}</strong> has been confirmed and is being processed.</p>
-                      <!-- Order Summary -->
-                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb;border-radius:6px;padding:20px;margin:0 0 24px;">
-                        <tr><td>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Order ID:</strong> {{order_id}}</p>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Date:</strong> {{order_date}}</p>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;"><strong>Items:</strong> {{item_count}}</p>
-                          <p style="color:#374151;font-size:16px;margin:8px 0 0;"><strong>Total: {{order_total}}</strong></p>
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+                    <tr><td style="background:#3b82f6;height:4px;"></td></tr>
+                    <tr><td style="padding:36px;">
+                      <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px;">Order Confirmed &#10003;</h1>
+                      <p style="color:#a1a1aa;font-size:14px;margin:0 0 20px;">Order <strong>#{{order_id}}</strong> &bull; {{order_date}}</p>
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px;margin-bottom:20px;">
+                        <tr><td style="color:#d4d4d8;font-size:14px;padding:4px 0;"><strong>Items:</strong> {{item_count}}</td></tr>
+                        <tr><td style="color:#60a5fa;font-size:16px;font-weight:700;padding:4px 0;">Total: {{order_total}}</td></tr>
+                      </table>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+                        <tr><td style="background:#3b82f6;border-radius:6px;padding:10px 22px;">
+                          <a href="{{order_url}}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">View Order Details &rarr;</a>
                         </td></tr>
                       </table>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                        <tr><td style="background-color:#10b981;border-radius:6px;padding:12px 32px;">
-                          <a href="{{order_url}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;">View Order</a>
-                        </td></tr>
-                      </table>
-                    </td></tr>
-                    <tr><td style="background-color:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}</p>
                     </td></tr>
                   </table>
                 </td></tr>
@@ -288,37 +270,22 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <tr><td style="background-color:#8b5cf6;padding:32px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:24px;">{{newsletter_title}}</h1>
-                      <p style="color:#e0d5f7;font-size:14px;margin:8px 0 0;">{{newsletter_date}}</p>
-                    </td></tr>
-                    <tr><td style="padding:40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">Hi {{first_name}},</p>
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 24px;">{{newsletter_intro}}</p>
-                      <!-- Article 1 -->
-                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid #8b5cf6;padding-left:16px;margin:0 0 24px;">
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+                    <tr><td style="background:linear-gradient(90deg, #8b5cf6, #ec4899);height:4px;"></td></tr>
+                    <tr><td style="padding:36px;">
+                      <span style="font-size:12px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:1px;">{{newsletter_date}}</span>
+                      <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:8px 0 16px 0;">{{newsletter_title}}</h1>
+                      <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px;">Hi {{first_name}}, {{newsletter_intro}}</p>
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid #8b5cf6;padding-left:14px;margin-bottom:20px;">
                         <tr><td>
-                          <h2 style="color:#374151;font-size:18px;margin:0 0 8px;">{{article_1_title}}</h2>
-                          <p style="color:#6b7280;font-size:14px;line-height:1.5;margin:0 0 8px;">{{article_1_summary}}</p>
-                          <a href="{{article_1_url}}" style="color:#8b5cf6;font-size:14px;font-weight:600;text-decoration:none;">Read more &rarr;</a>
+                          <h2 style="color:#ffffff;font-size:16px;margin:0 0 6px;">{{article_1_title}}</h2>
+                          <p style="color:#a1a1aa;font-size:14px;line-height:1.5;margin:0 0 8px;">{{article_1_summary}}</p>
+                          <a href="{{article_1_url}}" style="color:#c084fc;font-size:13px;font-weight:600;text-decoration:none;">Read full story &rarr;</a>
                         </td></tr>
                       </table>
-                      <!-- Article 2 -->
-                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid #8b5cf6;padding-left:16px;margin:0 0 24px;">
-                        <tr><td>
-                          <h2 style="color:#374151;font-size:18px;margin:0 0 8px;">{{article_2_title}}</h2>
-                          <p style="color:#6b7280;font-size:14px;line-height:1.5;margin:0 0 8px;">{{article_2_summary}}</p>
-                          <a href="{{article_2_url}}" style="color:#8b5cf6;font-size:14px;font-weight:600;text-decoration:none;">Read more &rarr;</a>
-                        </td></tr>
-                      </table>
-                    </td></tr>
-                    <tr><td style="background-color:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0 0 8px;">&copy; {{year}} {{company_name}}</p>
-                      <a href="{{unsubscribe_url}}" style="color:#9ca3af;font-size:12px;text-decoration:underline;">Unsubscribe</a>
                     </td></tr>
                   </table>
                 </td></tr>
@@ -333,32 +300,24 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <tr><td style="background-color:#f59e0b;padding:32px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:24px;">You're Invited!</h1>
-                    </td></tr>
-                    <tr><td style="padding:40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">Hi {{first_name}},</p>
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 24px;">You're invited to <strong>{{event_name}}</strong>!</p>
-                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb;border-radius:6px;padding:20px;margin:0 0 24px;border:1px solid #fde68a;">
-                        <tr><td>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;">&#128197; <strong>Date:</strong> {{event_date}}</p>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;">&#128336; <strong>Time:</strong> {{event_time}}</p>
-                          <p style="color:#374151;font-size:14px;margin:0 0 8px;">&#128205; <strong>Location:</strong> {{event_location}}</p>
-                          <p style="color:#6b7280;font-size:14px;line-height:1.5;margin:8px 0 0;">{{event_description}}</p>
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+                    <tr><td style="background:linear-gradient(90deg, #f59e0b, #ec4899);height:4px;"></td></tr>
+                    <tr><td style="padding:36px;">
+                      <span style="display:inline-block;padding:4px 10px;background:#451a03;color:#fcd34d;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:14px;">Special Invitation</span>
+                      <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px;">You're invited: {{event_name}}</h1>
+                      <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px;">Hi {{first_name}}, you are cordially invited to attend <strong>{{event_name}}</strong>.</p>
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px;margin-bottom:20px;">
+                        <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">&#128197; <strong>Date & Time:</strong> {{event_date}} at {{event_time}}</td></tr>
+                        <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">&#128205; <strong>Location:</strong> {{event_location}}</td></tr>
+                      </table>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+                        <tr><td style="background:#f59e0b;border-radius:6px;padding:10px 24px;">
+                          <a href="{{rsvp_url}}" style="color:#18181b;text-decoration:none;font-size:14px;font-weight:700;">RSVP Now &rarr;</a>
                         </td></tr>
                       </table>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                        <tr><td style="background-color:#f59e0b;border-radius:6px;padding:12px 32px;">
-                          <a href="{{rsvp_url}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;">RSVP Now</a>
-                        </td></tr>
-                      </table>
-                    </td></tr>
-                    <tr><td style="background-color:#f9fafb;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}</p>
                     </td></tr>
                   </table>
                 </td></tr>
@@ -373,23 +332,19 @@ public class DataSeeder {
             <!DOCTYPE html>
             <html lang="en">
             <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-            <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+            <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f4f4f5;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
                 <tr><td align="center">
-                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <tr><td style="background-color:#3b82f6;padding:24px 40px;text-align:center;">
-                      <h1 style="color:#ffffff;margin:0;font-size:20px;">&#128276; {{alert_title}}</h1>
-                    </td></tr>
-                    <tr><td style="padding:32px 40px;">
-                      <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 16px;">{{alert_message}}</p>
-                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                        <tr><td style="background-color:#3b82f6;border-radius:6px;padding:12px 32px;">
-                          <a href="{{action_url}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;">{{action_label}}</a>
+                  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
+                    <tr><td style="background:#3b82f6;height:4px;"></td></tr>
+                    <tr><td style="padding:32px;">
+                      <h1 style="color:#ffffff;font-size:20px;font-weight:700;margin:0 0 12px;">&#128276; {{alert_title}}</h1>
+                      <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px;">{{alert_message}}</p>
+                      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 12px 0;">
+                        <tr><td style="background:#3b82f6;border-radius:6px;padding:10px 22px;">
+                          <a href="{{action_url}}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">{{action_label}}</a>
                         </td></tr>
                       </table>
-                    </td></tr>
-                    <tr><td style="background-color:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-                      <p style="color:#9ca3af;font-size:12px;margin:0;">&copy; {{year}} {{company_name}}</p>
                     </td></tr>
                   </table>
                 </td></tr>

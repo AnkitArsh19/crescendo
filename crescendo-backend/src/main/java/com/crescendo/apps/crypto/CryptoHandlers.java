@@ -86,6 +86,51 @@ public class CryptoHandlers {
         return out;
     }
 
+    @ActionMapping(appKey = "crypto", actionKey = "crypto:sign")
+    public Object sign(ActionContext context) throws Exception {
+        String value = context.getString("value");
+        if (value == null) value = "";
+        String privateKeyPem = context.getCredential("privateKey");
+        if (privateKeyPem == null || privateKeyPem.isBlank()) privateKeyPem = context.getString("privateKey");
+        if (privateKeyPem == null || privateKeyPem.isBlank()) {
+            throw new IllegalArgumentException("Private key is required to sign data");
+        }
+        String algorithm = context.getString("algorithm");
+        if (algorithm == null || algorithm.isBlank()) algorithm = "SHA256withRSA";
+        String encoding = context.getString("encoding");
+        if (encoding == null || encoding.isBlank()) encoding = "hex";
+        String dataPropertyName = context.getString("dataPropertyName");
+        if (dataPropertyName == null || dataPropertyName.isBlank()) dataPropertyName = "data";
+
+        String cleanKey = privateKeyPem
+                .replaceAll("[\\r\\n]", "")
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replace("-----BEGIN RSA PRIVATE KEY-----", "")
+                .replace("-----END RSA PRIVATE KEY-----", "")
+                .trim();
+        byte[] keyBytes = Base64.getDecoder().decode(cleanKey);
+        java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(keyBytes);
+        String kfAlgo = algorithm.toUpperCase().contains("EC") ? "EC" : "RSA";
+        java.security.KeyFactory kf = java.security.KeyFactory.getInstance(kfAlgo);
+        java.security.PrivateKey pk = kf.generatePrivate(keySpec);
+
+        java.security.Signature signer = java.security.Signature.getInstance(algorithm);
+        signer.initSign(pk);
+        signer.update(value.getBytes(StandardCharsets.UTF_8));
+        byte[] signature = signer.sign();
+
+        String result = "base64".equalsIgnoreCase(encoding)
+                ? Base64.getEncoder().encodeToString(signature)
+                : HexFormat.of().formatHex(signature);
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put(dataPropertyName, result);
+        out.put("algorithm", algorithm);
+        out.put("encoding", encoding);
+        return out;
+    }
+
     @ActionMapping(appKey = "crypto", actionKey = "crypto:generate")
     public Object generate(ActionContext context) throws Exception {
         String encodingType = context.getString("encodingType");
