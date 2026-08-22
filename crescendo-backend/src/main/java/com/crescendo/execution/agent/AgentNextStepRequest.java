@@ -42,7 +42,22 @@ public record AgentNextStepRequest(
          * reasoning about. Injected as the first "user" message if
          * conversationHistory is empty.
          */
-        Map<String, Object> inputData
+        Map<String, Object> inputData,
+
+        /**
+         * AI model provider (gemini | openai | groq).
+         */
+        String provider,
+
+        /**
+         * Model identifier (e.g. gemini-2.5-flash, gpt-4o, llama-3.3-70b-versatile).
+         */
+        String model,
+
+        /**
+         * Effective API key for the provider (user BYOK or platform key).
+         */
+        String apiKey
 
 ) {
 

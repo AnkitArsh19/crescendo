@@ -42,7 +42,9 @@ function WorkflowNode({ data, selected, type }) {
         <div className={`wf-node ${isTrigger ? 'wf-node--trigger' : 'wf-node--action'} ${selected ? 'wf-node--selected' : ''} ${isConfigured ? 'wf-node--configured' : ''} ${isOrphaned ? 'wf-node--orphaned' : ''} ${data._isNew ? 'wf-node--new' : ''}`}>
             {/* Step number badge */}
             {stepNumber != null && (
-                <span className="wf-node__step-badge">{stepNumber}</span>
+                <span className="wf-node__step-badge" title={`Step ${stepNumber}`}>
+                    {stepNumber}
+                </span>
             )}
 
             <div className="wf-node__header">
@@ -87,8 +89,8 @@ function WorkflowNode({ data, selected, type }) {
                 )}
                 {isConfigured ? (
                     <div className="wf-node__tags">
-                        {appName && <span className="wf-node__tag">{appName}</span>}
-                        {operationName && <span className="wf-node__tag wf-node__tag--op">{operationName}</span>}
+                        {appName && <span className="wf-node__tag" title={`App: ${appName}`}>{appName}</span>}
+                        {operationName && <span className="wf-node__tag wf-node__tag--op" title={`Action: ${operationName}`}>{operationName}</span>}
                     </div>
                 ) : (
                     <span className="wf-node__hint">Click to configure</span>
@@ -103,6 +105,8 @@ function WorkflowNode({ data, selected, type }) {
                     id="in"
                     className="wf-handle wf-handle--in"
                     isConnectable={true}
+                    title="Input port (connect from previous step)"
+                    aria-label="Input port"
                     onDoubleClick={stopPropagation}
                     onClick={stopPropagation}
                 />
@@ -115,6 +119,8 @@ function WorkflowNode({ data, selected, type }) {
                 id="out"
                 className="wf-handle wf-handle--out"
                 isConnectable={true}
+                title="Output port (drag to connect to next step)"
+                aria-label="Output port"
                 onDoubleClick={stopPropagation}
                 onClick={stopPropagation}
             />

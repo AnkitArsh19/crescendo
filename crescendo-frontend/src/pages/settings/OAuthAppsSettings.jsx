@@ -216,7 +216,7 @@ export default function OAuthAppsSettings() {
                             return (
                                 <div key={app.providerKey} className="settings-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                        {catalogApp?.logoUrl && <img src={catalogApp.logoUrl} alt={catalogApp.name} style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
+                                        {catalogApp?.logoUrl && <img src={catalogApp.logoUrl} alt={catalogApp.name} className="app-logo-img" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
                                         <div>
                                             <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', color: 'var(--text-primary)' }}>{catalogApp ? catalogApp.name : app.providerKey}</h4>
                                             {app.clientId && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Client ID: {app.clientId}</div>}

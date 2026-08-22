@@ -76,6 +76,8 @@ class AgentNextStepRequest(BaseModel):
     conversation_history: List[ConversationTurn]
     input_data: Dict[str, Any]              # trigger payload / prior step output
     model: Optional[str] = None             # override LLM model; falls back to default if omitted
+    provider: Optional[str] = "gemini"      # AI provider: "gemini" | "openai" | "groq"
+    api_key: Optional[str] = None           # Dynamic API key from Java (BYOK or platform fallback)
 
 
 class ToolCall(BaseModel):

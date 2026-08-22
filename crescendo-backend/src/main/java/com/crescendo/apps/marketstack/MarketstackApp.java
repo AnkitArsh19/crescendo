@@ -40,6 +40,6 @@ public class MarketstackApp implements AppDefinition {
                                         Map.of("key", "limit", "label", "Limit", "type", "text", "required", false,
                                                 "placeholder", "10")))
                 )
-        ).credentialSchema(List.of()).category("data").helpUrl("https://marketstack.com/documentation");
+        ).credentialSchema(List.of()).category("finance").helpUrl("https://marketstack.com/documentation");
     }
 }

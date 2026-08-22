@@ -204,10 +204,22 @@ export default function SharedWorkflows() {
 
             {/* Actions */}
             <div className="sw-actions">
-                <button className="sw-skip-btn" onClick={handleSkip} disabled={importing}>
+                <button
+                    className="sw-skip-btn"
+                    onClick={handleSkip}
+                    disabled={importing}
+                    title={isLast ? "Finish and go to workflows" : "Skip this template"}
+                    aria-label={isLast ? "Finish" : "Skip"}
+                >
                     {isLast ? 'Finish' : 'Skip'}
                 </button>
-                <button className="sw-import-btn" onClick={handleImport} disabled={importing}>
+                <button
+                    className="sw-import-btn"
+                    onClick={handleImport}
+                    disabled={importing}
+                    title="Clone this workflow into your account"
+                    aria-label="Add to my workflows"
+                >
                     {importing ? (
                         <><span className="wf-spinner" /> Importing…</>
                     ) : (

@@ -23,6 +23,7 @@ public class QuotesRandomHandler implements ActionHandler {
             String response = RestClient.create()
                     .get()
                     .uri(QUOTES_API + "/random")
+                    .header("User-Agent", "Mozilla/5.0")
                     .retrieve()
                     .body(String.class);
 
@@ -31,8 +32,20 @@ public class QuotesRandomHandler implements ActionHandler {
             logger.info("[quotes] Random quote fetched successfully");
             return ActionResult.success(output);
         } catch (Exception e) {
-            logger.error("[quotes] Random quote failed", e);
-            return ActionResult.failure("Failed to fetch random quote: " + e.getMessage());
+            // Fallback to dummyjson quotes API if ZenQuotes is unreachable
+            try {
+                String fallbackResp = RestClient.create()
+                        .get()
+                        .uri("https://dummyjson.com/quotes/random")
+                        .retrieve()
+                        .body(String.class);
+                Map<String, Object> output = new HashMap<>();
+                output.put("response", fallbackResp);
+                return ActionResult.success(output);
+            } catch (Exception fallbackEx) {
+                logger.error("[quotes] Random quote failed", e);
+                return ActionResult.failure("Failed to fetch random quote: " + e.getMessage());
+            }
         }
     }
 }

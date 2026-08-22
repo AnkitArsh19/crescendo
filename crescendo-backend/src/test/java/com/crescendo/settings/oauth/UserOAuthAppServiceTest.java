@@ -1,6 +1,10 @@
 package com.crescendo.settings.oauth;
 
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
+import com.crescendo.settings.oauth.UserOAuthApp;
+import com.crescendo.settings.oauth.UserOAuthAppDto;
+import com.crescendo.settings.oauth.UserOAuthAppRepository;
+import com.crescendo.settings.oauth.UserOAuthAppService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -91,6 +91,8 @@ export default function TestResultPanel({ appKey, actionKey, connectionId, confi
                 className={`trp-test-btn ${testing ? 'testing' : ''}`}
                 onClick={runTest}
                 disabled={testing || !canTest}
+                title={isTrigger ? "Find recent records from this app" : "Execute a live test of this action"}
+                aria-label={isTrigger ? "Find Records" : "Test Action"}
             >
                 {testing ? (
                     <>
@@ -153,16 +155,34 @@ export default function TestResultPanel({ appKey, actionKey, connectionId, confi
 
                     {/* Action buttons */}
                     <div className="trp-actions">
-                        <button type="button" className="trp-retry" onClick={runTest}>
+                        <button
+                            type="button"
+                            className="trp-retry"
+                            onClick={runTest}
+                            title="Re-run this test"
+                            aria-label={result.success ? "Test Again" : "Retry"}
+                        >
                             <HiOutlineRefresh /> {result.success ? 'Test Again' : 'Retry'}
                         </button>
 
                         {result.success && result.data && (
                             <>
-                                <button type="button" className="trp-download-btn" onClick={handleDownloadJSON}>
+                                <button
+                                    type="button"
+                                    className="trp-download-btn"
+                                    onClick={handleDownloadJSON}
+                                    title="Download test output data as JSON file"
+                                    aria-label="Download JSON"
+                                >
                                     <HiOutlineDownload /> Download JSON
                                 </button>
-                                <button type="button" className="trp-copy-btn" onClick={handleCopyJSON}>
+                                <button
+                                    type="button"
+                                    className="trp-copy-btn"
+                                    onClick={handleCopyJSON}
+                                    title="Copy test output to clipboard"
+                                    aria-label="Copy JSON"
+                                >
                                     {copied
                                         ? <><HiCheckCircle /> Copied!</>
                                         : <><HiOutlineClipboardCopy /> Copy</>

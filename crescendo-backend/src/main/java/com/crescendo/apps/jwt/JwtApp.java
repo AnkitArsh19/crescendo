@@ -70,6 +70,6 @@ public class JwtApp implements AppDefinition {
                 Map.of("key", "privateKey", "label", "Private Key", "type", "password"),
                 Map.of("key", "publicKey", "label", "Public Key", "type", "password"),
                 Map.of("key", "algorithm", "label", "Algorithm", "type", "text", "default", "HS256")
-        )).category("developer-tools");
+        )).category("developer");
     }
 }

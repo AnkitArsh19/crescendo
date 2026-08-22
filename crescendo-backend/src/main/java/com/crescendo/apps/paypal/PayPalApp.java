@@ -57,6 +57,6 @@ public class PayPalApp implements AppDefinition {
                 Map.of("key", "environment", "label", "Environment", "type", "select", "required", false,
                         "options", List.of(Map.of("value", "sandbox", "label", "Sandbox"), Map.of("value", "live", "label", "Live")),
                         "helpText", "Use sandbox for free testing")
-        )).category("payments").helpUrl("https://developer.paypal.com/dashboard/applications/");
+        )).category("finance").helpUrl("https://developer.paypal.com/dashboard/applications/");
     }
 }

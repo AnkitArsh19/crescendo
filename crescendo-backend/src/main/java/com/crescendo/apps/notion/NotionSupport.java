@@ -12,7 +12,11 @@ public class NotionSupport {
     }
 
     public static String getAuthHeader(ActionContext context) {
-        return "Bearer " + context.getCredential("apiToken");
+        String token = context.getCredential("apiToken");
+        if (token == null) {
+            token = context.getCredential("accessToken");
+        }
+        return "Bearer " + token;
     }
 
     public static String getVersionHeader() {

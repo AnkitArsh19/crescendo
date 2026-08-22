@@ -54,6 +54,6 @@ public class TotpApp implements AppDefinition {
                         "type", "string",
                         "required", true
                 )
-        )).category("logic-and-flow");
+        )).category("core");
     }
 }

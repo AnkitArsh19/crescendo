@@ -35,6 +35,10 @@ public class CrescendoMailResourceProvider implements ResourceProvider {
     private final DomainRepository domainRepo;
     private final ContactRepository contactRepo;
 
+    public CrescendoMailResourceProvider() {
+        this(null, null, null);
+    }
+
     public CrescendoMailResourceProvider(EmailTemplate_commandRepository templateRepo,
                                          DomainRepository domainRepo,
                                          ContactRepository contactRepo) {
@@ -77,6 +81,7 @@ public class CrescendoMailResourceProvider implements ResourceProvider {
     }
 
     private List<ResourceOption> listTemplates(UUID userId) {
+        if (templateRepo == null) return List.of();
         try {
             List<EmailTemplate_command> templates = userId != null
                     ? templateRepo.findByUserIdOrderByCreatedAtDesc(userId)
@@ -96,6 +101,7 @@ public class CrescendoMailResourceProvider implements ResourceProvider {
     }
 
     private List<ResourceOption> listDomains(UUID userId) {
+        if (domainRepo == null) return List.of();
         try {
             List<Domain> domains = userId != null
                     ? domainRepo.findByUser_IdOrderByCreatedAtDesc(userId)
@@ -115,6 +121,7 @@ public class CrescendoMailResourceProvider implements ResourceProvider {
     }
 
     private List<ResourceOption> listContacts(UUID userId) {
+        if (contactRepo == null) return List.of();
         try {
             List<Contact> contacts = userId != null
                     ? contactRepo.findByUserIdOrderByCreatedAtDesc(userId)

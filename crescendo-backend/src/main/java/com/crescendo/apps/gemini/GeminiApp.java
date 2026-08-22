@@ -37,7 +37,7 @@ public class GeminiApp implements AppDefinition {
                             "name", "Text - Message",
                             "description", "Generate text using a prompt",
                             "configSchema", List.of(
-                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-1.5-pro"),
+                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-2.5-flash"),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true),
                                     Map.of("key", "temperature", "label", "Temperature", "type", "number", "required", false),
                                     Map.of("key", "maxOutputTokens", "label", "Max Tokens", "type", "number", "required", false)
@@ -48,7 +48,7 @@ public class GeminiApp implements AppDefinition {
                             "name", "Image - Analyze",
                             "description", "Analyze an image using a prompt",
                             "configSchema", List.of(
-                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-1.5-pro"),
+                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-2.5-flash"),
                                     Map.of("key", "imageUrl", "label", "Image URL", "type", "text", "required", true),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true)
                             )

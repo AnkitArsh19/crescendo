@@ -55,6 +55,6 @@ public class RssApp implements AppDefinition {
                             Map.of("key", "maxItems", "label", "Max Items", "type", "text", "required", false,
                                    "placeholder", "10", "helpText", "Max items to return")))
                 )
-        ).credentialSchema(List.of()).category("productivity").helpUrl("");
+        ).credentialSchema(List.of()).category("data").helpUrl("");
     }
 }

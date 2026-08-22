@@ -75,19 +75,22 @@ public class AgentExecutionService {
     private final ObjectMapper objectMapper;
     private final String pythonBaseUrl;
     private final String pythonServiceToken;
+    private final String platformGeminiApiKey;
 
     public AgentExecutionService(
             SubWorkflowToolRunner subWorkflowToolRunner,
             ActionHandlerRegistry actionHandlerRegistry,
             ObjectMapper objectMapper,
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
-            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken
+            @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
+            @Value("${gemini.api.key:}") String platformGeminiApiKey
     ) {
         this.subWorkflowToolRunner = subWorkflowToolRunner;
         this.actionHandlerRegistry = actionHandlerRegistry;
         this.objectMapper = objectMapper;
         this.pythonBaseUrl = pythonBaseUrl;
         this.pythonServiceToken = pythonServiceToken;
+        this.platformGeminiApiKey = platformGeminiApiKey;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -97,11 +100,14 @@ public class AgentExecutionService {
     /**
      * Runs the full ReAct loop for one agent node execution.
      *
-     * @param workflowRunId   ID of the current workflow run (used for idempotency key generation)
-     * @param ownerUserId     ID of the user who owns this workflow (for credential resolution)
-     * @param config          Cluster configuration: toolRefs, budget, iteration cap
-     * @param systemPrompt    System prompt from the canvas node configuration
+     * @param workflowRunId    ID of the current workflow run (used for idempotency key generation)
+     * @param ownerUserId      ID of the user who owns this workflow (for credential resolution)
+     * @param config           Cluster configuration: toolRefs, budget, iteration cap
+     * @param systemPrompt     System prompt from the canvas node configuration
      * @param executionContext Trigger payload / prior-step output
+     * @param provider         AI model provider (gemini, openai, groq)
+     * @param model            Model name (e.g. gemini-2.5-flash, gpt-4o, llama-3.3-70b-versatile)
+     * @param userApiKey       User's decrypted API key from connection, or null for platform default
      * @return Final output map — either the agent's final answer or an abort descriptor
      */
     public Map<String, Object> executeAgentLoop(
@@ -109,19 +115,29 @@ public class AgentExecutionService {
             UUID ownerUserId,
             AgentClusterConfig config,
             String systemPrompt,
-            Map<String, Object> executionContext
+            Map<String, Object> executionContext,
+            String provider,
+            String model,
+            String userApiKey
     ) {
-        log.info("Starting Agent Execution Loop: workflowRunId={} owner={} maxIterations={} tokenBudget={}",
-                workflowRunId, ownerUserId, config.maxIterations(), config.tokenBudget());
+        String effectiveProvider = (provider != null && !provider.isBlank()) ? provider.trim().toLowerCase() : "gemini";
+        String effectiveModel = (model != null && !model.isBlank()) ? model.trim() : ("gemini".equals(effectiveProvider) ? "gemini-2.5-flash" : "gpt-4o");
 
-        // Python AI service is required — fail fast if not configured
-        if (pythonBaseUrl == null || pythonBaseUrl.isBlank()) {
-            log.warn("Agent node executed but crescendo.python-ai.base-url is not configured — aborting.");
+        String effectiveApiKey = (userApiKey != null && !userApiKey.isBlank() && !"null".equalsIgnoreCase(userApiKey)) ? userApiKey.trim() : null;
+        if (effectiveApiKey == null && "gemini".equals(effectiveProvider)) {
+            effectiveApiKey = platformGeminiApiKey;
+        }
+
+        if (effectiveApiKey == null || effectiveApiKey.isBlank()) {
+            log.warn("Agent execution failed: No API key available for provider={}", effectiveProvider);
             return Map.of(
-                    "status", "SERVICE_UNAVAILABLE",
-                    "error", "AI reasoning service is not configured. Set crescendo.python-ai.base-url."
+                    "status", "AUTH_REQUIRED",
+                    "error", "API key is required for provider '" + effectiveProvider + "'. Please attach a connection or configure gemini.api.key in application.properties."
             );
         }
+
+        log.info("Starting Agent Execution Loop: workflowRunId={} owner={} provider={} model={} maxIterations={} tokenBudget={}",
+                workflowRunId, ownerUserId, effectiveProvider, effectiveModel, config.maxIterations(), config.tokenBudget());
 
         // Build the stable session ID for this agent run (distinct from workflowRunId)
         String agentSessionId = "agent-run:" + workflowRunId;
@@ -154,17 +170,41 @@ public class AgentExecutionService {
             log.info("Agent turn {}/{} | session={} | tokensUsed={}/{}",
                     iteration, config.maxIterations(), agentSessionId, accumulatedTokens, config.tokenBudget());
 
-            // ── 2. Call Python to get the next decision ───────────────────
+            // ── 2. Call AI Reasoning Model (Python AI service or direct native fallback) ──
             AgentNextStepResponse response;
             try {
-                response = callPythonNextStep(agentSessionId, iteration, systemPrompt, config, history, executionContext);
-            } catch (RestClientException e) {
-                log.error("Agent turn {}: Python AI service call failed — {}", iteration, e.getMessage(), e);
-                return Map.of(
-                        "status", "AI_SERVICE_ERROR",
-                        "iterations", iteration,
-                        "error", "AI reasoning service unavailable: " + e.getMessage()
-                );
+                if (pythonBaseUrl != null && !pythonBaseUrl.isBlank()) {
+                    response = callPythonNextStep(agentSessionId, iteration, systemPrompt, config, history, executionContext, effectiveProvider, effectiveModel, effectiveApiKey);
+                } else if ("gemini".equals(effectiveProvider)) {
+                    response = callDirectGemini(effectiveApiKey, effectiveModel, systemPrompt, history, executionContext);
+                } else {
+                    response = callDirectOpenAICompatible(effectiveProvider, effectiveApiKey, effectiveModel, systemPrompt, history, executionContext);
+                }
+            } catch (Exception e) {
+                log.error("Agent turn {}: AI reasoning call failed — {}", iteration, e.getMessage(), e);
+                // Fallback to direct Gemini/OpenAI if Python was configured but failed
+                if (pythonBaseUrl != null && !pythonBaseUrl.isBlank()) {
+                    try {
+                        log.info("Attempting direct native fallback for provider={}", effectiveProvider);
+                        if ("gemini".equals(effectiveProvider)) {
+                            response = callDirectGemini(effectiveApiKey, effectiveModel, systemPrompt, history, executionContext);
+                        } else {
+                            response = callDirectOpenAICompatible(effectiveProvider, effectiveApiKey, effectiveModel, systemPrompt, history, executionContext);
+                        }
+                    } catch (Exception directEx) {
+                        return Map.of(
+                                "status", "AI_SERVICE_ERROR",
+                                "iterations", iteration,
+                                "error", "AI reasoning service failed: " + directEx.getMessage()
+                        );
+                    }
+                } else {
+                    return Map.of(
+                            "status", "AI_SERVICE_ERROR",
+                            "iterations", iteration,
+                            "error", "AI reasoning service failed: " + e.getMessage()
+                    );
+                }
             }
 
             accumulatedTokens += response.tokensUsed();
@@ -205,7 +245,6 @@ public class AgentExecutionService {
                     toolOutput = dispatchTool(toolCall, ownerUserId, workflowRunId, idempotencyKey);
                 } catch (Exception e) {
                     log.error("Agent turn {}: tool dispatch failed for {} — {}", iteration, toolCall.actionKey(), e.getMessage(), e);
-                    // Recoverable: append the error as an observation and let the LLM decide
                     toolOutput = Map.of("error", "Tool execution failed: " + e.getMessage());
                 }
 
@@ -237,7 +276,6 @@ public class AgentExecutionService {
 
     /**
      * Calls {@code POST /v1/agent/next-step} on the Python AI microservice.
-     * Uses the same RestClient pattern as {@link com.crescendo.ai.WorkflowDraftController}.
      */
     private AgentNextStepResponse callPythonNextStep(
             String sessionId,
@@ -245,19 +283,15 @@ public class AgentExecutionService {
             String systemPrompt,
             AgentClusterConfig config,
             List<AgentNextStepRequest.ConversationTurn> history,
-            Map<String, Object> inputData
+            Map<String, Object> inputData,
+            String provider,
+            String model,
+            String apiKey
     ) {
-        // Build tool definitions from the cluster config's toolRefs.
-        // Currently returns empty list — toolRef-to-definition resolution
-        // requires loading steps from the revision, which requires the
-        // workflow ID to be threaded through. Left as an extension point:
-        // pass toolDefinitions as a parameter to executeAgentLoop in the
-        // next iteration, built by the caller (AgentHandlers) which has
-        // access to the full step context.
         List<AgentNextStepRequest.ToolDefinition> toolDefs = List.of();
 
         AgentNextStepRequest requestBody = new AgentNextStepRequest(
-                sessionId, iteration, systemPrompt, toolDefs, history, inputData
+                sessionId, iteration, systemPrompt, toolDefs, history, inputData, provider, model, apiKey
         );
 
         RestClient.Builder builder = RestClient.builder()
@@ -275,6 +309,149 @@ public class AgentExecutionService {
                 .body(requestBody)
                 .retrieve()
                 .body(AgentNextStepResponse.class);
+    }
+
+    /**
+     * Direct native call to Google Gemini REST API.
+     */
+    @SuppressWarnings("unchecked")
+    private AgentNextStepResponse callDirectGemini(
+            String apiKey,
+            String model,
+            String systemPrompt,
+            List<AgentNextStepRequest.ConversationTurn> history,
+            Map<String, Object> inputData
+    ) {
+        RestClient client = RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models")
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+
+        String endpoint = "/" + model + ":generateContent?key=" + apiKey;
+
+        List<Map<String, Object>> contents = new ArrayList<>();
+        for (AgentNextStepRequest.ConversationTurn turn : history) {
+            String role = "user".equalsIgnoreCase(turn.role()) ? "user" : "model";
+            contents.add(Map.of(
+                    "role", role,
+                    "parts", List.of(Map.of("text", turn.content() != null ? turn.content() : ""))
+            ));
+        }
+
+        if (contents.isEmpty() && inputData != null && !inputData.isEmpty()) {
+            contents.add(Map.of(
+                    "role", "user",
+                    "parts", List.of(Map.of("text", safeJson(inputData)))
+            ));
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            body.put("system_instruction", Map.of("parts", List.of(Map.of("text", systemPrompt))));
+        }
+        body.put("contents", contents);
+
+        try {
+            String response = client.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            Map<String, Object> parsed = objectMapper.readValue(response, Map.class);
+            List<Map<String, Object>> candidates = (List<Map<String, Object>>) parsed.get("candidates");
+            String text = "";
+            if (candidates != null && !candidates.isEmpty()) {
+                Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+                if (content != null) {
+                    List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+                    if (parts != null && !parts.isEmpty()) {
+                        text = String.valueOf(parts.get(0).getOrDefault("text", ""));
+                    }
+                }
+            }
+
+            int tokensUsed = 0;
+            Map<String, Object> usage = (Map<String, Object>) parsed.get("usageMetadata");
+            if (usage != null && usage.get("totalTokenCount") instanceof Number n) {
+                tokensUsed = n.intValue();
+            }
+
+            return new AgentNextStepResponse("final_answer", null, text, null, tokensUsed);
+        } catch (Exception e) {
+            log.error("Direct Gemini reasoning failed: {}", e.getMessage(), e);
+            throw new RestClientException("Direct Gemini reasoning failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Direct native call to OpenAI or Groq compatible /v1/chat/completions endpoint.
+     */
+    @SuppressWarnings("unchecked")
+    private AgentNextStepResponse callDirectOpenAICompatible(
+            String provider,
+            String apiKey,
+            String model,
+            String systemPrompt,
+            List<AgentNextStepRequest.ConversationTurn> history,
+            Map<String, Object> inputData
+    ) {
+        String baseUrl = "groq".equalsIgnoreCase(provider)
+                ? "https://api.groq.com/openai/v1"
+                : "https://api.openai.com/v1";
+
+        RestClient client = RestClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+
+        List<Map<String, Object>> messages = new ArrayList<>();
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+        for (AgentNextStepRequest.ConversationTurn turn : history) {
+            messages.add(Map.of("role", turn.role(), "content", turn.content() != null ? turn.content() : ""));
+        }
+        if (messages.isEmpty() && inputData != null && !inputData.isEmpty()) {
+            messages.add(Map.of("role", "user", "content", safeJson(inputData)));
+        }
+
+        Map<String, Object> body = Map.of(
+                "model", model,
+                "messages", messages
+        );
+
+        try {
+            String response = client.post()
+                    .uri("/chat/completions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            Map<String, Object> parsed = objectMapper.readValue(response, Map.class);
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) parsed.get("choices");
+            String text = "";
+            if (choices != null && !choices.isEmpty()) {
+                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+                if (message != null) {
+                    text = String.valueOf(message.getOrDefault("content", ""));
+                }
+            }
+
+            int tokensUsed = 0;
+            Map<String, Object> usage = (Map<String, Object>) parsed.get("usage");
+            if (usage != null && usage.get("total_tokens") instanceof Number n) {
+                tokensUsed = n.intValue();
+            }
+
+            return new AgentNextStepResponse("final_answer", null, text, null, tokensUsed);
+        } catch (Exception e) {
+            log.error("Direct {} reasoning failed: {}", provider, e.getMessage(), e);
+            throw new RestClientException("Direct " + provider + " reasoning failed: " + e.getMessage(), e);
+        }
     }
 
     /**

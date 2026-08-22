@@ -31,6 +31,8 @@ export default function EmailService() {
                         key={tab.to}
                         to={tab.to}
                         end={tab.end}
+                        title={tab.label}
+                        aria-label={tab.label}
                         className={({ isActive }) => `email-tab ${isActive ? 'active' : ''}`}
                     >
                         <span className="email-tab-icon">{tab.icon}</span>

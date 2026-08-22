@@ -64,6 +64,6 @@ public class SimpleApiApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "apiToken", "label", "API Token", "type", "password", "required", true,
                         "helpText", "Your One Simple API token")
-        )).category("utility").helpUrl("https://onesimpleapi.com/");
+        )).category("data").helpUrl("https://onesimpleapi.com/");
     }
 }

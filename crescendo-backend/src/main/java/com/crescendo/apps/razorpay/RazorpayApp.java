@@ -68,6 +68,6 @@ public class RazorpayApp implements AppDefinition {
                         "helpText", "Razorpay API key ID"),
                 Map.of("key", "keySecret", "label", "Key Secret", "type", "password", "required", true,
                         "helpText", "Razorpay API key secret")
-        )).category("payments").helpUrl("https://dashboard.razorpay.com/app/keys");
+        )).category("finance").helpUrl("https://dashboard.razorpay.com/app/keys");
     }
 }

@@ -5,7 +5,7 @@
 .agents/
 .ui-ux-pro-max-skill/
 graphify-out/
-Test/
+/Test/
 
 ### Environment Variables ###
 **/.env

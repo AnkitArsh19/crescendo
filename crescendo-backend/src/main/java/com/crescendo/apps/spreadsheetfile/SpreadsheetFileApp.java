@@ -51,6 +51,6 @@ public class SpreadsheetFileApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).category("files-and-storage").internal(true);
+        ).credentialSchema(List.of()).category("storage").internal(true);
     }
 }

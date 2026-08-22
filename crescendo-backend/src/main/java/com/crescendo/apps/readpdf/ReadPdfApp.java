@@ -41,6 +41,6 @@ public class ReadPdfApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).category("core").helpUrl("");
+        ).credentialSchema(List.of()).category("storage").helpUrl("");
     }
 }

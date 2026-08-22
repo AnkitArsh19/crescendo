@@ -61,6 +61,6 @@ public class CalendlyApp implements AppDefinition {
                 List.of()
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "OAuth2 Access Token", "type", "password", "required", true)
-        )).category("scheduling");
+        )).category("productivity");
     }
 }

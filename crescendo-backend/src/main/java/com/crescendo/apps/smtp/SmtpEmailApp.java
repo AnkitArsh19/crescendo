@@ -71,6 +71,6 @@ public class SmtpEmailApp implements AppDefinition {
                 Map.of("key", "secure", "label", "SSL/TLS", "type", "boolean", "default", true),
                 Map.of("key", "disableStartTls", "label", "Disable STARTTLS", "type", "boolean", "default", false),
                 Map.of("key", "hostName", "label", "Client Host Name", "type", "text")
-        )).category("messaging");
+        )).category("communication");
     }
 }

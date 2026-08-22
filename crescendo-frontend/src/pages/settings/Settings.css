@@ -1876,3 +1876,26 @@
     background: rgba(248, 113, 113, 0.1);
     border-color: rgba(248, 113, 113, 0.25);
 }
+
+.settings-inline-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: var(--radius-sm, 8px);
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
+    font-size: 0.85rem;
+}
+
+.settings-inline-error button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+}

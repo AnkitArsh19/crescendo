@@ -210,19 +210,80 @@ def _validate_arguments(
 # Public API
 # ---------------------------------------------------------------------------
 
+def _call_gemini_sync(
+    api_key: str,
+    model: str,
+    system_prompt: str,
+    history: List[ConversationTurn],
+    input_data: dict
+) -> Tuple[str, int]:
+    import urllib.request
+    import urllib.error
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    contents = []
+    for turn in history:
+        role = "user" if turn.role == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": turn.content or ""}]})
+    if not contents and input_data:
+        contents.append({"role": "user", "parts": [{"text": json.dumps(input_data)}]})
+
+    body = {"contents": contents}
+    if system_prompt:
+        body["system_instruction"] = {"parts": [{"text": system_prompt}]}
+
+    req_data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        resp_data = json.loads(resp.read().decode("utf-8"))
+        candidates = resp_data.get("candidates", [])
+        text = ""
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts:
+                text = parts[0].get("text", "")
+        tokens = resp_data.get("usageMetadata", {}).get("totalTokenCount", 0)
+        return text, tokens
+
+
 async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
     """
-    Single ReAct turn: send conversation history + tool definitions to Groq,
+    Single ReAct turn: send conversation history + tool definitions to Gemini or Groq,
     parse the typed decision, return to Java.
-
-    Returns one of:
-      - AgentNextStepResponse(decision="tool_call",    tool_call=...,      tokens_used=N)
-      - AgentNextStepResponse(decision="final_answer", final_answer=...,   tokens_used=N)
-
-    Never raises — errors surface as final_answer responses with an error
-    message so the Java loop can record them and terminate gracefully.
     """
-    client = get_groq_client()
+    if request.provider == "gemini":
+        import asyncio
+        import os
+        api_key = request.api_key or os.getenv("GEMINI_API_KEY", "")
+        model = request.model or "gemini-2.5-flash"
+        if not api_key:
+            return AgentNextStepResponse(
+                decision="final_answer",
+                final_answer="[Agent error: Gemini API key is missing]",
+                tokens_used=0,
+            )
+        try:
+            text, tokens = await asyncio.to_thread(
+                _call_gemini_sync, api_key, model, request.system_prompt, request.conversation_history, request.input_data
+            )
+            return AgentNextStepResponse(
+                decision="final_answer",
+                final_answer=text,
+                tokens_used=tokens,
+            )
+        except Exception as exc:
+            logger.exception("Gemini call failed for session=%s iter=%d: %s", request.session_id, request.iteration, exc)
+            return AgentNextStepResponse(
+                decision="final_answer",
+                final_answer=f"[Gemini API error: {exc}]",
+                tokens_used=0,
+            )
+
+    if request.api_key:
+        from groq import AsyncGroq
+        client = AsyncGroq(api_key=request.api_key)
+    else:
+        client = get_groq_client()
+
     tools = [_to_groq_tool(t) for t in request.tool_definitions]
     messages = _build_messages(
         request.system_prompt,

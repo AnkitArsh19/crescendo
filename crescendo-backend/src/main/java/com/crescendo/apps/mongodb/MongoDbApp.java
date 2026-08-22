@@ -90,6 +90,6 @@ public class MongoDbApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "connectionString", "label", "Connection String", "type", "string", "required", true),
                 Map.of("key", "database", "label", "Database", "type", "string", "required", true)
-        )).category("databases");
+        )).category("database");
     }
 }

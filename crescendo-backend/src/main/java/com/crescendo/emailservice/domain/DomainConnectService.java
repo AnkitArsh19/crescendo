@@ -36,7 +36,7 @@ public class DomainConnectService {
     // We will redirect users back to the frontend domains settings page
     private static final String REDIRECT_URI = "https://app.crescendo.run/dashboard/email/domains";
 
-    @Value("${domainconnect.private-key-path:#{environment.DOMAIN_CONNECT_PRIVATE_KEY_PATH}}")
+    @Value("${domainconnect.private-key-path:${DOMAIN_CONNECT_PRIVATE_KEY_PATH:}}")
     private String privateKeyPath;
 
     private PrivateKey privateKey;
@@ -49,8 +49,13 @@ public class DomainConnectService {
     @PostConstruct
     public void init() {
         if (privateKeyPath != null && !privateKeyPath.isBlank()) {
+            java.nio.file.Path path = Paths.get(privateKeyPath);
+            if (!Files.exists(path)) {
+                log.warn("Domain Connect private key file not found at: {}. Domain Connect URLs will not be signed.", privateKeyPath);
+                return;
+            }
             try {
-                String keyContent = Files.readString(Paths.get(privateKeyPath))
+                String keyContent = Files.readString(path)
                         .replaceAll("[\\r\\n]", "") // strip real newlines (CRLF and LF)
                         .replace("-----BEGIN PRIVATE KEY-----", "")
                         .replace("-----END PRIVATE KEY-----", "")

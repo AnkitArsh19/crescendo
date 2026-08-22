@@ -138,6 +138,6 @@ public class RedisApp implements AppDefinition {
                 Map.of("key", "host", "label", "Host", "type", "string", "required", true),
                 Map.of("key", "port", "label", "Port", "type", "number", "required", true, "default", 6379),
                 Map.of("key", "password", "label", "Password", "type", "string")
-        )).category("databases");
+        )).category("database");
     }
 }

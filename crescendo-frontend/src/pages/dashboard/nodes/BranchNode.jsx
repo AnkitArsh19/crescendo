@@ -51,7 +51,9 @@ function BranchNode({ data, selected }) {
 
             {/* Step badge */}
             {stepNumber != null && (
-                <span className="wf-node__step-badge">{stepNumber}</span>
+                <span className="wf-node__step-badge" title={`Step ${stepNumber}`}>
+                    {stepNumber}
+                </span>
             )}
 
             <div className="wf-node__header">
@@ -71,15 +73,15 @@ function BranchNode({ data, selected }) {
 
             <div className="wf-node__body">
                 {isOrphaned && (
-                    <div className="wf-node__orphan-warning" title="Not connected to trigger — will be skipped.">
+                    <div className="wf-node__orphan-warning" title="Not connected to trigger — will be skipped during execution.">
                         <HiOutlineExclamation className="wf-node__orphan-icon" />
                         <span>Not connected to trigger</span>
                     </div>
                 )}
                 {isConfigured ? (
                     <div className="wf-node__tags">
-                        <span className="wf-node__tag">{appName}</span>
-                        <span className="wf-node__tag wf-node__tag--op">{operationName}</span>
+                        <span className="wf-node__tag" title={`App: ${appName}`}>{appName}</span>
+                        <span className="wf-node__tag wf-node__tag--op" title={`Action: ${operationName}`}>{operationName}</span>
                     </div>
                 ) : (
                     <span className="wf-node__hint">Click to configure</span>
@@ -92,6 +94,7 @@ function BranchNode({ data, selected }) {
                             key={h.id}
                             className={`wf-node__branch-label wf-node__branch-label--${h.id.replace('_', '-')}`}
                             style={{ top: h.offsetPercent + '%' }}
+                            title={`Branch: ${h.label}`}
                         >
                             {h.label}
                         </span>
@@ -106,6 +109,8 @@ function BranchNode({ data, selected }) {
                 id="in"
                 className="wf-handle wf-handle--in"
                 isConnectable
+                title="Input port (connect from previous step)"
+                aria-label="Input port"
                 onDoubleClick={stopPropagation}
                 onClick={stopPropagation}
             />
@@ -122,7 +127,8 @@ function BranchNode({ data, selected }) {
                         : { top:  h.offsetPercent + '%', transform: 'translateY(-50%)' }
                     }
                     className={`wf-handle wf-handle--out wf-handle--branch-${h.id.replace('_', '-')}`}
-                    title={h.label}
+                    title={`Branch: ${h.label} (drag to connect)`}
+                    aria-label={`Branch ${h.label} output`}
                     isConnectable
                     onDoubleClick={stopPropagation}
                     onClick={stopPropagation}

@@ -80,6 +80,6 @@ public class CalComApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true),
                 Map.of("key", "apiVersion", "label", "API Version (1 = before v2.0, 2 = v2.0+)", "type", "text", "default", "2")
-        )).category("scheduling");
+        )).category("productivity");
     }
 }

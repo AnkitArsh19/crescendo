@@ -34,12 +34,10 @@ public class EmailTemplate_query {
     @Column(name = "subject", nullable = false, length = 1000)
     private String subject;
 
-    @Lob
-    @Column(name = "HTMLBody", nullable = false)
+    @Column(name = "HTMLBody", columnDefinition = "TEXT", nullable = false)
     private String HTMLBody;
 
-    @Lob
-    @Column(name = "textBody")
+    @Column(name = "textBody", columnDefinition = "TEXT")
     private String textBody;
 
     @Column(name = "fromAddress", length = 1000)
@@ -51,8 +49,7 @@ public class EmailTemplate_query {
     @Column(name = "previewText", length = 1000)
     private String previewText;
 
-    @Lob
-    @Column(name = "editorDocument")
+    @Column(name = "editorDocument", columnDefinition = "TEXT")
     private String editorDocument;
 
     @Enumerated(EnumType.STRING)
@@ -121,10 +118,12 @@ public class EmailTemplate_query {
     public void setStatus(TemplateStatus status) { this.status = status; }
 
     public List<TemplateVariable> getVariables() { return variables; }
-    public void setVariables(List<TemplateVariable> variables) { this.variables = variables != null ? variables : new ArrayList<>(); }
+    public void setVariables(List<TemplateVariable> variables) { this.variables = variables; }
 
     public PublishedSnapshot getPublishedVersionSnapshot() { return publishedVersionSnapshot; }
-    public void setPublishedVersionSnapshot(PublishedSnapshot publishedVersionSnapshot) { this.publishedVersionSnapshot = publishedVersionSnapshot; }
+    public void setPublishedVersionSnapshot(PublishedSnapshot publishedVersionSnapshot) {
+        this.publishedVersionSnapshot = publishedVersionSnapshot;
+    }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
@@ -132,4 +131,3 @@ public class EmailTemplate_query {
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }
-

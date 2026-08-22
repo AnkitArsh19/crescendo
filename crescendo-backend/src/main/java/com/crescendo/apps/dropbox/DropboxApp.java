@@ -68,7 +68,7 @@ public class DropboxApp implements AppDefinition {
                                         Map.of("key", "rev", "label", "Revision ID", "type", "text", "required", true)))
                 )
         ).credentialSchema(List.of()).altAuthType(AuthType.OAUTH2)
-                .category("file-storage")
+                .category("storage")
                 .helpUrl("https://www.dropbox.com/developers/documentation/http/documentation");
     }
 }

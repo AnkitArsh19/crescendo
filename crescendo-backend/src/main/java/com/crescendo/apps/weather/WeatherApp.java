@@ -66,7 +66,7 @@ public class WeatherApp implements AppDefinition {
                             Map.of("key", "lon", "label", "Longitude", "type", "text", "required", true),
                             Map.of("key", "units", "label", "Units", "type", "text", "required", false, "placeholder", "metric")))
                 )
-        ).credentialSchema(List.of()).category("productivity")
+        ).credentialSchema(List.of()).category("data")
                 .helpUrl("https://openweathermap.org/appid");
     }
 }

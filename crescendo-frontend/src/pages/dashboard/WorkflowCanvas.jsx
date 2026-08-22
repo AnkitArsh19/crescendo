@@ -7,7 +7,7 @@ import { useNavigate, useOutletContext, useParams, useBeforeUnload } from 'react
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import { workflowClient } from '../../api/workflowClient';
-import { useActivateWorkflow, useSaveWorkflowGraph, useWorkflowDetail } from '../../hooks/useWorkflows';
+import { useActivateWorkflow, useDeactivateWorkflow, useSaveWorkflowGraph, useWorkflowDetail } from '../../hooks/useWorkflows';
 import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     HiOutlineSave,
     HiOutlinePlay,
+    HiOutlinePause,
     HiOutlineReply,
     HiRefresh,
     HiOutlinePencil,
@@ -220,6 +221,7 @@ export default function WorkflowCanvas() {
     const { data: loadedWorkflow, isLoading: isLoadingDetail, isError: isDetailError } = useWorkflowDetail(routeWorkflowId);
     const saveWorkflowGraph = useSaveWorkflowGraph();
     const activateWorkflow = useActivateWorkflow();
+    const deactivateWorkflow = useDeactivateWorkflow();
     const loadedWorkflowIdRef = useRef(null);
     const saveGraphRef = useRef(null);
     // eslint-disable-next-line react-hooks/refs
@@ -235,6 +237,8 @@ export default function WorkflowCanvas() {
     // ── Save state ──
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
+    const [isStopping, setIsStopping] = useState(false);
+    const [isWorkflowActive, setIsWorkflowActive] = useState(false);
     const [savedAt, setSavedAt] = useState(null);
     const [saveError, setSaveError] = useState(null);
     const [isDirty, setIsDirty] = useState(false);
@@ -353,10 +357,40 @@ export default function WorkflowCanvas() {
         }
     }, [configNode, ensureAppDetail]);
 
+    // ── Patch iconUrl + appName onto loaded nodes once the catalog is available ──
+    // stepsToGraph doesn't have catalog access, so nodes loaded from the backend
+    // start without iconUrl. This effect fills them in once catalogApps arrives.
+    useEffect(() => {
+        if (!catalogApps || catalogApps.length === 0) return;
+        setNodes((nds) => {
+            let changed = false;
+            const patched = nds.map((n) => {
+                if (!n.data?.appKey) return n;
+                // Skip if iconUrl is already set AND appName is not just the raw key
+                if (n.data.iconUrl && n.data.appName !== n.data.appKey) return n;
+                const catalogApp = catalogApps.find((a) => a.appKey === n.data.appKey);
+                if (!catalogApp) return n;
+                const newIconUrl = catalogApp.logoUrl || `/icons/${n.data.appKey}.svg`;
+                const newAppName = catalogApp.name || n.data.appName;
+                if (n.data.iconUrl === newIconUrl && n.data.appName === newAppName) return n;
+                changed = true;
+                return { ...n, data: { ...n.data, iconUrl: newIconUrl, appName: newAppName } };
+            });
+            return changed ? patched : nds;
+        });
+    }, [catalogApps, setNodes]);
+
     // ── Loading guard for edit mode ──
     const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(!!routeWorkflowId);
 
     // Load existing workflow if editing
+    // Sync isWorkflowActive from the loaded workflow detail (covers initial load + refetch after activate/deactivate)
+    useEffect(() => {
+        if (loadedWorkflow && typeof loadedWorkflow.isActive === 'boolean') {
+            setIsWorkflowActive(loadedWorkflow.isActive);
+        }
+    }, [loadedWorkflow?.isActive]);
+
     useEffect(() => {
         if (!routeWorkflowId) return;
         if (!loadedWorkflow) {
@@ -560,6 +594,7 @@ export default function WorkflowCanvas() {
             if (!id) return;
 
             await activateWorkflow.mutateAsync(id);
+            setIsWorkflowActive(true);
             useToastStore.getState().addToast('Workflow activated successfully!', 'success');
             setSavedAt(Date.now());
         } catch (err) {
@@ -570,6 +605,23 @@ export default function WorkflowCanvas() {
             setIsRunning(false);
         }
     }, [isRunning, activateWorkflow, nodes, edges]);
+
+    const handleStopWorkflow = useCallback(async () => {
+        if (isStopping) return;
+        const id = workflowId;
+        if (!id) return;
+        setIsStopping(true);
+        try {
+            await deactivateWorkflow.mutateAsync(id);
+            setIsWorkflowActive(false);
+            useToastStore.getState().addToast('Workflow deactivated', 'info');
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Deactivation failed';
+            useToastStore.getState().addToast(msg, 'error');
+        } finally {
+            setIsStopping(false);
+        }
+    }, [isStopping, deactivateWorkflow, workflowId]);
 
 
 
@@ -773,6 +825,17 @@ export default function WorkflowCanvas() {
                     app: 'agent',
                     appName: agentMeta?.name || 'AI Agent',
                     iconUrl: agentMeta?.logoUrl || '/icons/agent.svg',
+                    actionKey: 'agent:ai_agent',
+                    action: 'agent:ai_agent',
+                    actionName: 'AI Agent',
+                    configuration: {
+                        systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
+                        prompt: "{{steps.1.data}}",
+                        model: "llama-3.3-70b-versatile",
+                        temperature: 0.7,
+                        maxIterations: 10,
+                        returnIntermediateSteps: true,
+                    },
                     stepIndex: nodes.length + 1,
                     _vertical: vertical,
                     _isNew: true,
@@ -1108,34 +1171,49 @@ export default function WorkflowCanvas() {
 
     // ── OAuth popup postMessage listener ──
     // Handles the 'oauth-connected' message sent by the OAuth callback page.
-    // Kept here (not in ConfigPanelBody) because `connections` state lives here.
     useEffect(() => {
         const handler = (event) => {
             if (event.data?.type !== 'oauth-connected') return;
             const addToast = useToastStore.getState().addToast;
             const isReconnect = event.data.reconnect;
+            const connName = event.data.connectionName || event.data.appKey;
             addToast(
                 isReconnect
-                    ? `Reconnected: ${event.data.connectionName || event.data.appKey}`
-                    : `Connected: ${event.data.connectionName || event.data.appKey}`,
+                    ? `Reconnected: ${connName}`
+                    : `Connected: ${connName}`,
                 'success'
             );
-            // Refresh connections list so the dropdown updates immediately
+            // Refresh connections list so dropdowns and nodes update immediately
             connectionsApi.list().then((conns) => {
-                setConnections(Array.isArray(conns) ? conns : []);
-                // Auto-select the newly created connection on the current config node
-                if (!isReconnect && event.data.connectionId && configNode) {
-                    updateNodeData(configNode.id, {
+                const connsList = Array.isArray(conns) ? conns : [];
+                setConnections(connsList);
+
+                // Target node: either appBrowserTarget or active configNode or first node
+                const targetNodeId = (appBrowserTarget && appBrowserTarget !== 'new')
+                    ? appBrowserTarget
+                    : configNode?.id;
+
+                const appMeta = catalogApps.find((a) => a.appKey === event.data.appKey);
+
+                if (targetNodeId && event.data.connectionId) {
+                    updateNodeData(targetNodeId, {
+                        appKey: event.data.appKey,
+                        app: event.data.appKey,
+                        appName: appMeta?.name || event.data.appKey,
+                        iconUrl: appMeta?.logoUrl || `/icons/${event.data.appKey}.svg`,
+                        label: appMeta?.name || event.data.appKey,
                         connectionId: event.data.connectionId,
                         account: event.data.connectionId,
-                        accountName: event.data.connectionName || '',
+                        accountName: connName,
+                        credentialSource: 'PERSONAL',
                     });
+                    ensureAppDetail(event.data.appKey);
                 }
             }).catch(() => { });
         };
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
-    }, [configNode, updateNodeData]);
+    }, [configNode, appBrowserTarget, catalogApps, updateNodeData, ensureAppDetail]);
 
     // ──────────────────────────────
     // RENDER
@@ -1276,14 +1354,6 @@ export default function WorkflowCanvas() {
                         <HiPlus />
                     </DockIcon>
                     <DockIcon
-                        className="canvas-dock-btn"
-                        title="Add AI Agent Step"
-                        onClick={() => addAgentNode()}
-                        data-tooltip="AI Agent"
-                    >
-                        <HiOutlineChip />
-                    </DockIcon>
-                    <DockIcon
                         className="canvas-dock-btn canvas-split-control"
                         title={lastSelectedNodeId ? 'Split selected step' : 'Select a step to split'}
                         onClick={() => setShowSplitMenu((open) => !open)}
@@ -1353,18 +1423,35 @@ export default function WorkflowCanvas() {
                     {saveError && (
                         <span className="canvas-save-error" title={saveError}>⚠</span>
                     )}
-                    <DockIcon
-                        className="canvas-dock-run-btn"
-                        title="Save and run this workflow"
-                        onClick={handleRunWorkflow}
-                        disabled={isRunning || isSaving}
-                        data-tooltip="Run"
-                    >
-                        <div className="canvas-dock-item-content">
-                            {isRunning ? <span className="canvas-spinner" /> : <HiOutlinePlay className="dock-action-icon" />}
-                            <span className="dock-action-text">Run</span>
-                        </div>
-                    </DockIcon>
+                    {isWorkflowActive && !isDirty ? (
+                        <DockIcon
+                            className="canvas-dock-run-btn is-active"
+                            title="Workflow is running — click to stop"
+                            onClick={handleStopWorkflow}
+                            disabled={isStopping || isSaving}
+                            data-tooltip="Stop"
+                        >
+                            <div className="canvas-dock-item-content">
+                                {isStopping ? <span className="canvas-spinner" /> : <HiOutlinePause className="dock-action-icon" />}
+                                <span className="dock-action-text">{isStopping ? 'Stopping...' : 'Running'}</span>
+                            </div>
+                        </DockIcon>
+                    ) : (
+                        <DockIcon
+                            className="canvas-dock-run-btn"
+                            title={isWorkflowActive && isDirty ? 'Save changes and re-activate' : 'Save and run this workflow'}
+                            onClick={handleRunWorkflow}
+                            disabled={isRunning || isSaving}
+                            data-tooltip={isWorkflowActive && isDirty ? 'Update & Run' : 'Run'}
+                        >
+                            <div className="canvas-dock-item-content">
+                                {isRunning ? <span className="canvas-spinner" /> : <HiOutlinePlay className="dock-action-icon" />}
+                                <span className="dock-action-text">
+                                    {isRunning ? 'Activating...' : isWorkflowActive && isDirty ? 'Update & Run' : 'Run'}
+                                </span>
+                            </div>
+                        </DockIcon>
+                    )}
                 </Dock>
 
                 <div className="canvas-topbar-right">
@@ -1448,6 +1535,8 @@ export default function WorkflowCanvas() {
                             <button
                                 className="canvas-ctx-item"
                                 onClick={() => { addBranch(contextMenu.nodeId); setContextMenu(null); }}
+                                title="Add a subsequent step to this node"
+                                aria-label="Add next step"
                             >
                                 <HiPlus /> Add next step
                             </button>
@@ -1459,7 +1548,8 @@ export default function WorkflowCanvas() {
                                             key={count}
                                             className="canvas-ctx-split-btn"
                                             onClick={() => { splitNode(contextMenu.nodeId, count); setContextMenu(null); }}
-                                            title={`Create ${count} branches`}
+                                            title={`Split path into ${count} parallel branches`}
+                                            aria-label={`Split path into ${count} parallel branches`}
                                         >
                                             {count}
                                         </button>
@@ -1469,6 +1559,8 @@ export default function WorkflowCanvas() {
                             <button
                                 className="canvas-ctx-item"
                                 onClick={() => { duplicateNode(contextMenu.nodeId); setContextMenu(null); }}
+                                title="Duplicate this step with all its configurations"
+                                aria-label="Duplicate step"
                             >
                                 <HiOutlineDuplicate /> Duplicate
                             </button>
@@ -1476,6 +1568,8 @@ export default function WorkflowCanvas() {
                             <button
                                 className="canvas-ctx-item danger"
                                 onClick={() => deleteNode(contextMenu.nodeId)}
+                                title="Delete this step from the workflow"
+                                aria-label="Delete step"
                             >
                                 <HiOutlineTrash /> Delete
                             </button>
@@ -1550,35 +1644,71 @@ export default function WorkflowCanvas() {
                         apps={catalogApps}
                         connections={connections}
                         title={appBrowserTarget === 'new' ? 'Choose an App' : 'Select App'}
-                        onSelect={async (app, credentialSource) => {
+                        onSelect={async (app, credentialSource, connectionId, connectionName) => {
                             setShowAppBrowser(false);
+                            const isAgent = app.appKey === 'agent';
+
+                            // Refresh connections list
+                            const conns = await connectionsApi.list().catch(() => connections);
+                            const connsList = Array.isArray(conns) ? conns : [];
+                            setConnections(connsList);
+
+                            // Find matching connection if not explicitly provided
+                            let targetConnId = connectionId;
+                            let targetConnName = connectionName;
+                            if (!targetConnId && credentialSource !== 'ADMIN_KEY') {
+                                const matchingConn = connsList.find((c) => c.appKey === app.appKey);
+                                if (matchingConn) {
+                                    targetConnId = matchingConn.id;
+                                    targetConnName = matchingConn.name || matchingConn.accountIdentifier || '';
+                                }
+                            }
+
+                            const effectiveConnId = credentialSource === 'ADMIN_KEY' ? 'ADMIN_KEY' : targetConnId || null;
+
                             if (appBrowserTarget === 'new') {
-                                // Add a new action node with the selected app
-                                const newId = addActionNode();
-                                updateNodeData(newId, {
-                                    appKey: app.appKey,
-                                    app: app.appKey,
-                                    appName: app.name,
-                                    iconUrl: app.logoUrl || `/icons/${app.appKey}.svg`,
-                                    label: app.name,
-                                    credentialSource: credentialSource || 'PERSONAL',
-                                });
+                                if (isAgent) {
+                                    addAgentNode();
+                                } else {
+                                    const newId = addActionNode(null, null, { openConfig: true });
+                                    updateNodeData(newId, {
+                                        appKey: app.appKey,
+                                        app: app.appKey,
+                                        appName: app.name,
+                                        iconUrl: app.logoUrl || `/icons/${app.appKey}.svg`,
+                                        label: app.name,
+                                        connectionId: effectiveConnId,
+                                        account: effectiveConnId,
+                                        accountName: targetConnName || '',
+                                        credentialSource: credentialSource || (effectiveConnId === 'ADMIN_KEY' ? 'ADMIN_KEY' : 'PERSONAL'),
+                                    });
+                                }
                                 await ensureAppDetail(app.appKey);
-                            } else if (appBrowserTarget && configNode) {
-                                // Update existing node
+                            } else if (appBrowserTarget) {
+                                // Update target node
                                 updateNodeData(appBrowserTarget, {
                                     appKey: app.appKey,
                                     app: app.appKey,
                                     appName: app.name,
                                     iconUrl: app.logoUrl || `/icons/${app.appKey}.svg`,
                                     label: app.name,
-                                    connectionId: null,
-                                    credentialSource: credentialSource || 'PERSONAL',
-                                    actionKey: '',
+                                    connectionId: effectiveConnId,
+                                    account: effectiveConnId,
+                                    accountName: targetConnName || '',
+                                    credentialSource: credentialSource || (effectiveConnId === 'ADMIN_KEY' ? 'ADMIN_KEY' : 'PERSONAL'),
+                                    actionKey: isAgent ? 'agent:ai_agent' : '',
                                     triggerKey: '',
                                     triggerType: '',
-                                    action: '',
-                                    configuration: {},
+                                    action: isAgent ? 'agent:ai_agent' : '',
+                                    actionName: isAgent ? 'AI Agent' : '',
+                                    configuration: isAgent ? {
+                                        systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
+                                        prompt: "{{steps.1.data}}",
+                                        model: "llama-3.3-70b-versatile",
+                                        temperature: 0.7,
+                                        maxIterations: 10,
+                                        returnIntermediateSteps: true,
+                                    } : {},
                                 });
                                 await ensureAppDetail(app.appKey);
                             }

@@ -60,6 +60,6 @@ public class LogicApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).category("logic-and-flow");
+        ).credentialSchema(List.of()).category("logic");
     }
 }

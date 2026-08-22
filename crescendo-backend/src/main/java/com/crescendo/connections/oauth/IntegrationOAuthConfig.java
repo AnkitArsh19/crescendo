@@ -50,6 +50,7 @@ public class IntegrationOAuthConfig {
         private String authorizeUrl;
         private String tokenUrl;
         private String scopes;
+        private String botToken;
 
         /** If true, this provider requires PKCE (Proof Key for Code Exchange). */
         private boolean pkce = false;
@@ -75,6 +76,9 @@ public class IntegrationOAuthConfig {
 
         public String getScopes() { return scopes; }
         public void setScopes(String scopes) { this.scopes = scopes; }
+
+        public String getBotToken() { return botToken; }
+        public void setBotToken(String botToken) { this.botToken = botToken; }
 
         public boolean isPkce() { return pkce; }
         public void setPkce(boolean pkce) { this.pkce = pkce; }

@@ -46,6 +46,6 @@ public class FreshdeskApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "domain", "label", "Freshdesk Domain", "type", "text", "required", true, "placeholder", "yourdomain.freshdesk.com"),
                 Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true)
-        )).category("support");
+        )).category("crm");
     }
 }

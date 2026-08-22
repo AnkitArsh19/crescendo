@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   HiOutlineClock,
   HiOutlineCheckCircle,
@@ -11,6 +11,7 @@ import {
   HiOutlineChevronRight,
   HiOutlineFilter,
   HiOutlineLightningBolt,
+  HiOutlinePlay,
 } from 'react-icons/hi';
 import useLogbookStore from '../../store/logbookStore';
 import { useWorkflowList } from '../../hooks/useWorkflows';
@@ -97,6 +98,8 @@ export default function History() {
               key={s}
               className={`hist-filter-btn ${statusFilter === s ? 'active' : ''}`}
               onClick={() => setStatusFilter(s)}
+              title={`Filter runs by status: ${s === 'ALL' ? 'All' : statusConfig[s]?.label || s}`}
+              aria-label={`Filter by ${s}`}
             >
               {s === 'ALL' ? 'All' : statusConfig[s]?.label || s}
             </button>
@@ -136,6 +139,9 @@ export default function History() {
                   key={w.id}
                   className="hist-active-card"
                   onClick={() => navigate(`/dashboard/workflows/${w.id}`)}
+                  title={`Open workflow: ${w.name}`}
+                  role="button"
+                  tabIndex={0}
                 >
                   <span className="hist-active-name">{w.name}</span>
                   <span className="hist-active-steps">{w.stepCount} step{w.stepCount !== 1 ? 's' : ''}</span>
@@ -157,7 +163,12 @@ export default function History() {
           <div className="hist-empty-icon"><HiOutlineClock /></div>
           <h3>No runs yet</h3>
           <p>Activate a workflow and trigger it to see run history here.</p>
-          <Link to="/dashboard/workflows" className="hist-link-btn">
+          <Link
+            to="/dashboard/workflows"
+            className="hist-link-btn"
+            title="Go to workflows list"
+            aria-label="Go to Workflows"
+          >
             <HiOutlineLightningBolt /> Go to Workflows
           </Link>
         </motion.div>
@@ -187,8 +198,11 @@ export default function History() {
                   initial="hidden"
                   animate="visible"
                   onClick={() => navigate(`/dashboard/history/${run.workflowId}/${run.id}`)}
+                  title={`View execution details for run #${run.id.slice(0, 8)}`}
+                  role="button"
+                  tabIndex={0}
                 >
-                  <span className={`hist-col hist-col-status`}>
+                  <span className="hist-col hist-col-status">
                     <span className={`hist-status-badge ${sc.className}`}>
                       {sc.icon} {sc.label}
                     </span>
@@ -232,6 +246,8 @@ export default function History() {
                 className="hist-page-btn"
                 disabled={currentPage === 0}
                 onClick={() => goToPage(currentPage - 1)}
+                title="Go to previous page"
+                aria-label="Previous page"
               >
                 <HiOutlineChevronLeft /> Previous
               </button>
@@ -242,6 +258,8 @@ export default function History() {
                 className="hist-page-btn"
                 disabled={currentPage + 1 >= page.totalPages}
                 onClick={() => goToPage(currentPage + 1)}
+                title="Go to next page"
+                aria-label="Next page"
               >
                 Next <HiOutlineChevronRight />
               </button>

@@ -153,7 +153,7 @@ public class JobSearchApp implements AppDefinition {
                         )
                     )
                 ))
-                .category("productivity")
+                .category("data")
                 .helpUrl("https://serpapi.com/google-jobs-api");
     }
 }

@@ -439,6 +439,8 @@ export default function AdminPage() {
                       className="adm-action-btn demote"
                       disabled={actionLoading === u.id}
                       onClick={() => handleDemote(u.id)}
+                      title={`Demote ${u.email} to Standard user`}
+                      aria-label={`Demote ${u.email}`}
                     >
                       <HiOutlineShieldExclamation />
                       {actionLoading === u.id ? 'Demoting…' : 'Demote'}
@@ -448,6 +450,8 @@ export default function AdminPage() {
                       className="adm-action-btn promote"
                       disabled={actionLoading === u.id}
                       onClick={() => handlePromote(u.id)}
+                      title={`Promote ${u.email} to Admin`}
+                      aria-label={`Promote ${u.email}`}
                     >
                       <HiOutlineShieldCheck />
                       {actionLoading === u.id ? 'Promoting…' : 'Promote'}

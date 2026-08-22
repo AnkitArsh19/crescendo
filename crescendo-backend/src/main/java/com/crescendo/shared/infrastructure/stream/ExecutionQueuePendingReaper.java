@@ -4,6 +4,7 @@ import com.crescendo.config.RedisStreamConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Range;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
@@ -32,6 +33,14 @@ public class ExecutionQueuePendingReaper {
     @Scheduled(fixedRate = 60_000)
     public void reclaimPendingMessages() {
         try {
+            // Check if stream exists before querying pending messages
+            Boolean hasStream = redisTemplate.hasKey(RedisStreamConfig.STREAM_EXECUTION_QUEUE);
+            if (Boolean.FALSE.equals(hasStream)) {
+                logger.debug("[execution-reaper] Stream {} does not exist yet. Skipping pending reclaim.",
+                        RedisStreamConfig.STREAM_EXECUTION_QUEUE);
+                return;
+            }
+
             // Find messages pending for a long time
             PendingMessages pendingMessages = redisTemplate.opsForStream().pending(
                     RedisStreamConfig.STREAM_EXECUTION_QUEUE,
@@ -63,6 +72,9 @@ public class ExecutionQueuePendingReaper {
                     }
                 }
             }
+        } catch (RedisSystemException e) {
+            // Safe ignore if consumer group is not yet created or stream was empty during startup/tests
+            logger.debug("[execution-reaper] Redis stream pending check skipped: {}", e.getMessage());
         } catch (Exception e) {
             logger.error("[execution-reaper] Failed to reclaim pending messages: {}", e.getMessage(), e);
         }

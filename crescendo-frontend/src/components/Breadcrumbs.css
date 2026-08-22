@@ -1,14 +1,16 @@
 .breadcrumbs {
   display: flex;
   align-items: center;
-  padding: 6px 0 14px;
+  padding: 0;
+  margin: 0;
+  height: 100%;
 }
 
 .breadcrumbs__list {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
+  flex-wrap: nowrap;
+  gap: 4px;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -17,45 +19,51 @@
 .breadcrumbs__item {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .breadcrumbs__sep {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-tertiary);
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .breadcrumbs__link {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border-radius: 4px;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .breadcrumbs__link:hover {
-  color: var(--text-primary);
-  background: var(--bg-card-hover);
-  opacity: 1;
+  color: var(--text-accent);
+  background: var(--bg-card);
 }
 
 .breadcrumbs__label {
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  padding: 2px 4px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-accent);
+  padding: 4px 6px;
+}
+
+.breadcrumbs__label--root {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-accent);
+  padding: 0;
 }
 
 .breadcrumbs__label--current {
-  color: var(--text-primary);
+  color: var(--text-accent);
 }
 
 .breadcrumbs__label--id {
   font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   letter-spacing: 0;
 }

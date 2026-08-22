@@ -43,44 +43,44 @@ public class SpotifyApp implements AppDefinition {
                 ),
                 List.of(
                     Map.of("actionKey", "search", "name", "Search Spotify",
-                        "description", "Search for tracks, albums, artists, or playlists",
+                        "description", "Search for tracks, albums, artists, or playlists by keyword",
                         "configSchema", List.of(
                             Map.of("key", "query", "label", "Search Query", "type", "text", "required", true,
-                                   "helpText", "e.g. 'Bohemian Rhapsody'"),
+                                   "placeholder", "e.g. 'Bohemian Rhapsody' or 'The Weeknd'", "helpText", "Track name, artist, album, or playlist title"),
                             Map.of("key", "type", "label", "Type", "type", "dropdown", "required", false,
                                    "options", List.of(
                                        Map.of("value", "track", "label", "Track"),
                                        Map.of("value", "album", "label", "Album"),
                                        Map.of("value", "artist", "label", "Artist"),
                                        Map.of("value", "playlist", "label", "Playlist")
-                                   ), "helpText", "Content type"),
+                                   ), "helpText", "Content type to search"),
                             Map.of("key", "limit", "label", "Max Results", "type", "text", "required", false,
                                    "placeholder", "10", "helpText", "Results to return (max 50)"))),
+                    Map.of("actionKey", "save-track", "name", "Save Track",
+                        "description", "Save a track to your Liked Songs library (Requires OAuth)",
+                        "configSchema", List.of(
+                            Map.of("key", "trackId", "label", "Track URL, URI, ID, or Song Name", "type", "text", "required", true,
+                                   "placeholder", "e.g. 'https://open.spotify.com/track/...' or 'Shape of You'", "helpText", "Paste a Spotify track URL/URI/ID, or type a song name to automatically search & save"))),
                     Map.of("actionKey", "add-to-playlist", "name", "Add Track to Playlist",
-                        "description", "Add a track to a playlist",
+                        "description", "Add a track to a Spotify playlist",
                         "configSchema", List.of(
-                            Map.of("key", "playlistId", "label", "Playlist", "type", "dynamic_dropdown",
-                                   "resourceType", "playlists", "required", true, "helpText", "Target playlist"),
-                            Map.of("key", "trackUri", "label", "Track URI", "type", "text", "required", true,
-                                   "placeholder", "spotify:track:4iV5W9uYEdYUVa79Axb7Rh", "helpText", "Spotify track URI or URL"))),
+                            Map.of("key", "playlistId", "label", "Playlist URL, URI, or ID", "type", "text", "required", true,
+                                   "placeholder", "e.g. 'https://open.spotify.com/playlist/...' or ID", "helpText", "Target playlist URL, URI, or ID"),
+                            Map.of("key", "trackUri", "label", "Track URL, URI, or ID", "type", "text", "required", true,
+                                   "placeholder", "e.g. 'https://open.spotify.com/track/...' or URI", "helpText", "Spotify track URL, URI, or ID"))),
                     Map.of("actionKey", "create-playlist", "name", "Create Playlist",
-                        "description", "Create a new Spotify playlist",
+                        "description", "Create a new Spotify playlist for your account",
                         "configSchema", List.of(
-                            Map.of("key", "name", "label", "Playlist Name", "type", "text", "required", true, "helpText", "Name"),
+                            Map.of("key", "name", "label", "Playlist Name", "type", "text", "required", true, "helpText", "Name of the new playlist"),
                             Map.of("key", "description", "label", "Description", "type", "textarea", "required", false, "helpText", "Playlist description"),
                             Map.of("key", "isPublic", "label", "Public?", "type", "dropdown", "required", false,
                                    "options", List.of(Map.of("value","true","label","Yes"), Map.of("value","false","label","No")),
                                    "helpText", "Make playlist public"))),
-                    Map.of("actionKey", "save-track", "name", "Save Track",
-                        "description", "Save a track to your library (Like)",
-                        "configSchema", List.of(
-                            Map.of("key", "trackId", "label", "Track ID/URI", "type", "text", "required", true,
-                                   "placeholder", "spotify:track:4iV5W9uYEdYUVa79Axb7Rh", "helpText", "Track ID, URI, or URL"))),
                     Map.of("actionKey", "get-playlist", "name", "Get Playlist",
                         "description", "Get details of a Spotify playlist",
                         "configSchema", List.of(
-                            Map.of("key", "playlistId", "label", "Playlist URL or ID", "type", "text", "required", true,
-                                   "placeholder", "37i9dQZF1DXcBWIGoYBM5M", "helpText", "Playlist URL or ID")))
+                            Map.of("key", "playlistId", "label", "Playlist URL, URI, or ID", "type", "text", "required", true,
+                                   "placeholder", "e.g. 'https://open.spotify.com/playlist/...' or ID", "helpText", "Playlist URL, URI, or ID")))
                 ))
                 .altAuthType(AuthType.APIKEY)
                 .credentialSchema(List.of(

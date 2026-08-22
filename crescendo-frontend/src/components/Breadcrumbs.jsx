@@ -58,8 +58,14 @@ export default function Breadcrumbs({ className = '' }) {
     isId: isId(seg),
   }));
 
-  // Only show breadcrumbs when there are 2+ segments (i.e. not just "/dashboard")
-  if (crumbs.length < 2) return null;
+  // If only 1 segment (e.g. "/dashboard"), render "Dashboard"
+  if (crumbs.length < 2) {
+    return (
+      <div className={`breadcrumbs ${className}`} aria-label="Breadcrumb">
+        <span className="breadcrumbs__label breadcrumbs__label--root">Dashboard</span>
+      </div>
+    );
+  }
 
   return (
     <nav className={`breadcrumbs ${className}`} aria-label="Breadcrumb">

@@ -37,7 +37,7 @@ public class LogApp implements AppDefinition {
                 ))
         )
         .credentialSchema(List.of())
-        .category("internal")
+        .category("core")
         .helpUrl("")
         .internal(true);
     }

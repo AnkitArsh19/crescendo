@@ -51,6 +51,6 @@ public class CompressionApp implements AppDefinition {
                                 )
                         )
                 )
-        ).credentialSchema(List.of()).category("files-and-storage");
+        ).credentialSchema(List.of()).category("storage");
     }
 }

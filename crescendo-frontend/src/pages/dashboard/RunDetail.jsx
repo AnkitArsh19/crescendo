@@ -81,7 +81,12 @@ export default function RunDetail() {
   return (
     <div className="rd-page">
       {/* Back button */}
-      <button className="rd-back-btn" onClick={() => navigate('/dashboard/history')}>
+      <button
+        className="rd-back-btn"
+        onClick={() => navigate('/dashboard/history')}
+        title="Return to Run History"
+        aria-label="Return to Run History"
+      >
         <HiOutlineArrowLeft /> Run History
       </button>
 
@@ -135,7 +140,8 @@ export default function RunDetail() {
                     downloadAnchorNode.click();
                     downloadAnchorNode.remove();
                   }}
-                  title="Export Run Log"
+                  title="Export execution run log as JSON"
+                  aria-label="Export Run Log"
                 >
                   <HiOutlineDownload /> Export Log
                 </button>
@@ -144,6 +150,8 @@ export default function RunDetail() {
                     className="rd-cancel-btn"
                     onClick={handleCancel}
                     disabled={cancelling}
+                    title="Cancel active execution"
+                    aria-label="Cancel Run"
                   >
                     <HiOutlineBan />
                     {cancelling ? 'Cancelling…' : 'Cancel Run'}
@@ -217,6 +225,9 @@ export default function RunDetail() {
                       <div
                         className="rd-step-header"
                         onClick={() => setExpandedStep(isExpanded ? null : step.id)}
+                        title={isExpanded ? 'Collapse step details' : 'Expand step details'}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="rd-step-left">
                           <span className="rd-step-index">{i + 1}</span>
@@ -265,6 +276,8 @@ export default function RunDetail() {
                                   <p className="rd-section-label">Output</p>
                                   <button
                                     className="rd-download-btn"
+                                    title="Download output payload as JSON"
+                                    aria-label="Download output JSON"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const json = JSON.stringify(step.outputData, null, 2);

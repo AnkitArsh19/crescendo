@@ -16,12 +16,14 @@ export default function Settings() {
 
     return (
         <div className="settings">
-            <nav className="settings-nav">
+            <nav className="settings-nav" aria-label="Settings navigation">
                 {tabs.map((tab) => (
                     <NavLink
                         key={tab.to}
                         to={tab.to}
                         end={tab.end}
+                        title={tab.label}
+                        aria-label={tab.label}
                         className={({ isActive }) =>
                             `settings-nav-item ${isActive ? 'active' : ''}`
                         }
@@ -44,4 +46,3 @@ export default function Settings() {
         </div>
     );
 }
-
