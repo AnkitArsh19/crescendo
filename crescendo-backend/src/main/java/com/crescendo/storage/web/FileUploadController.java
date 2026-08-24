@@ -31,7 +31,7 @@ import java.util.UUID;
 import java.util.HexFormat;
 
 @RestController
-@RequestMapping("/api/v1/files")
+@RequestMapping({"/files", "/api/v1/files"})
 public class FileUploadController {
 
     private final FileStorageService fileStorageService;
@@ -65,7 +65,17 @@ public class FileUploadController {
             @RequestParam(value = "maxSizeMB", required = false) Integer maxSizeMB,
             Authentication auth) throws IOException, NoSuchAlgorithmException {
 
-        UUID userId = UUID.fromString(auth.getName());
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required for file uploads");
+        }
+        UUID userId;
+        if (auth.getPrincipal() instanceof com.crescendo.security.AppUserDetails details) {
+            userId = details.getId();
+        } else {
+            userId = userCommandRepository.findByEmailIgnoreCase(auth.getName())
+                    .map(User_command::getId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+        }
 
         // 1. Rate Limiting (30 requests per minute)
         if (rateLimitingService.isRateLimited("upload", userId.toString(), 30, Duration.ofMinutes(1))) {
@@ -74,8 +84,9 @@ public class FileUploadController {
 
         // 2. Resolve tightest size limits
         PlatformLimits limits = accessControlService.limitsFor(accessControlService.currentTier());
-        User_query user = userQueryRepository.findById(userId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        long availableQuota = limits.maxStorageBytes() - user.getStorageUsedBytes();
+        User_query user = userQueryRepository.findById(userId).orElse(null);
+        long storageUsed = user != null ? user.getStorageUsedBytes() : 0L;
+        long availableQuota = limits.maxStorageBytes() - storageUsed;
 
         long maxAllowedSize = Math.min(50L * 1024 * 1024, availableQuota);
         if (maxSizeMB != null && consumptionModel == ConsumptionModel.RETAINED) {

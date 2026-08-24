@@ -43,8 +43,16 @@ export default function Login() {
     const [globalError, setGlobalError] = useState('');
     const [isPasskeyLogin, setIsPasskeyLogin] = useState(false);
 
+    const defaultEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('crescendo_remembered_email') || '' : '';
+    const defaultRemember = typeof localStorage !== 'undefined' ? Boolean(localStorage.getItem('crescendo_remembered_email')) : false;
+
     const { register: registerLogin, handleSubmit: handleLoginSubmit, watch, formState: { errors: loginErrors, isSubmitting: isLoggingIn } } = useForm({
         resolver: zodResolver(loginSchema),
+        defaultValues: {
+            email: defaultEmail,
+            password: '',
+            rememberMe: defaultRemember,
+        },
     });
 
     const { register: registerMfa, handleSubmit: handleMfaSubmit, formState: { errors: mfaErrors, isSubmitting: isVerifyingMfa } } = useForm({
@@ -75,6 +83,11 @@ export default function Login() {
 
     const onLogin = async (data) => {
         setGlobalError('');
+        if (data.rememberMe) {
+            localStorage.setItem('crescendo_remembered_email', data.email);
+        } else {
+            localStorage.removeItem('crescendo_remembered_email');
+        }
         try {
             const res = await loginFn(data.email, data.password, data.rememberMe);
             if (res.mfaRequired) {

@@ -50,6 +50,17 @@ public class WorkflowDto {
             String nextCursor
     ) {}
 
+    public static UUID parseUuidSafe(String id) {
+        if (id == null || id.isBlank() || "ADMIN_KEY".equalsIgnoreCase(id) || "null".equalsIgnoreCase(id)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     //STEP REQUESTS
 
     public record CreateStepRequest(
@@ -57,17 +68,25 @@ public class WorkflowDto {
             @NotNull StepType type,
             @NotBlank String actionKey,
             @NotBlank String appKey,
-            UUID connectionId,
+            String connectionId,
             Map<String, Object> configuration
-    ) {}
+    ) {
+        public UUID parsedConnectionId() {
+            return parseUuidSafe(connectionId);
+        }
+    }
 
     public record UpdateStepRequest(
             @Size(min = 1, max = 255) String name,
             String actionKey,
             String appKey,
-            UUID connectionId,
+            String connectionId,
             Map<String, Object> configuration
-    ) {}
+    ) {
+        public UUID parsedConnectionId() {
+            return parseUuidSafe(connectionId);
+        }
+    }
 
     public record ReorderStepRequest(
             @NotNull BigDecimal newOrder
@@ -202,9 +221,13 @@ public class WorkflowDto {
             @NotBlank String name,
             @NotBlank String actionKey,
             @NotBlank String appKey,
-            UUID connectionId,
+            String connectionId,
             Map<String, Object> configuration
-    ) {}
+    ) {
+        public UUID parsedConnectionId() {
+            return parseUuidSafe(connectionId);
+        }
+    }
 
     public record WorkflowGraphResponse(
             String id,

@@ -38,33 +38,51 @@ public class YouTubeApp implements AppDefinition {
                                 "configSchema", List.of(
                                         Map.of("key", "query", "label", "Query", "type", "text", "required", true),
                                         Map.of("key", "maxResults", "label", "Max Results", "type", "text", "required", false, "placeholder", "10"),
-                                        Map.of("key", "channelId", "label", "Channel ID", "type", "text", "required", false),
-                                        Map.of("key", "forDeveloper", "label", "For Developer", "type", "select", "required", false,
-                                                "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
-                                        Map.of("key", "publishedAfter", "label", "Published After", "type", "text", "required", false, "placeholder", "RFC 3339 format"),
-                                        Map.of("key", "publishedBefore", "label", "Published Before", "type", "text", "required", false, "placeholder", "RFC 3339 format"),
+                                        Map.of("key", "type", "label", "Result Type", "type", "select", "required", false,
+                                                "options", List.of(
+                                                        Map.of("value", "video", "label", "Videos Only"),
+                                                        Map.of("value", "channel", "label", "Channels Only"),
+                                                        Map.of("value", "playlist", "label", "Playlists Only")
+                                                )),
+                                        Map.of("key", "videoDuration", "label", "Video Duration", "type", "select", "required", false,
+                                                "options", List.of(
+                                                        Map.of("value", "any", "label", "Any Duration"),
+                                                        Map.of("value", "short", "label", "Short / Shorts (< 4 minutes)"),
+                                                        Map.of("value", "medium", "label", "Medium (4 - 20 minutes)"),
+                                                        Map.of("value", "long", "label", "Long (> 20 minutes)")
+                                                )),
+                                        Map.of("key", "eventType", "label", "Event Type", "type", "select", "required", false,
+                                                "options", List.of(
+                                                        Map.of("value", "any", "label", "Any"),
+                                                        Map.of("value", "live", "label", "Live Broadcasts Now"),
+                                                        Map.of("value", "upcoming", "label", "Upcoming Live Streams"),
+                                                        Map.of("value", "completed", "label", "Completed Broadcasts")
+                                                )),
+                                        Map.of("key", "channelId", "label", "Channel", "type", "dynamic_dropdown", "resourceType", "channels", "required", false),
+                                        Map.of("key", "publishedAfter", "label", "Published After", "type", "datetime", "required", false),
+                                        Map.of("key", "publishedBefore", "label", "Published Before", "type", "datetime", "required", false),
                                         Map.of("key", "regionCode", "label", "Region Code", "type", "text", "required", false, "placeholder", "US"),
                                         Map.of("key", "relatedToVideoId", "label", "Related To Video ID", "type", "text", "required", false),
-                                        Map.of("key", "videoCategoryId", "label", "Video Category ID", "type", "text", "required", false),
+                                        Map.of("key", "videoCategoryId", "label", "Category", "type", "dynamic_dropdown", "resourceType", "videoCategories", "required", false),
                                         Map.of("key", "videoSyndicated", "label", "Video Syndicated", "type", "select", "required", false,
                                                 "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
                                         Map.of("key", "videoType", "label", "Video Type", "type", "select", "required", false,
                                                 "options", List.of(Map.of("value", "any", "label", "Any"), Map.of("value", "episode", "label", "Episode"), Map.of("value", "movie", "label", "Movie"))),
                                         Map.of("key", "order", "label", "Order", "type", "select", "required", false,
-                                                "options", List.of(Map.of("value", "date", "label", "Date"), Map.of("value", "relevance", "label", "Relevance"), Map.of("value", "rating", "label", "Rating"), Map.of("value", "title", "label", "Title"), Map.of("value", "viewCount", "label", "View Count"))),
+                                                "options", List.of(Map.of("value", "relevance", "label", "Relevance"), Map.of("value", "date", "label", "Date (Newest First)"), Map.of("value", "rating", "label", "Rating"), Map.of("value", "title", "label", "Title"), Map.of("value", "viewCount", "label", "View Count"))),
                                         Map.of("key", "safeSearch", "label", "Safe Search", "type", "select", "required", false,
                                                 "options", List.of(Map.of("value", "moderate", "label", "Moderate"), Map.of("value", "none", "label", "None"), Map.of("value", "strict", "label", "Strict"))))),
                         Map.of("actionKey", "getAllVideos", "name", "List My Videos", "description", "List videos from the authenticated channel uploads playlist",
                                 "configSchema", List.of(Map.of("key", "maxResults", "label", "Max Results", "type", "text", "required", false, "placeholder", "10"))),
-                        Map.of("actionKey", "uploadVideo", "name", "Upload Video", "description", "Upload a Base64 encoded video",
+                        Map.of("actionKey", "uploadVideo", "name", "Upload Video", "description", "Upload a video file or stream directly from Google Drive / Cloud URL",
                                 "configSchema", List.of(
                                         Map.of("key", "title", "label", "Title", "type", "text", "required", true),
                                         Map.of("key", "description", "label", "Description", "type", "textarea", "required", false),
                                         Map.of("key", "privacyStatus", "label", "Privacy", "type", "select", "required", false,
                                                 "options", List.of(Map.of("value", "private", "label", "Private"), Map.of("value", "unlisted", "label", "Unlisted"), Map.of("value", "public", "label", "Public"))),
+                                        Map.of("key", "categoryId", "label", "Category", "type", "dynamic_dropdown", "resourceType", "videoCategories", "required", false),
+                                        Map.of("key", "videoSource", "label", "Video (Upload or Link)", "type", "file_or_url", "accept", "video/*", "maxSizeMB", 100, "placeholder", "Upload video file (up to 100MB) or paste Google Drive / Video URL", "required", true),
                                         Map.of("key", "tags", "label", "Tags CSV", "type", "text", "required", false),
-                                        Map.of("key", "categoryId", "label", "Category ID", "type", "text", "required", false, "placeholder", "22"),
-                                        Map.of("key", "videoBase64", "label", "Video Base64", "type", "textarea", "required", true),
                                         Map.of("key", "mimeType", "label", "MIME Type", "type", "text", "required", false, "placeholder", "video/mp4"))),
                         Map.of("actionKey", "updateVideo", "name", "Update Video Metadata", "description", "Update title, description, tags, category, or privacy",
                                 "configSchema", List.of(
@@ -74,7 +92,7 @@ public class YouTubeApp implements AppDefinition {
                                         Map.of("key", "privacyStatus", "label", "Privacy", "type", "select", "required", false,
                                                 "options", List.of(Map.of("value", "private", "label", "Private"), Map.of("value", "unlisted", "label", "Unlisted"), Map.of("value", "public", "label", "Public"))),
                                         Map.of("key", "tags", "label", "Tags CSV", "type", "text", "required", false),
-                                        Map.of("key", "categoryId", "label", "Category ID", "type", "text", "required", false, "placeholder", "22")))
+                                        Map.of("key", "categoryId", "label", "Category", "type", "dynamic_dropdown", "resourceType", "videoCategories", "required", false)))
                 )
         ).credentialSchema(List.of(
                         Map.of("key", "accessToken", "label", "OAuth Access Token", "type", "password", "required", false),

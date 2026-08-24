@@ -40,8 +40,14 @@ public class GoogleDriveFileHandlers {
     private static final String BASE = "https://www.googleapis.com/drive/v3/files";
 
     private final RestClient restClient;
+    private final com.crescendo.storage.MediaStreamResolver mediaStreamResolver;
 
     public GoogleDriveFileHandlers() {
+        this(new com.crescendo.storage.MediaStreamResolver());
+    }
+
+    public GoogleDriveFileHandlers(@org.springframework.beans.factory.annotation.Autowired com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
+        this.mediaStreamResolver = mediaStreamResolver;
         this.restClient = RestClient.builder()
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
@@ -299,15 +305,61 @@ public class GoogleDriveFileHandlers {
         String accessToken = resolveToken(context);
         if (accessToken == null) return missingToken();
 
-        String name = require(config, "name");
-        if (name == null) return ActionResult.failure("'name' is required");
-        String mimeType = require(config, "mimeType");
-        if (mimeType == null) return ActionResult.failure("'mimeType' is required");
-        String folderId = opt(config, "folderId", null);
+        String name = opt(config, "fileName", null);
+        if (name == null) name = opt(config, "name", null);
 
-        logger.info("[googledrive] upload: name='{}', mimeType='{}'", name, mimeType);
+        String mimeType = opt(config, "mimeType", null);
+        String folderId = opt(config, "folderId", null);
+        Object rawFile = config.get("file");
+        if (rawFile == null) rawFile = config.get("content");
+        if (rawFile == null) rawFile = config.get("fileUrl");
 
         try {
+            if (rawFile != null && mediaStreamResolver != null) {
+                try (com.crescendo.storage.MediaStreamResolver.MediaSource media = mediaStreamResolver.resolve(rawFile, mimeType != null ? mimeType : "application/octet-stream")) {
+                    String resolvedName = (name != null && !name.isBlank()) ? name : (media.filename() != null ? media.filename() : "uploaded_file");
+                    String resolvedMime = (mimeType != null && !mimeType.isBlank()) ? mimeType : (media.contentType() != null ? media.contentType() : "application/octet-stream");
+
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    media.stream().transferTo(baos);
+                    byte[] fileBytes = baos.toByteArray();
+
+                    String boundary = "crescendo-gdrive-" + java.util.UUID.randomUUID();
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("name", resolvedName);
+                    metadata.put("mimeType", resolvedMime);
+                    if (folderId != null && !folderId.isBlank()) metadata.put("parents", List.of(folderId));
+
+                    tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+                    String metaJson = mapper.writeValueAsString(metadata);
+
+                    byte[] head = ("--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + metaJson + "\r\n--" + boundary + "\r\nContent-Type: " + resolvedMime + "\r\n\r\n").getBytes(StandardCharsets.UTF_8);
+                    byte[] tail = ("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8);
+
+                    byte[] multipartBody = new byte[head.length + fileBytes.length + tail.length];
+                    System.arraycopy(head, 0, multipartBody, 0, head.length);
+                    System.arraycopy(fileBytes, 0, multipartBody, head.length, fileBytes.length);
+                    System.arraycopy(tail, 0, multipartBody, head.length + fileBytes.length, tail.length);
+
+                    java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"))
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                            .header("Content-Type", "multipart/related; boundary=" + boundary)
+                            .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(multipartBody))
+                            .build();
+
+                    java.net.http.HttpResponse<String> resp = java.net.http.HttpClient.newHttpClient().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+                    if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
+                        Map<String, Object> result = mapper.readValue(resp.body(), Map.class);
+                        return ActionResult.success(result);
+                    }
+                    return ActionResult.failure("Google Drive upload failed (" + resp.statusCode() + "): " + resp.body());
+                }
+            }
+
+            if (name == null) return ActionResult.failure("'name' or 'fileName' is required");
+            if (mimeType == null) mimeType = "application/octet-stream";
+
             Map<String, Object> body = new HashMap<>();
             body.put("name", name);
             body.put("mimeType", mimeType);

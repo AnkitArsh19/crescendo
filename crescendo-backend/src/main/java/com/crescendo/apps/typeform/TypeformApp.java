@@ -29,7 +29,7 @@ public class TypeformApp implements AppDefinition {
                                 "name", "Form Submitted",
                                 "description", "Triggers when a specific form is submitted via Webhook",
                                 "configSchema", List.of(
-                                        Map.of("key", "formId", "label", "Form ID", "type", "text", "required", true)
+                                        Map.of("key", "formId", "label", "Form", "type", "dynamic_dropdown", "resourceType", "forms", "required", true)
                                 )
                         )
                 ),
@@ -45,7 +45,7 @@ public class TypeformApp implements AppDefinition {
                                 "name", "Get Responses",
                                 "description", "Retrieve responses for a specific form",
                                 "configSchema", List.of(
-                                        Map.of("key", "formId", "label", "Form ID", "type", "text", "required", true)
+                                        Map.of("key", "formId", "label", "Form", "type", "dynamic_dropdown", "resourceType", "forms", "required", true)
                                 )
                         )
                 )

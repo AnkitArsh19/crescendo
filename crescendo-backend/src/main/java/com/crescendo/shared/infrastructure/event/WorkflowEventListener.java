@@ -50,7 +50,7 @@ public class WorkflowEventListener {
      */
     private static final Set<String> POLLING_APP_KEYS = Set.of(
             "gmail", "microsoft-outlook", "schedule", "error-handling", "native-form",
-            "github", "gitlab", "mqtt", "kafka", "rabbitmq"
+            "mqtt", "kafka", "rabbitmq"
     );
 
     private final Steps_commandRepository stepsRepo;

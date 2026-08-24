@@ -31,7 +31,22 @@ public class YouTubeSearchHandlers {
             builder.queryParam("maxResults", Math.max(1, YouTubeSupport.parseIntOpt(config, "maxResults", 10)));
 
             String type = YouTubeSupport.opt(config, "type", null); // video, channel, playlist
-            if (type != null) builder.queryParam("type", type);
+            String videoDuration = YouTubeSupport.opt(config, "videoDuration", null); // short, medium, long, any
+            String eventType = YouTubeSupport.opt(config, "eventType", null); // live, upcoming, completed
+
+            if (videoDuration != null && !videoDuration.equalsIgnoreCase("any")) {
+                builder.queryParam("videoDuration", videoDuration);
+                if (type == null) type = "video";
+            }
+
+            if (eventType != null && !eventType.equalsIgnoreCase("any")) {
+                builder.queryParam("eventType", eventType);
+                if (type == null) type = "video";
+            }
+
+            if (type != null && !type.equalsIgnoreCase("any")) {
+                builder.queryParam("type", type);
+            }
 
             String apiKey = YouTubeSupport.resolveApiKey(context);
             if (apiKey != null) builder.queryParam("key", apiKey);

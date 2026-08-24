@@ -47,11 +47,11 @@ public class BrevoApp implements AppDefinition {
 
                         // EMAIL
                         Map.of("actionKey", "brevo:email:send", "name", "Send Email", "description", "Send a transactional email", "configSchema", List.of(Map.of("key", "senderEmail", "label", "Sender Email", "type", "text", "required", true), Map.of("key", "senderName", "label", "Sender Name", "type", "text"), Map.of("key", "recipientEmail", "label", "Recipient Email", "type", "text", "required", true), Map.of("key", "subject", "label", "Subject", "type", "text", "required", true), Map.of("key", "htmlContent", "label", "HTML Content", "type", "text", "required", true))),
-                        Map.of("actionKey", "brevo:email:sendTemplate", "name", "Send Template Email", "description", "Send a transactional email via template", "configSchema", List.of(Map.of("key", "templateId", "label", "Template ID", "type", "number", "required", true), Map.of("key", "recipientEmail", "label", "Recipient Email", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:email:sendTemplate", "name", "Send Template Email", "description", "Send a transactional email via template", "configSchema", List.of(Map.of("key", "templateId", "label", "Template", "type", "dynamic_dropdown", "resourceType", "templates", "required", true), Map.of("key", "recipientEmail", "label", "Recipient Email", "type", "text", "required", true))),
 
                         // SENDER
                         Map.of("actionKey", "brevo:sender:create", "name", "Create Sender", "description", "Create a sender", "configSchema", List.of(Map.of("key", "name", "label", "Name", "type", "text", "required", true), Map.of("key", "email", "label", "Email", "type", "text", "required", true))),
-                        Map.of("actionKey", "brevo:sender:delete", "name", "Delete Sender", "description", "Delete a sender", "configSchema", List.of(Map.of("key", "senderId", "label", "Sender ID", "type", "text", "required", true))),
+                        Map.of("actionKey", "brevo:sender:delete", "name", "Delete Sender", "description", "Delete a sender", "configSchema", List.of(Map.of("key", "senderId", "label", "Sender", "type", "dynamic_dropdown", "resourceType", "senders", "required", true))),
                         Map.of("actionKey", "brevo:sender:getAll", "name", "Get All Senders", "description", "Get all senders", "configSchema", List.of())
                 )
         ).credentialSchema(List.of(

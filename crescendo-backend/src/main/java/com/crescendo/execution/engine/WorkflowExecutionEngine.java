@@ -73,6 +73,15 @@ public class WorkflowExecutionEngine {
     private final ObjectMapper objectMapper;
     private final WorkflowExpressionResolver expressionResolver;
 
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
+    private String geminiApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${sarvam.api.key:}")
+    private String sarvamApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${telegram.bot.token:}")
+    private String telegramBotToken;
+
     public WorkflowExecutionEngine(Steps_commandRepository stepsRepo,
                                     WorkflowEdge_commandRepository edgeRepo,
                                     Connections_commandRepository connectionsRepo,
@@ -591,11 +600,18 @@ public class WorkflowExecutionEngine {
                     Map<String, Object> opened = credentialsCryptoService.open(sealed);
                     pk.incrementUsageCount();
                     platformKeyRepo.save(pk);
-                    logger.debug("[engine] Using PLATFORM credentials for app '{}' (source=admin)", appKey);
+                    logger.debug("[engine] Using PLATFORM credentials from DB for app '{}' (source=admin)", appKey);
                     return opened;
                 }
             } catch (Exception e) {
                 logger.warn("[engine] Failed to load platform key for app '{}': {}", appKey, e.getMessage());
+            }
+
+            // Fallback to application.properties keys
+            Map<String, Object> envCreds = resolveEnvPlatformCredentials(appKey);
+            if (envCreds != null && !envCreds.isEmpty()) {
+                logger.debug("[engine] Using PLATFORM credentials from application.properties for app '{}' (source=admin)", appKey);
+                return envCreds;
             }
         } else {
             logger.debug("[engine] Skipping PLATFORM credentials for app '{}' because user {} is not an ADMIN", appKey, userId);
@@ -607,5 +623,18 @@ public class WorkflowExecutionEngine {
                 "No credential found for app '" + appKey + "'. " +
                 "Connect your own account under Connections, or ask your admin to enable " +
                 "the platform key for this app.");
+    }
+
+    private Map<String, Object> resolveEnvPlatformCredentials(String appKey) {
+        if ("gemini".equalsIgnoreCase(appKey) && geminiApiKey != null && !geminiApiKey.isBlank()) {
+            return Map.of("apiKey", geminiApiKey);
+        }
+        if ("sarvam".equalsIgnoreCase(appKey) && sarvamApiKey != null && !sarvamApiKey.isBlank()) {
+            return Map.of("apiKey", sarvamApiKey);
+        }
+        if ("telegram".equalsIgnoreCase(appKey) && telegramBotToken != null && !telegramBotToken.isBlank()) {
+            return Map.of("apiKey", telegramBotToken, "botToken", telegramBotToken);
+        }
+        return Map.of();
     }
 }

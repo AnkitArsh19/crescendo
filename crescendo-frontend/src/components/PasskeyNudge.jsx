@@ -12,33 +12,57 @@ export default function PasskeyNudge() {
     const [isVisible, setIsVisible] = useState(false);
 
     // Determine if we should show the nudge
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
-        if (!user || isGuest) return;
+        let isMounted = true;
 
-        // Condition 1: Must be immediately after login
-        const justLoggedIn = location.state?.justLoggedIn;
-        if (!justLoggedIn) return;
+        async function evaluateNudge() {
+            if (!user || isGuest) return;
 
-        // Condition 2: No passkeys registered
-        if (user.passkeyCount && user.passkeyCount > 0) return;
+            // Condition 1: Must be immediately after login
+            const justLoggedIn = location.state?.justLoggedIn;
+            if (!justLoggedIn) return;
 
-        // Condition 3: Not opted out permanently
-        if (user.passkeyNudgeOptedOut) return;
+            // Condition 2: No passkeys registered
+            let count = user.passkeyCount;
+            if (count === undefined) {
+                try {
+                    const { data: passkeys } = await api.get('/auth/webauthn/credentials');
+                    count = passkeys?.length || 0;
+                    if (isMounted) {
+                        useAuthStore.setState((state) => ({
+                            user: state.user ? { ...state.user, passkeyCount: count } : state.user,
+                        }));
+                    }
+                } catch {
+                    return; // Avoid falsely triggering nudge on error
+                }
+            }
 
-        // Condition 4: Max 2 dismissals
-        if (user.passkeyNudgeDismissCount >= 2) return;
+            if (!isMounted) return;
+            if (count > 0) return;
 
-        // Condition 5: 14-day cooldown
-        if (user.passkeyNudgeLastDismissedAt) {
-            const lastDismissed = new Date(user.passkeyNudgeLastDismissedAt);
-            const fourteenDaysAgo = new Date();
-            fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-            if (lastDismissed > fourteenDaysAgo) return;
+            // Condition 3: Not opted out permanently
+            if (user.passkeyNudgeOptedOut) return;
+
+            // Condition 4: Max 2 dismissals
+            if (user.passkeyNudgeDismissCount >= 2) return;
+
+            // Condition 5: 14-day cooldown
+            if (user.passkeyNudgeLastDismissedAt) {
+                const lastDismissed = new Date(user.passkeyNudgeLastDismissedAt);
+                const fourteenDaysAgo = new Date();
+                fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+                if (lastDismissed > fourteenDaysAgo) return;
+            }
+
+            setIsVisible(true);
         }
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setIsVisible(true);
+        evaluateNudge();
+
+        return () => {
+            isMounted = false;
+        };
     }, [user, isGuest, location]);
 
     const handleDismiss = async (permanent) => {

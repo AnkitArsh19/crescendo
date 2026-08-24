@@ -12,13 +12,19 @@ public class TelegramSupport {
 
     public static String resolveToken(ActionContext context) {
         Map<String, Object> creds = context.credentials();
-        if (creds == null) return null;
-        Object token = creds.get("apiKey");
-        return token != null && !token.toString().isBlank() ? token.toString() : null;
+        if (creds != null) {
+            Object token = creds.get("apiKey");
+            if (token == null) token = creds.get("botToken");
+            if (token == null) token = creds.get("token");
+            if (token != null && !token.toString().isBlank() && !"null".equalsIgnoreCase(token.toString())) {
+                return token.toString();
+            }
+        }
+        return null;
     }
 
     public static ActionResult missingToken() {
-        return ActionResult.failure("Telegram requires 'apiKey' (bot token) in connection credentials");
+        return ActionResult.failure("Telegram bot token is required. Connect a Telegram account or set telegram.bot.token in application.properties.");
     }
 
     public static String require(Map<String, Object> config, String key) {

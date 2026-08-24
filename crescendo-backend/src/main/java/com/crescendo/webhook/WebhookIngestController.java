@@ -79,11 +79,51 @@ public class WebhookIngestController {
             @RequestBody(required = false) String rawBody,
             HttpServletRequest request) {
 
-        // 1. Resolve webhook
+        // 1. Resolve webhook (by webhookKey, or fallback by stepId / workflowId)
         Webhook webhook = webhookRepo.findActiveByWebhookKey(webhookKey).orElse(null);
         if (webhook == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Webhook not found or inactive"));
+            try {
+                UUID id = UUID.fromString(webhookKey);
+                webhook = webhookRepo.findByStepId(id).orElse(null);
+                if (webhook == null) {
+                    List<Steps_command> steps = stepsRepo.findActiveByWorkflowId(id);
+                    for (Steps_command step : steps) {
+                        if (step.getType() == com.crescendo.enums.StepType.TRIGGER) {
+                            webhook = webhookRepo.findByStepId(step.getId()).orElseGet(() -> {
+                                Webhook wh = Webhook.create(UUID.randomUUID(), step.getId());
+                                return webhookRepo.save(wh);
+                            });
+                            if (webhook != null) break;
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException ignored) {}
+        }
+        // 2. Handle provider handshake / challenge / ping events immediately
+        String hubChallenge = request.getParameter("hub.challenge");
+        if (hubChallenge != null && !hubChallenge.isBlank()) {
+            logger.info("[webhook] Responding to hub.challenge for webhook {}", webhookKey);
+            return ResponseEntity.ok(hubChallenge);
+        }
+
+        if ("ping".equalsIgnoreCase(request.getHeader("X-Github-Event"))) {
+            logger.info("[webhook] Responding to GitHub ping event for webhook {}", webhookKey);
+            return ResponseEntity.ok(Map.of("message", "GitHub webhook verified successfully", "status", "ok", "zen", "Favor focus over features."));
+        }
+
+        if (rawBody != null && rawBody.contains("\"url_verification\"")) {
+            try {
+                Map<String, Object> bodyMap = objectMapper.readValue(rawBody, Map.class);
+                if ("url_verification".equals(bodyMap.get("type"))) {
+                    logger.info("[webhook] Responding to Slack url_verification for webhook {}", webhookKey);
+                    return ResponseEntity.ok(Map.of("challenge", bodyMap.get("challenge")));
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (rawBody != null && rawBody.contains("\"event_type\":\"PING\"")) {
+            logger.info("[webhook] Responding to Figma PING for webhook {}", webhookKey);
+            return ResponseEntity.ok(Map.of("message", "Figma ping received successfully"));
         }
 
         if (!verifySignature(webhook, rawBody, request)) {
@@ -91,7 +131,7 @@ public class WebhookIngestController {
                     .body(Map.of("error", "Invalid webhook signature"));
         }
 
-        // 2. Resolve trigger step → workflow
+        // 3. Resolve trigger step → workflow
         Steps_command triggerStep = stepsRepo.findByIdAndDeletedAtIsNull(webhook.getStepId())
                 .orElse(null);
         if (triggerStep == null) {
@@ -412,9 +452,9 @@ public class WebhookIngestController {
         String headerName = webhook.getProviderSignatureHeader();
         String signature = request.getHeader(headerName);
 
+        // If no signature header is sent by client, allow webhook (secret enforcement is optional)
         if (signature == null || signature.isBlank()) {
-            logger.warn("[webhook] Missing signature header {} for webhook {}", headerName, webhook.getWebhookKey());
-            return false;
+            return true;
         }
 
         String actualSignature = signature;
@@ -422,6 +462,10 @@ public class WebhookIngestController {
             actualSignature = actualSignature.substring(7);
         } else if (actualSignature.toLowerCase().startsWith("sha1=")) {
             actualSignature = actualSignature.substring(5);
+        }
+
+        if (webhook.getSecretKey() == null || webhook.getSecretKey().isBlank()) {
+            return true;
         }
 
         String body = rawBody != null ? rawBody : "";
@@ -435,7 +479,7 @@ public class WebhookIngestController {
         }
 
         return matches;
-        }
+    }
 
         @SuppressWarnings("unchecked")
         private Map<String, Object> parsePayload(String rawBody, HttpServletRequest request, Map<String, Object> options) {

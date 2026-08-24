@@ -259,14 +259,15 @@ public class Steps_commandService {
         }
 
         UUID userId = workflow.getUser() != null ? workflow.getUser().getId() : null;
-        stepValidator.validateStepDefinition(userId, req.type(), req.appKey(), req.actionKey(), req.connectionId(), req.configuration());
+        UUID connectionUuid = req.parsedConnectionId();
+        stepValidator.validateStepDefinition(userId, req.type(), req.appKey(), req.actionKey(), connectionUuid, req.configuration());
 
         StepOrder order = calculateNextOrder(workflowId);
 
         UUID stepId = UUID.randomUUID();
         Steps_command step = new Steps_command(
                 stepId, workflow, req.name(), req.type(), order.value(),
-                req.actionKey(), req.appKey(), req.connectionId(), req.configuration());
+                req.actionKey(), req.appKey(), connectionUuid, req.configuration());
         stepRepo.save(step);
 
         projectStepToQuery(step, workflowId);
@@ -279,16 +280,17 @@ public class Steps_commandService {
 
     private void applyStepUpdate(Steps_command step, WorkflowDto.UpdateStepRequest req) {
         UUID userId = step.getWorkflow().getUser() != null ? step.getWorkflow().getUser().getId() : null;
+        UUID connectionUuid = req.connectionId() != null ? req.parsedConnectionId() : step.getConnectionId();
         stepValidator.validateStepDefinition(userId, step.getType(), 
                 req.appKey() != null ? req.appKey() : step.getAppKey(), 
                 req.actionKey() != null ? req.actionKey() : step.getActionKey(), 
-                req.connectionId() != null ? req.connectionId() : step.getConnectionId(), 
+                connectionUuid, 
                 req.configuration() != null ? req.configuration() : step.getConfiguration());
 
         if (req.name() != null) step.setName(req.name());
         if (req.actionKey() != null) step.setActionKey(req.actionKey());
         if (req.appKey() != null) step.setAppKey(req.appKey());
-        if (req.connectionId() != null) step.setConnectionId(req.connectionId());
+        if (req.connectionId() != null) step.setConnectionId(connectionUuid);
         if (req.configuration() != null) step.setConfiguration(req.configuration());
         eventPublisher.publish(new StepUpdatedEvent(step.getId(), step.getWorkflow().getId()));
     }
@@ -299,7 +301,7 @@ public class Steps_commandService {
             if (req.name() != null) queryStep.setName(req.name());
             if (req.appKey() != null) queryStep.setAppKey(req.appKey());
             if (req.actionKey() != null) queryStep.setActionKey(req.actionKey());
-            if (req.connectionId() != null) queryStep.setConnectionId(req.connectionId());
+            if (req.connectionId() != null) queryStep.setConnectionId(req.parsedConnectionId());
             if (req.configuration() != null) queryStep.setConfiguration(req.configuration());
             // Persist the mutation — without this the query DB stays stale
             stepQueryRepo.save(queryStep);

@@ -43,70 +43,70 @@ public class MailchimpApp implements AppDefinition {
                         // CAMPAIGN
                         Map.of("actionKey", "mailchimp:campaign:create", "name", "Create Campaign", "description", "Create a campaign", "configSchema", List.of(
                                 Map.of("key", "type", "label", "Type (regular, plaintext, absplit, rss, variate)", "type", "text", "required", true),
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text"),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists"),
                                 Map.of("key", "subject", "label", "Subject Line", "type", "text"),
                                 Map.of("key", "fromName", "label", "From Name", "type", "text"),
                                 Map.of("key", "replyTo", "label", "Reply-to Email", "type", "text"),
                                 Map.of("key", "settings", "label", "Additional Settings (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "mailchimp:campaign:delete", "name", "Delete Campaign", "description", "Delete a campaign", "configSchema", List.of(
-                                Map.of("key", "campaignId", "label", "Campaign ID", "type", "text", "required", true)
+                                Map.of("key", "campaignId", "label", "Campaign", "type", "dynamic_dropdown", "resourceType", "campaigns", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:campaign:get", "name", "Get Campaign", "description", "Get a campaign", "configSchema", List.of(
-                                Map.of("key", "campaignId", "label", "Campaign ID", "type", "text", "required", true)
+                                Map.of("key", "campaignId", "label", "Campaign", "type", "dynamic_dropdown", "resourceType", "campaigns", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:campaign:getAll", "name", "Get All Campaigns", "description", "Get all campaigns", "configSchema", List.of(
                                 Map.of("key", "status", "label", "Status Filter (save, sending, sent, schedule)", "type", "text"),
                                 Map.of("key", "limit", "label", "Limit", "type", "number", "default", 100)
                         )),
                         Map.of("actionKey", "mailchimp:campaign:replicate", "name", "Replicate Campaign", "description", "Replicate a campaign in saved or send status", "configSchema", List.of(
-                                Map.of("key", "campaignId", "label", "Campaign ID", "type", "text", "required", true)
+                                Map.of("key", "campaignId", "label", "Campaign", "type", "dynamic_dropdown", "resourceType", "campaigns", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:campaign:resend", "name", "Resend Campaign", "description", "Creates a Resend to Non-Openers version of this campaign", "configSchema", List.of(
-                                Map.of("key", "campaignId", "label", "Campaign ID", "type", "text", "required", true)
+                                Map.of("key", "campaignId", "label", "Campaign", "type", "dynamic_dropdown", "resourceType", "campaigns", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:campaign:send", "name", "Send Campaign", "description", "Send a Mailchimp campaign", "configSchema", List.of(
-                                Map.of("key", "campaignId", "label", "Campaign ID", "type", "text", "required", true)
+                                Map.of("key", "campaignId", "label", "Campaign", "type", "dynamic_dropdown", "resourceType", "campaigns", "required", true)
                         )),
 
                         // LIST GROUP (Interest Category)
                         Map.of("actionKey", "mailchimp:listGroup:create", "name", "Create List Group", "description", "Create a list group for a list", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "name", "label", "Group Name", "type", "text", "required", true),
                                 Map.of("key", "type", "label", "Type (checkboxes, dropdown, radio, hidden)", "type", "text", "required", true),
                                 Map.of("key", "title", "label", "Title", "type", "text")
                         )),
                         Map.of("actionKey", "mailchimp:listGroup:delete", "name", "Delete List Group", "description", "Delete a list group", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "groupId", "label", "Group ID", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:listGroup:getAll", "name", "Get All List Groups", "description", "Get all groups for a list", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true)
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true)
                         )),
 
                         // MEMBER
                         Map.of("actionKey", "mailchimp:member:createOrUpdate", "name", "Create or Update Member", "description", "Create a new member, or update the current one if it already exists (upsert)", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true),
                                 Map.of("key", "status", "label", "Status (subscribed, unsubscribed, cleaned, pending, transactional)", "type", "text", "required", true),
                                 Map.of("key", "mergeFields", "label", "Merge Fields (JSON: FNAME, LNAME, etc.)", "type", "json"),
                                 Map.of("key", "additionalFields", "label", "Additional Fields (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "mailchimp:member:delete", "name", "Delete Member", "description", "Delete a member from a list", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:member:get", "name", "Get Member", "description", "Get information about a specific list member", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:member:getAll", "name", "Get All Members", "description", "Get information about members in a list", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "status", "label", "Status Filter (subscribed, unsubscribed, cleaned, pending, transactional)", "type", "text"),
                                 Map.of("key", "limit", "label", "Limit", "type", "number", "default", 100)
                         )),
                         Map.of("actionKey", "mailchimp:member:update", "name", "Update Member", "description", "Update a member of a list", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true),
                                 Map.of("key", "status", "label", "Status (subscribed, unsubscribed, cleaned, pending, transactional)", "type", "text"),
                                 Map.of("key", "mergeFields", "label", "Merge Fields (JSON: FNAME, LNAME, etc.)", "type", "json"),
@@ -115,12 +115,12 @@ public class MailchimpApp implements AppDefinition {
 
                         // MEMBER TAG
                         Map.of("actionKey", "mailchimp:memberTag:add", "name", "Add Tags to Member", "description", "Add tags to a list member", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true),
                                 Map.of("key", "tags", "label", "Tags (comma separated)", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "mailchimp:memberTag:remove", "name", "Remove Tags from Member", "description", "Remove tags from a list member", "configSchema", List.of(
-                                Map.of("key", "listId", "label", "List / Audience ID", "type", "text", "required", true),
+                                Map.of("key", "listId", "label", "Audience / List", "type", "dynamic_dropdown", "resourceType", "lists", "required", true),
                                 Map.of("key", "email", "label", "Email", "type", "text", "required", true),
                                 Map.of("key", "tags", "label", "Tags (comma separated)", "type", "text", "required", true)
                         ))

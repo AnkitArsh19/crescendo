@@ -49,8 +49,8 @@ public class PomodoroApp implements AppDefinition {
                     Map.of("actionKey", "calculate-end-time", "name", "Calculate End Time",
                         "description", "Calculate when a timer will end",
                         "configSchema", List.of(
-                            Map.of("key", "startTime", "label", "Start Time", "type", "text", "required", true,
-                                   "placeholder", "2026-05-01T10:00:00Z", "helpText", "ISO 8601 start time"),
+                            Map.of("key", "startTime", "label", "Start Time", "type", "datetime", "required", true,
+                                   "helpText", "Start time"),
                             Map.of("key", "durationMinutes", "label", "Duration (minutes)", "type", "text", "required", true,
                                    "placeholder", "25", "helpText", "Session duration")))
                 )

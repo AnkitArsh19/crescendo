@@ -76,6 +76,11 @@ public class DiscordMessageHandlers {
             if (color != null) {
                 try { embed.put("color", Integer.parseInt(color)); } catch (NumberFormatException ignored) {}
             }
+            String imageUrl = DiscordSupport.opt(config, "imageUrl", null);
+            if (imageUrl == null) imageUrl = DiscordSupport.opt(config, "image", null);
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                embed.put("image", Map.of("url", imageUrl));
+            }
 
             Map<String, Object> payload = new HashMap<>();
             String content = DiscordSupport.opt(config, "content", null);

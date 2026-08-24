@@ -51,65 +51,65 @@ public class AsanaApp implements AppDefinition {
                         // PROJECT
                         Map.of("actionKey", "asana:project:create", "name", "Create Project", "description", "Create a project", "configSchema", List.of(
                                 Map.of("key", "name", "label", "Name", "type", "text", "required", true),
-                                Map.of("key", "workspaceId", "label", "Workspace ID", "type", "text", "required", true),
+                                Map.of("key", "workspaceId", "label", "Workspace", "type", "dynamic_dropdown", "resourceType", "workspaces", "required", true),
                                 Map.of("key", "teamId", "label", "Team ID", "type", "text"),
                                 Map.of("key", "additionalFields", "label", "Additional Fields (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "asana:project:getAll", "name", "Get All Projects", "description", "Get all projects", "configSchema", List.of(
-                                Map.of("key", "workspaceId", "label", "Workspace ID", "type", "text"),
+                                Map.of("key", "workspaceId", "label", "Workspace", "type", "dynamic_dropdown", "resourceType", "workspaces"),
                                 Map.of("key", "limit", "label", "Limit", "type", "number", "default", 100)
                         )),
 
                         // SUBTASK
                         Map.of("actionKey", "asana:subtask:create", "name", "Create Subtask", "description", "Create a subtask", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Parent Task ID", "type", "text", "required", true),
+                                Map.of("key", "taskId", "label", "Parent Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
                                 Map.of("key", "name", "label", "Name", "type", "text", "required", true),
                                 Map.of("key", "additionalFields", "label", "Additional Fields (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "asana:subtask:getAll", "name", "Get All Subtasks", "description", "Get all subtasks", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Parent Task ID", "type", "text", "required", true)
+                                Map.of("key", "taskId", "label", "Parent Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true)
                         )),
 
                         // TASK
                         Map.of("actionKey", "asana:task:create", "name", "Create Task", "description", "Create a task", "configSchema", List.of(
                                 Map.of("key", "name", "label", "Name", "type", "text", "required", true),
-                                Map.of("key", "workspaceId", "label", "Workspace ID", "type", "text"),
-                                Map.of("key", "projectId", "label", "Project ID", "type", "text"),
-                                Map.of("key", "dueOn", "label", "Due On (YYYY-MM-DD)", "type", "text"),
-                                Map.of("key", "assignee", "label", "Assignee (GID)", "type", "text"),
+                                Map.of("key", "workspaceId", "label", "Workspace", "type", "dynamic_dropdown", "resourceType", "workspaces"),
+                                Map.of("key", "projectId", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "dependsOn", List.of("workspaceId")),
+                                Map.of("key", "dueOn", "label", "Due On", "type", "date"),
+                                Map.of("key", "assignee", "label", "Assignee", "type", "dynamic_dropdown", "resourceType", "users", "dependsOn", List.of("workspaceId")),
                                 Map.of("key", "notes", "label", "Notes / Description", "type", "text"),
                                 Map.of("key", "additionalFields", "label", "Additional Fields (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "asana:task:delete", "name", "Delete Task", "description", "Delete a task", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true)
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true)
                         )),
                         Map.of("actionKey", "asana:task:get", "name", "Get Task", "description", "Get a task", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true)
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true)
                         )),
                         Map.of("actionKey", "asana:task:getAll", "name", "Get All Tasks", "description", "Get all tasks", "configSchema", List.of(
-                                Map.of("key", "projectId", "label", "Project ID", "type", "text"),
-                                Map.of("key", "workspaceId", "label", "Workspace ID", "type", "text"),
-                                Map.of("key", "assignee", "label", "Assignee (GID)", "type", "text"),
+                                Map.of("key", "workspaceId", "label", "Workspace", "type", "dynamic_dropdown", "resourceType", "workspaces"),
+                                Map.of("key", "projectId", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "dependsOn", List.of("workspaceId")),
+                                Map.of("key", "assignee", "label", "Assignee", "type", "dynamic_dropdown", "resourceType", "users", "dependsOn", List.of("workspaceId")),
                                 Map.of("key", "limit", "label", "Limit", "type", "number", "default", 100)
                         )),
                         Map.of("actionKey", "asana:task:move", "name", "Move Task", "description", "Move a task between sections", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true),
-                                Map.of("key", "projectId", "label", "Project ID", "type", "text", "required", true),
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
+                                Map.of("key", "projectId", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "required", true),
                                 Map.of("key", "sectionId", "label", "Section ID", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "asana:task:search", "name", "Search Tasks", "description", "Search for tasks in a workspace", "configSchema", List.of(
-                                Map.of("key", "workspaceId", "label", "Workspace ID", "type", "text", "required", true),
+                                Map.of("key", "workspaceId", "label", "Workspace", "type", "dynamic_dropdown", "resourceType", "workspaces", "required", true),
                                 Map.of("key", "text", "label", "Search Text", "type", "text"),
                                 Map.of("key", "additionalFields", "label", "Filters (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "asana:task:update", "name", "Update Task", "description", "Update a task", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true),
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
                                 Map.of("key", "additionalFields", "label", "Fields to update (JSON)", "type", "json", "required", true)
                         )),
 
                         // TASK COMMENT
                         Map.of("actionKey", "asana:taskComment:add", "name", "Add Comment to Task", "description", "Add a comment to a task", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true),
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
                                 Map.of("key", "text", "label", "Comment Text", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "asana:taskComment:remove", "name", "Remove Comment from Task", "description", "Remove a comment from a task", "configSchema", List.of(
@@ -118,12 +118,12 @@ public class AsanaApp implements AppDefinition {
 
                         // TASK PROJECT
                         Map.of("actionKey", "asana:taskProject:add", "name", "Add Task to Project", "description", "Add a task to a project", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true),
-                                Map.of("key", "projectId", "label", "Project ID", "type", "text", "required", true)
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
+                                Map.of("key", "projectId", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "required", true)
                         )),
                         Map.of("actionKey", "asana:taskProject:remove", "name", "Remove Task from Project", "description", "Remove a task from a project", "configSchema", List.of(
-                                Map.of("key", "taskId", "label", "Task ID", "type", "text", "required", true),
-                                Map.of("key", "projectId", "label", "Project ID", "type", "text", "required", true)
+                                Map.of("key", "taskId", "label", "Task", "type", "dynamic_dropdown", "resourceType", "tasks", "required", true),
+                                Map.of("key", "projectId", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "required", true)
                         )),
 
                         // TASK TAG

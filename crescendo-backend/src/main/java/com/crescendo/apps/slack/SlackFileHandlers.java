@@ -3,14 +3,16 @@ package com.crescendo.apps.slack;
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
+import com.crescendo.storage.MediaStreamResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-// import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
-import java.util.Base64;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.Map;
 
 /**
@@ -20,37 +22,60 @@ import java.util.Map;
 public class SlackFileHandlers {
 
     private static final String SLACK_API = SlackSupport.SLACK_API;
+    private final MediaStreamResolver mediaStreamResolver;
+
+    public SlackFileHandlers() {
+        this(new MediaStreamResolver());
+    }
+
+    @Autowired
+    public SlackFileHandlers(MediaStreamResolver mediaStreamResolver) {
+        this.mediaStreamResolver = mediaStreamResolver;
+    }
 
     // ── upload ────────────────────────────────────────────────────────────────
     @ActionMapping(appKey = "slack", actionKey = "uploadFile")
     @SuppressWarnings("unchecked")
     public ActionResult upload(ActionContext context) {
         Map<String, Object> config = context.configuration();
-        String fileContent = SlackSupport.require(config, "fileContent"); // Base64
-        String fileName = SlackSupport.require(config, "fileName");
+        Object rawFile = config.get("fileContent");
+        if (rawFile == null) rawFile = config.get("file");
+        if (rawFile == null) rawFile = config.get("fileUrl");
+
+        String fileName = SlackSupport.opt(config, "fileName", null);
         String channel = SlackSupport.opt(config, "channel", null);
         String threadTs = SlackSupport.opt(config, "thread_ts", null);
         String initialComment = SlackSupport.opt(config, "initialComment", null);
 
-        if (fileContent == null || fileName == null) {
-            return ActionResult.failure("'fileContent' and 'fileName' are required");
+        if (rawFile == null) {
+            return ActionResult.failure("File or URL is required for Slack file upload");
         }
 
         try {
-            byte[] fileBytes = Base64.getDecoder().decode(fileContent);
+            byte[] fileBytes;
+            String resolvedFilename = fileName;
 
+            try (MediaStreamResolver.MediaSource media = mediaStreamResolver.resolve(rawFile, "application/octet-stream")) {
+                InputStream in = media.stream();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                in.transferTo(baos);
+                fileBytes = baos.toByteArray();
+                if (resolvedFilename == null || resolvedFilename.isBlank()) {
+                    resolvedFilename = media.filename() != null ? media.filename() : "upload.dat";
+                }
+            }
+
+            final String finalFilename = resolvedFilename;
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
-                    return fileName;
+                    return finalFilename;
                 }
             });
             if (channel != null) body.add("channels", channel);
             if (threadTs != null) body.add("thread_ts", threadTs);
             if (initialComment != null) body.add("initial_comment", initialComment);
-
-// String token = SlackSupport.resolveToken(context);
 
             Map<String, Object> response = SlackSupport.clientBuilder(context).build().post()
                     .uri(SLACK_API + "files.upload")
@@ -58,33 +83,14 @@ public class SlackFileHandlers {
                     .body(body)
                     .retrieve()
                     .body(Map.class);
-            return ActionResult.success(response);
+
+            if (response != null && Boolean.TRUE.equals(response.get("ok"))) {
+                return ActionResult.success(response);
+            }
+            String error = response != null ? String.valueOf(response.get("error")) : "unknown error";
+            return ActionResult.failure("Slack files.upload failed: " + error);
         } catch (Exception e) {
             return ActionResult.failure("Slack uploadFile failed: " + e.getMessage());
-        }
-    }
-
-    // ── getAll ────────────────────────────────────────────────────────────────
-    @ActionMapping(appKey = "slack", actionKey = "getAllFiles")
-    @SuppressWarnings("unchecked")
-    public ActionResult getAll(ActionContext context) {
-        Map<String, Object> config = context.configuration();
-        int count = SlackSupport.parseIntOpt(config, "count", 100);
-        String channel = SlackSupport.opt(config, "channel", null);
-        String user = SlackSupport.opt(config, "user", null);
-
-        try {
-            StringBuilder uri = new StringBuilder(SLACK_API + "files.list?count=" + count);
-            if (channel != null) uri.append("&channel=").append(channel);
-            if (user != null) uri.append("&user=").append(user);
-
-            Map<String, Object> response = SlackSupport.clientBuilder(context).build().get()
-                    .uri(uri.toString())
-                    .retrieve()
-                    .body(Map.class);
-            return ActionResult.success(response);
-        } catch (Exception e) {
-            return ActionResult.failure("Slack getAllFiles failed: " + e.getMessage());
         }
     }
 }

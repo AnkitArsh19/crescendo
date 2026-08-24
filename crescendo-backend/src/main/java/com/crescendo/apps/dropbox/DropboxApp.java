@@ -35,16 +35,16 @@ public class DropboxApp implements AppDefinition {
                 List.of(),
                 List.of(
                         Map.of("actionKey", "list-folder", "name", "List Folder", "description", "List Dropbox folder contents",
-                                "configSchema", List.of(Map.of("key", "path", "label", "Path", "type", "text", "required", false, "placeholder", "/"))),
+                                "configSchema", List.of(Map.of("key", "path", "label", "Folder Path", "type", "dynamic_dropdown", "resourceType", "folders", "required", false, "placeholder", "/"))),
                         Map.of("actionKey", "search", "name", "Search Files", "description", "Search files and folders",
                                 "configSchema", List.of(
                                         Map.of("key", "query", "label", "Query", "type", "text", "required", true),
-                                        Map.of("key", "path", "label", "Path", "type", "text", "required", false, "placeholder", "/"),
+                                        Map.of("key", "path", "label", "Folder Path", "type", "dynamic_dropdown", "resourceType", "folders", "required", false, "placeholder", "/"),
                                         Map.of("key", "maxResults", "label", "Max Results", "type", "text", "required", false, "placeholder", "25"))),
-                        Map.of("actionKey", "upload-text", "name", "Upload Text", "description", "Upload text as a file",
+                        Map.of("actionKey", "upload-text", "name", "Upload File / Text", "description", "Upload a file or text content to Dropbox",
                                 "configSchema", List.of(
                                         Map.of("key", "path", "label", "Path", "type", "text", "required", true, "placeholder", "/notes/file.txt"),
-                                        Map.of("key", "content", "label", "Content", "type", "textarea", "required", true))),
+                                        Map.of("key", "content", "label", "File / Content (Upload or Link)", "type", "file_or_url", "required", true, "placeholder", "Upload file or enter text/link"))),
                         Map.of("actionKey", "download", "name", "Download File", "description", "Download file as Base64",
                                 "configSchema", List.of(Map.of("key", "path", "label", "Path", "type", "text", "required", true))),
                         Map.of("actionKey", "delete", "name", "Delete File/Folder", "description", "Delete a Dropbox path",

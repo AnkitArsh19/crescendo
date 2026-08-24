@@ -13,10 +13,15 @@ public class TelegramApp implements AppDefinition {
 
     @Override
     public App toApp() {
-        var chatField = Map.of("key", "chatId", "label", "Chat",
-                "type", "dynamic_dropdown", "resourceType", "chats",
+        var chatField = Map.<String, Object>of(
+                "key", "chatId",
+                "label", "Chat / Channel",
+                "type", "dynamic_dropdown",
+                "resourceType", "chats",
                 "required", true,
-                "helpText", "Select the chat or group");
+                "helpText", "Select a chat, group, or channel. If empty, send a message to @crescendo_app_bot first, then refresh.",
+                "dependsOn", List.of()
+        );
 
         return new App("telegram", "Telegram", """
                 Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed. The Crescendo Telegram app lets you build powerful chat bots and automated notification systems.
@@ -90,10 +95,10 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send a photo to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "photo", "label", "Photo URL",
-                                   "type", "text", "required", true,
-                                   "placeholder", "https://example.com/image.jpg",
-                                   "helpText", "URL of the photo to send"),
+                            Map.of("key", "photo", "label", "Photo (File or URL)",
+                                   "type", "file_or_url", "accept", "image/*", "required", true,
+                                   "placeholder", "Upload image file or paste Image URL",
+                                   "helpText", "Image file or URL of the photo to send"),
                             Map.of("key", "caption", "label", "Caption",
                                    "type", "text", "required", false,
                                    "helpText", "Optional photo caption"),
@@ -108,10 +113,10 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send a file/document to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "document", "label", "Document URL",
-                                   "type", "text", "required", true,
-                                   "placeholder", "https://example.com/report.pdf",
-                                   "helpText", "URL of the document to send"),
+                            Map.of("key", "document", "label", "Document (File or URL)",
+                                   "type", "file_or_url", "required", true,
+                                   "placeholder", "Upload document or paste Document URL",
+                                   "helpText", "File or URL of the document to send"),
                             Map.of("key", "caption", "label", "Caption",
                                    "type", "text", "required", false,
                                    "helpText", "Optional document caption"),
@@ -145,7 +150,7 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send an audio file to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "audio", "label", "Audio URL", "type", "text", "required", true),
+                            Map.of("key", "audio", "label", "Audio (File or URL)", "type", "file_or_url", "accept", "audio/*", "placeholder", "Upload audio file or paste Audio URL", "required", true),
                             Map.of("key", "caption", "label", "Caption", "type", "text", "required", false),
                             Map.of("key", "replyToMessageId", "label", "Reply To Message ID", "type", "text", "required", false),
                             Map.of("key", "disableNotification", "label", "Disable Notification", "type", "dropdown", "required", false, "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
@@ -158,7 +163,7 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send a video to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "video", "label", "Video URL", "type", "text", "required", true),
+                            Map.of("key", "video", "label", "Video (File or URL)", "type", "file_or_url", "accept", "video/*", "placeholder", "Upload video file or paste Video URL", "required", true),
                             Map.of("key", "caption", "label", "Caption", "type", "text", "required", false),
                             Map.of("key", "replyToMessageId", "label", "Reply To Message ID", "type", "text", "required", false),
                             Map.of("key", "disableNotification", "label", "Disable Notification", "type", "dropdown", "required", false, "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
@@ -171,7 +176,7 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send an animation (GIF) to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "animation", "label", "Animation URL", "type", "text", "required", true),
+                            Map.of("key", "animation", "label", "Animation / GIF (File or URL)", "type", "file_or_url", "accept", "image/gif,video/mp4", "placeholder", "Upload GIF/video or paste GIF URL", "required", true),
                             Map.of("key", "caption", "label", "Caption", "type", "text", "required", false),
                             Map.of("key", "replyToMessageId", "label", "Reply To Message ID", "type", "text", "required", false),
                             Map.of("key", "disableNotification", "label", "Disable Notification", "type", "dropdown", "required", false, "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
@@ -184,7 +189,7 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send a sticker to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "sticker", "label", "Sticker URL", "type", "text", "required", true),
+                            Map.of("key", "sticker", "label", "Sticker (File or URL)", "type", "file_or_url", "placeholder", "Upload webp sticker or paste Sticker URL", "required", true),
                             Map.of("key", "replyToMessageId", "label", "Reply To Message ID", "type", "text", "required", false),
                             Map.of("key", "disableNotification", "label", "Disable Notification", "type", "dropdown", "required", false, "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),
                             Map.of("key", "replyMarkup", "label", "Reply Markup (JSON)", "type", "textarea", "required", false)
@@ -196,7 +201,7 @@ public class TelegramApp implements AppDefinition {
                         "description", "Send a voice note to a Telegram chat",
                         "configSchema", List.of(
                             chatField,
-                            Map.of("key", "voice", "label", "Voice URL", "type", "text", "required", true),
+                            Map.of("key", "voice", "label", "Voice Note (File or URL)", "type", "file_or_url", "accept", "audio/*", "placeholder", "Upload audio file or paste Voice URL", "required", true),
                             Map.of("key", "caption", "label", "Caption", "type", "text", "required", false),
                             Map.of("key", "replyToMessageId", "label", "Reply To Message ID", "type", "text", "required", false),
                             Map.of("key", "disableNotification", "label", "Disable Notification", "type", "dropdown", "required", false, "options", List.of(Map.of("value", "true", "label", "True"), Map.of("value", "false", "label", "False"))),

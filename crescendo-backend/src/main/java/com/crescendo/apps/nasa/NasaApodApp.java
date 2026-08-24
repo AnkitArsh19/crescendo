@@ -34,8 +34,8 @@ public class NasaApodApp implements AppDefinition {
                     Map.of("actionKey", "nasa:apod:get", "name", "Get Astronomy Picture",
                         "description", "Get NASA's Astronomy Picture of the Day",
                         "configSchema", List.of(
-                            Map.of("key", "date", "label", "Date", "type", "text", "required", false,
-                                   "placeholder", "2026-01-15", "helpText", "YYYY-MM-DD (default: today)"))),
+                            Map.of("key", "date", "label", "Date", "type", "date", "required", false,
+                                   "helpText", "Date for astronomy picture (default: today)"))),
                     Map.of("actionKey", "nasa:mars:getPhotos", "name", "Get Mars Rover Photos",
                         "description", "Get photos from Mars rovers",
                         "configSchema", List.of(
