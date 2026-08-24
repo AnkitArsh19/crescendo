@@ -272,6 +272,7 @@ export default function WorkflowCanvas() {
     // ── App browser modal ──
     const [showAppBrowser, setShowAppBrowser] = useState(false);
     const [appBrowserTarget, setAppBrowserTarget] = useState(null); // node id or 'new'
+    const [appBrowserInitialAppKey, setAppBrowserInitialAppKey] = useState(null);
 
     // ── Right-click context menu ──
     const [contextMenu, setContextMenu] = useState(null);
@@ -358,16 +359,13 @@ export default function WorkflowCanvas() {
     }, [configNode, ensureAppDetail]);
 
     // ── Patch iconUrl + appName onto loaded nodes once the catalog is available ──
-    // stepsToGraph doesn't have catalog access, so nodes loaded from the backend
-    // start without iconUrl. This effect fills them in once catalogApps arrives.
+    // stepsToGraph also receives catalogApps, and this effect ensures any late-arriving catalog updates are reflected.
     useEffect(() => {
         if (!catalogApps || catalogApps.length === 0) return;
         setNodes((nds) => {
             let changed = false;
             const patched = nds.map((n) => {
                 if (!n.data?.appKey) return n;
-                // Skip if iconUrl is already set AND appName is not just the raw key
-                if (n.data.iconUrl && n.data.appName !== n.data.appKey) return n;
                 const catalogApp = catalogApps.find((a) => a.appKey === n.data.appKey);
                 if (!catalogApp) return n;
                 const newIconUrl = catalogApp.logoUrl || `/icons/${n.data.appKey}.svg`;
@@ -426,7 +424,7 @@ export default function WorkflowCanvas() {
                 if (steps.length > 0) {
                     // Use backend edges for accurate DAG topology (supports branching + merging)
                     const backendEdges = Array.isArray(wf.edges) ? wf.edges : [];
-                    const { nodes: loadedNodes, edges: loadedEdges } = stepsToGraph(steps, backendEdges, vertical);
+                    const { nodes: loadedNodes, edges: loadedEdges } = stepsToGraph(steps, backendEdges, vertical, catalogApps);
                     setNodes(layoutGraph(reindexNodes(loadedNodes, loadedEdges), loadedEdges, vertical));
                     setEdges(loadedEdges);
 
@@ -1015,6 +1013,9 @@ export default function WorkflowCanvas() {
                     data: { ...prevConfig.data, ...patch },
                 };
             });
+
+            // Persist immediately on any app, action, connection, or config change
+            saveCoordinatorRef.current?.saveAuto();
         },
         [setNodes, edges, pushHistory]
     );
@@ -1599,6 +1600,7 @@ export default function WorkflowCanvas() {
                                 transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
                             >
                                 <ConfigPanelBody
+                                    workflowId={workflowId}
                                     configNode={configNode}
                                     updateNodeData={updateNodeData}
                                     connectedAppOptions={connectedAppOptions}
@@ -1610,8 +1612,9 @@ export default function WorkflowCanvas() {
                                     catalogApps={catalogApps}
                                     allNodes={nodes}
                                     allConnections={connections}
-                                    onOpenAppBrowser={() => {
+                                    onOpenAppBrowser={(targetAppKey) => {
                                         setAppBrowserTarget(configNode.id);
+                                        setAppBrowserInitialAppKey(targetAppKey || null);
                                         setShowAppBrowser(true);
                                     }}
                                     onClose={() => setConfigNode(null)}
@@ -1643,9 +1646,11 @@ export default function WorkflowCanvas() {
                     <AppBrowserModal
                         apps={catalogApps}
                         connections={connections}
+                        initialAppKey={appBrowserInitialAppKey}
                         title={appBrowserTarget === 'new' ? 'Choose an App' : 'Select App'}
                         onSelect={async (app, credentialSource, connectionId, connectionName) => {
                             setShowAppBrowser(false);
+                            setAppBrowserInitialAppKey(null);
                             const isAgent = app.appKey === 'agent';
 
                             // Refresh connections list
@@ -1717,6 +1722,7 @@ export default function WorkflowCanvas() {
                         onClose={() => {
                             setShowAppBrowser(false);
                             setAppBrowserTarget(null);
+                            setAppBrowserInitialAppKey(null);
                         }}
                     />
                 )}

@@ -17,6 +17,7 @@ export default function SearchableSelect({
     disabled = false,
     onRefresh,
     searchable = true,
+    allowCustom = false,
     emptyMessage = 'No options found',
     className = '',
 }) {
@@ -43,7 +44,7 @@ export default function SearchableSelect({
     }, [options, search]);
 
     const selectedOption = options.find((o) => o.id === value);
-    const displayText = selectedOption ? selectedOption.label : null;
+    const displayText = selectedOption ? selectedOption.label : (value || null);
 
     // Calculate dropdown position relative to viewport
     const updatePosition = useCallback(() => {
@@ -198,6 +199,23 @@ export default function SearchableSelect({
                 </div>
             )}
             <div className="ss-options" ref={optionsRef}>
+                {allowCustom && search.trim() && !options.some(o => (o.id && o.id.toLowerCase() === search.trim().toLowerCase()) || (o.label && o.label.toLowerCase() === search.trim().toLowerCase())) && (
+                    <button
+                        type="button"
+                        className="ss-option ss-option--custom"
+                        onClick={() => handleSelect(search.trim())}
+                        style={{ borderBottom: filtered.length > 0 ? '1px solid var(--border-primary, #27272a)' : 'none', background: 'var(--bg-elevated, #18181b)' }}
+                    >
+                        <div className="ss-option-content">
+                            <div className="ss-option-label" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                + Use &ldquo;{search.trim()}&rdquo;
+                            </div>
+                            <div className="ss-option-desc" style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                                Custom ID, @username, or variable
+                            </div>
+                        </div>
+                    </button>
+                )}
                 {loading ? (
                     <div className="ss-loading">
                         <span className="ss-loading-dot" />
@@ -206,7 +224,7 @@ export default function SearchableSelect({
                     </div>
                 ) : error ? (
                     <div className="ss-error">{error}</div>
-                ) : filtered.length === 0 ? (
+                ) : filtered.length === 0 && (!allowCustom || !search.trim()) ? (
                     <div className="ss-empty">{search ? 'No matches' : emptyMessage}</div>
                 ) : (
                     filtered.map((opt, idx) => (

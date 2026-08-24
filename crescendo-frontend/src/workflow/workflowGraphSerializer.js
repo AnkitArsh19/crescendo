@@ -114,16 +114,15 @@ export function toPersistedConfig(schemaFields, config) {
  * @param {Object} appDetailsByKey — map of appKey → app detail (triggers/actions)
  * @returns {{ clientId, backendId, type, name, appKey, actionKey, connectionId, configuration } | null}
  */
-export function nodeToStepPayload(node, appDetailsByKey) {
+export function nodeToStepPayload(node, appDetailsByKey = {}) {
     // 'branch' nodes (logic:if, logic:switch) are ACTION type steps on the backend
     const stepType = node.type === 'trigger' ? 'TRIGGER' : 'ACTION';
     const appKey = node.data?.appKey;
     if (!appKey) return null;
 
     const opKey = stepType === 'TRIGGER'
-        ? (node.data.triggerKey || node.data.actionKey)
-        : node.data.actionKey;
-    if (!opKey) return null;
+        ? (node.data?.triggerKey || node.data?.actionKey || null)
+        : (node.data?.actionKey || null);
 
     const detail = appDetailsByKey[appKey];
     const defs = stepType === 'TRIGGER'
@@ -131,16 +130,26 @@ export function nodeToStepPayload(node, appDetailsByKey) {
         : (Array.isArray(detail?.actions) ? detail.actions : []);
     const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
     const schemaFields = parseConfigSchema(def?.configSchema || {});
-    const configuration = toPersistedConfig(schemaFields, node.data.configuration || {});
+    const configuration = toPersistedConfig(schemaFields, node.data?.configuration || {});
+
+    const rawConnId = node.data?.connectionId;
+    const safeConnectionId = (rawConnId && rawConnId !== 'ADMIN_KEY' && rawConnId !== 'null') ? rawConnId : null;
+
+    if (node.data?.credentialSource) {
+        configuration._credentialSource = node.data.credentialSource;
+    }
+    if (node.data?.iconUrl) {
+        configuration._iconUrl = node.data.iconUrl;
+    }
 
     return {
         clientId: node.id,
-        backendId: node.data._backendId || null,
+        backendId: node.data?._backendId || null,
         type: stepType,
-        name: node.data.label || (stepType === 'TRIGGER' ? 'Trigger' : 'Action'),
+        name: node.data?.label || (stepType === 'TRIGGER' ? 'Trigger' : 'Action'),
         appKey,
         actionKey: opKey,
-        connectionId: node.data.connectionId || null,
+        connectionId: safeConnectionId,
         configuration,
     };
 }
@@ -178,45 +187,29 @@ export function orderedNodesFromGraph(nodes, edges) {
     markReachable(root.id);
 
     const reachableIncoming = new Map();
-    for (const id of reachable) reachableIncoming.set(id, 0);
-    for (const edge of edges || []) {
-        if (reachable.has(edge.source) && reachable.has(edge.target)) {
-            reachableIncoming.set(edge.target, (reachableIncoming.get(edge.target) || 0) + 1);
-        }
+    for (const id of reachable) {
+        reachableIncoming.set(id, incoming.get(id) || 0);
     }
 
-    const queue = [...reachable]
-        .filter((id) => id === root.id || (reachableIncoming.get(id) || 0) === 0)
-        .sort(compareNodes);
+    const queue = [root.id];
     const ordered = [];
-    const emitted = new Set();
     while (queue.length > 0) {
-        const id = queue.shift();
-        if (emitted.has(id)) continue;
-        emitted.add(id);
-        const node = byId.get(id);
-        if (node) ordered.push(node);
-
-        for (const childId of (children.get(id) || []).sort(compareNodes)) {
-            if (!reachable.has(childId)) continue;
-            const nextIncoming = (reachableIncoming.get(childId) || 0) - 1;
-            reachableIncoming.set(childId, nextIncoming);
-            if (nextIncoming === 0) {
-                queue.push(childId);
-                queue.sort(compareNodes);
-            }
+        queue.sort(compareNodes);
+        const currentId = queue.shift();
+        ordered.push(byId.get(currentId));
+        for (const nextId of children.get(currentId) || []) {
+            if (!reachable.has(nextId)) continue;
+            const remaining = (reachableIncoming.get(nextId) || 0) - 1;
+            reachableIncoming.set(nextId, remaining);
+            if (remaining === 0) queue.push(nextId);
         }
     }
 
-    // A cyclic graph is invalid and blocked elsewhere. Still return every node
-    // deterministically so the canvas remains renderable while a user repairs it.
-    for (const id of [...reachable].sort(compareNodes)) {
-        if (!emitted.has(id) && byId.has(id)) ordered.push(byId.get(id));
+    // Append any orphan / layout-only nodes that are not reachable from trigger
+    for (const node of nodes) {
+        if (!reachable.has(node.id)) ordered.push(node);
     }
-    for (const node of nodes.filter((n) => !reachable.has(n.id)).sort((a, b) =>
-        (a.position.x - b.position.x) || (a.position.y - b.position.y) || String(a.id).localeCompare(String(b.id)))) {
-        ordered.push(node);
-    }
+
     return ordered;
 }
 
@@ -286,8 +279,7 @@ export function validateGraphForSave(nodes, edges) {
         return 'Connect at least one action to the trigger.';
     }
 
-    // Cycle detection covers orphan components too. The backend rejects cycles,
-    // but doing it here makes the correction immediate on the canvas.
+    // Cycle detection covers orphan components too.
     const visiting = new Set();
     const visited = new Set();
     const visit = (id) => {
@@ -305,23 +297,19 @@ export function validateGraphForSave(nodes, edges) {
     return null;
 }
 
-// graphInfoForNode removed — topology is now sent as explicit edges[].
-// The backend no longer uses parentStepId / branchKey.
-
 /**
- * Validates a node as fully configured for a strict save.
- * Returns an error string if invalid, or null if valid.
+ * Validates a node for saving.
  *
  * @param {Object} node
  * @param {number} index          — 0-based position in the node list
  * @param {Array}  catalogApps    — list from /apps
  * @param {Object} appDetailsByKey
+ * @param {boolean} strict        — if true, validates all required configuration fields (for run/activation)
  * @returns {string|null}
  */
-export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
+export function validateNodeForSave(node, index, catalogApps = [], appDetailsByKey = {}, strict = false) {
     if (index === 0 && node.type !== 'trigger')
         return 'The first step must be a trigger.';
-    // 'branch' is action-equivalent — logic nodes are valid non-trigger steps
     if (index > 0 && node.type === 'trigger')
         return 'Only the first step can be a trigger.';
 
@@ -329,8 +317,9 @@ export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
         return `Step ${index + 1}: select an app.`;
 
     const appInfo = catalogApps.find((a) => a.appKey === node.data.appKey);
-    const needsAuth = appInfo?.authType !== 'NONE';
-    if (needsAuth && !node.data?.connectionId)
+    const isPlatformKey = node.data?.credentialSource === 'ADMIN_KEY' || (appInfo?.hasPlatformKey && !node.data?.connectionId);
+    const needsAuth = appInfo?.authType && appInfo.authType !== 'NONE';
+    if (needsAuth && !node.data?.connectionId && !isPlatformKey)
         return `Step ${index + 1}: select a connected account.`;
 
     const stepType = node.type === 'trigger' ? 'TRIGGER' : 'ACTION';
@@ -340,18 +329,20 @@ export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
     if (!opKey)
         return `Step ${index + 1}: select a ${stepType === 'TRIGGER' ? 'trigger event' : 'action'}.`;
 
-    const detail = appDetailsByKey[node.data.appKey];
-    const defs = stepType === 'TRIGGER'
-        ? (Array.isArray(detail?.triggers) ? detail.triggers : [])
-        : (Array.isArray(detail?.actions) ? detail.actions : []);
-    const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
-    const schemaFields = parseConfigSchema(def?.configSchema || {});
-    const config = node.data.configuration || {};
-    for (const field of schemaFields) {
-        if (!field.required) continue;
-        const value = config[field.key];
-        if (value == null || String(value).trim() === '')
-            return `Step ${index + 1}: '${field.label || field.key}' is required.`;
+    if (strict) {
+        const detail = appDetailsByKey[node.data.appKey];
+        const defs = stepType === 'TRIGGER'
+            ? (Array.isArray(detail?.triggers) ? detail.triggers : [])
+            : (Array.isArray(detail?.actions) ? detail.actions : []);
+        const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
+        const schemaFields = parseConfigSchema(def?.configSchema || {});
+        const config = node.data.configuration || {};
+        for (const field of schemaFields) {
+            if (!field.required) continue;
+            const value = config[field.key];
+            if (value == null || String(value).trim() === '')
+                return `Step ${index + 1}: '${field.label || field.key}' is required.`;
+        }
     }
 
     return null;
@@ -367,14 +358,21 @@ export function validateNodeForSave(node, index, catalogApps, appDetailsByKey) {
  *
  * @param {Array}   steps      — sorted step responses from backend
  * @param {boolean} vertical   — layout orientation
+ * @param {Array}   catalogApps — Optional list from /apps for metadata/icons
  * @returns {{ nodes: Array, edges: Array }}
  */
-export function stepsToGraph(steps, backendEdges = [], vertical = false) {
+export function stepsToGraph(steps, backendEdges = [], vertical = false, catalogApps = []) {
     const sorted = [...steps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     const nodes = sorted.map((s, idx) => {
         const nodeType = resolveNodeType(s);
         const isTrigger = nodeType === 'trigger';
+        const credSource = s.configuration?._credentialSource
+            || (s.connectionId ? 'PERSONAL' : 'ADMIN_KEY');
+        const catalogApp = catalogApps.find((a) => a.appKey === s.appKey);
+        const iconUrl = catalogApp?.logoUrl || s.configuration?._iconUrl || null;
+        const appName = catalogApp?.name || s.appKey;
+
         return {
             id: s.id,
             type: nodeType,
@@ -386,15 +384,17 @@ export function stepsToGraph(steps, backendEdges = [], vertical = false) {
                 label: s.name,
                 appKey: s.appKey,
                 app: s.appKey,
-                appName: s.appKey,
+                appName: appName,
+                iconUrl: iconUrl,
                 actionKey: s.actionKey,
                 action: s.actionKey,
                 actionName: !isTrigger ? s.name : undefined,
                 triggerKey: isTrigger ? s.actionKey : undefined,
                 triggerName: isTrigger ? s.name : undefined,
                 operationKey: s.actionKey,
+                credentialSource: credSource,
                 connectionId: s.connectionId || null,
-                configuration: s.configuration,
+                configuration: s.configuration || {},
                 _backendId: s.id,
                 _vertical: vertical,
             },

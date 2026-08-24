@@ -16,13 +16,19 @@ public class SarvamTranslateHandler implements ActionHandler {
 
     private final tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
 
+    @org.springframework.beans.factory.annotation.Value("${sarvam.api.key:}")
+    private String platformApiKey;
+
     @Override
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
         String apiKey = creds != null ? String.valueOf(creds.get("apiKey")) : null;
-        if (apiKey == null || apiKey.isBlank()) return ActionResult.failure("API Key is required");
+        if (apiKey == null || apiKey.isBlank() || "null".equalsIgnoreCase(apiKey)) {
+            apiKey = platformApiKey;
+        }
+        if (apiKey == null || apiKey.isBlank()) return ActionResult.failure("API Key is required. Connect a Sarvam account or set sarvam.api.key in application.properties.");
 
         RestClient client = RestClient.builder()
                 .baseUrl("https://api.sarvam.ai")

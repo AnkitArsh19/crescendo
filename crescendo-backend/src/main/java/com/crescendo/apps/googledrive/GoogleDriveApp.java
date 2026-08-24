@@ -80,16 +80,14 @@ public class GoogleDriveApp implements AppDefinition {
                                    "required", false,
                                    "helpText", "Select the folder to upload to (default: root)"),
                             Map.of("key", "fileName", "label", "File Name",
-                                   "type", "text", "required", true,
+                                   "type", "text", "required", false,
                                    "placeholder", "report.txt",
-                                   "helpText", "Name for the uploaded file"),
-                            Map.of("key", "file", "label", "Upload File",
-                                   "type", "file", "required", false,
-                                   "accept", "*/*", "maxSizeMB", 25,
-                                   "helpText", "Select a file to upload (or use text content below)"),
-                            Map.of("key", "content", "label", "Text Content (Alternative)",
-                                   "type", "textarea", "required", false,
-                                   "helpText", "Paste text content or a URL — used when no file is uploaded")
+                                   "helpText", "Optional name override for the uploaded file"),
+                            Map.of("key", "file", "label", "File (Upload or Link)",
+                                   "type", "file_or_url", "required", true,
+                                   "accept", "*/*", "maxSizeMB", 50,
+                                   "placeholder", "Upload file or paste direct URL / Drive link / variable",
+                                   "helpText", "File to upload (upload directly or paste URL / workflow variable)")
                         )
                     ),
                     Map.of(

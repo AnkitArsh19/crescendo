@@ -46,7 +46,7 @@ public class WebhookReconciliationJob {
      */
     private static final java.util.Set<String> POLLING_APP_KEYS = java.util.Set.of(
             "gmail", "microsoft-outlook", "schedule", "error-handling", "native-form",
-            "github", "gitlab", "mqtt", "kafka", "rabbitmq"
+            "mqtt", "kafka", "rabbitmq"
     );
 
     private final Steps_commandRepository stepsRepo;

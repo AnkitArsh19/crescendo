@@ -12,6 +12,16 @@ import java.util.Map;
 @Component
 public class DropboxFileHandlers {
 
+    private final com.crescendo.storage.MediaStreamResolver mediaStreamResolver;
+
+    public DropboxFileHandlers() {
+        this(new com.crescendo.storage.MediaStreamResolver());
+    }
+
+    public DropboxFileHandlers(@org.springframework.beans.factory.annotation.Autowired com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
+        this.mediaStreamResolver = mediaStreamResolver;
+    }
+
     private String getAuth(ActionContext context) {
         return "Bearer " + context.credentials().get("accessToken");
     }
@@ -19,25 +29,37 @@ public class DropboxFileHandlers {
     @ActionMapping(appKey = "dropbox", actionKey = "upload-text")
     public Object uploadText(ActionContext context) throws Exception {
         String path = context.configuration().get("path") != null ? context.configuration().get("path").toString() : "";
-        String content = context.configuration().get("content") != null ? context.configuration().get("content").toString() : "";
+        Object rawContent = context.configuration().get("content");
+        if (rawContent == null) rawContent = context.configuration().get("file");
 
-        if (path.isBlank() || content.isBlank()) return ActionResult.failure("Path and content are required");
+        if (path.isBlank() || rawContent == null) return ActionResult.failure("Path and content are required");
 
         String apiArg = "{\"path\":\"" + path + "\",\"mode\":\"add\",\"autorename\":true,\"mute\":false,\"strict_conflict\":false}";
 
         try {
+            byte[] fileBytes;
+            if (mediaStreamResolver != null) {
+                try (com.crescendo.storage.MediaStreamResolver.MediaSource media = mediaStreamResolver.resolve(rawContent, "application/octet-stream")) {
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    media.stream().transferTo(baos);
+                    fileBytes = baos.toByteArray();
+                }
+            } else {
+                fileBytes = rawContent.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            }
+
             String response = RestClient.create("https://content.dropboxapi.com/2")
                     .post()
                     .uri("/files/upload")
                     .header("Authorization", getAuth(context))
                     .header("Dropbox-API-Arg", apiArg)
                     .header("Content-Type", "application/octet-stream")
-                    .body(content)
+                    .body(fileBytes)
                     .retrieve()
                     .body(String.class);
             return ActionResult.success(Map.of("data", response));
         } catch (Exception e) {
-            return ActionResult.failure("Failed to upload text to Dropbox: " + e.getMessage());
+            return ActionResult.failure("Failed to upload to Dropbox: " + e.getMessage());
         }
     }
 

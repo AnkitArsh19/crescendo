@@ -132,6 +132,7 @@ export default function SecuritySettings() {
             await registerPasskey(credentialName.trim() || 'Passkey', elevatedToken);
             setPasskeyStatus({ type: 'success', text: 'Passkey added successfully.' });
             await loadPasskeys();
+            await useAuthStore.getState().checkAuth();
         } catch (error) {
             setPasskeyStatus({ type: 'error', text: error.message });
         } finally {
@@ -147,6 +148,7 @@ export default function SecuritySettings() {
             });
             setPasskeys((current) => current.filter((item) => item.id !== passkey.id));
             setPasskeyStatus({ type: 'success', text: 'Passkey removed.' });
+            await useAuthStore.getState().checkAuth();
         } catch (error) {
             setPasskeyStatus({ type: 'error', text: error.response?.data?.message || 'Could not remove this passkey.' });
         }

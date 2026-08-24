@@ -47,20 +47,37 @@ public class WebhookManagementController {
         this.workflowRepo = workflowRepo;
     }
 
+    private static final java.util.Set<String> POLLING_APP_KEYS = java.util.Set.of(
+            "gmail", "microsoft-outlook", "schedule", "error-handling", "native-form",
+            "mqtt", "kafka", "rabbitmq"
+    );
+
     @GetMapping
     public ResponseEntity<List<WebhookDto.WebhookResponse>> listWebhooks(
             @PathVariable UUID workflowId,
             Authentication auth) {
         verifyWorkflowOwnership(userId(auth), workflowId);
 
-        List<UUID> stepIds = stepsRepo.findActiveByWorkflowId(workflowId)
+        List<Steps_command> activeSteps = stepsRepo.findActiveByWorkflowId(workflowId);
+        if (activeSteps.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        // Auto-provision webhook record for trigger steps if not already created
+        for (Steps_command step : activeSteps) {
+            if (step.getType() == com.crescendo.enums.StepType.TRIGGER
+                    && step.getAppKey() != null
+                    && !POLLING_APP_KEYS.contains(step.getAppKey())
+                    && webhookRepo.findByStepId(step.getId()).isEmpty()) {
+                Webhook webhook = Webhook.create(UUID.randomUUID(), step.getId());
+                webhookRepo.save(webhook);
+            }
+        }
+
+        List<UUID> stepIds = activeSteps
                 .stream()
                 .map(Steps_command::getId)
                 .toList();
-
-        if (stepIds.isEmpty()) {
-            return ResponseEntity.ok(List.of());
-        }
 
         List<WebhookDto.WebhookResponse> webhooks = webhookRepo.findByStepIdIn(stepIds)
                 .stream()

@@ -42,36 +42,36 @@ public class JiraApp implements AppDefinition {
                 List.of(
                         // ISSUE
                         Map.of("actionKey", "jira:issue:create", "name", "Create Issue", "description", "Create an issue", "configSchema", List.of(
-                                Map.of("key", "projectKey", "label", "Project Key", "type", "text", "required", true),
-                                Map.of("key", "issueType", "label", "Issue Type ID", "type", "text", "required", true),
+                                Map.of("key", "projectKey", "label", "Project", "type", "dynamic_dropdown", "resourceType", "projects", "required", true),
+                                Map.of("key", "issueType", "label", "Issue Type", "type", "dynamic_dropdown", "resourceType", "issueTypes", "required", true),
                                 Map.of("key", "summary", "label", "Summary", "type", "text", "required", true),
                                 Map.of("key", "additionalFields", "label", "Additional Fields (JSON)", "type", "json")
                         )),
                         Map.of("actionKey", "jira:issue:update", "name", "Update Issue", "description", "Update an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
                                 Map.of("key", "updateFields", "label", "Update Fields (JSON)", "type", "json", "required", true)
                         )),
                         Map.of("actionKey", "jira:issue:delete", "name", "Delete Issue", "description", "Delete an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true)
                         )),
                         Map.of("actionKey", "jira:issue:get", "name", "Get Issue", "description", "Get an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true)
                         )),
                         Map.of("actionKey", "jira:issue:getAll", "name", "Get All Issues (Search)", "description", "Search issues using JQL", "configSchema", List.of(
                                 Map.of("key", "jql", "label", "JQL Query", "type", "text"),
                                 Map.of("key", "limit", "label", "Limit", "type", "number", "default", 50)
                         )),
                         Map.of("actionKey", "jira:issue:changelog", "name", "Get Issue Changelog", "description", "Get changelog of an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true)
                         )),
                         Map.of("actionKey", "jira:issue:notify", "name", "Notify Issue", "description", "Send a notification for an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
                                 Map.of("key", "body", "label", "Notification Body (JSON)", "type", "json", "required", true)
                         )),
 
                         // ISSUE ATTACHMENT
                         Map.of("actionKey", "jira:issueAttachment:add", "name", "Add Attachment", "description", "Add attachment to an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
                                 Map.of("key", "fileName", "label", "File Name", "type", "text", "required", true),
                                 Map.of("key", "fileContent", "label", "File Content (Base64)", "type", "text", "required", true)
                         )),

@@ -133,7 +133,11 @@ public class DiscordApp implements AppDefinition {
                             Map.of("key", "color", "label", "Color",
                                    "type", "text", "required", false,
                                    "placeholder", "#5865F2",
-                                   "helpText", "Hex color for the embed sidebar")
+                                   "helpText", "Hex color for the embed sidebar"),
+                            Map.of("key", "imageUrl", "label", "Image (Upload or Link)",
+                                   "type", "file_or_url", "accept", "image/*", "required", false,
+                                   "placeholder", "Upload image file or paste Image URL",
+                                   "helpText", "Image to display inside the embed")
                         )
                     ),
                     Map.of(

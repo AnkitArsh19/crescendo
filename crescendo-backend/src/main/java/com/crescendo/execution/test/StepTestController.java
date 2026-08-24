@@ -52,6 +52,15 @@ public class StepTestController {
     private final ObjectMapper objectMapper;
     private final Connections_commandRepository connectionRepo;
 
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
+    private String geminiApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${sarvam.api.key:}")
+    private String sarvamApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${telegram.bot.token:}")
+    private String telegramBotToken;
+
     public StepTestController(ActionHandlerRegistry handlerRegistry,
             OAuthTokenRefreshService tokenService,
             PlatformKeyRepository platformKeyRepo,
@@ -69,7 +78,7 @@ public class StepTestController {
     public record TestStepRequest(
             String appKey,
             String actionKey,
-            UUID connectionId,
+            String connectionId,
             Map<String, Object> configuration) {
     }
 
@@ -122,12 +131,19 @@ public class StepTestController {
 
         try {
             // 3. Load credentials (user connection, active connection fallback, or platform key)
-            Map<String, Object> credentials = Map.of();
-            if (request.connectionId() != null) {
+            UUID connectionUuid = null;
+            if (request.connectionId() != null && !request.connectionId().isBlank() && !"ADMIN_KEY".equalsIgnoreCase(request.connectionId())) {
                 try {
-                    credentials = tokenService.getValidCredentials(request.connectionId(), userId);
+                    connectionUuid = UUID.fromString(request.connectionId());
+                } catch (IllegalArgumentException ignored) {}
+            }
+
+            Map<String, Object> credentials = Map.of();
+            if (connectionUuid != null) {
+                try {
+                    credentials = tokenService.getValidCredentials(connectionUuid, userId);
                 } catch (Exception e) {
-                    logger.debug("[step-test] Could not load credentials for connectionId={}: {}", request.connectionId(), e.getMessage());
+                    logger.debug("[step-test] Could not load credentials for connectionId={}: {}", connectionUuid, e.getMessage());
                 }
             }
             if (credentials.isEmpty()) {
@@ -191,6 +207,16 @@ public class StepTestController {
             }
         } catch (Exception e) {
             logger.warn("[step-test] Failed to load platform key for '{}': {}", appKey, e.getMessage());
+        }
+
+        if ("gemini".equalsIgnoreCase(appKey) && geminiApiKey != null && !geminiApiKey.isBlank()) {
+            return Map.of("apiKey", geminiApiKey);
+        }
+        if ("sarvam".equalsIgnoreCase(appKey) && sarvamApiKey != null && !sarvamApiKey.isBlank()) {
+            return Map.of("apiKey", sarvamApiKey);
+        }
+        if ("telegram".equalsIgnoreCase(appKey) && telegramBotToken != null && !telegramBotToken.isBlank()) {
+            return Map.of("apiKey", telegramBotToken, "botToken", telegramBotToken);
         }
         return Map.of();
     }

@@ -135,6 +135,8 @@ export const guestStepApi = {
     ),
 };
 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic Resource Fetching  (/apps/{appKey}/resources/{resourceType})
 // Powers cascading dropdowns in the step config panel.
@@ -145,11 +147,14 @@ export const resourceApi = {
    * Fetch dynamic options for a dropdown field.
    * @param {string} appKey - e.g. "google-sheets"
    * @param {string} resourceType - e.g. "spreadsheets", "channels"
-   * @param {string} connectionId - user's connection UUID
+   * @param {string} connectionId - user's connection UUID or "ADMIN_KEY" for platform-key apps
    * @param {Object} params - parent cascade params, e.g. { spreadsheetId: "abc" }
    */
   list: (appKey, resourceType, connectionId, params = {}) => {
-    const query = new URLSearchParams({ connectionId, ...params }).toString();
+    // connectionId may be a UUID or the sentinel "ADMIN_KEY" for platform-key apps
+    const query = new URLSearchParams(
+      connectionId ? { connectionId, ...params } : params
+    ).toString();
     return api
       .get(`/apps/${appKey}/resources/${resourceType}?${query}`)
       .then((r) => r.data);
@@ -163,5 +168,8 @@ export const resourceApi = {
 
 export const stepTestApi = {
   test: (data) =>
-    api.post('/workflows/steps/test', data).then((r) => r.data),
+    api.post('/workflows/steps/test', {
+      ...data,
+      connectionId: (data?.connectionId && data.connectionId !== 'ADMIN_KEY') ? data.connectionId : null,
+    }).then((r) => r.data),
 };

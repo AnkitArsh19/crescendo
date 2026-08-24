@@ -2524,6 +2524,161 @@
         background: rgba(239, 68, 68, 0.1);
     }
 
+    /* ── Dual Mode File / Stream URL Picker ── */
+    .cpb-file-or-url-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .cpb-media-mode-toggle {
+        display: inline-flex;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 3px;
+        gap: 2px;
+        align-self: flex-start;
+    }
+
+    .cpb-media-mode-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        font-size: 0.76rem;
+        font-weight: 500;
+        color: var(--text-tertiary, #888);
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .cpb-media-mode-btn:hover {
+        color: var(--text-primary, #fff);
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    .cpb-media-mode-btn.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .cpb-file-progress-bar {
+        width: 100%;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .cpb-file-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #6366f1, #818cf8);
+        border-radius: 4px;
+        transition: width 0.15s ease-out;
+    }
+
+    .cpb-file-uploading {
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        border-radius: var(--radius-sm, 8px);
+    }
+
+    .cpb-file-uploading-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cpb-file-uploading-name {
+        font-size: 0.76rem;
+        font-weight: 500;
+        color: var(--text-primary, #ffffff);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 55%;
+    }
+
+    .cpb-file-uploading-metrics {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .cpb-file-uploading-bytes {
+        font-size: 0.70rem;
+        color: var(--text-tertiary, #9ca3af);
+        letter-spacing: 0.01em;
+    }
+
+    .cpb-file-uploading-percent {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #818cf8;
+        min-width: 32px;
+        text-align: right;
+    }
+
+    .cpb-file-stream-tip {
+        font-size: 0.72rem;
+        color: var(--text-tertiary, #666);
+        margin-top: 6px;
+        line-height: 1.3;
+    }
+
+    .cpb-file-stream-tip strong {
+        color: var(--text-secondary, #aaa);
+    }
+
+    .cpb-media-url-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 100%;
+    }
+
+    .cpb-gdrive-badge, .cpb-var-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.72rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        margin-top: 2px;
+    }
+
+    .cpb-gdrive-badge {
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+    }
+
+    .cpb-gdrive-icon {
+        font-size: 0.95rem;
+        color: #60a5fa;
+    }
+
+    .cpb-var-badge {
+        background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        color: #a7f3d0;
+    }
+
+    .cpb-var-icon {
+        font-size: 0.95rem;
+        color: #34d399;
+    }
+
 
     .cpb-checkbox-label {
         display: flex;

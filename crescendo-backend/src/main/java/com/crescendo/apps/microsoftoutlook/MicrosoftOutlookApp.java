@@ -232,6 +232,16 @@ public class MicrosoftOutlookApp implements AppDefinition {
                                    "type", "text", "required", false,
                                    "helpText", "Sender email address")
                         )
+                    ),
+                    Map.of(
+                        "actionKey", "addAttachment",
+                        "name", "Add Attachment to Email",
+                        "description", "Add a file attachment to an email message",
+                        "configSchema", List.of(
+                            Map.of("key", "messageId", "label", "Message ID", "type", "text", "required", true, "helpText", "The ID of the message to attach to"),
+                            Map.of("key", "file", "label", "Attachment (File or URL)", "type", "file_or_url", "required", true, "placeholder", "Upload file or paste direct file URL"),
+                            Map.of("key", "name", "label", "Attachment File Name", "type", "text", "required", false, "placeholder", "invoice.pdf")
+                        )
                     )
                 )
         )

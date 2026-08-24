@@ -38,6 +38,15 @@ public class AppService {
     private final ActionHandlerRegistry actionHandlerRegistry;
     private final PlatformKeyRepository platformKeyRepo;
 
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
+    private String geminiApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${sarvam.api.key:}")
+    private String sarvamApiKey;
+
+    @org.springframework.beans.factory.annotation.Value("${telegram.bot.token:}")
+    private String telegramBotToken;
+
     public AppService(AppRepository appRepo, 
                       ActionHandlerRegistry actionHandlerRegistry, 
                       PlatformKeyRepository platformKeyRepo) {
@@ -65,14 +74,26 @@ public class AppService {
     }
 
     /**
-     * Loads the set of appKeys that have an enabled platform key in the database.
+     * Loads the set of appKeys that have an enabled platform key in the database
+     * or configured directly in application.properties.
      * Used for O(1) lookup when mapping the app list.
      */
     private Set<String> loadEnabledPlatformKeyAppKeys() {
-        return platformKeyRepo.findAllByEnabledTrue()
+        Set<String> keys = platformKeyRepo.findAllByEnabledTrue()
                 .stream()
                 .map(pk -> pk.getAppKey())
                 .collect(Collectors.toSet());
+
+        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+            keys.add("gemini");
+        }
+        if (sarvamApiKey != null && !sarvamApiKey.isBlank()) {
+            keys.add("sarvam");
+        }
+        if (telegramBotToken != null && !telegramBotToken.isBlank()) {
+            keys.add("telegram");
+        }
+        return keys;
     }
 
     private AppDto.AppSummaryResponse toSummary(App app, Set<String> platformKeyAppKeys) {

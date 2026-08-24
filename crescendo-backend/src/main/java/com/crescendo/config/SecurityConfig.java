@@ -139,6 +139,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/connections/oauth/*/callback").permitAll() // integration OAuth callback (state carries userId)
                         .requestMatchers(HttpMethod.GET, "/shared/**").permitAll() // public shared workflow previews
                         .requestMatchers(HttpMethod.GET, "/admin/platform-keys/available").permitAll() // public: which apps have platform keys
+                        .requestMatchers(HttpMethod.GET, "/apps/*/resources/**").permitAll() // public dropdown resources (standard categories etc.)
                         .requestMatchers(HttpMethod.GET, "/internal/catalog", "/internal/catalog/**").permitAll() // AI microservice catalog polling
                         .requestMatchers("/api-docs/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll() // OpenAPI docs
                         .requestMatchers(HttpMethod.GET, "/v2/domainTemplates/**").permitAll() // Domain Connect template spec (fetched by DNS providers)

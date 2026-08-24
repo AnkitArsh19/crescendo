@@ -38,6 +38,19 @@ function WorkflowNode({ data, selected, type }) {
         e.stopPropagation();
     }, []);
 
+    const KNOWN_APP_LOGOS = {
+        spotify: 'https://www.google.com/s2/favicons?domain=spotify.com&sz=128',
+        discord: 'https://www.google.com/s2/favicons?domain=discord.com&sz=128',
+        slack: 'https://www.google.com/s2/favicons?domain=slack.com&sz=128',
+        telegram: 'https://www.google.com/s2/favicons?domain=telegram.org&sz=128',
+        gemini: 'https://www.google.com/s2/favicons?domain=google.com&sz=128',
+        sarvam: 'https://www.google.com/s2/favicons?domain=sarvam.ai&sz=128',
+        github: '/icons/github.svg',
+        leetcode: '/icons/leetcode.svg',
+    };
+
+    const logoSrc = data.iconUrl || (data.appKey ? (KNOWN_APP_LOGOS[data.appKey] || `/icons/${data.appKey}.svg`) : null);
+
     return (
         <div className={`wf-node ${isTrigger ? 'wf-node--trigger' : 'wf-node--action'} ${selected ? 'wf-node--selected' : ''} ${isConfigured ? 'wf-node--configured' : ''} ${isOrphaned ? 'wf-node--orphaned' : ''} ${data._isNew ? 'wf-node--new' : ''}`}>
             {/* Step number badge */}
@@ -50,13 +63,21 @@ function WorkflowNode({ data, selected, type }) {
             <div className="wf-node__header">
                 {/* App icon */}
                 <div className={`wf-node__icon ${isConfigured ? 'wf-node__icon--configured' : ''}`}>
-                    {(data.iconUrl || data.appKey) ? (
+                    {(logoSrc || data.appKey) ? (
                         <>
                             <img 
-                                src={data.iconUrl || `/icons/${data.appKey}.svg`} 
+                                src={logoSrc} 
                                 alt="" 
                                 className="wf-node__app-img app-logo-img"
-                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                onError={(e) => {
+                                    const fallback = data.appKey ? (KNOWN_APP_LOGOS[data.appKey] || `https://www.google.com/s2/favicons?domain=${data.appKey}.com&sz=128`) : null;
+                                    if (fallback && e.target.src !== fallback) {
+                                        e.target.src = fallback;
+                                    } else {
+                                        e.target.style.display = 'none';
+                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'block';
+                                    }
+                                }}
                             />
                             {isTrigger ? <HiOutlineLightningBolt style={{ display: 'none' }} /> : <HiOutlineCog style={{ display: 'none' }} />}
                         </>

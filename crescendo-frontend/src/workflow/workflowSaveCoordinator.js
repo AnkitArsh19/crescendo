@@ -176,7 +176,7 @@ export function createSaveCoordinator(callbacks) {
         }
 
         for (let idx = 0; idx < nodes.length; idx++) {
-            const err = validateNodeForSave(nodes[idx], idx, catalogApps, appDetailsByKey);
+            const err = validateNodeForSave(nodes[idx], idx, catalogApps, appDetailsByKey, false);
             if (err) {
                 onSaveError(err);
                 useToastStore.getState().addToast(err, 'error');
@@ -267,8 +267,6 @@ export function createSaveCoordinator(callbacks) {
         } catch {
             return;
         }
-        if (nodes.some((node, index) =>
-            validateNodeForSave(node, index, catalogApps, appDetailsByKey))) return;
 
         if (inflightPromise) {
             // Another save in flight — queue one follow-up

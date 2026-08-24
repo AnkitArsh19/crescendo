@@ -70,14 +70,24 @@ const useAuthStore = create((set, get) => ({
 
       // Complete success
       const { accessToken, accessExpiresAt } = response.data;
-      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
-      
       set({ 
-        user: userData, 
-        isAuthenticated: true, 
         accessToken, 
         accessExpiresAt 
       });
+
+      try {
+        const userResp = await api.get('/users/me');
+        set({ 
+          user: userResp.data, 
+          isAuthenticated: true, 
+        });
+      } catch {
+        const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
+        set({ 
+          user: userData, 
+          isAuthenticated: true, 
+        });
+      }
 
       return { success: true, mfaRequired: false };
     } catch (error) {
@@ -136,14 +146,24 @@ const useAuthStore = create((set, get) => ({
       
       // Response includes tokens
       const { accessToken, accessExpiresAt } = response.data;
-      const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
-      
       set({ 
-        user: userData, 
-        isAuthenticated: true, 
         accessToken, 
         accessExpiresAt 
       });
+
+      try {
+        const userResp = await api.get('/users/me');
+        set({ 
+          user: userResp.data, 
+          isAuthenticated: true, 
+        });
+      } catch {
+        const { refreshToken: _rt, refreshExpiresAt: _re, message: _m, accessToken: _at, accessExpiresAt: _ae, ...userData } = response.data;
+        set({ 
+          user: userData, 
+          isAuthenticated: true, 
+        });
+      }
       return { success: true };
     } catch (error) {
       if (error.response?.status === 409) {

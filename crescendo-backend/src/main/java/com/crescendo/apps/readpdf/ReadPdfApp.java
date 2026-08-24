@@ -35,7 +35,7 @@ public class ReadPdfApp implements AppDefinition {
                                 "name", "Extract Text",
                                 "description", "Read PDF and extract text",
                                 "configSchema", List.of(
-                                        Map.of("key", "base64", "label", "PDF Base64", "type", "textarea", "required", true),
+                                        Map.of("key", "file", "label", "PDF (File or URL)", "type", "file_or_url", "accept", "application/pdf", "placeholder", "Upload PDF file or paste PDF URL / Google Drive link", "required", true),
                                         Map.of("key", "password", "label", "Password", "type", "password", "required", false),
                                         Map.of("key", "textPropertyName", "label", "Text Property Name", "type", "text", "required", true, "placeholder", "text", "helpText", "Name of the property to which to write the extracted text.")
                                 )

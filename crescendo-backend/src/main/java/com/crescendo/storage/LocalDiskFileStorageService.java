@@ -1,73 +1,102 @@
 package com.crescendo.storage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 @Service
 @Profile({"!prod"})
 public class LocalDiskFileStorageService implements FileStorageService {
     private static final Logger log = LoggerFactory.getLogger(LocalDiskFileStorageService.class);
-    private static final String STORAGE_DIR = "/tmp/crescendo-uploads/";
+
+    // Primary persistent directory in user home (.crescendo/uploads)
+    private static final Path PRIMARY_STORAGE_PATH = Paths.get(
+            System.getProperty("user.home"),
+            ".crescendo",
+            "uploads"
+    );
+
+    // Fallback directories for backward compatibility across platforms / drives
+    private static final List<Path> FALLBACK_PATHS = List.of(
+            Paths.get(System.getProperty("java.io.tmpdir"), "crescendo-uploads"),
+            Paths.get("/tmp/crescendo-uploads/")
+    );
 
     public LocalDiskFileStorageService() {
-        File dir = new File(STORAGE_DIR);
-        if (!dir.exists()) {
-            boolean created = dir.mkdirs();
-            if (created) {
-                log.info("Created local storage directory: {}", STORAGE_DIR);
-            } else {
-                log.warn("Failed to create local storage directory: {}", STORAGE_DIR);
+        try {
+            if (!Files.exists(PRIMARY_STORAGE_PATH)) {
+                Files.createDirectories(PRIMARY_STORAGE_PATH);
+                log.info("Created persistent local storage directory: {}", PRIMARY_STORAGE_PATH.toAbsolutePath());
             }
+        } catch (IOException e) {
+            log.warn("Failed to create primary storage directory {}: {}", PRIMARY_STORAGE_PATH, e.getMessage());
         }
     }
 
     @Override
     public String upload(MultipartFile file, String storageKey) throws IOException {
-        Path targetPath = Paths.get(STORAGE_DIR, storageKey);
-        try (var in = file.getInputStream(); var out = new FileOutputStream(targetPath.toFile())) {
+        if (!Files.exists(PRIMARY_STORAGE_PATH)) {
+            Files.createDirectories(PRIMARY_STORAGE_PATH);
+        }
+        Path targetPath = PRIMARY_STORAGE_PATH.resolve(storageKey);
+        try (var in = file.getInputStream(); var out = Files.newOutputStream(targetPath)) {
             in.transferTo(out);
         }
+        log.info("Uploaded file '{}' stored at: {}", file.getOriginalFilename(), targetPath.toAbsolutePath());
         return storageKey;
     }
 
     @Override
     public void delete(String storageKey) {
-        File f = new File(STORAGE_DIR, storageKey);
-        if (f.exists()) {
-            if (f.delete()) {
+        Path f = resolvePath(storageKey);
+        if (f != null && Files.exists(f)) {
+            try {
+                Files.delete(f);
                 log.info("Deleted local file: {}", storageKey);
-            } else {
-                log.warn("Failed to delete local file: {}", storageKey);
+            } catch (IOException e) {
+                log.warn("Failed to delete local file {}: {}", storageKey, e.getMessage());
             }
         }
     }
 
     @Override
     public String generateReadUrl(String storageKey, int ttlMinutes) {
-        // Return local file URI since presigning doesn't apply to local disk
-        return "file://" + STORAGE_DIR + storageKey;
+        Path p = resolvePath(storageKey);
+        return p != null ? p.toUri().toString() : PRIMARY_STORAGE_PATH.resolve(storageKey).toUri().toString();
     }
 
     @Override
     public void streamContent(String storageKey, OutputStream out) throws IOException {
-        File f = new File(STORAGE_DIR, storageKey);
-        if (!f.exists()) {
-            throw new IOException("File not found: " + storageKey);
+        Path f = resolvePath(storageKey);
+        if (f == null || !Files.exists(f)) {
+            throw new IOException("File not found on local disk storage: " + storageKey + " (Checked " + PRIMARY_STORAGE_PATH.toAbsolutePath() + ")");
         }
-        try (FileInputStream fis = new FileInputStream(f)) {
-            fis.transferTo(out);
+        try (InputStream in = Files.newInputStream(f)) {
+            in.transferTo(out);
         }
+    }
+
+    private Path resolvePath(String storageKey) {
+        Path primary = PRIMARY_STORAGE_PATH.resolve(storageKey);
+        if (Files.exists(primary)) {
+            return primary;
+        }
+        for (Path fallback : FALLBACK_PATHS) {
+            try {
+                Path fbPath = fallback.resolve(storageKey);
+                if (Files.exists(fbPath)) {
+                    return fbPath;
+                }
+            } catch (Exception ignored) {}
+        }
+        return primary;
     }
 }

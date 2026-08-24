@@ -47,17 +47,28 @@ export default function AppBrowserModal({
     title = 'Choose an App',
     connectOnly = false,
     onConnected,
+    initialAppKey = null,
 }) {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');
     const [detailApp, setDetailApp] = useState(null);
-    const [detailSection, setDetailSection] = useState('overview'); // 'overview' | 'actions' | 'connection'
+    const [detailSection, setDetailSection] = useState(initialAppKey ? 'connection' : 'overview'); // 'overview' | 'actions' | 'connection'
     const [activeConnectMode, setActiveConnectMode] = useState(null); // 'OAUTH2', 'CUSTOM_OAUTH2', 'APIKEY'
     const [connectError, setConnectError] = useState(null);
     const [name, setName] = useState('');
     const [credentials, setCredentials] = useState({});
     const [showPasswords, setShowPasswords] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (initialAppKey && apps.length > 0) {
+            const found = apps.find(a => a.appKey === initialAppKey);
+            if (found) {
+                setDetailApp(found);
+                setDetailSection('connection');
+            }
+        }
+    }, [initialAppKey, apps]);
     const [platformKeyApps, setPlatformKeyApps] = useState(new Set());
     const [actionSearch, setActionSearch] = useState('');
     const searchRef = useRef(null);
@@ -628,14 +639,30 @@ export default function AppBrowserModal({
                                                 )}
                                             </>
                                         ) : !isNoAuth ? (
-                                            <button
-                                                type="button"
-                                                className="abm-btn-primary"
-                                                onClick={() => setDetailSection('connection')}
-                                                title="Choose a connection method and connect account"
-                                            >
-                                                Connect Account →
-                                            </button>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <button
+                                                    type="button"
+                                                    className="abm-btn-secondary"
+                                                    onClick={() => setDetailSection('connection')}
+                                                    title="Choose a connection method and connect account"
+                                                >
+                                                    Connect Account
+                                                </button>
+                                                {!connectOnly && (
+                                                    <button
+                                                        type="button"
+                                                        className="abm-btn-primary"
+                                                        onClick={() => {
+                                                            const isUsingPlatform = (detailApp.hasPlatformKey || platformKeyApps.has(detailApp.appKey));
+                                                            onSelect?.(detailApp, isUsingPlatform ? 'ADMIN_KEY' : 'PERSONAL', null, '');
+                                                            onClose?.();
+                                                        }}
+                                                        title={`Use ${detailApp.name} in this workflow step`}
+                                                    >
+                                                        Use in Workflow
+                                                    </button>
+                                                )}
+                                            </div>
                                         ) : (
                                             !connectOnly && (
                                                 <button
@@ -1097,19 +1124,15 @@ export default function AppBrowserModal({
                                                         handleOpenOptions(e, app, 'connection');
                                                         return;
                                                     }
-                                                    if (isConnected) {
-                                                        const existing = connections.find((c) => c.appKey === app.appKey);
-                                                        onSelect?.(app, 'PERSONAL', existing?.id, existing?.name);
-                                                        onClose?.();
-                                                        return;
-                                                    }
-                                                    if (!needsAuth) {
-                                                        onSelect?.(app);
-                                                        onClose?.();
-                                                        return;
-                                                    }
-                                                    // Unconnected auth-required app
-                                                    handleOpenOptions(e, app, 'overview');
+                                                    const existing = connections.find((c) => c.appKey === app.appKey);
+                                                    const isUsingPlatform = (app.hasPlatformKey || platformKeyApps.has(app.appKey)) && !existing;
+                                                    onSelect?.(
+                                                        app,
+                                                        isUsingPlatform ? 'ADMIN_KEY' : 'PERSONAL',
+                                                        existing?.id || null,
+                                                        existing?.name || existing?.accountIdentifier || ''
+                                                    );
+                                                    onClose?.();
                                                 }}
                                             >
                                                 <div className="abm-app-icon">
@@ -1152,7 +1175,7 @@ export default function AppBrowserModal({
                                                                 Options
                                                             </button>
                                                         </>
-                                                    ) : needsAuth ? (
+                                                    ) : needsAuth && app.authType === 'OAUTH2' ? (
                                                         <>
                                                             <button
                                                                 type="button"
@@ -1174,31 +1197,15 @@ export default function AppBrowserModal({
                                                             </button>
                                                         </>
                                                     ) : (
-                                                        <>
-                                                            {!connectOnly && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="abm-action-btn-primary"
-                                                                    title={`Select ${app.name} for this step`}
-                                                                    aria-label={`Select ${app.name}`}
-                                                                    onClick={() => {
-                                                                        onSelect?.(app);
-                                                                        onClose?.();
-                                                                    }}
-                                                                >
-                                                                    Select
-                                                                </button>
-                                                            )}
-                                                            <button
-                                                                type="button"
-                                                                className="abm-action-btn-secondary"
-                                                                title={`View ${app.name} description and details`}
-                                                                aria-label={`Options for ${app.name}`}
-                                                                onClick={(e) => handleOpenOptions(e, app, 'overview')}
-                                                            >
-                                                                Options
-                                                            </button>
-                                                        </>
+                                                        <button
+                                                            type="button"
+                                                            className="abm-action-btn-secondary"
+                                                            title={`View ${app.name} description, operations, and connection options`}
+                                                            aria-label={`Options for ${app.name}`}
+                                                            onClick={(e) => handleOpenOptions(e, app, 'overview')}
+                                                        >
+                                                            Options
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>

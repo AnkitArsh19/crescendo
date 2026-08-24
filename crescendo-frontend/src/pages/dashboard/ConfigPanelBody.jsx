@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { resourceApi } from '../../api/workflowApi';
+import { webhookApi } from '../../api/webhookApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import SearchableSelect from '../../components/ui/SearchableSelect';
@@ -13,6 +14,7 @@ import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil,
 import { HiOutlineBolt } from 'react-icons/hi2';
 import ConditionRuleBuilder from './nodes/ConditionRuleBuilder';
 import { DateTimePickerField } from './fields/DateTimePickerField';
+import { FileOrUrlField } from './fields/FileOrUrlField';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Common output fields per app — used when we don't have real test data yet
@@ -48,6 +50,472 @@ const TRIGGER_OUTPUT_FIELDS = {
     'google-tasks': ['taskId', 'title', 'status', 'due'],
     '__default__': ['data', 'id', 'status', 'message'],
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Webhook Setup Guide — per-app instructions shown to the user in the trigger panel
+// ─────────────────────────────────────────────────────────────────────────────
+const WEBHOOK_SETUP_GUIDE = {
+    // ── GitHub ────────────────────────────────────────────────────────────────
+    github: {
+        label: 'GitHub',
+        intro: 'Paste the Crescendo webhook URL into your GitHub repository webhook settings.',
+        settingsUrl: (cfg) => {
+            if (!cfg?.repo) return 'https://github.com';
+            const repoPath = cfg.repo.includes('/') ? cfg.repo : `${cfg.owner ? cfg.owner + '/' : ''}${cfg.repo}`;
+            return `https://github.com/${repoPath}/settings/hooks/new`;
+        },
+        settingsLabel: 'Open GitHub Webhook Settings',
+        steps: [
+            'Open your GitHub repository → Settings → Webhooks → Add webhook.',
+            'Paste the Crescendo URL in the "Payload URL" field.',
+            'Set Content type to application/json.',
+            'Choose events: "Just the push event" (or select individual events).',
+            'Make sure "Active" is checked, then click Add webhook.',
+        ],
+        note: 'GitHub sends a ping event right away. You should see ✓ in GitHub settings once connected.',
+    },
+
+    // ── GitLab ────────────────────────────────────────────────────────────────
+    gitlab: {
+        label: 'GitLab',
+        intro: 'Register the Crescendo URL as a GitLab project webhook.',
+        settingsUrl: (cfg) => {
+            const path = cfg?.projectId || cfg?.repo;
+            return path ? `https://gitlab.com/${path}/-/hooks` : 'https://gitlab.com';
+        },
+        settingsLabel: 'Open GitLab Webhook Settings',
+        steps: [
+            'Open your GitLab project → Settings → Webhooks → Add new webhook.',
+            'Paste the Crescendo URL in the "URL" field.',
+            'Select the events you want (e.g. Push events, Merge request events).',
+            'Leave SSL verification enabled (recommended), then click Add webhook.',
+        ],
+        note: 'Use "Test" in GitLab to send a sample payload and verify the connection.',
+    },
+
+    // ── Slack ─────────────────────────────────────────────────────────────────
+    slack: {
+        label: 'Slack',
+        intro: 'Configure your Slack App to forward events to Crescendo via Event Subscriptions.',
+        settingsUrl: () => 'https://api.slack.com/apps',
+        settingsLabel: 'Open Slack API Dashboard',
+        steps: [
+            'Go to api.slack.com/apps → select your Slack app (or create one).',
+            'In the left sidebar click Event Subscriptions → toggle Enable Events ON.',
+            'Paste the Crescendo URL in the "Request URL" field.',
+            'Wait for Slack to show ✓ Verified (Crescendo responds to the challenge automatically).',
+            'Scroll down → Subscribe to bot events → add events like message.channels, app_mention.',
+            'Click Save Changes, then reinstall the app to your workspace.',
+        ],
+        note: 'Your Slack app must have the correct OAuth scopes for each event (e.g. channels:history for messages).',
+    },
+
+    // ── Discord ───────────────────────────────────────────────────────────────
+    discord: {
+        label: 'Discord',
+        intro: 'Create an Incoming Webhook in your Discord server channel settings.',
+        settingsUrl: () => 'https://discord.com/channels/@me',
+        settingsLabel: 'Open Discord',
+        steps: [
+            'Open your Discord server → right-click the channel → Edit Channel.',
+            'Go to the Integrations tab → Webhooks → New Webhook.',
+            'Give it a name and optionally set an avatar.',
+            'Click "Copy Webhook URL" — this is what external services POST to.',
+            'Alternatively, paste the Crescendo URL into any service that should push events to Discord.',
+        ],
+        note: 'Discord webhooks are outbound (Crescendo posts TO Discord). For inbound triggers from Discord to Crescendo, a Bot with Event Gateway is needed instead.',
+    },
+
+    // ── Telegram ──────────────────────────────────────────────────────────────
+    telegram: {
+        label: 'Telegram',
+        intro: 'Connect with @crescendo_app_bot using 1-click invite links with pre-applied permissions, or register the Crescendo webhook.',
+        settingsUrl: () => 'https://t.me/crescendo_app_bot',
+        settingsLabel: 'Open @crescendo_app_bot',
+        steps: [
+            '1-Click Start (Personal Alerts): Open https://t.me/crescendo_app_bot and click START to authorize alerts.',
+            '1-Click Add to Group: Open https://t.me/crescendo_app_bot?startgroup=true to add the bot to any group.',
+            '1-Click Add to Channel (as Admin): Open https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages to invite as admin with permissions pre-selected.',
+            'Inbound Webhook (optional): Register webhook with curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" -d "url=<CRESCENDO_URL>"',
+        ],
+        codeSnippet: (url) => `curl -X POST "https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook" \\\n  -d "url=${url}"`,
+        note: '💡 For groups: If your bot needs to read all messages without being tagged, open @BotFather → /setprivacy → select @crescendo_app_bot → choose "Disable".',
+    },
+
+    // ── Typeform ──────────────────────────────────────────────────────────────
+    typeform: {
+        label: 'Typeform',
+        intro: "Add the Crescendo URL as a Typeform webhook from your form's Connect tab.",
+        settingsUrl: () => 'https://admin.typeform.com',
+        settingsLabel: 'Open Typeform Dashboard',
+        steps: [
+            'Open your Typeform and click the Connect tab at the top.',
+            'Select Webhooks from the integrations list.',
+            'Click Add a webhook.',
+            'Paste the Crescendo URL in the destination URL field.',
+            'Click Save webhook. Use "Send test request" to verify.',
+        ],
+        note: 'Typeform requires HTTPS endpoints. You can optionally add a secret for signature verification.',
+    },
+
+    // ── Strava ────────────────────────────────────────────────────────────────
+    strava: {
+        label: 'Strava',
+        intro: 'Strava webhooks require an API subscription — you can use curl or Postman.',
+        settingsUrl: () => 'https://www.strava.com/settings/api',
+        settingsLabel: 'Open Strava API Settings',
+        steps: [
+            'Note your Strava Client ID and Client Secret from strava.com/settings/api.',
+            'Run the following curl command (Strava will verify your endpoint immediately):',
+            'curl -X POST https://www.strava.com/api/v3/push_subscriptions \\\n  -F client_id=YOUR_CLIENT_ID \\\n  -F client_secret=YOUR_CLIENT_SECRET \\\n  -F callback_url=<CRESCENDO_URL> \\\n  -F verify_token=crescendo_verify',
+            'Crescendo automatically responds to the hub.challenge verification request.',
+            'You will receive a subscription_id in the response confirming success.',
+        ],
+        codeSnippet: (url) => `curl -X POST https://www.strava.com/api/v3/push_subscriptions \\\n  -F client_id=YOUR_CLIENT_ID \\\n  -F client_secret=YOUR_CLIENT_SECRET \\\n  -F callback_url=${url} \\\n  -F verify_token=crescendo_verify`,
+        note: 'Each Strava API app can have only one active webhook subscription at a time.',
+    },
+
+    // ── Figma ─────────────────────────────────────────────────────────────────
+    figma: {
+        label: 'Figma',
+        intro: 'Figma webhooks are created via API — there is no UI for this in Figma.',
+        settingsUrl: () => 'https://www.figma.com/developers/api#webhooks-v2',
+        settingsLabel: 'Figma Webhooks API Docs',
+        steps: [
+            'Generate a Personal Access Token in Figma account settings (requires webhooks:write scope).',
+            'Find your Team ID from the Figma URL when viewing your team page.',
+            'Send this POST request (replace values):',
+            'curl -X POST https://api.figma.com/v2/webhooks \\\n  -H "X-Figma-Token: YOUR_PAT" \\\n  -H "Content-Type: application/json" \\\n  -d \'{"event_type":"FILE_UPDATE","team_id":"TEAM_ID","endpoint":"<URL>","passcode":"any_secret","status":"ACTIVE"}\'',
+            'Figma will send a PING event immediately to verify your endpoint.',
+        ],
+        codeSnippet: (url) => `curl -X POST https://api.figma.com/v2/webhooks \\\n  -H "X-Figma-Token: YOUR_PAT" \\\n  -H "Content-Type: application/json" \\\n  -d '{"event_type":"FILE_UPDATE","team_id":"TEAM_ID","endpoint":"${url}","passcode":"my_secret","status":"ACTIVE"}'`,
+        note: 'Figma webhooks require a Professional, Organization, or Enterprise plan.',
+    },
+
+    // ── Calendly ──────────────────────────────────────────────────────────────
+    calendly: {
+        label: 'Calendly',
+        intro: 'Calendly webhooks are registered via the Calendly API (not the dashboard UI).',
+        settingsUrl: () => 'https://calendly.com/integrations/api_webhooks',
+        settingsLabel: 'Open Calendly API & Webhooks',
+        steps: [
+            'Go to Calendly → Integrations & Apps → API & Webhooks → get your Personal Access Token.',
+            'Create the subscription with this curl (replace YOUR_TOKEN and your org URI):',
+            'curl -X POST https://api.calendly.com/webhook_subscriptions \\\n  -H "Authorization: Bearer YOUR_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d \'{"url":"<URL>","events":["invitee.created","invitee.canceled"],"organization":"YOUR_ORG_URI","scope":"organization"}\'',
+            'Get your organization URI from: GET https://api.calendly.com/users/me',
+        ],
+        codeSnippet: (url) => `curl -X POST https://api.calendly.com/webhook_subscriptions \\\n  -H "Authorization: Bearer YOUR_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url":"${url}","events":["invitee.created","invitee.canceled"],"organization":"https://api.calendly.com/organizations/YOUR_ID","scope":"organization"}'`,
+        note: 'Calendly webhooks require a Standard plan or higher.',
+    },
+
+    // ── Cal.com ───────────────────────────────────────────────────────────────
+    calcom: {
+        label: 'Cal.com',
+        intro: 'Add the Crescendo URL from your Cal.com developer settings.',
+        settingsUrl: () => 'https://app.cal.com/settings/developer/webhooks',
+        settingsLabel: 'Open Cal.com Webhook Settings',
+        steps: [
+            'Go to app.cal.com → Settings → Developer → Webhooks.',
+            'Click "+ New" to create a new webhook subscription.',
+            'Paste the Crescendo URL in the "Subscriber URL" field.',
+            'Select the event triggers you want (e.g. Booking Created, Booking Cancelled).',
+            'Toggle Enable Webhook ON and click Create Webhook.',
+        ],
+        note: 'Cal.com requires HTTPS endpoints. HTTP and localhost URLs are blocked.',
+    },
+
+    // ── HubSpot ───────────────────────────────────────────────────────────────
+    hubspot: {
+        label: 'HubSpot',
+        intro: 'Configure a webhook target inside your HubSpot Private App settings.',
+        settingsUrl: () => 'https://app.hubspot.com/private-apps',
+        settingsLabel: 'Open HubSpot Private Apps',
+        steps: [
+            'Go to HubSpot → Settings (gear icon) → Integrations → Private Apps.',
+            'Click your app name, then go to the Webhooks tab.',
+            'Click Edit webhooks → paste the Crescendo URL in the "Target URL" field.',
+            'Click Create subscription → choose the object and event type (e.g. Contact Created).',
+            'Save. HubSpot will start sending events to Crescendo immediately.',
+        ],
+        note: 'HubSpot webhook subscriptions must be managed in the UI — they cannot be created via API.',
+    },
+
+    // ── Instagram ─────────────────────────────────────────────────────────────
+    instagram: {
+        label: 'Instagram',
+        intro: 'Instagram webhooks are configured via the Meta for Developers dashboard.',
+        settingsUrl: () => 'https://developers.facebook.com/apps/',
+        settingsLabel: 'Open Meta for Developers',
+        steps: [
+            'Go to developers.facebook.com → Your App → Add Product → Webhooks.',
+            'Select Instagram in the webhook object dropdown.',
+            'In "Callback URL" paste the Crescendo URL.',
+            'Enter a Verify Token (any string you choose — Crescendo will echo it back).',
+            'Click Verify and Save, then subscribe to the fields you need.',
+        ],
+        note: 'Requires a Meta App with Instagram Graph API product added and proper permissions.',
+    },
+
+    // ── LinkedIn ──────────────────────────────────────────────────────────────
+    linkedin: {
+        label: 'LinkedIn',
+        intro: 'LinkedIn webhooks require Partner API access and are limited to select programs.',
+        settingsUrl: () => 'https://developer.linkedin.com/',
+        settingsLabel: 'LinkedIn Developer Portal',
+        steps: [
+            'LinkedIn real-time webhooks are only available to approved Marketing Developer Platform (MDP) partners.',
+            'If you have access, go to developer.linkedin.com → Your App → Products → Webhooks.',
+            'Register the Crescendo URL as the endpoint and subscribe to available events.',
+        ],
+        note: '⚠️ Real-time webhook triggers for LinkedIn are not available on the free/standard API tier. Polling is used instead.',
+    },
+
+    // ── Twitter / X ───────────────────────────────────────────────────────────
+    twitter: {
+        label: 'Twitter / X',
+        intro: 'Twitter real-time webhooks (Account Activity API) require an Enterprise plan.',
+        settingsUrl: () => 'https://developer.twitter.com/en/portal/dashboard',
+        settingsLabel: 'Open X Developer Portal',
+        steps: [
+            'Twitter/X real-time webhooks require the Account Activity API (Enterprise tier).',
+            'If you have access, go to developer.twitter.com → Your App → Webhooks.',
+            'Register the Crescendo URL and subscribe to account activities.',
+        ],
+        note: '⚠️ Real-time webhook triggers for Twitter/X require an Enterprise plan. Crescendo uses polling on free/standard tiers.',
+    },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WebhookSetupPanel Component — renders URL + copy + instructions for trigger steps
+// ─────────────────────────────────────────────────────────────────────────────
+function WebhookSetupPanel({ appKey, iconUrl, configuration, webhookInfo, workflowId }) {
+    const [copied, setCopied] = useState(false);
+    const guide = WEBHOOK_SETUP_GUIDE[appKey];
+
+    // Non-webhook triggers don't need manual webhook setup
+    const nonWebhookApps = ['schedule', 'native-form', 'gmail', 'microsoft-outlook', 'error-handling', 'imap', 'mqtt', 'kafka', 'rabbitmq', 'rss'];
+    if (nonWebhookApps.includes(appKey)) return null;
+
+    const fullUrl = webhookInfo?.url
+        ? (webhookInfo.url.startsWith('http') ? webhookInfo.url : `https://api.crescendo.run${webhookInfo.url}`)
+        : (workflowId ? `https://api.crescendo.run/webhooks/${workflowId}` : '');
+
+    const handleCopy = (text) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const settingsTarget = guide?.settingsUrl
+        ? (typeof guide.settingsUrl === 'function' ? guide.settingsUrl(configuration || {}) : guide.settingsUrl)
+        : null;
+
+    const logoSrc = iconUrl || (appKey ? `/icons/${appKey}.svg` : null);
+
+    return (
+        <div style={{
+            marginTop: '12px',
+            marginBottom: '16px',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: '1px solid var(--border-secondary)',
+            background: 'var(--bg-secondary)',
+        }}>
+            {/* Header */}
+            <div style={{
+                padding: '10px 14px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid var(--border-secondary)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    {logoSrc ? (
+                        <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '4px', overflow: 'hidden' }}>
+                            <img
+                                src={logoSrc}
+                                alt={guide?.label || appKey || ''}
+                                className="app-logo-img"
+                                style={{ width: '20px', height: '20px', objectFit: 'contain' }}
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextElementSibling) {
+                                        e.target.nextElementSibling.style.display = 'block';
+                                    }
+                                }}
+                            />
+                            <HiOutlineBolt style={{ display: 'none', width: '18px', height: '18px', color: 'var(--text-primary)' }} />
+                        </div>
+                    ) : (
+                        <HiOutlineBolt style={{ width: '18px', height: '18px', color: 'var(--text-primary)', flexShrink: 0 }} />
+                    )}
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {guide ? `Connect ${guide.label} Webhook` : 'Webhook Inbound Trigger'}
+                    </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: webhookInfo?.isActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                        color: webhookInfo?.isActive ? '#22c55e' : '#94a3b8',
+                    }}>
+                        {webhookInfo?.isActive ? '● Active' : (webhookInfo ? '○ Inactive' : '● Ready')}
+                    </span>
+                    {settingsTarget && (
+                        <a
+                            href={settingsTarget}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                fontSize: '0.72rem',
+                                color: 'var(--text-primary)',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border-secondary)',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                            }}
+                        >
+                            ↗ Settings
+                        </a>
+                    )}
+                </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '12px 14px' }}>
+                {guide && (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '10px', lineHeight: 1.5 }}>
+                        {guide.intro}
+                    </p>
+                )}
+
+                {/* URL + Copy button */}
+                <div style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                    Your Crescendo Webhook URL:
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: guide ? '12px' : '0' }}>
+                    <input
+                        type="text"
+                        readOnly
+                        value={fullUrl}
+                        placeholder="Save workflow to generate webhook URL"
+                        style={{
+                            flex: 1,
+                            padding: '7px 10px',
+                            fontSize: '0.73rem',
+                            fontFamily: 'monospace',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-secondary)',
+                            borderRadius: '6px',
+                            color: 'var(--text-primary)',
+                        }}
+                    />
+                    <button
+                        type="button"
+                        disabled={!fullUrl}
+                        onClick={() => handleCopy(fullUrl)}
+                        style={{
+                            padding: '7px 12px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderRadius: '6px',
+                            background: !fullUrl ? 'var(--bg-card)' : (copied ? '#22c55e' : '#fff'),
+                            color: !fullUrl ? 'var(--text-secondary)' : (copied ? '#fff' : '#000'),
+                            border: '1px solid var(--border-secondary)',
+                            cursor: !fullUrl ? 'not-allowed' : 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'background 0.2s',
+                        }}
+                    >
+                        {copied ? '✓ Copied!' : 'Copy URL'}
+                    </button>
+                </div>
+
+                {guide && (
+                    <>
+                        {/* Steps */}
+                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                            Setup steps:
+                        </div>
+                        <ol style={{ paddingLeft: '18px', margin: '0 0 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {guide.steps.map((step, i) => (
+                                <li key={i} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                    {step}
+                                </li>
+                            ))}
+                        </ol>
+
+                        {/* Code snippet (curl etc.) */}
+                        {guide.codeSnippet && (
+                            <div style={{ marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span style={{ fontSize: '0.73rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                        Run this command:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopy(guide.codeSnippet(fullUrl))}
+                                        style={{
+                                            fontSize: '0.7rem',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-secondary)',
+                                            color: 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Copy Command
+                                    </button>
+                                </div>
+                                <pre style={{
+                                    margin: 0,
+                                    padding: '8px 10px',
+                                    borderRadius: '6px',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-secondary)',
+                                    fontSize: '0.7rem',
+                                    fontFamily: 'monospace',
+                                    color: 'var(--text-primary)',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-all',
+                                    lineHeight: 1.6,
+                                }}>
+                                    {guide.codeSnippet(fullUrl)}
+                                </pre>
+                            </div>
+                        )}
+
+                        {/* Note */}
+                        {guide.note && (
+                            <div style={{
+                                fontSize: '0.72rem',
+                                color: guide.note.startsWith('⚠️') ? '#f59e0b' : 'var(--text-secondary)',
+                                background: guide.note.startsWith('⚠️') ? 'rgba(245,158,11,0.08)' : 'transparent',
+                                borderRadius: '5px',
+                                padding: guide.note.startsWith('⚠️') ? '6px 8px' : '0',
+                                lineHeight: 1.5,
+                                marginTop: '4px',
+                            }}>
+                                {guide.note}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
 
 // Action output fields — what handlers actually return
 const ACTION_OUTPUT_FIELDS = {
@@ -108,7 +576,7 @@ function getOutputFieldsForApp(appKey, isTriggerStep) {
 // DynamicDropdownField — uses SearchableSelect + resourceApi
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DynamicDropdownField({ field, appKey, connectionId, config, value, onChange }) {
+function DynamicDropdownField({ field, appKey, connectionId, credentialSource, config, value, onChange }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -116,13 +584,20 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
     const [aiMismatch, setAiMismatch] = useState(false);
     const prevParamsRef = useRef('');
 
-    const canFetch = appKey && connectionId && field.resourceType
-        && field.dependsOn.every((dep) => config[dep]);
+    // In ADMIN_KEY mode, pass the sentinel string; the backend will resolve the platform bot token
+    const effectiveConnectionId = (credentialSource === 'ADMIN_KEY' || (!connectionId && credentialSource !== 'PERSONAL'))
+        ? 'ADMIN_KEY'
+        : connectionId;
+
+    const dependsOn = Array.isArray(field.dependsOn) ? field.dependsOn : [];
+
+    const canFetch = appKey && effectiveConnectionId && field.resourceType
+        && dependsOn.every((dep) => config[dep]);
 
     const fetchOptions = useCallback(async () => {
         if (!canFetch) return;
         const params = {};
-        field.dependsOn.forEach((dep) => { params[dep] = config[dep]; });
+        dependsOn.forEach((dep) => { params[dep] = config[dep]; });
 
         const paramKey = JSON.stringify(params);
         if (paramKey === prevParamsRef.current) return;
@@ -132,7 +607,7 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
         setError(null);
         setAiMismatch(false);
         try {
-            const data = await resourceApi.list(appKey, field.resourceType, connectionId, params);
+            const data = await resourceApi.list(appKey, field.resourceType, effectiveConnectionId, params);
             const mapped = (data || []).map((o) => ({
                 id: o.id,
                 label: o.label || o.id,
@@ -215,6 +690,7 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
                 placeholder={aiMismatch ? `⚠ Select ${field.label}…` : `Select ${field.label}…`}
                 loading={loading}
                 error={error}
+                allowCustom={true}
                 onRefresh={() => { prevParamsRef.current = ''; fetchOptions(); }}
                 emptyMessage={`No ${field.label.toLowerCase()} found`}
                 style={aiMismatch ? { borderColor: 'var(--color-danger, #ef4444)' } : undefined}
@@ -252,6 +728,56 @@ function DynamicDropdownField({ field, appKey, connectionId, config, value, onCh
                     >
                         + Add Bot to another server
                     </button>
+                </div>
+            )}
+            {appKey === 'telegram' && field.resourceType === 'chats' && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', padding: '0 2px', flexWrap: 'wrap', gap: '6px' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                        Can&apos;t find your chat?
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <a
+                            href="https://t.me/crescendo_app_bot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.73rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                            }}
+                        >
+                            + Direct Chat
+                        </a>
+                        <span style={{ color: 'var(--border-primary)', fontSize: '0.7rem' }}>•</span>
+                        <a
+                            href="https://t.me/crescendo_app_bot?startgroup=true"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.73rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                            }}
+                        >
+                            + Group
+                        </a>
+                        <span style={{ color: 'var(--border-primary)', fontSize: '0.7rem' }}>•</span>
+                        <a
+                            href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.73rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                            }}
+                        >
+                            + Channel
+                        </a>
+                    </div>
                 </div>
             )}
         </div>
@@ -598,7 +1124,7 @@ function LogicRuleBuilder({ field, value, onChange, availableVariables }) {
     );
 }
 
-function DynamicField({ field, appKey, connectionId, config, value, onChange, availableVariables }) {
+function DynamicField({ field, appKey, connectionId, credentialSource, config, value, onChange, availableVariables }) {
     const inputRef = useRef(null);
 
     // Insert variable template at cursor position or append
@@ -632,6 +1158,7 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
             return (
                 <DynamicDropdownField
                     field={field} appKey={appKey} connectionId={connectionId}
+                    credentialSource={credentialSource}
                     config={config} value={value} onChange={onChange}
                 />
             );
@@ -779,149 +1306,18 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
                 </div>
             );
 
-        case 'file': {
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const fileInputRef = useRef(null);
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const [fileName, setFileName] = useState(
-                value && typeof value === 'object' ? value.name : (value ? 'File selected' : '')
-            );
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const [isDragging, setIsDragging] = useState(false);
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const [isUploading, setIsUploading] = useState(false);
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const addToast = useToastStore(s => s.addToast);
-            // eslint-disable-next-line react-hooks/rules-of-hooks
-            const { token } = useAuthStore();
-
-            const handleFileChange = (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                processFile(file);
-            };
-
-            const processFile = async (file) => {
-                const maxSizeMB = field.maxSizeMB || 25;
-                if (file.size > maxSizeMB * 1024 * 1024) {
-                    addToast(`File size exceeds the limit of ${maxSizeMB}MB`, 'error');
-                    return;
-                }
-
-                setIsUploading(true);
-                setFileName(file.name);
-
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    // Default to RELAY if not explicitly set to RETAINED
-                    const consumptionModel = field.consumptionModel || 'RELAY';
-                    formData.append('consumptionModel', consumptionModel);
-                    if (field.maxSizeMB) formData.append('maxSizeMB', field.maxSizeMB);
-
-                    const res = await fetch('/api/v1/files/upload', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` },
-                        body: formData
-                    });
-
-                    if (!res.ok) {
-                        const errText = await res.text();
-                        throw new Error(errText || 'Upload failed');
-                    }
-
-                    const data = await res.json();
-                    onChange(data); // Emits structured reference: { name, contentType, sizeBytes, storageKey, checksum, consumptionModel }
-                    addToast('File uploaded successfully', 'success');
-                } catch (err) {
-                    console.error('File upload error:', err);
-                    addToast(`Failed to upload file: ${err.message}`, 'error');
-                    setFileName('');
-                } finally {
-                    setIsUploading(false);
-                }
-            };
-
-            const handleDragOver = (e) => {
-                e.preventDefault();
-                setIsDragging(true);
-            };
-
-            const handleDragLeave = (e) => {
-                e.preventDefault();
-                setIsDragging(false);
-            };
-
-            const handleDrop = (e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file) {
-                    processFile(file);
-                }
-            };
-
-            const acceptStr = field.accept || '*/*';
-            const maxSizeMB = field.maxSizeMB || 25;
-
+        case 'file':
+        case 'file_or_url':
+        case 'media':
+        case 'video_upload':
             return (
-                <div 
-                    className={`cpb-file-upload ${isDragging ? 'dragging' : ''}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept={acceptStr}
-                        className="cpb-file-hidden"
-                        onChange={handleFileChange}
-                        disabled={isUploading}
-                    />
-                    {isUploading ? (
-                        <div className="cpb-file-uploading">
-                            <span>Uploading...</span>
-                        </div>
-                    ) : fileName ? (
-                        <div className="cpb-file-selected">
-                            <div className="cpb-file-icon"><HiUpload /></div>
-                            <div className="cpb-file-info">
-                                <span className="cpb-file-name">{fileName}</span>
-                                <span className="cpb-file-meta">Selected for upload</span>
-                            </div>
-                            <button
-                                type="button"
-                                className="cpb-file-remove"
-                                onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setFileName(''); 
-                                    onChange(null); 
-                                    if (fileInputRef.current) fileInputRef.current.value = ''; 
-                                }}
-                            >
-                                <HiX />
-                            </button>
-                        </div>
-                    ) : (
-                        <div 
-                            className="cpb-file-dropzone"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <div className="cpb-file-dropzone-icon">
-                                <HiUpload />
-                            </div>
-                            <div className="cpb-file-dropzone-text">
-                                <span>Click to upload</span> or drag and drop
-                            </div>
-                            <div className="cpb-file-dropzone-hint">
-                                Max {maxSizeMB}MB · {acceptStr === '*/*' ? 'Any file type' : acceptStr}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <FileOrUrlField
+                    field={field}
+                    value={value}
+                    onChange={onChange}
+                    availableVariables={availableVariables}
+                />
             );
-        }
 
         case 'datetime':
         case 'date':
@@ -936,7 +1332,13 @@ function DynamicField({ field, appKey, connectionId, config, value, onChange, av
             );
 
         default: // text
-            if (['startDate', 'endDate', 'start', 'end', 'dueDate', 'timeMin', 'timeMax', 'dateTime', 'maxDateAndTime'].includes(field.key)) {
+            if ([
+                'startDate', 'endDate', 'start', 'end', 'dueDate', 'due',
+                'completed', 'completedMax', 'completedMin', 'dueMax', 'dueMin',
+                'updatedMin', 'timeMin', 'timeMax', 'dateTime', 'maxDateAndTime',
+                'publishedAfter', 'publishedBefore', 'date', 'since', 'until',
+                'before', 'after', 'createdAfter', 'createdBefore', 'startTime', 'endTime'
+            ].includes(field.key)) {
                 return (
                     <DateTimePickerField
                         field={field}
@@ -971,22 +1373,37 @@ const TABS = ['Setup', 'Configure', 'Test'];
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ConfigPanelBody({
+    workflowId,
     configNode, updateNodeData, connectedAppOptions, selectedConnections,
     selectedTriggerOptions, selectedActionOptions, ensureAppDetail, appDetailsByKey,
     catalogApps, allNodes, allConnections, onOpenAppBrowser,
     onClose, onDelete, onClear, onSaveAndClose, onNavigate, nodeCount, nodeIndex,
 }) {
-    const { data } = configNode;
-    const isTrigger = configNode.type === 'trigger';
+    const { data = {} } = configNode || {};
+    const isTrigger = configNode.type === 'trigger' || configNode.data?.isTrigger || configNode.data?.nodeType === 'trigger' || (!configNode.data?.actionKey && !!configNode.data?.triggerKey) || nodeIndex === 0;
     const isAgentNode = configNode.type === 'agent' || data?.appKey === 'agent';
     const [activeTab, setActiveTab] = useState(0);
     const [editingName, setEditingName] = useState(false);
     const [stepName, setStepName] = useState('');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const [webhookInfo, setWebhookInfo] = useState(null);
+    const [copiedWebhook, setCopiedWebhook] = useState(false);
     const accountMenuRef = useRef(null);
 
     const user = useAuthStore(state => state.user);
     const isAdmin = user?.role === 'ADMIN';
+
+    // Fetch webhook endpoint details for trigger steps
+    useEffect(() => {
+        if (!isTrigger || !workflowId) return;
+        webhookApi.list(workflowId)
+            .then(webhooks => {
+                if (Array.isArray(webhooks) && webhooks.length > 0) {
+                    setWebhookInfo(webhooks[0]);
+                }
+            })
+            .catch(() => {});
+    }, [isTrigger, workflowId]);
 
     // ── Agent node auto-init ──
     // When an agent node opens without its appKey/actionKey populated, silently seed
@@ -1158,7 +1575,8 @@ export default function ConfigPanelBody({
     const isNoAuthApp = selectedCatalogApp?.authType === 'NONE';
 
     // ── Tab completion state ──
-    const isUsingAdminKey = data.credentialSource === 'ADMIN_KEY' && appDetail?.hasPlatformKey;
+    // For platform-key apps (Telegram, Gemini, Sarvam), default to ADMIN_KEY (managed) when not set
+    const isUsingAdminKey = appDetail?.hasPlatformKey && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource);
     const isGeminiAgent = isAgentNode && (!data.configuration?.provider || data.configuration.provider === 'gemini');
     const hasConnection = isNoAuthApp || isGeminiAgent || !!data.connectionId || isUsingAdminKey;
     const setupComplete = !!(data.appKey && hasConnection && actionOrTriggerKey);
@@ -1326,14 +1744,22 @@ export default function ConfigPanelBody({
         }
     };
 
-    // Handle OAuth connect inline — optionally pass connectionId for reconnection
+    // Handle OAuth connect inline or open connection modal for API key apps
     const handleNewConnection = async (reconnectConnectionId) => {
         if (!data.appKey) return;
-        try {
-            const { authorizationUrl } = await appCatalogApi.getOAuthUrl(data.appKey, reconnectConnectionId || undefined);
-            if (authorizationUrl) window.open(authorizationUrl, '_blank', 'width=600,height=700');
-        } catch {
-            // non-fatal
+        if (appDetail?.authType === 'OAUTH2') {
+            try {
+                const { authorizationUrl } = await appCatalogApi.getOAuthUrl(data.appKey, reconnectConnectionId || undefined);
+                if (authorizationUrl) {
+                    window.open(authorizationUrl, '_blank', 'width=600,height=700');
+                    return;
+                }
+            } catch {
+                // fall through to connection modal
+            }
+        }
+        if (onOpenAppBrowser) {
+            onOpenAppBrowser(data.appKey);
         }
     };
 
@@ -1349,14 +1775,16 @@ export default function ConfigPanelBody({
     const displayStepName = data.stepLabel || data.triggerName || data.actionName || data.appName || (isTrigger ? 'Configure Trigger' : 'Configure Action');
     const stepNumber = (nodeIndex ?? -1) + 1;
 
+    const stepHeaderLogo = appDetail?.logoUrl || data.iconUrl || (data.appKey ? `/icons/${data.appKey}.svg` : null);
+
     return (
         <div className="cpb-container">
             {/* ── Header (Zapier-style) ── */}
             <div className="canvas-config-header">
                 <div className="canvas-config-header-left">
-                    {(data.iconUrl || data.appKey) && (
+                    {(stepHeaderLogo || data.appKey) && (
                         <img
-                            src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`}
+                            src={stepHeaderLogo}
                             alt=""
                             className="canvas-config-header-icon app-logo-img"
                             onError={(e) => { e.target.style.display = 'none'; }}
@@ -1416,6 +1844,7 @@ export default function ConfigPanelBody({
                 </div>
             </div>
 
+            {/* ── Progress Banner ── */}
             <div className="cpb-progress-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'var(--bg-elevated, rgba(255, 255, 255, 0.03))', borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span style={{ fontSize: '0.74rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>
@@ -1494,11 +1923,12 @@ export default function ConfigPanelBody({
                                 <button
                                     type="button"
                                     className={`cpb-app-select-btn ${data.appKey ? 'selected' : ''}`}
-                                    onClick={onOpenAppBrowser}
+                                    onClick={() => onOpenAppBrowser && onOpenAppBrowser(null)}
+                                    title={data.appKey ? `Change app (currently ${data.appName || data.appKey})` : 'Choose an app…'}
                                 >
                                     <div className="cpb-app-select-icon">
                                         {data.appKey ? (
-                                            <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt={data.appName || ''} className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                            <img src={appDetail?.logoUrl || data.iconUrl || `/icons/${data.appKey}.svg`} alt={data.appName || ''} className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
                                         ) : (
                                             <HiOutlineBolt />
                                         )}
@@ -1508,57 +1938,132 @@ export default function ConfigPanelBody({
                                         <div className="cpb-app-select-name">
                                             {data.appName || data.appKey || 'Choose an app…'}
                                         </div>
-                                        {!data.appKey && (
-                                            <div className="cpb-app-select-hint">Browse all available apps</div>
-                                        )}
+                                        <div className="cpb-app-select-hint">
+                                            {data.appKey ? 'Click to change app' : 'Browse all available apps'}
+                                        </div>
                                     </div>
                                     <HiChevronRight className="cpb-app-select-chevron" />
                                 </button>
                             )}
                         </div>
 
-                        {/* Account — Zapier-style card with Change + 3-dot menu */}
+                        {/* Account — card with options menu */}
                         {data.appKey && !isNoAuthApp && (
                             <div className="cpb-field">
                                 <label className="cpb-label">Account <span className="cpb-required">*</span></label>
-                                
-                                {appDetail?.hasPlatformKey && (
-                                    <div className="cpb-admin-key-toggle" style={{ display: 'flex', gap: '16px', marginBottom: '12px', fontSize: '0.85rem' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                                            <input 
-                                                type="radio" 
-                                                checked={data.credentialSource !== 'ADMIN_KEY'} 
-                                                onChange={() => {
-                                                    updateNodeData(configNode.id, { credentialSource: 'PERSONAL' });
-                                                }} 
-                                            /> 
-                                            Use My Own Account
-                                        </label>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                                            <input 
-                                                type="radio" 
-                                                checked={data.credentialSource === 'ADMIN_KEY'} 
-                                                onChange={() => {
-                                                    updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
-                                                }} 
-                                            /> 
-                                            Use Crescendo's key
-                                        </label>
-                                    </div>
-                                )}
 
-                                {data.credentialSource === 'ADMIN_KEY' && appDetail?.hasPlatformKey ? (
-                                    <div className="cpb-admin-key-pill" style={{ padding: '10px 14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                        <HiCheck style={{ color: '#22c55e' }} />
-                                        <span>Using Crescendo's platform key</span>
-                                    </div>
+                                {/* Platform-key apps (Telegram, Gemini, Sarvam): show managed card by default */}
+                                {appDetail?.hasPlatformKey && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource) ? (
+                                    <>
+                                        <div className="cpb-account-card">
+                                            <div className="cpb-account-left">
+                                                <div className="cpb-app-select-icon" style={{ width: '28px', height: '28px' }}>
+                                                    <img src={appDetail?.logoUrl || data.iconUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                                    <HiOutlineBolt style={{ display: 'none' }} />
+                                                </div>
+                                                <div className="cpb-account-info">
+                                                    <span className="cpb-account-name">
+                                                        {data.appKey === 'telegram' ? '@crescendo_app_bot' : `Crescendo ${data.appName || data.appKey}`}
+                                                    </span>
+                                                    <span className="cpb-account-hint">Managed · No setup needed</span>
+                                                </div>
+                                            </div>
+                                            <div className="cpb-account-actions">
+                                                <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
+                                                    <button type="button" className="cpb-account-dots" title="Account options" aria-label="Account options" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
+                                                    {accountMenuOpen && (
+                                                        <div className="cpb-account-menu">
+                                                            <button type="button" onClick={() => {
+                                                                setAccountMenuOpen(false);
+                                                                updateNodeData(configNode.id, { credentialSource: 'PERSONAL', connectionId: null, account: null, accountName: '' });
+                                                                if (onOpenAppBrowser) onOpenAppBrowser(data.appKey);
+                                                            }}>
+                                                                Use my own {data.appKey === 'telegram' ? 'bot token' : 'API key'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Telegram: quick authorization links */}
+                                        {data.appKey === 'telegram' && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                                                <div style={{ fontSize: '0.73rem', color: 'var(--text-tertiary)' }}>
+                                                    Authorize the bot in your chat, group, or channel:
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                    <a
+                                                        href="https://t.me/crescendo_app_bot"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            padding: '5px 10px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid var(--border-primary)',
+                                                            background: 'var(--bg-elevated)',
+                                                            color: 'var(--text-primary)',
+                                                            textDecoration: 'none',
+                                                            fontSize: '0.74rem',
+                                                            fontWeight: 500,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        Direct Chat ↗
+                                                    </a>
+                                                    <a
+                                                        href="https://t.me/crescendo_app_bot?startgroup=true"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            padding: '5px 10px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid var(--border-primary)',
+                                                            background: 'var(--bg-elevated)',
+                                                            color: 'var(--text-primary)',
+                                                            textDecoration: 'none',
+                                                            fontSize: '0.74rem',
+                                                            fontWeight: 500,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        Add to Group ↗
+                                                    </a>
+                                                    <a
+                                                        href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            padding: '5px 10px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid var(--border-primary)',
+                                                            background: 'var(--bg-elevated)',
+                                                            color: 'var(--text-primary)',
+                                                            textDecoration: 'none',
+                                                            fontSize: '0.74rem',
+                                                            fontWeight: 500,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        Add to Channel ↗
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 ) : data.connectionId && selectedConnections.length > 0 ? (() => {
                                     const conn = selectedConnections.find(c => c.id === data.connectionId);
                                     return (
                                         <div className="cpb-account-card">
                                             <div className="cpb-account-left">
                                                 <div className="cpb-app-select-icon" style={{ width: '28px', height: '28px' }}>
-                                                    <img src={data.iconUrl || appDetail?.logoUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                                    <img src={appDetail?.logoUrl || data.iconUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
                                                     <HiOutlineBolt style={{ display: 'none' }} />
                                                 </div>
                                                 <div className="cpb-account-info">
@@ -1568,7 +2073,11 @@ export default function ConfigPanelBody({
                                             </div>
                                             <div className="cpb-account-actions">
                                                 <button type="button" className="cpb-account-change" title="Change or switch account" aria-label="Change account" onClick={() => {
-                                                    updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
+                                                    if (appDetail?.hasPlatformKey) {
+                                                        updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                    } else {
+                                                        updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
+                                                    }
                                                 }}>Change</button>
                                                 <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
                                                     <button type="button" className="cpb-account-dots" title="Connection options" aria-label="Connection options" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
@@ -1594,6 +2103,14 @@ export default function ConfigPanelBody({
                                                             <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
                                                                 Reconnect
                                                             </button>
+                                                            {appDetail?.hasPlatformKey && (
+                                                                <button type="button" onClick={() => {
+                                                                    setAccountMenuOpen(false);
+                                                                    updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                                }}>
+                                                                    Switch to managed account
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1660,6 +2177,17 @@ export default function ConfigPanelBody({
                             </div>
                         )}
 
+                        {/* Webhook setup panel */}
+                        {isTrigger && (
+                            <WebhookSetupPanel
+                                appKey={data.appKey}
+                                iconUrl={data.iconUrl || appDetail?.logoUrl}
+                                configuration={data.configuration}
+                                webhookInfo={webhookInfo}
+                                workflowId={workflowId}
+                            />
+                        )}
+
                         {/* Continue button */}
                         {setupComplete && (
                             <button
@@ -1691,6 +2219,7 @@ export default function ConfigPanelBody({
                                         field={field}
                                         appKey={data.appKey}
                                         connectionId={data.connectionId}
+                                        credentialSource={data.credentialSource}
                                         config={data.configuration || {}}
                                         value={(data.configuration || {})[field.key]}
                                         onChange={(val) => updateConfig(field.key, val)}
