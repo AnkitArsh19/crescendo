@@ -84,6 +84,9 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
     @Value("${app.security.rate-limit.auth.email.window-minutes:1}")
     private int emailWindowMinutes;
 
+    @Value("${app.security.rate-limit.auth.enabled:true}")
+    private boolean rateLimitEnabled;
+
     @Value("${app.security.trust-forwarded-headers:false}")
     private boolean trustForwardedHeaders;
 
@@ -102,8 +105,8 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Only apply to protected paths
-        if (!PROTECTED_PATHS.contains(path)) {
+        // Only apply to protected paths when enabled
+        if (!rateLimitEnabled || !PROTECTED_PATHS.contains(path)) {
             filterChain.doFilter(request, response);
             return;
         }
