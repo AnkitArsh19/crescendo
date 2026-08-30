@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-@ConditionalOnProperty(name = "crescendo.email.provider", havingValue = "brevo")
 public class BrevoEmailProvider implements EmailProvider {
 
     private static final Logger log = LoggerFactory.getLogger(BrevoEmailProvider.class);

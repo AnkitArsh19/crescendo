@@ -48,14 +48,12 @@ jobs:
 
       - name: Start backend (background)
         env:
-          # These two are optional overrides — application-ci.properties has safe defaults.
-          # Set CREDENTIALS_CRYPTO_KEY / JWT_SECRET as GitHub Secrets for a stable key across runs.
-          CREDENTIALS_CRYPTO_KEY: ${{ secrets.CREDENTIALS_CRYPTO_KEY || 'dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3Q=' }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET || 'Y2ktb25seS1qd3Qtc2lnbmluZy1rZXktZm9yLW9wZW5hcGktZ2VuZXJhdGlvbi0zMmJ5dGVzLW1pbmltdW0=' }}
+          CREDENTIALS_CRYPTO_KEY: dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3Q=
+          JWT_SECRET: Y2ktb25seS1qd3Qtc2lnbmluZy1rZXktZm9yLW9wZW5hcGktZ2VuZXJhdGlvbi0zMmJ5dGVzLW1pbmltdW0=
         run: |
           cd crescendo-backend
           chmod +x mvnw
-          cp src/main/resources/application.properties.example src/main/resources/application.properties
+          cp src/main/resources/application-ci.properties src/main/resources/application.properties
           ./mvnw -q spring-boot:run -DskipTests -Dspring.profiles.active=ci -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
           echo $! > ../backend.pid
           for i in $(seq 1 40); do

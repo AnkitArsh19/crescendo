@@ -21,8 +21,8 @@ public class OpenAIChatHandlers implements ActionHandler {
         Map<String, Object> config = context.configuration();
         Map<String, Object> creds = context.credentials();
 
-        String apiKey = creds != null ? String.valueOf(creds.get("apiKey")) : null;
-        if (apiKey == null || apiKey.isBlank()) return ActionResult.failure("API Key is required");
+        String apiKey = creds != null && creds.get("apiKey") != null ? String.valueOf(creds.get("apiKey")).trim() : null;
+        if (apiKey == null || apiKey.isBlank() || "null".equalsIgnoreCase(apiKey)) return ActionResult.failure("API Key is required");
 
         RestClient client = RestClient.builder()
                 .baseUrl("https://api.openai.com/v1")

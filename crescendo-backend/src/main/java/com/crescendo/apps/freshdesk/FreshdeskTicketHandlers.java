@@ -2,6 +2,7 @@ package com.crescendo.apps.freshdesk;
 
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionMapping;
+import com.crescendo.execution.action.ActionResult;
 import com.crescendo.utils.RestClient;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,15 @@ import java.util.Map;
 
 @Component
 public class FreshdeskTicketHandlers {
+
+    private ActionResult validate(ActionContext context) {
+        String domain = context.getCredential("domain");
+        String apiKey = context.getCredential("apiKey");
+        if (domain == null || domain.isBlank() || apiKey == null || apiKey.isBlank()) {
+            return ActionResult.failure("Freshdesk Domain and API Key are required in credentials");
+        }
+        return null;
+    }
 
     private String getBaseUrl(ActionContext context) {
         String domain = context.getCredential("domain");
@@ -21,14 +31,17 @@ public class FreshdeskTicketHandlers {
 
     private String getAuth(ActionContext context) {
         String apiKey = context.getCredential("apiKey");
-        String authStr = apiKey + ":X";
+        String authStr = (apiKey != null ? apiKey : "") + ":X";
         return "Basic " + java.util.Base64.getEncoder().encodeToString(authStr.getBytes());
     }
 
     @ActionMapping(appKey = "freshdesk", actionKey = "freshdesk:ticket:create")
     public Object createTicket(ActionContext context) throws Exception {
+        ActionResult validation = validate(context);
+        if (validation != null) return validation;
+
         Map<String, Object> payload = context.getMap("payload");
-        if (payload == null) payload = new HashMap<>();
+        payload = payload == null ? new HashMap<>() : new HashMap<>(payload);
         
         String email = context.getString("email");
         String subject = context.getString("subject");
@@ -52,7 +65,11 @@ public class FreshdeskTicketHandlers {
 
     @ActionMapping(appKey = "freshdesk", actionKey = "freshdesk:ticket:update")
     public Object updateTicket(ActionContext context) throws Exception {
+        ActionResult validation = validate(context);
+        if (validation != null) return validation;
+
         Map<String, Object> payload = context.getMap("payload");
+        payload = payload == null ? new HashMap<>() : new HashMap<>(payload);
         String ticketId = context.getString("ticketId");
         return RestClient.builder()
                 .url(getBaseUrl(context) + "/tickets/" + ticketId)
@@ -64,6 +81,9 @@ public class FreshdeskTicketHandlers {
 
     @ActionMapping(appKey = "freshdesk", actionKey = "freshdesk:ticket:get")
     public Object getTicket(ActionContext context) throws Exception {
+        ActionResult validation = validate(context);
+        if (validation != null) return validation;
+
         String ticketId = context.getString("ticketId");
         return RestClient.builder()
                 .url(getBaseUrl(context) + "/tickets/" + ticketId)
@@ -74,6 +94,9 @@ public class FreshdeskTicketHandlers {
 
     @ActionMapping(appKey = "freshdesk", actionKey = "freshdesk:ticket:getAll")
     public Object getAllTickets(ActionContext context) throws Exception {
+        ActionResult validation = validate(context);
+        if (validation != null) return validation;
+
         return RestClient.builder()
                 .url(getBaseUrl(context) + "/tickets")
                 .header("Authorization", getAuth(context))
@@ -83,6 +106,9 @@ public class FreshdeskTicketHandlers {
 
     @ActionMapping(appKey = "freshdesk", actionKey = "freshdesk:ticket:delete")
     public Object deleteTicket(ActionContext context) throws Exception {
+        ActionResult validation = validate(context);
+        if (validation != null) return validation;
+
         String ticketId = context.getString("ticketId");
         return RestClient.builder()
                 .url(getBaseUrl(context) + "/tickets/" + ticketId)
