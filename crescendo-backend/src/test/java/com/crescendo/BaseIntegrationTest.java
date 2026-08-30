@@ -46,5 +46,6 @@ public abstract class BaseIntegrationTest {
 
         // Rate limiter can be disabled during automated integration tests
         registry.add("app.security.rate-limit.auth.enabled", () -> "false");
+        registry.add("spring.jpa.open-in-view", () -> "false");
     }
 }
