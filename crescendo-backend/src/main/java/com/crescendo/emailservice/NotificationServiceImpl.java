@@ -5,6 +5,7 @@ import com.crescendo.emailservice.provider.EmailProvider;
 import com.crescendo.enums.EmailType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final EmailProvider emailProvider;
 
-    public NotificationServiceImpl(EmailProvider emailProvider) {
+    public NotificationServiceImpl(@Qualifier("brevoEmailProvider") EmailProvider emailProvider) {
         this.emailProvider = emailProvider;
     }
 
