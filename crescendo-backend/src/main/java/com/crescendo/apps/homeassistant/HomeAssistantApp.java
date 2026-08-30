@@ -36,15 +36,15 @@ public class HomeAssistantApp implements AppDefinition {
                         Map.of("actionKey", "homeassistant:state:get", "name", "Get Entity State",
                                 "description", "Read the state for a Home Assistant entity",
                                 "configSchema", List.of(
-                                        Map.of("key", "entityId", "label", "Entity ID", "type", "text", "required", true,
-                                                "placeholder", "light.living_room"))),
+                                        Map.of("key", "entityId", "label", "Entity", "type", "dynamic_dropdown", "resourceType", "entities", "required", true,
+                                                "helpText", "Select any entity from your Home Assistant instance"))),
                         Map.of("actionKey", "homeassistant:service:call", "name", "Call Service",
                                 "description", "Call a Home Assistant service",
                                 "configSchema", List.of(
-                                        Map.of("key", "domain", "label", "Domain", "type", "text", "required", true,
-                                                "placeholder", "light"),
-                                        Map.of("key", "service", "label", "Service", "type", "text", "required", true,
-                                                "placeholder", "turn_on"),
+                                        Map.of("key", "service", "label", "Service", "type", "dynamic_dropdown", "resourceType", "services", "required", true,
+                                                "helpText", "Select service (e.g., light.turn_on, switch.toggle)"),
+                                        Map.of("key", "domain", "label", "Domain (optional)", "type", "text", "required", false,
+                                                "placeholder", "light", "helpText", "Leave empty if service contains domain"),
                                         Map.of("key", "data", "label", "Service Data (JSON)", "type", "json", "required", false,
                                                 "placeholder", "{\"entity_id\":\"light.living_room\"}")))
                 )

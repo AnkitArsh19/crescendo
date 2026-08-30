@@ -38,6 +38,7 @@ public class MediumApp implements AppDefinition {
                                 "configSchema", List.of(
                                         Map.of("key", "title", "label", "Title", "type", "text", "required", true),
                                         Map.of("key", "content", "label", "Content", "type", "textarea", "required", true),
+                                        Map.of("key", "publicationId", "label", "Publication (optional)", "type", "dynamic_dropdown", "resourceType", "publications", "required", false, "helpText", "Select publication to publish under (leave empty for personal profile)"),
                                         Map.of(
                                                 "key", "contentFormat",
                                                 "label", "Content Format",

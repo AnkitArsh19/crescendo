@@ -44,15 +44,18 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
     private static final Logger logger = LoggerFactory.getLogger(ExecutionQueueConsumer.class);
 
     private final WorkflowRunRepository workflowRunRepo;
+    private final com.crescendo.logbook.step_run.StepRunRepository stepRunRepo;
     private final DistributedLockService lockService;
     private final WorkflowExecutionEngine executionEngine;
     private final RedisTemplate<String, Object> redisTemplate;
 
     public ExecutionQueueConsumer(WorkflowRunRepository workflowRunRepo,
+                                  com.crescendo.logbook.step_run.StepRunRepository stepRunRepo,
                                   DistributedLockService lockService,
                                   WorkflowExecutionEngine executionEngine,
                                   RedisTemplate<String, Object> redisTemplate) {
         this.workflowRunRepo = workflowRunRepo;
+        this.stepRunRepo = stepRunRepo;
         this.lockService = lockService;
         this.executionEngine = executionEngine;
         this.redisTemplate = redisTemplate;
@@ -160,7 +163,20 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
             logger.error("[execution] Engine failed for run {}: {}", workflowRunId, e.getMessage(), e);
             run.setStatus(WorkflowRunStatus.FAILED);
             run.setErrorMessage("Engine error: " + e.getMessage());
+            run.setCompletedAt(java.time.Instant.now());
             workflowRunRepo.save(run);
+
+            try {
+                java.util.List<com.crescendo.logbook.step_run.StepRun> openSteps =
+                        stepRunRepo.findAllByWorkflowRunIdAndStatus(run.getId(), com.crescendo.enums.StepRunStatus.RUNNING);
+                for (com.crescendo.logbook.step_run.StepRun s : openSteps) {
+                    s.setStatus(com.crescendo.enums.StepRunStatus.FAILED);
+                    s.setErrorMessage("Engine execution aborted: " + e.getMessage());
+                    s.setCompletedAt(java.time.Instant.now());
+                    stepRunRepo.save(s);
+                }
+            } catch (Exception ignored) {}
+
             return ExecutionStatus.DLQ;
         }
     }

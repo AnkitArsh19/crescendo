@@ -11,10 +11,12 @@ import com.crescendo.steps.step_condition.StepConditionRepository;
 import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_command;
+import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import tools.jackson.databind.ObjectMapper;
 
@@ -55,6 +57,7 @@ public class WebhookIngestController {
     private final ConditionEvaluator conditionEvaluator;
     private final WorkflowRunService workflowRunService;
     private final WorkflowRunRepository workflowRunRepository;
+    private final Workflow_commandRepository workflowRepo;
     private final ObjectMapper objectMapper;
 
     public WebhookIngestController(WebhookRepository webhookRepo,
@@ -63,6 +66,7 @@ public class WebhookIngestController {
                                     ConditionEvaluator conditionEvaluator,
                                     WorkflowRunService workflowRunService,
                                     WorkflowRunRepository workflowRunRepository,
+                                    Workflow_commandRepository workflowRepo,
                                     ObjectMapper objectMapper) {
         this.webhookRepo = webhookRepo;
         this.stepsRepo = stepsRepo;
@@ -70,9 +74,11 @@ public class WebhookIngestController {
         this.conditionEvaluator = conditionEvaluator;
         this.workflowRunService = workflowRunService;
         this.workflowRunRepository = workflowRunRepository;
+        this.workflowRepo = workflowRepo;
         this.objectMapper = objectMapper;
     }
 
+    @Transactional
     @RequestMapping(value = "/{webhookKey}", method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.HEAD, RequestMethod.OPTIONS})
     public ResponseEntity<Object> ingest(
             @PathVariable String webhookKey,
@@ -132,16 +138,20 @@ public class WebhookIngestController {
         }
 
         // 3. Resolve trigger step → workflow
-        Steps_command triggerStep = stepsRepo.findByIdAndDeletedAtIsNull(webhook.getStepId())
-                .orElse(null);
+        UUID targetStepId = webhook.getStepId();
+        Steps_command triggerStep = stepsRepo.findByIdWithWorkflowAndUser(targetStepId)
+                .orElseGet(() -> stepsRepo.findByIdAndDeletedAtIsNull(targetStepId).orElse(null));
         if (triggerStep == null) {
             logger.warn("[webhook] Step {} for webhook {} not found or deleted",
-                    webhook.getStepId(), webhookKey);
+                    targetStepId, webhookKey);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Trigger step not found"));
         }
 
         Workflow_command workflow = triggerStep.getWorkflow();
+        if (workflow == null && workflowRepo != null) {
+            workflow = workflowRepo.findById(targetStepId).orElse(null);
+        }
         if (workflow == null || workflow.getDeletedAt() != null || !workflow.isActive()) {
             logger.info("[webhook] Workflow for webhook {} is inactive or deleted", webhookKey);
             return ResponseEntity.status(HttpStatus.GONE)

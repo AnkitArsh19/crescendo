@@ -107,6 +107,10 @@ public class Steps_commandService {
         performStepDeletion(stepId, workflowId);
     }
 
+    public List<UUID> findActiveStepIds(UUID workflowId) {
+        return stepRepo.findActiveByWorkflowId(workflowId).stream().map(Steps_command::getId).toList();
+    }
+
     /**
      * Changes a step's position within its workflow using fractional ordering.
      */

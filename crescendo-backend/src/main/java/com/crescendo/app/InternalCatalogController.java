@@ -97,6 +97,9 @@ public class InternalCatalogController {
             entry.put("name",         opName);
             entry.put("description",  String.valueOf(op.getOrDefault("description", "")));
             entry.put("configSchema", enrichedSchema);
+            // Expose the same safety contract used by the workflow canvas so
+            // downstream consumers never have to infer whether a test may run.
+            entry.put("testContract", op.getOrDefault("testContract", Map.of()));
             return entry;
         }).collect(Collectors.toList());
     }

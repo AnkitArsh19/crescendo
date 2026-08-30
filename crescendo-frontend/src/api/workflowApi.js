@@ -162,14 +162,27 @@ export const resourceApi = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step Test  (/workflows/steps/test)
-// Test a single step with real credentials and config.
+// Step setup checking and deliberate live execution  (/workflows/steps/test)
+// Setup checks are non-mutating. A live run must be explicitly acknowledged.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const stepTestApi = {
-  test: (data) =>
+  validate: (data) =>
     api.post('/workflows/steps/test', {
       ...data,
-      connectionId: (data?.connectionId && data.connectionId !== 'ADMIN_KEY') ? data.connectionId : null,
+    }).then((r) => r.data),
+
+  triggerSample: (data) =>
+    api.post('/workflows/steps/test/trigger-sample', {
+      ...data,
+    }).then((r) => r.data),
+
+  readSample: (data) =>
+    api.post('/workflows/steps/test/read-sample', data).then((r) => r.data),
+
+  liveRun: (data) =>
+    api.post('/workflows/steps/test/live-run', {
+      ...data,
+      acknowledgeLiveRun: true,
     }).then((r) => r.data),
 };

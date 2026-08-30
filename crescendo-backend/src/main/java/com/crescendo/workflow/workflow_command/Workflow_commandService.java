@@ -13,6 +13,7 @@ import com.crescendo.workflow.domain_event.WorkflowActivatedEvent;
 import com.crescendo.workflow.domain_event.WorkflowCreatedEvent;
 import com.crescendo.workflow.domain_event.WorkflowDeactivatedEvent;
 import com.crescendo.workflow.domain_event.WorkflowDeletedEvent;
+import com.crescendo.workflow.domain_event.WorkflowGraphSavedEvent;
 import com.crescendo.workflow.domain_event.WorkflowUpdatedEvent;
 import com.crescendo.workflow.workflow_query.Workflow_query;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
@@ -24,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 /**
@@ -163,16 +166,41 @@ public class Workflow_commandService {
             if (req.description() != null) workflow.setDescription(req.description());
         }
 
-        // 1. Process deletions
+        // 1. Process explicit deletions
+        Set<UUID> explicitDeletes = new HashSet<>();
         if (req.deletedStepIds() != null) {
             for (String stepIdStr : req.deletedStepIds()) {
                 if (stepIdStr != null && !stepIdStr.isBlank()) {
                     try {
-                        stepsCommandService.deleteStep(userId, workflowId, UUID.fromString(stepIdStr));
+                        UUID sId = UUID.fromString(stepIdStr);
+                        explicitDeletes.add(sId);
+                        stepsCommandService.deleteStep(userId, workflowId, sId);
                     } catch (ResponseStatusException e) {
                         if (e.getStatusCode() != HttpStatus.NOT_FOUND) throw e;
-                    }
+                    } catch (IllegalArgumentException ignored) {}
                 }
+            }
+        }
+
+        // Collect all step IDs present in the incoming graph request
+        Set<UUID> keptStepIds = new HashSet<>();
+        if (req.steps() != null) {
+            for (WorkflowDto.GraphStepRequest stepReq : req.steps()) {
+                if (stepReq.backendId() != null && !stepReq.backendId().isBlank()) {
+                    try {
+                        keptStepIds.add(UUID.fromString(stepReq.backendId()));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+        }
+
+        // Reconcile: delete any existing active step in DB that is not present in the incoming request
+        List<UUID> activeStepIds = stepsCommandService.findActiveStepIds(workflowId);
+        for (UUID activeId : activeStepIds) {
+            if (!keptStepIds.contains(activeId) && !explicitDeletes.contains(activeId)) {
+                try {
+                    stepsCommandService.deleteStep(userId, workflowId, activeId);
+                } catch (Exception ignored) {}
             }
         }
 
@@ -186,11 +214,11 @@ public class Workflow_commandService {
                     // Update existing step
                     stepsCommandService.updateStep(userId, workflowId, UUID.fromString(stepReq.backendId()),
                             new WorkflowDto.UpdateStepRequest(
-                                    stepReq.name(),
-                                    stepReq.actionKey(),
-                                    stepReq.appKey(),
-                                    stepReq.connectionId(),
-                                    stepReq.configuration()
+                                     stepReq.name(),
+                                     stepReq.actionKey(),
+                                     stepReq.appKey(),
+                                     stepReq.connectionId(),
+                                     stepReq.configuration()
                             )
                     );
                     savedSteps.add(new WorkflowDto.GraphStepResponse(stepReq.clientId(), stepReq.backendId()));
@@ -225,6 +253,7 @@ public class Workflow_commandService {
         edgeService.replaceAllEdges(workflowId, edgeSpecs);
 
         publishWorkflow(workflow, new WorkflowDto.UpdateWorkflowRequest(req.name(), req.description()));
+        eventPublisher.publish(new WorkflowGraphSavedEvent(workflowId, userId));
 
         // Load saved edges to return to frontend
         List<WorkflowDto.EdgeResponse> savedEdges = edgeSpecs.stream()

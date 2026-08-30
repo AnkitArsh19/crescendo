@@ -296,14 +296,14 @@ export function createSaveCoordinator(callbacks) {
 
                 const edgePayloads = edgesToPayload(edges);
 
-                const { serverRevision } = draft.getDelta();
+                const { deletedBackendIds, serverRevision } = draft.getDelta();
 
                 const resp = await saveGraph(id, {
                     name: (getWorkflowName() || '').trim() || 'Untitled',
                     revision: serverRevision,
                     steps,
                     edges: edgePayloads,
-                    deletedStepIds: [] // IMPORTANT: autosave NEVER deletes steps.
+                    deletedStepIds: [...deletedBackendIds]
                 });
 
                 for (const saved of resp.savedSteps) {

@@ -6,11 +6,13 @@ import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.resource.ResourceProvider;
+import com.crescendo.execution.test.OperationTestContractFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.mockito.Answers;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -88,7 +90,7 @@ class CatalogContractTest {
                 .filter(type -> type != ResourceProvider.class)
                 .filter(type -> !type.isInterface() && !Modifier.isAbstract(type.getModifiers()))
                 .map(type -> type.asSubclass(ResourceProvider.class))
-                .map(CatalogContractTest::instantiateNoArg)
+                .map(CatalogContractTest::instantiateResourceProvider)
                 .collect(Collectors.toMap(
                         ResourceProvider::appKey,
                         provider -> provider,
@@ -148,6 +150,29 @@ class CatalogContractTest {
             validateDynamicFields(app, "trigger", app.getTriggers());
             validateDynamicFields(app, "action", app.getActions());
         }
+    }
+
+    @Test
+    @DisplayName("Every catalog operation receives a safe test contract")
+    void everyOperationHasASafeTestContract() {
+        OperationTestContractFactory factory = new OperationTestContractFactory();
+        for (App app : appsByKey.values()) {
+            for (Map<String, Object> trigger : safeList(app.getTriggers())) {
+                assertSafeTestContract(factory.create(app.getAppKey(), trigger, true), app.getAppKey(), trigger);
+            }
+            for (Map<String, Object> action : safeList(app.getActions())) {
+                assertSafeTestContract(factory.create(app.getAppKey(), action, false), app.getAppKey(), action);
+            }
+        }
+    }
+
+    private static void assertSafeTestContract(Map<String, Object> contract, String appKey, Map<String, Object> operation) {
+        String name = appKey + ":" + operation;
+        assertTrue(contract.containsKey("setupPolicy"), () -> "Missing setupPolicy for " + name);
+        assertTrue(contract.containsKey("checks"), () -> "Missing checks for " + name);
+        assertTrue(contract.containsKey("liveTestAllowed"), () -> "Missing liveTestAllowed for " + name);
+        assertTrue(contract.containsKey("sideEffect"), () -> "Missing sideEffect for " + name);
+        assertFalse("LIVE_RUN".equals(contract.get("setupPolicy")), () -> "Setup must never default to live execution for " + name);
     }
 
     private static void validateOperations(App app, List<Map<String, Object>> operations,
@@ -278,6 +303,24 @@ class CatalogContractTest {
             constructor.setAccessible(true);
             return constructor.newInstance();
         }, () -> "Catalog contract requires a no-arg constructible " + type.getName());
+    }
+
+    /**
+     * Resource providers increasingly receive HTTP/token collaborators through
+     * constructor injection. Their catalog metadata methods are deliberately
+     * pure, so a CALLS_REAL_METHODS mock lets this structural suite validate
+     * appKey/resource types without constructing a network client.
+     */
+    private static ResourceProvider instantiateResourceProvider(Class<? extends ResourceProvider> type) {
+        try {
+            Constructor<? extends ResourceProvider> constructor = type.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            return constructor.newInstance();
+        } catch (NoSuchMethodException ignored) {
+            return org.mockito.Mockito.mock(type, Answers.CALLS_REAL_METHODS);
+        } catch (Exception exception) {
+            throw new AssertionError("Could not inspect ResourceProvider " + type.getName(), exception);
+        }
     }
 
     @SuppressWarnings("unchecked")

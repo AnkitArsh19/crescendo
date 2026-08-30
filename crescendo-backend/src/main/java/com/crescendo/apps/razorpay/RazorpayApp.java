@@ -59,8 +59,8 @@ public class RazorpayApp implements AppDefinition {
                         Map.of("actionKey", "fetch-payment", "name", "Fetch Payment",
                                 "description", "Fetch a Razorpay payment by ID",
                                 "configSchema", List.of(
-                                        Map.of("key", "paymentId", "label", "Payment ID", "type", "text", "required", true,
-                                                "placeholder", "pay_...", "helpText", "Razorpay payment ID")
+                                        Map.of("key", "paymentId", "label", "Payment", "type", "dynamic_dropdown", "resourceType", "payments", "required", true,
+                                                "helpText", "Select a recent payment or provide ID from earlier step")
                                 ))
                 )
         ).credentialSchema(List.of(

@@ -2,10 +2,13 @@ package com.crescendo.execution.engine;
 
 import com.crescendo.admin.PlatformKey;
 import com.crescendo.admin.PlatformKeyRepository;
+import com.crescendo.app.App;
+import com.crescendo.app.AppRepository;
 import com.crescendo.connections.connections_command.Connections_command;
 import com.crescendo.connections.connections_command.Connections_commandRepository;
 import com.crescendo.connections.oauth.OAuthTokenRefreshService;
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
+import com.crescendo.enums.AuthType;
 import com.crescendo.enums.CredentialSource;
 import com.crescendo.enums.StepType;
 import com.crescendo.execution.action.ActionContext;
@@ -16,6 +19,7 @@ import com.crescendo.execution.expression.WorkflowExpressionResolver;
 import com.crescendo.logbook.LogbookDto;
 import com.crescendo.logbook.step_run.StepRunService;
 import com.crescendo.logbook.workflow_run.WorkflowRunService;
+import com.crescendo.shared.domain.valueobject.AppKey;
 import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.user.user_query.User_query;
@@ -70,6 +74,7 @@ public class WorkflowExecutionEngine {
     private final WorkflowRunService workflowRunService;
     private final PlatformKeyRepository platformKeyRepo;
     private final User_queryRepository userQueryRepo;
+    private final AppRepository appRepo;
     private final ObjectMapper objectMapper;
     private final WorkflowExpressionResolver expressionResolver;
 
@@ -92,6 +97,7 @@ public class WorkflowExecutionEngine {
                                     WorkflowRunService workflowRunService,
                                     PlatformKeyRepository platformKeyRepo,
                                     User_queryRepository userQueryRepo,
+                                    AppRepository appRepo,
                                     ObjectMapper objectMapper,
                                     WorkflowExpressionResolver expressionResolver) {
         this.stepsRepo = stepsRepo;
@@ -104,6 +110,7 @@ public class WorkflowExecutionEngine {
         this.workflowRunService = workflowRunService;
         this.platformKeyRepo = platformKeyRepo;
         this.userQueryRepo = userQueryRepo;
+        this.appRepo = appRepo;
         this.objectMapper = objectMapper;
         this.expressionResolver = expressionResolver;
     }
@@ -506,26 +513,26 @@ public class WorkflowExecutionEngine {
                 userId, workflowRunId, step.getId(), inputData);
         UUID stepRunId = UUID.fromString(stepRun.id());
 
-        // 3. Load connection credentials — user connection or platform key fallback
-        Map<String, Object> credentials = loadCredentials(step.getConnectionId(), appKey, userId);
-
-        // 4. Resolve variable templates in configuration (e.g. {{steps.1.fieldName}})
-        Map<String, Object> rawConfig = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
-        Map<String, Object> resolvedConfig = expressionResolver.resolveConfiguration(rawConfig, allStepOutputs, stepsById);
-
-        // 5. Build context and execute
-        ActionContext context = new ActionContext(
-                appKey, actionKey,
-                resolvedConfig,
-                credentials,
-                inputData,
-                workflowRunId,
-                userId,
-                step.getId(),
-                step.getOrder() != null ? step.getOrder().intValue() : 0
-        );
-
         try {
+            // 3. Load connection credentials — user connection or platform key fallback
+            Map<String, Object> credentials = loadCredentials(step.getConnectionId(), appKey, userId);
+
+            // 4. Resolve variable templates in configuration (e.g. {{steps.1.fieldName}})
+            Map<String, Object> rawConfig = step.getConfiguration() != null ? step.getConfiguration() : Map.of();
+            Map<String, Object> resolvedConfig = expressionResolver.resolveConfiguration(rawConfig, allStepOutputs, stepsById);
+
+            // 5. Build context and execute
+            ActionContext context = new ActionContext(
+                    appKey, actionKey,
+                    resolvedConfig,
+                    credentials,
+                    inputData,
+                    workflowRunId,
+                    userId,
+                    step.getId(),
+                    step.getOrder() != null ? step.getOrder().intValue() : 0
+            );
+
             ActionResult result = handler.execute(context);
 
             if (result.success()) {
@@ -546,7 +553,7 @@ public class WorkflowExecutionEngine {
             logger.error("[engine] Uncaught exception in step '{}' ({}:{})",
                     step.getName(), appKey, actionKey, e);
             stepRunService.failStepRun(userId, stepRunId,
-                    "Unexpected error: " + e.getMessage());
+                    "Error: " + e.getMessage());
             return new StepExecutionResult(false, false, null, null, Map.of());
         }
     }
@@ -568,6 +575,21 @@ public class WorkflowExecutionEngine {
      * owned by another user cannot be used even if the ID is known.
      */
     private Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
+        // ── Tier 0: Check if app requires no authentication (AuthType.NONE) ───
+        if (appKey != null) {
+            try {
+                if (appRepo != null) {
+                    var appOpt = appRepo.findById(AppKey.of(appKey));
+                    if (appOpt.isPresent() && appOpt.get().getAuthType() == AuthType.NONE) {
+                        logger.debug("[engine] App '{}' requires no authentication (AuthType.NONE)", appKey);
+                        return Map.of();
+                    }
+                }
+            } catch (Exception e) {
+                logger.debug("[engine] Could not inspect authType for app '{}': {}", appKey, e.getMessage());
+            }
+        }
+
         // ── Tier 1: PERSONAL connection (user's own) ──────────────────────────
         if (connectionId != null) {
             Connections_command connection = connectionsRepo
@@ -578,11 +600,26 @@ public class WorkflowExecutionEngine {
                         appKey, connectionId);
                 return tokenRefreshService.getValidCredentials(connection);
             }
-            // Connection ID was set but not found / not owned — hard fail
-            logger.error("[engine] Connection {} not found or not owned by user {}",
-                    connectionId, userId);
-            throw new IllegalStateException(
-                    "Connection " + connectionId + " not found or not owned by this user.");
+            // Fallback: check if user has an active connection for this appKey
+            List<Connections_command> fallbackConns = connectionsRepo.findByUser_IdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(c -> appKey != null && appKey.equalsIgnoreCase(c.getAppKey()))
+                    .toList();
+            if (!fallbackConns.isEmpty()) {
+                logger.debug("[engine] Using fallback PERSONAL connection for app '{}'", appKey);
+                return tokenRefreshService.getValidCredentials(fallbackConns.get(0));
+            }
+            logger.warn("[engine] Specified connection {} not found for user {}, checking platform credentials", connectionId, userId);
+        } else {
+            // Auto-discover user's active connection if connectionId was not explicitly set on the step
+            List<Connections_command> userConns = connectionsRepo.findByUser_IdOrderByCreatedAtDesc(userId)
+                    .stream()
+                    .filter(c -> appKey != null && appKey.equalsIgnoreCase(c.getAppKey()))
+                    .toList();
+            if (!userConns.isEmpty()) {
+                logger.debug("[engine] Auto-discovered PERSONAL connection for app '{}'", appKey);
+                return tokenRefreshService.getValidCredentials(userConns.get(0));
+            }
         }
 
         // ── Tier 2: PLATFORM key (admin-configured fallback) ──────────────────

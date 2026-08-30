@@ -80,8 +80,8 @@ public class StravaApp implements AppDefinition {
                     Map.of("actionKey", "strava:activity:update", "name", "Update Activity",
                         "description", "Edit an existing activity",
                         "configSchema", List.of(
-                            Map.of("key", "activityId", "label", "Activity ID", "type", "text", "required", true,
-                                   "helpText", "Strava activity ID"),
+                            Map.of("key", "activityId", "label", "Activity", "type", "dynamic_dropdown", "resourceType", "activities", "required", true,
+                                   "helpText", "Select a recent Strava activity to update"),
                             Map.of("key", "name", "label", "Name", "type", "text", "required", false, "helpText", "Updated name"),
                             Map.of("key", "description", "label", "Description", "type", "textarea", "required", false, "helpText", "Updated description"))),
                     Map.of("actionKey", "strava:activity:getMany", "name", "Get Activities",

@@ -21,6 +21,10 @@ public interface Steps_commandRepository extends JpaRepository<Steps_command, UU
     /// Find a non-deleted step by ID.
     Optional<Steps_command> findByIdAndDeletedAtIsNull(UUID id);
 
+    /// Find a non-deleted step by ID with workflow and user eagerly fetched.
+    @Query("SELECT s FROM Steps_command s JOIN FETCH s.workflow w LEFT JOIN FETCH w.user u WHERE s.id = :id AND s.deletedAt IS NULL")
+    Optional<Steps_command> findByIdWithWorkflowAndUser(UUID id);
+
     /// Soft-delete all steps for a workflow (used when soft-deleting a workflow).
     @Query("SELECT s FROM Steps_command s WHERE s.workflow.id = :workflowId AND s.deletedAt IS NULL")
     List<Steps_command> findActiveByWorkflowId(UUID workflowId);

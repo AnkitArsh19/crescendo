@@ -128,8 +128,7 @@ public class SecurityConfig {
                                 "/oauth/session-required")
                         .permitAll()
                         .requestMatchers("/guest/**").permitAll() // guest workflows — identified by X-Guest-Session header
-                        .requestMatchers(HttpMethod.POST, "/webhooks/**").permitAll() // external webhook ingestion
-                        .requestMatchers(HttpMethod.GET, "/webhooks/email-events").permitAll() // provider delivery callbacks
+                        .requestMatchers("/webhooks/**").permitAll() // external webhook ingestion (GET challenge verification, POST payloads)
                         .requestMatchers("/public/forms/**", "/public/approvals/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/t/**").permitAll() // open/click tracking pixel & redirect
                         .requestMatchers(HttpMethod.GET, "/unsubscribe").permitAll() // legacy path — keep for old links

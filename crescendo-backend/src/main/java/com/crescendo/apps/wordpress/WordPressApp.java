@@ -38,6 +38,8 @@ public class WordPressApp implements AppDefinition {
                                 "configSchema", List.of(
                                         Map.of("key", "title", "label", "Title", "type", "text", "required", true),
                                         Map.of("key", "content", "label", "Content", "type", "textarea", "required", true),
+                                        Map.of("key", "category", "label", "Category", "type", "dynamic_dropdown", "resourceType", "categories", "required", false, "helpText", "Optional category for the post"),
+                                        Map.of("key", "author", "label", "Author", "type", "dynamic_dropdown", "resourceType", "users", "required", false, "helpText", "Optional author user"),
                                         Map.of("key", "status", "label", "Status", "type", "select", "required", false,
                                                 "options", List.of(
                                                         Map.of("value", "draft", "label", "Draft"),

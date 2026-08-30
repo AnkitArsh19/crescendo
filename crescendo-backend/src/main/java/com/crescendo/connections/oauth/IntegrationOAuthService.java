@@ -123,7 +123,11 @@ public class IntegrationOAuthService {
         this.cryptoService = cryptoService;
         this.eventPublisher = eventPublisher;
         this.userOAuthAppService = userOAuthAppService;
-        this.restTemplate = new RestTemplate();
+        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(15))
+                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .build();
+        this.restTemplate = new RestTemplate(new org.springframework.http.client.JdkClientHttpRequestFactory(httpClient));
         this.hmacKeyBytes = Base64.getDecoder().decode(base64Key.trim());
     }
 
@@ -195,6 +199,9 @@ public class IntegrationOAuthService {
             // Force the Spotify consent dialog so newly added scopes (like user-library-modify)
             // are actively presented and approved rather than silently skipped.
             url.append("&show_dialog=true");
+        } else if ("facebook-graph".equals(providerKey) || "facebook".equals(providerKey)) {
+            // Force Facebook to re-evaluate and prompt for any new/missing scopes (e.g. pages_show_list)
+            url.append("&auth_type=").append(encode("rerequest"));
         } else if ("discord".equals(providerKey)) {
             // Pre-seed bot permissions so server invite prompt has all necessary message & channel permissions pre-selected
             if (effectiveScopes != null && effectiveScopes.contains("bot")) {
@@ -262,6 +269,41 @@ public class IntegrationOAuthService {
         }
         if (config.getBotToken() != null && !config.getBotToken().isBlank()) {
             credentials.put("botToken", config.getBotToken());
+        }
+
+        // Instagram: exchange short-lived token (1h) for long-lived token (60 days)
+        // The short-lived token from api.instagram.com/oauth/access_token expires in 1 hour.
+        // graph.instagram.com/access_token returns a 60-day token.
+        if ("instagram".equals(providerKey)) {
+            String shortToken = (String) tokenResponse.get("access_token");
+            try {
+                String longLivedUrl = "https://graph.instagram.com/access_token"
+                        + "?grant_type=ig_exchange_token"
+                        + "&client_secret=" + effectiveClientSecret
+                        + "&access_token=" + shortToken;
+                ResponseEntity<Map<String, Object>> llResp = restTemplate.exchange(
+                        longLivedUrl, HttpMethod.GET,
+                        new HttpEntity<>(new HttpHeaders()),
+                        (Class<Map<String, Object>>) (Class<?>) Map.class);
+                if (llResp.getStatusCode().is2xxSuccessful() && llResp.getBody() != null
+                        && llResp.getBody().containsKey("access_token")) {
+                    Map<String, Object> llBody = llResp.getBody();
+                    String longToken = String.valueOf(llBody.get("access_token"));
+                    credentials.put("accessToken", longToken);
+                    // Long-lived token typically expires in 5184000 seconds (60 days)
+                    Object llExpiry = llBody.get("expires_in");
+                    if (llExpiry != null) {
+                        long llSeconds = llExpiry instanceof Number n ? n.longValue() : Long.parseLong(llExpiry.toString());
+                        credentials.put("expiresIn", llSeconds);
+                        credentials.put("tokenExpiresAt", java.time.Instant.now().plusSeconds(llSeconds).toString());
+                    }
+                    logger.info("[oauth] Instagram: exchanged short-lived token for long-lived token (expires in {}s)", llExpiry);
+                } else {
+                    logger.warn("[oauth] Instagram long-lived token exchange returned unexpected response: {}", llResp.getBody());
+                }
+            } catch (Exception e) {
+                logger.warn("[oauth] Instagram long-lived token exchange failed (using short-lived token): {}", e.getMessage());
+            }
         }
 
         // Capture granted scopes for scope-aware UI greying.
@@ -424,23 +466,36 @@ public class IntegrationOAuthService {
             request = new HttpEntity<>(body, headers);
         }
 
-        try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    config.getTokenUrl(), HttpMethod.POST, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
+        Exception lastException = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                        config.getTokenUrl(), HttpMethod.POST, request, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                        "Token exchange failed for provider " + providerKey);
+                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                            "Token exchange failed for provider " + providerKey);
+                }
+
+                return response.getBody();
+            } catch (ResponseStatusException e) {
+                throw e;
+            } catch (Exception e) {
+                lastException = e;
+                logger.warn("[oauth] Token exchange attempt {}/3 failed for {}: {}", attempt, providerKey, e.getMessage());
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(400L * attempt);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
             }
-
-            return response.getBody();
-        } catch (ResponseStatusException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.error("OAuth token exchange failed for {}: {}", providerKey, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Failed to exchange OAuth code for " + providerKey + ": " + e.getMessage());
         }
+
+        logger.error("OAuth token exchange permanently failed for {}: {}", providerKey, lastException != null ? lastException.getMessage() : "unknown error");
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                "Failed to exchange OAuth code for " + providerKey + ": " + (lastException != null ? lastException.getMessage() : "unknown error"));
     }
 
     // ─── PKCE Helpers ──────────────────────────────────────────────
@@ -575,6 +630,31 @@ public class IntegrationOAuthService {
                     "https://api.figma.com/v1/me", accessToken, null);
             identity.put("email", asStr(info.get("email")));
             identity.put("displayName", asStr(info.get("handle")));
+
+        } else if ("facebook-graph".equals(providerKey)) {
+            try {
+                // Facebook Graph API works more reliably with access_token as query param
+                String fbAccessToken = asStr(credentials.get("accessToken"));
+                Map<String, Object> info = callUserInfoApiWithTokenQuery(
+                        "https://graph.facebook.com/v26.0/me?fields=id,name,email", fbAccessToken, null);
+                identity.put("email", asStr(info.get("email")));
+                identity.put("displayName", asStr(info.get("name")));
+            } catch (Exception e) {
+                logger.warn("Failed to fetch Facebook identity: {}", e.getMessage());
+            }
+
+        } else if ("instagram".equals(providerKey)) {
+            try {
+                Map<String, Object> info = callUserInfoApi("https://graph.instagram.com/me?fields=id,username,name", accessToken, null);
+                identity.put("displayName", asStr(info.get("name") != null ? info.get("name") : info.get("username")));
+            } catch (Exception igErr) {
+                try {
+                    Map<String, Object> info = callUserInfoApi("https://graph.facebook.com/v26.0/me?fields=id,name,username", accessToken, null);
+                    identity.put("displayName", asStr(info.get("name") != null ? info.get("name") : info.get("username")));
+                } catch (Exception e) {
+                    logger.warn("Failed to fetch Instagram identity: {}", e.getMessage());
+                }
+            }
 
         } else if ("linear".equals(providerKey)) {
             // Linear uses GraphQL — skip for now, just use generic name
