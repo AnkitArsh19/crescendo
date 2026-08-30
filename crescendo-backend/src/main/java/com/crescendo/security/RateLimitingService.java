@@ -1,5 +1,7 @@
 package com.crescendo.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -17,10 +19,14 @@ import java.time.Duration;
  *
  * <p>All callers share this single service to avoid duplicating the Redis sliding-window
  * logic that was previously embedded in {@link ApiKeyAuthenticationFilter}.
+ *
+ * <p>Fails open gracefully if Redis is unreachable or connection drops, preventing
+ * infrastructure transients from locking out users.
  */
 @Service
 public class RateLimitingService {
 
+    private static final Logger log = LoggerFactory.getLogger(RateLimitingService.class);
     private static final String KEY_SEPARATOR = ":";
 
     private final StringRedisTemplate redisTemplate;
@@ -43,12 +49,18 @@ public class RateLimitingService {
      * @return {@code true} if the caller has EXCEEDED the limit and should be rejected
      */
     public boolean isRateLimited(String namespace, String identifier, int maxRequests, Duration window) {
-        String key = "crescendo:ratelimit:" + namespace + KEY_SEPARATOR + sanitize(identifier);
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1) {
-            redisTemplate.expire(key, window);
+        if (maxRequests <= 0) return false;
+        try {
+            String key = "crescendo:ratelimit:" + namespace + KEY_SEPARATOR + sanitize(identifier);
+            Long count = redisTemplate.opsForValue().increment(key);
+            if (count != null && count == 1) {
+                redisTemplate.expire(key, window);
+            }
+            return count != null && count > Math.max(1, maxRequests);
+        } catch (Exception ex) {
+            log.warn("RateLimiter Redis operation failed (failing open): {}", ex.getMessage());
+            return false;
         }
-        return count != null && count > Math.max(1, maxRequests);
     }
 
     /**
@@ -58,9 +70,14 @@ public class RateLimitingService {
      * @return the current count, or 0 if no key exists
      */
     public long currentCount(String namespace, String identifier) {
-        String key = "crescendo:ratelimit:" + namespace + KEY_SEPARATOR + sanitize(identifier);
-        String val = redisTemplate.opsForValue().get(key);
-        return val == null ? 0L : Long.parseLong(val);
+        try {
+            String key = "crescendo:ratelimit:" + namespace + KEY_SEPARATOR + sanitize(identifier);
+            String val = redisTemplate.opsForValue().get(key);
+            return val == null ? 0L : Long.parseLong(val);
+        } catch (Exception ex) {
+            log.warn("RateLimiter currentCount read failed: {}", ex.getMessage());
+            return 0L;
+        }
     }
 
     /**

@@ -92,6 +92,10 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
     void authenticate() throws Exception {
         doNothing().when(accessControlService).enforceWorkflowLimit(any());
 
+        if (accessToken != null) {
+            return;
+        }
+
         // Register (409 on duplicate is fine — test user may persist across test methods in same context)
         client().postForEntity(url("/auth/register"),
                 json(new AuthDto.RegisterRequest(EMAIL, USERNAME, PASSWORD, null, null)), String.class);
