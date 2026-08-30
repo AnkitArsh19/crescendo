@@ -59,7 +59,7 @@ public class AppService {
         this.testContractFactory = testContractFactory;
     }
 
-    @Cacheable(value = "apps", key = "'all:v3'")
+    @Cacheable(value = "apps", key = "'all'")
     public List<AppDto.AppSummaryResponse> listApps() {
         Set<String> platformKeyAppKeys = loadEnabledPlatformKeyAppKeys();
         return appRepo.findAll()
@@ -69,7 +69,7 @@ public class AppService {
                 .toList();
     }
 
-    @Cacheable(value = "apps", key = "'detail:v3:' + #appKey")
+    @Cacheable(value = "apps", key = "'detail:' + #appKey")
     public AppDto.AppDetailResponse getApp(String appKey) {
         App app = appRepo.findById(AppKey.of(appKey))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "App not found"));
