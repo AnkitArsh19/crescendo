@@ -13,7 +13,8 @@ public abstract class BaseIntegrationTest {
     public static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("crescendo_test")
             .withUsername("testuser")
-            .withPassword("testpass");
+            .withPassword("testpass")
+            .withCommand("postgres", "-c", "max_connections=300");
 
     @SuppressWarnings("resource")
     public static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
@@ -32,8 +33,18 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.datasource.query.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.query.username", postgres::getUsername);
         registry.add("spring.datasource.query.password", postgres::getPassword);
-        
+
+        // Size Hikari connection pools conservatively for test suites to prevent client exhaustion
+        registry.add("spring.datasource.command.hikari.maximum-pool-size", () -> 5);
+        registry.add("spring.datasource.command.hikari.minimum-idle", () -> 1);
+        registry.add("spring.datasource.query.hikari.maximum-pool-size", () -> 5);
+        registry.add("spring.datasource.query.hikari.minimum-idle", () -> 1);
+
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.data.redis.repositories.enabled", () -> "false");
+
+        // Rate limiter can be disabled during automated integration tests
+        registry.add("app.security.rate-limit.auth.enabled", () -> "false");
     }
 }
