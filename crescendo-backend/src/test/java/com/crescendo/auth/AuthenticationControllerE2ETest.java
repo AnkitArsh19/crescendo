@@ -38,8 +38,8 @@ class AuthenticationControllerE2ETest extends BaseIntegrationTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private RestTemplate client() {
-        // RestTemplate that does NOT throw on 4xx/5xx so we can assert on the status code.
-        RestTemplate rt = new RestTemplate();
+        // RestTemplate using JdkClientHttpRequestFactory (supports PATCH/DELETE/POST/GET) that does NOT throw on 4xx/5xx.
+        RestTemplate rt = new RestTemplate(new org.springframework.http.client.JdkClientHttpRequestFactory());
         rt.setErrorHandler(new org.springframework.web.client.DefaultResponseErrorHandler() {
             @Override public boolean hasError(org.springframework.http.client.ClientHttpResponse r) { return false; }
         });

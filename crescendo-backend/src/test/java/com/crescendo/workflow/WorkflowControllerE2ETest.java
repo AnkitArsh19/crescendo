@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestTemplate;
 
@@ -49,9 +50,9 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    /** RestTemplate that never throws on 4xx/5xx — we assert on status codes ourselves. */
+    /** RestTemplate using JdkClientHttpRequestFactory (supports PATCH, DELETE, etc.) that never throws on 4xx/5xx. */
     private RestTemplate client() {
-        RestTemplate rt = new RestTemplate();
+        RestTemplate rt = new RestTemplate(new JdkClientHttpRequestFactory());
         rt.setErrorHandler(new org.springframework.web.client.DefaultResponseErrorHandler() {
             @Override public boolean hasError(org.springframework.http.client.ClientHttpResponse r) { return false; }
         });
@@ -86,6 +87,35 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         ResponseEntity<String> resp = client().postForEntity(url("/workflows"), auth(body), String.class);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         return objectMapper.readTree(resp.getBody()).get("id").asText();
+    }
+
+    private String createValidWorkflowForActivation(String name) throws Exception {
+        String wfId = createWorkflowId(name);
+        String triggerBody = """
+            {
+                "name": "Webhook Trigger",
+                "type": "TRIGGER",
+                "actionKey": "webhook",
+                "appKey": "webhook",
+                "configuration": {}
+            }
+            """;
+        ResponseEntity<String> tResp = client().postForEntity(url("/workflows/" + wfId + "/steps"), auth(triggerBody), String.class);
+        assertThat(tResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        String actionBody = """
+            {
+                "name": "Log Action",
+                "type": "ACTION",
+                "actionKey": "log",
+                "appKey": "crescendo",
+                "configuration": {}
+            }
+            """;
+        ResponseEntity<String> aResp = client().postForEntity(url("/workflows/" + wfId + "/steps"), auth(actionBody), String.class);
+        assertThat(aResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        return wfId;
     }
 
     @BeforeEach
@@ -225,7 +255,7 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         @Test
         @DisplayName("204 No Content on activate")
         void activate_returns204() throws Exception {
-            String id = createWorkflowId("Activate Me");
+            String id = createValidWorkflowForActivation("Activate Me");
             ResponseEntity<String> resp = client().postForEntity(
                     url("/workflows/" + id + "/activate"), authNoBody(), String.class);
 
@@ -235,7 +265,9 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         @Test
         @DisplayName("204 No Content on deactivate")
         void deactivate_returns204() throws Exception {
-            String id = createWorkflowId("Deactivate Me");
+            String id = createValidWorkflowForActivation("Deactivate Me");
+            client().postForEntity(url("/workflows/" + id + "/activate"), authNoBody(), String.class);
+
             ResponseEntity<String> resp = client().postForEntity(
                     url("/workflows/" + id + "/deactivate"), authNoBody(), String.class);
 
@@ -277,8 +309,8 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         @Test
         @DisplayName("204 No Content for bulk activate")
         void bulkActivate_returns204() throws Exception {
-            String id1 = createWorkflowId("Bulk 1");
-            String id2 = createWorkflowId("Bulk 2");
+            String id1 = createValidWorkflowForActivation("Bulk 1");
+            String id2 = createValidWorkflowForActivation("Bulk 2");
             String body = "{\"ids\":[\"" + id1 + "\",\"" + id2 + "\"]}";
 
             ResponseEntity<String> resp = client().postForEntity(
@@ -289,10 +321,11 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         @Test
         @DisplayName("204 No Content for bulk deactivate")
         void bulkDeactivate_returns204() throws Exception {
-            String id1 = createWorkflowId("BulkDeact 1");
-            String id2 = createWorkflowId("BulkDeact 2");
-            String body = "{\"ids\":[\"" + id1 + "\",\"" + id2 + "\"]}";
+            String id1 = createValidWorkflowForActivation("BulkDeact 1");
+            String id2 = createValidWorkflowForActivation("BulkDeact 2");
+            client().postForEntity(url("/workflows/bulk/activate"), auth("{\"ids\":[\"" + id1 + "\",\"" + id2 + "\"]}"), String.class);
 
+            String body = "{\"ids\":[\"" + id1 + "\",\"" + id2 + "\"]}";
             ResponseEntity<String> resp = client().postForEntity(
                     url("/workflows/bulk/deactivate"), auth(body), String.class);
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);

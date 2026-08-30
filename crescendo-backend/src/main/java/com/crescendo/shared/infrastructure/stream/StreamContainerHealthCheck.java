@@ -2,6 +2,7 @@ package com.crescendo.shared.infrastructure.stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -11,6 +12,7 @@ import org.springframework.data.redis.stream.StreamMessageListenerContainer;
  * Periodically checks the Redis Stream listener container and restarts it if needed.
  */
 @Component
+@ConditionalOnProperty(name = "crescendo.redis.streams.enabled", havingValue = "true", matchIfMissing = true)
 public class StreamContainerHealthCheck {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamContainerHealthCheck.class);

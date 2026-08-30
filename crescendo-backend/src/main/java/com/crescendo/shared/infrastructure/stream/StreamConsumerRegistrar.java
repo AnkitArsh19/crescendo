@@ -4,6 +4,7 @@ import com.crescendo.config.RedisStreamConfig;
 import com.crescendo.emailservice.queue.EmailQueueConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.connection.stream.Consumer;
@@ -36,6 +37,7 @@ import org.springframework.stereotype.Component;
  *   6. Dead-letter stream      → DeadLetterStreamConsumer
  */
 @Component
+@ConditionalOnProperty(name = "crescendo.redis.streams.enabled", havingValue = "true", matchIfMissing = true)
 public class StreamConsumerRegistrar {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamConsumerRegistrar.class);
