@@ -93,11 +93,13 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
         String wfId = createWorkflowId(name);
         String triggerBody = """
             {
-                "name": "Webhook Trigger",
+                "name": "Schedule Trigger",
                 "type": "TRIGGER",
-                "actionKey": "webhook",
-                "appKey": "webhook",
-                "configuration": {}
+                "actionKey": "cron",
+                "appKey": "schedule",
+                "configuration": {
+                    "cronExpression": "0 0 * * * *"
+                }
             }
             """;
         ResponseEntity<String> tResp = client().postForEntity(url("/workflows/" + wfId + "/steps"), auth(triggerBody), String.class);
@@ -107,8 +109,8 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
             {
                 "name": "Log Action",
                 "type": "ACTION",
-                "actionKey": "log",
-                "appKey": "crescendo",
+                "actionKey": "print",
+                "appKey": "crescendo-log",
                 "configuration": {}
             }
             """;
