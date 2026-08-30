@@ -42,12 +42,12 @@ jobs:
       - name: Run Backend Tests
         env:
           SPRING_PROFILES_ACTIVE: ci
-          CREDENTIALS_CRYPTO_KEY: dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3Q=
-          JWT_SECRET: dGVzdHNlY3JldHRlc3RzZWNyZXR0ZXN0c2VjcmV0dGVzdA==
+          CREDENTIALS_CRYPTO_KEY: ${{ secrets.CREDENTIALS_CRYPTO_KEY || 'dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3Q=' }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'Y2ktb25seS1qd3Qtc2lnbmluZy1rZXktZm9yLW9wZW5hcGktZ2VuZXJhdGlvbi0zMmJ5dGVzLW1pbmltdW0=' }}
         run: |
           chmod +x mvnw
-          cp src/main/resources/application.properties.example src/main/resources/application.properties
-          ./mvnw -q test
+          cp src/main/resources/application-ci.properties src/main/resources/application.properties
+          ./mvnw -q test -Dspring.profiles.active=ci
         working-directory: crescendo-backend
 
   frontend-test:
