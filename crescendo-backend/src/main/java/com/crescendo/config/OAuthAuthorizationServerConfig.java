@@ -53,7 +53,7 @@ public class OAuthAuthorizationServerConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings(
-            @Value("${app.public-api.issuer:http://localhost:8080}") String issuer) {
+            @Value("${app.public-api.issuer:https://api.crescendo.run}") String issuer) {
         return AuthorizationServerSettings.builder()
                 .issuer(issuer)
                 .build();

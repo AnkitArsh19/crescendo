@@ -22,7 +22,7 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
     private static final Logger log = LoggerFactory.getLogger(OAuth2LoginFailureHandler.class);
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:${app.frontend-url:https://app.crescendo.run}}")
     private String frontendUrl;
 
     @Override

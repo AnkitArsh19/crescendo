@@ -31,7 +31,7 @@ public class OAuthSessionController {
 
     public OAuthSessionController(
             HttpSessionSecurityContextRepository securityContextRepository,
-            @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl,
+            @Value("${app.frontend-url:${app.frontend.url:https://app.crescendo.run}}") String frontendUrl,
             AccessControlService accessControl) {
         this.securityContextRepository = securityContextRepository;
         this.frontendUrl = frontendUrl;
