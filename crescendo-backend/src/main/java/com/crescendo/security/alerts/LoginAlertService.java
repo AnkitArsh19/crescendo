@@ -34,7 +34,7 @@ public class LoginAlertService {
             NotificationService notificationService,
             GeoIpService geoIpService,
             JWTService jwtService,
-            @Value("${app.frontend.url}") String frontendUrl) {
+            @Value("${app.frontend.url:${app.frontend-url:https://app.crescendo.run}}") String frontendUrl) {
         this.sessionRepo = sessionRepo;
         this.userQueryRepo = userQueryRepo;
         this.notificationService = notificationService;

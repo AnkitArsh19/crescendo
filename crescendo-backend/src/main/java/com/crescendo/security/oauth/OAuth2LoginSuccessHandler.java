@@ -54,7 +54,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final UserIdentityRepository identityRepo;
 
     // Frontend URL to redirect to after OAuth success. Configured in application.properties.
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:${app.frontend-url:https://app.crescendo.run}}")
     private String frontendUrl;
 
     @Value("${app.cookie.secure:false}")

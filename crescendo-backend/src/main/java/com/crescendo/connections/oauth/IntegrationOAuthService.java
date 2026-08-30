@@ -100,10 +100,10 @@ public class IntegrationOAuthService {
                 }
             });
 
-    @Value("${app.frontend-url:http://localhost:5173}")
+    @Value("${app.frontend-url:${app.frontend.url:https://app.crescendo.run}}")
     private String frontendUrl;
 
-    @Value("${app.backend-url:http://localhost:8080}")
+    @Value("${app.backend-url:${app.backend.url:https://api.crescendo.run}}")
     private String backendUrl;
 
     public IntegrationOAuthService(IntegrationOAuthConfig oauthConfig,

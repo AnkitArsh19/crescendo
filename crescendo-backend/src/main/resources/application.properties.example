@@ -545,7 +545,7 @@ sarvam.api.key=REPLACE_ME
 # ─── Internal Python AI Service (optional) ────────────────────────────────────
 # Used by /api/v1/ai/workflow-drafts for natural-language workflow draft creation.
 # Spring Boot remains source of truth for auth, validation, persistence, and execution.
-crescendo.python-ai.base-url=
+crescendo.python-ai.base-url=https://ai.crescendo.run
 crescendo.python-ai.service-token=
 
 # ─── Crescendo Email SMTP Relay ──────────────────────────────────────────────

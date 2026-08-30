@@ -14,7 +14,7 @@ app_state: Dict[str, Any] = {
     "catalog_version": None,
 }
 
-JAVA_BACKEND_URL = os.getenv("JAVA_BACKEND_URL", "http://localhost:8080/internal/catalog")
+JAVA_BACKEND_URL = os.getenv("JAVA_BACKEND_URL", "https://api.crescendo.run/internal/catalog")
 POLL_INTERVAL_SECONDS = 30
 
 def _fetch_full_catalog_sync():
