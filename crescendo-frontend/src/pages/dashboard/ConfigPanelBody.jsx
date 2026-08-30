@@ -289,12 +289,23 @@ const WEBHOOK_SETUP_GUIDE = {
 // WebhookSetupPanel Component — renders URL + copy + instructions for trigger steps
 // ─────────────────────────────────────────────────────────────────────────────
 function WebhookSetupPanel({ appKey, iconUrl, configuration, webhookInfo, workflowId }) {
+    if (!appKey) return null;
     const [copied, setCopied] = useState(false);
     const guide = WEBHOOK_SETUP_GUIDE[appKey];
 
     // Non-webhook triggers don't need manual webhook setup
-    const nonWebhookApps = ['schedule', 'native-form', 'gmail', 'microsoft-outlook', 'error-handling', 'imap', 'mqtt', 'kafka', 'rabbitmq', 'rss'];
+    const nonWebhookApps = [
+        'schedule', 'native-form', 'form', 'gmail', 'microsoft-outlook',
+        'error-handling', 'imap', 'mqtt', 'kafka', 'rabbitmq', 'rss',
+        'google-calendar', 'google-forms', 'google-sheets', 'google-docs',
+        'google-drive', 'google-tasks', 'airtable', 'notion', 'linear',
+        'toggl', 'leetcode', 'strava', 'spotify', 'github-stats', 'weather',
+        'pomodoro', 'cat-facts', 'giphy', 'quotes', 'joke-api', 'nasa-apod'
+    ];
     if (nonWebhookApps.includes(appKey)) return null;
+
+    const isWebhookApp = appKey === 'webhook' || appKey === 'crescendo-webhook' || appKey === 'custom-webhook' || !!guide;
+    if (!isWebhookApp) return null;
 
     const fullUrl = webhookInfo?.url
         ? (webhookInfo.url.startsWith('http') ? webhookInfo.url : `https://api.crescendo.run${webhookInfo.url}`)
@@ -686,6 +697,7 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
             <SearchableSelect
                 options={options}
                 value={aiMismatch ? '' : (value || '')}
+                valueLabel={options.find(o => String(o.id) === String(value))?.label || ''}
                 onChange={(v) => { setAiMismatch(false); onChange(v); }}
                 placeholder={aiMismatch ? `⚠ Select ${field.label}…` : `Select ${field.label}…`}
                 loading={loading}
@@ -2248,15 +2260,21 @@ export default function ConfigPanelBody({
                     <div className="cpb-section">
                         <div className="cpb-test-intro">
                             {isTrigger
-                                ? 'Test your trigger to find recent records from your connected account.'
-                                : 'Test your action to verify it works with the configuration above.'}
+                                ? 'Check the trigger setup and use sample data to validate downstream mappings.'
+                                : 'Check the connection, required fields, and selected resources without changing data.'}
                         </div>
                         <TestResultPanel
                             appKey={data.appKey}
                             actionKey={data.actionKey}
+                            triggerKey={data.triggerKey || data.actionKey}
                             connectionId={data.connectionId}
                             configuration={data.configuration || {}}
                             isTrigger={isTrigger}
+                            initialInputData={data.inputData || data.sampleData || null}
+                            availablePreviousSteps={availablePreviousSteps}
+                            onSaveSampleData={(sample) => {
+                                updateNodeData(configNode.id, { sampleData: sample, testOutput: sample });
+                            }}
                         />
                     </div>
                 )}

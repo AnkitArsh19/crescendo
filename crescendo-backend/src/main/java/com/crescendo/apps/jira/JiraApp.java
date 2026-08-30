@@ -76,35 +76,35 @@ public class JiraApp implements AppDefinition {
                                 Map.of("key", "fileContent", "label", "File Content (Base64)", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "jira:issueAttachment:get", "name", "Get Attachment", "description", "Get an attachment metadata", "configSchema", List.of(
-                                Map.of("key", "attachmentId", "label", "Attachment ID", "type", "text", "required", true)
+                                Map.of("key", "attachmentId", "label", "Attachment ID", "type", "text", "required", true, "helpText", "Attachment ID from a previous action or trigger")
                         )),
                         Map.of("actionKey", "jira:issueAttachment:getAll", "name", "Get All Attachments", "description", "Get all attachments for an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true)
                         )),
                         Map.of("actionKey", "jira:issueAttachment:remove", "name", "Remove Attachment", "description", "Remove an attachment", "configSchema", List.of(
-                                Map.of("key", "attachmentId", "label", "Attachment ID", "type", "text", "required", true)
+                                Map.of("key", "attachmentId", "label", "Attachment ID", "type", "text", "required", true, "helpText", "Attachment ID from a previous action or trigger")
                         )),
 
                         // ISSUE COMMENT
                         Map.of("actionKey", "jira:issueComment:add", "name", "Add Comment", "description", "Add comment to an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
                                 Map.of("key", "body", "label", "Comment Body", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "jira:issueComment:get", "name", "Get Comment", "description", "Get a comment", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
-                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
+                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true, "helpText", "Comment ID from a previous action or trigger")
                         )),
                         Map.of("actionKey", "jira:issueComment:getAll", "name", "Get All Comments", "description", "Get all comments for an issue", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true)
                         )),
                         Map.of("actionKey", "jira:issueComment:update", "name", "Update Comment", "description", "Update an issue comment", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
-                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true),
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
+                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true, "helpText", "Comment ID from a previous action or trigger"),
                                 Map.of("key", "body", "label", "Comment Body", "type", "text", "required", true)
                         )),
                         Map.of("actionKey", "jira:issueComment:remove", "name", "Remove Comment", "description", "Delete an issue comment", "configSchema", List.of(
-                                Map.of("key", "issueKey", "label", "Issue Key", "type", "text", "required", true),
-                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true)
+                                Map.of("key", "issueKey", "label", "Issue", "type", "dynamic_dropdown", "resourceType", "issues", "required", true),
+                                Map.of("key", "commentId", "label", "Comment ID", "type", "text", "required", true, "helpText", "Comment ID from a previous action or trigger")
                         )),
 
                         // USER

@@ -1,192 +1,434 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   HiOutlinePlay, HiOutlineRefresh, HiCheckCircle, HiXCircle,
-  HiOutlineDownload, HiOutlineClipboardCopy
+  HiOutlineDownload, HiOutlineClipboardCopy, HiOutlineExclamation, HiOutlineShieldCheck,
+  HiOutlineSparkles, HiOutlineDocumentText, HiOutlineArrowCircleRight
 } from 'react-icons/hi';
 import { stepTestApi } from '../../api/workflowApi';
 import './TestResultPanel.css';
 
 /**
- * TestResultPanel — structured test execution & result display.
- *
- * Features:
- *   - Test execution with loading state
- *   - Structured key-value display or raw JSON
- *   - Download results as JSON file
- *   - Copy results to clipboard
- *
- * Props:
- *   appKey        — app key string
- *   actionKey     — action/trigger key string
- *   connectionId  — connection UUID
- *   configuration — config object
- *   isTrigger     — boolean
+ * A safe workflow-step test panel.
+ * Separates setup checks, trigger sample fetching, read-only sample fetching, and live execution.
  */
-export default function TestResultPanel({ appKey, actionKey, connectionId, configuration, isTrigger = false }) {
+export default function TestResultPanel({
+    appKey, actionKey, triggerKey, connectionId, configuration,
+    isTrigger = false, initialInputData = null, availablePreviousSteps = [], onSaveSampleData = null,
+}) {
     const [result, setResult] = useState(null);
-    const [testing, setTesting] = useState(false);
+    const [checking, setChecking] = useState(false);
+    const [fetchingSample, setFetchingSample] = useState(false);
+    const [runningLive, setRunningLive] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [savedSample, setSavedSample] = useState(false);
+    const [inputText, setInputText] = useState(() => JSON.stringify(initialInputData ?? {}, null, 2));
+    const [inputError, setInputError] = useState('');
+    const [showLiveConfirmation, setShowLiveConfirmation] = useState(false);
+    const [liveAcknowledged, setLiveAcknowledged] = useState(false);
+    const [activeResultTab, setActiveResultTab] = useState('checks'); // 'checks' | 'dataIn' | 'dataOut'
 
-    const canTest = appKey && actionKey;
+    const operationKey = isTrigger ? triggerKey : actionKey;
+    const canCheck = Boolean(appKey && operationKey);
+    const liveAllowed = !isTrigger && result?.testContract?.liveTestAllowed === true;
+    const canFetchReadSample = !isTrigger
+        && result?.success
+        && result?.testContract?.setupPolicy === 'READ_SAMPLE'
+        && result?.testContract?.sideEffect === 'NONE';
 
-    const runTest = async () => {
-        if (!canTest) return;
-        setTesting(true);
+    useEffect(() => {
+        if (initialInputData && Object.keys(initialInputData).length > 0) {
+            setInputText(JSON.stringify(initialInputData, null, 2));
+        }
+    }, [initialInputData]);
+
+    const requestData = () => {
+        try {
+            const inputData = inputText.trim() ? JSON.parse(inputText) : {};
+            if (!inputData || Array.isArray(inputData) || typeof inputData !== 'object') {
+                throw new Error('Sample data must be a JSON object.');
+            }
+            setInputError('');
+            return {
+                appKey,
+                actionKey,
+                triggerKey,
+                isTrigger,
+                connectionId: connectionId || null,
+                configuration: configuration || {},
+                inputData,
+            };
+        } catch (error) {
+            setInputError(error.message || 'Enter valid JSON sample data.');
+            return null;
+        }
+    };
+
+    const checkSetup = async () => {
+        if (!canCheck) return;
+        const request = requestData();
+        if (!request) return;
+        setChecking(true);
         setResult(null);
         setCopied(false);
+        setSavedSample(false);
+        setShowLiveConfirmation(false);
         try {
-            const res = await stepTestApi.test({ appKey, actionKey, connectionId, configuration });
+            const res = await stepTestApi.validate(request);
             setResult(res);
-        } catch (err) {
-            setResult({ success: false, error: err.response?.data?.error || err.message });
+            setActiveResultTab('checks');
+        } catch (error) {
+            setResult({ success: false, error: error.response?.data?.error || error.message, checks: [], mode: 'SETUP_CHECK' });
+            setActiveResultTab('checks');
         } finally {
-            setTesting(false);
+            setChecking(false);
+        }
+    };
+
+    const fetchTriggerSample = async () => {
+        if (!canCheck) return;
+        const request = requestData();
+        if (!request) return;
+        setFetchingSample(true);
+        setResult(null);
+        setCopied(false);
+        setSavedSample(false);
+        try {
+            const res = await stepTestApi.triggerSample(request);
+            setResult(res);
+            setActiveResultTab('dataOut');
+            if (res.success && res.data && onSaveSampleData) {
+                onSaveSampleData(res.data);
+                setSavedSample(true);
+            }
+        } catch (error) {
+            setResult({ success: false, error: error.response?.data?.error || error.message, checks: [], mode: 'TRIGGER_SAMPLE' });
+            setActiveResultTab('checks');
+        } finally {
+            setFetchingSample(false);
+        }
+    };
+
+    const fetchReadSample = async () => {
+        const request = requestData();
+        if (!request) return;
+        setFetchingSample(true);
+        setCopied(false);
+        setSavedSample(false);
+        try {
+            const res = await stepTestApi.readSample(request);
+            setResult(res);
+            setActiveResultTab('dataOut');
+            if (res.success && res.data && onSaveSampleData) {
+                onSaveSampleData(res.data);
+                setSavedSample(true);
+            }
+        } catch (error) {
+            setResult({ success: false, error: error.response?.data?.error || error.message, checks: [], mode: 'READ_SAMPLE' });
+        } finally {
+            setFetchingSample(false);
+        }
+    };
+
+    const runLive = async () => {
+        const request = requestData();
+        if (!request || !liveAcknowledged) return;
+        setRunningLive(true);
+        setCopied(false);
+        setSavedSample(false);
+        try {
+            const res = await stepTestApi.liveRun(request);
+            setResult(res);
+            setShowLiveConfirmation(false);
+            setLiveAcknowledged(false);
+            setActiveResultTab('dataOut');
+            if (res.success && res.data && onSaveSampleData) {
+                onSaveSampleData(res.data);
+                setSavedSample(true);
+            }
+        } catch (error) {
+            setResult({ success: false, error: error.response?.data?.error || error.message, checks: [], mode: 'LIVE_RUN' });
+        } finally {
+            setRunningLive(false);
+        }
+    };
+
+    const handleUsePreviousStepSample = (step) => {
+        if (!step) return;
+        const samplePayload = step.sampleData || { id: `sample_${step.stepIndex}`, note: `Sample data from ${step.name}` };
+        const formatted = {
+            steps: {
+                [step.stepIndex]: samplePayload,
+            },
+            ...samplePayload,
+        };
+        setInputText(JSON.stringify(formatted, null, 2));
+        setInputError('');
+    };
+
+    const handleSaveSampleToWorkflow = () => {
+        if (result?.data && onSaveSampleData) {
+            onSaveSampleData(result.data);
+            setSavedSample(true);
+            window.setTimeout(() => setSavedSample(false), 2500);
         }
     };
 
     const handleDownloadJSON = () => {
-        if (!result?.data) return;
-        const json = JSON.stringify(result.data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
+        const dataToExport = activeResultTab === 'dataIn' ? (result?.data?.dataIn || result?.data) : result?.data;
+        if (!dataToExport) return;
+        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${appKey}-${actionKey}-results.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        const resultKind = result.mode === 'LIVE_RUN'
+            ? 'live-run'
+            : result.mode === 'READ_SAMPLE' ? 'read-sample' : 'setup-check';
+        anchor.download = `${appKey}-${operationKey}-${resultKind}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
         URL.revokeObjectURL(url);
     };
 
     const handleCopyJSON = () => {
-        if (!result?.data) return;
-        navigator.clipboard.writeText(JSON.stringify(result.data, null, 2));
+        const dataToCopy = activeResultTab === 'dataIn' ? (result?.data?.dataIn || result?.data) : result?.data;
+        if (!dataToCopy) return;
+        navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2));
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        window.setTimeout(() => setCopied(false), 2000);
     };
 
-    // Flatten an object for key-value display
-    const flattenData = (obj) => {
-        if (!obj || typeof obj !== 'object') return [];
-        const rows = [];
-        const recurse = (o, prefix = '') => {
-            Object.entries(o).forEach(([key, val]) => {
-                const fullKey = prefix ? `${prefix}.${key}` : key;
-                if (val && typeof val === 'object' && !Array.isArray(val)) {
-                    recurse(val, fullKey);
-                } else {
-                    rows.push({ key: fullKey, value: Array.isArray(val) ? JSON.stringify(val) : String(val ?? '') });
-                }
-            });
-        };
-        recurse(obj);
-        return rows;
-    };
+    const dataInRows = useMemo(() => flattenData(result?.data?.dataIn || (result?.mode === 'SETUP_CHECK' ? result?.data?.configuration : null)), [result]);
+    const dataOutRows = useMemo(() => flattenData(result?.mode === 'SETUP_CHECK' ? null : result?.data), [result]);
 
     return (
         <div className="trp-container">
-            {/* Test button */}
-            <button
-                type="button"
-                className={`trp-test-btn ${testing ? 'testing' : ''}`}
-                onClick={runTest}
-                disabled={testing || !canTest}
-                title={isTrigger ? "Find recent records from this app" : "Execute a live test of this action"}
-                aria-label={isTrigger ? "Find Records" : "Test Action"}
-            >
-                {testing ? (
-                    <>
-                        <div className="trp-loading" style={{ padding: 0 }}>
-                            <span className="trp-loading-bar" />
-                            <span className="trp-loading-bar" />
-                            <span className="trp-loading-bar" />
-                            <span className="trp-loading-bar" />
-                        </div>
-                        Testing…
-                    </>
-                ) : (
-                    <>
-                        <HiOutlinePlay className="trp-test-btn-icon" />
-                        {isTrigger ? 'Find Records' : 'Test Action'}
-                    </>
-                )}
-            </button>
+            <div className="trp-safety-note">
+                <HiOutlineShieldCheck aria-hidden="true" />
+                <span>
+                    {isTrigger ? (
+                        <><strong>Test Trigger</strong> retrieves sample event records without activating live workflows.</>
+                    ) : (
+                        <><strong>Check setup</strong> verifies your connection, fields, and selected resources without changing data.</>
+                    )}
+                </span>
+            </div>
 
-            {/* Result */}
+            {/* Quick Upstream Sample Selector */}
+            {!isTrigger && availablePreviousSteps.length > 0 && (
+                <div className="trp-upstream-selector">
+                    <span className="trp-upstream-label">Quick sample data:</span>
+                    <div className="trp-upstream-btns">
+                        {availablePreviousSteps.map((step) => (
+                            <button
+                                key={step.stepIndex}
+                                type="button"
+                                className="trp-upstream-btn"
+                                onClick={() => handleUsePreviousStepSample(step)}
+                                title={`Use sample output from Step ${step.stepIndex}: ${step.name}`}
+                            >
+                                <HiOutlineSparkles /> Step {step.stepIndex} ({step.name})
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {!isTrigger && (
+                <>
+                    <label className="trp-input-label" htmlFor={`test-input-${operationKey}`}>
+                        Sample input data <span>Optional — use earlier-step data to preview mappings</span>
+                    </label>
+                    <textarea
+                        id={`test-input-${operationKey}`}
+                        className={`trp-input-json ${inputError ? 'has-error' : ''}`}
+                        value={inputText}
+                        onChange={(event) => setInputText(event.target.value)}
+                        spellCheck="false"
+                        placeholder='{\n  "email": "user@example.com",\n  "amount": 99.00\n}'
+                        aria-describedby={inputError ? `test-input-error-${operationKey}` : undefined}
+                    />
+                    {inputError && <p id={`test-input-error-${operationKey}`} className="trp-input-error">{inputError}</p>}
+                </>
+            )}
+
+            {/* Main Action Buttons */}
+            <div className="trp-main-actions">
+                {isTrigger ? (
+                    <button
+                        type="button"
+                        className={`trp-test-btn trigger-btn ${fetchingSample ? 'testing' : ''}`}
+                        onClick={fetchTriggerSample}
+                        disabled={fetchingSample || !canCheck}
+                    >
+                        {fetchingSample ? <LoadingLabel label="Fetching sample record…" /> : <><HiOutlineSparkles className="trp-test-btn-icon" /> Test Trigger / Fetch Sample Record</>}
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className={`trp-test-btn ${checking ? 'testing' : ''}`}
+                        onClick={checkSetup}
+                        disabled={checking || fetchingSample || runningLive || !canCheck}
+                    >
+                        {checking ? <LoadingLabel label="Checking setup…" /> : <><HiOutlineShieldCheck className="trp-test-btn-icon" /> Check setup</>}
+                    </button>
+                )}
+            </div>
+
             {result && (
                 <div className="trp-result">
-                    {/* Header banner */}
                     <div className={`trp-result-header ${result.success ? 'success' : 'error'}`}>
-                        {result.success ? (
-                            <HiCheckCircle className="trp-result-icon" />
-                        ) : (
-                            <HiXCircle className="trp-result-icon" />
-                        )}
-                        {result.success ? 'Test successful' : 'Test failed'}
+                        {result.success ? <HiCheckCircle className="trp-result-icon" /> : <HiXCircle className="trp-result-icon" />}
+                        {result.mode === 'LIVE_RUN'
+                            ? (result.success ? 'Live action completed' : 'Live action failed')
+                            : result.mode === 'TRIGGER_SAMPLE'
+                                ? (result.success ? 'Trigger sample record loaded' : 'Could not load trigger sample')
+                                : result.mode === 'READ_SAMPLE'
+                                    ? (result.success ? 'Read-only sample fetched' : 'Could not fetch a read-only sample')
+                                    : (result.success ? 'Setup checked safely' : 'Setup needs attention')}
                     </div>
 
-                    {/* Body */}
-                    {result.success ? (
-                        (() => {
-                            const rows = flattenData(result.data);
-                            if (rows.length > 0 && rows.length <= 30) {
-                                // Structured key-value view
-                                return (
+                    {/* Result Navigation Tabs */}
+                    {result.success && (
+                        <div className="trp-nav-tabs">
+                            <button
+                                type="button"
+                                className={`trp-nav-tab ${activeResultTab === 'checks' ? 'active' : ''}`}
+                                onClick={() => setActiveResultTab('checks')}
+                            >
+                                <HiCheckCircle /> Checks {result.checks?.length > 0 && `(${result.checks.length})`}
+                            </button>
+                            {!isTrigger && (
+                                <button
+                                    type="button"
+                                    className={`trp-nav-tab ${activeResultTab === 'dataIn' ? 'active' : ''}`}
+                                    onClick={() => setActiveResultTab('dataIn')}
+                                >
+                                    <HiOutlineDocumentText /> Data In (Preview)
+                                </button>
+                            )}
+                            {(result.mode !== 'SETUP_CHECK' || result.data?.dataIn) && (
+                                <button
+                                    type="button"
+                                    className={`trp-nav-tab ${activeResultTab === 'dataOut' ? 'active' : ''}`}
+                                    onClick={() => setActiveResultTab('dataOut')}
+                                >
+                                    <HiOutlineArrowCircleRight /> Data Out
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 1. CHECKS TAB */}
+                    {activeResultTab === 'checks' && result.checks?.length > 0 && (
+                        <div className="trp-checks" aria-label="Setup check results">
+                            {result.checks.map((check) => (
+                                <div key={check.id} className={`trp-check trp-check-${check.status.toLowerCase()}`}>
+                                    {check.status === 'PASS' ? <HiCheckCircle /> : <HiOutlineExclamation />}
+                                    <div><strong>{check.label}</strong><span>{check.detail}</span></div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* 2. DATA IN PREVIEW TAB */}
+                    {activeResultTab === 'dataIn' && (
+                        <div className="trp-tab-content">
+                            <div className="trp-tab-note">
+                                Resolved configuration values that will be sent to the API:
+                            </div>
+                            {dataInRows.length > 0 ? (
+                                dataInRows.length <= 30 ? (
                                     <div className="trp-data">
-                                        {rows.map((row) => (
+                                        {dataInRows.map((row) => (
                                             <div key={row.key} className="trp-data-row">
                                                 <span className="trp-data-key">{row.key}</span>
                                                 <span className="trp-data-value">{row.value}</span>
                                             </div>
                                         ))}
                                     </div>
-                                );
-                            }
-                            // Fallback to raw JSON
-                            return (
-                                <pre className="trp-raw">
-                                    {JSON.stringify(result.data, null, 2)}
-                                </pre>
-                            );
-                        })()
-                    ) : (
-                        <div className="trp-error-body">{result.error}</div>
+                                ) : <pre className="trp-raw">{JSON.stringify(result.data?.dataIn || result.data?.configuration, null, 2)}</pre>
+                            ) : (
+                                <div className="trp-empty-tab">No configuration fields mapped.</div>
+                            )}
+                        </div>
                     )}
 
-                    {/* Action buttons */}
+                    {/* 3. DATA OUT / SAMPLE TAB */}
+                    {activeResultTab === 'dataOut' && (
+                        <div className="trp-tab-content">
+                            {dataOutRows.length > 0 ? (
+                                dataOutRows.length <= 30 ? (
+                                    <div className="trp-data">
+                                        {dataOutRows.map((row) => (
+                                            <div key={row.key} className="trp-data-row">
+                                                <span className="trp-data-key">{row.key}</span>
+                                                <span className="trp-data-value">{row.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : <pre className="trp-raw">{JSON.stringify(result.data, null, 2)}</pre>
+                            ) : (
+                                <pre className="trp-raw">{JSON.stringify(result.data || {}, null, 2)}</pre>
+                            )}
+                        </div>
+                    )}
+
+                    {!result.success && <div className="trp-error-body">{result.error}</div>}
+
+                    {/* Live Action & Read Sample Action Buttons */}
+                    {liveAllowed && result.success && !showLiveConfirmation && (
+                        <button type="button" className="trp-live-open" onClick={() => setShowLiveConfirmation(true)}>
+                            <HiOutlinePlay /> Run live action…
+                        </button>
+                    )}
+                    {canFetchReadSample && (
+                        <button type="button" className="trp-read-sample" onClick={fetchReadSample} disabled={fetchingSample || runningLive}>
+                            {fetchingSample ? <LoadingLabel label="Fetching sample…" /> : <><HiOutlineDownload /> Fetch read-only sample</>}
+                        </button>
+                    )}
+                    {showLiveConfirmation && (
+                        <div className="trp-live-confirmation">
+                            <HiOutlineExclamation aria-hidden="true" />
+                            <div>
+                                <strong>This is not a setup check.</strong>
+                                <p>{result.testContract?.liveTestWarning || 'This will perform the configured action in your connected app.'}</p>
+                                <label>
+                                    <input type="checkbox" checked={liveAcknowledged} onChange={(event) => setLiveAcknowledged(event.target.checked)} />
+                                    I understand this may change external data.
+                                </label>
+                                <div className="trp-live-actions">
+                                    <button type="button" onClick={() => { setShowLiveConfirmation(false); setLiveAcknowledged(false); }}>Cancel</button>
+                                    <button type="button" className="danger" onClick={runLive} disabled={!liveAcknowledged || runningLive}>
+                                        {runningLive ? <LoadingLabel label="Running live action…" /> : 'Run live action'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer Actions */}
                     <div className="trp-actions">
                         <button
                             type="button"
                             className="trp-retry"
-                            onClick={runTest}
-                            title="Re-run this test"
-                            aria-label={result.success ? "Test Again" : "Retry"}
+                            onClick={isTrigger ? fetchTriggerSample : checkSetup}
+                            disabled={checking || fetchingSample || runningLive}
                         >
-                            <HiOutlineRefresh /> {result.success ? 'Test Again' : 'Retry'}
+                            <HiOutlineRefresh /> {isTrigger ? 'Fetch again' : 'Check again'}
                         </button>
-
-                        {result.success && result.data && (
+                        {result.data && (
                             <>
-                                <button
-                                    type="button"
-                                    className="trp-download-btn"
-                                    onClick={handleDownloadJSON}
-                                    title="Download test output data as JSON file"
-                                    aria-label="Download JSON"
-                                >
+                                {onSaveSampleData && (
+                                    <button type="button" className="trp-save-sample-btn" onClick={handleSaveSampleToWorkflow}>
+                                        <HiCheckCircle /> {savedSample ? 'Sample Saved!' : 'Use as Sample'}
+                                    </button>
+                                )}
+                                <button type="button" className="trp-download-btn" onClick={handleDownloadJSON}>
                                     <HiOutlineDownload /> Download JSON
                                 </button>
-                                <button
-                                    type="button"
-                                    className="trp-copy-btn"
-                                    onClick={handleCopyJSON}
-                                    title="Copy test output to clipboard"
-                                    aria-label="Copy JSON"
-                                >
-                                    {copied
-                                        ? <><HiCheckCircle /> Copied!</>
-                                        : <><HiOutlineClipboardCopy /> Copy</>
-                                    }
+                                <button type="button" className="trp-copy-btn" onClick={handleCopyJSON}>
+                                    {copied ? <><HiCheckCircle /> Copied</> : <><HiOutlineClipboardCopy /> Copy</>}
                                 </button>
                             </>
                         )}
@@ -195,4 +437,20 @@ export default function TestResultPanel({ appKey, actionKey, connectionId, confi
             )}
         </div>
     );
+}
+
+function LoadingLabel({ label }) {
+    return <><span className="trp-loading-inline"><i /><i /><i /></span>{label}</>;
+}
+
+function flattenData(obj) {
+    if (!obj || typeof obj !== 'object') return [];
+    const rows = [];
+    const visit = (value, prefix = '') => Object.entries(value).forEach(([key, child]) => {
+        const fullKey = prefix ? `${prefix}.${key}` : key;
+        if (child && typeof child === 'object' && !Array.isArray(child)) visit(child, fullKey);
+        else rows.push({ key: fullKey, value: Array.isArray(child) ? JSON.stringify(child) : String(child ?? '') });
+    });
+    visit(obj);
+    return rows;
 }

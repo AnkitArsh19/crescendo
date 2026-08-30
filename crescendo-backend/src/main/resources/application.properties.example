@@ -430,12 +430,20 @@ crescendo.integrations.oauth.providers.salesforce.scopes=full refresh_token
 # ─── Facebook Graph ───────────────────────────────────────────────────────────
 # App registration: https://developers.facebook.com/apps
 # Redirect URI: https://api.crescendo.run/connections/oauth/facebook-graph/callback
-# App review may be required for pages_manage_posts and instagram_content_publish
 crescendo.integrations.oauth.providers.facebook-graph.client-id=REPLACE_ME
 crescendo.integrations.oauth.providers.facebook-graph.client-secret=REPLACE_ME
-crescendo.integrations.oauth.providers.facebook-graph.authorize-url=https://www.facebook.com/v20.0/dialog/oauth
-crescendo.integrations.oauth.providers.facebook-graph.token-url=https://graph.facebook.com/v20.0/oauth/access_token
-crescendo.integrations.oauth.providers.facebook-graph.scopes=pages_read_engagement pages_manage_posts instagram_basic instagram_content_publish
+crescendo.integrations.oauth.providers.facebook-graph.authorize-url=https://www.facebook.com/v26.0/dialog/oauth
+crescendo.integrations.oauth.providers.facebook-graph.token-url=https://graph.facebook.com/v26.0/oauth/access_token
+crescendo.integrations.oauth.providers.facebook-graph.scopes=public_profile email pages_show_list pages_read_engagement pages_manage_posts business_management
+
+# ─── Instagram ────────────────────────────────────────────────────────────────
+# App registration: https://developers.facebook.com/apps (Instagram API with Instagram Login)
+# Redirect URI: https://api.crescendo.run/connections/oauth/instagram/callback
+crescendo.integrations.oauth.providers.instagram.client-id=REPLACE_ME
+crescendo.integrations.oauth.providers.instagram.client-secret=REPLACE_ME
+crescendo.integrations.oauth.providers.instagram.authorize-url=https://www.instagram.com/oauth/authorize
+crescendo.integrations.oauth.providers.instagram.token-url=https://api.instagram.com/oauth/access_token
+crescendo.integrations.oauth.providers.instagram.scopes=instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_content_publish
 
 # ─── Jira (Atlassian Cloud) ───────────────────────────────────────────────────
 # App registration: https://developer.atlassian.com/console/myapps/ → Create OAuth 2.0 integration

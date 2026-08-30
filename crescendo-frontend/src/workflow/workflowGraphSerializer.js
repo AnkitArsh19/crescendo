@@ -123,6 +123,7 @@ export function nodeToStepPayload(node, appDetailsByKey = {}) {
     const opKey = stepType === 'TRIGGER'
         ? (node.data?.triggerKey || node.data?.actionKey || null)
         : (node.data?.actionKey || null);
+    if (!opKey) return null;
 
     const detail = appDetailsByKey[appKey];
     const defs = stepType === 'TRIGGER'
@@ -307,7 +308,7 @@ export function validateGraphForSave(nodes, edges) {
  * @param {boolean} strict        — if true, validates all required configuration fields (for run/activation)
  * @returns {string|null}
  */
-export function validateNodeForSave(node, index, catalogApps = [], appDetailsByKey = {}, strict = false) {
+export function validateNodeForSave(node, index, catalogApps = [], appDetailsByKey = {}, strict = true) {
     if (index === 0 && node.type !== 'trigger')
         return 'The first step must be a trigger.';
     if (index > 0 && node.type === 'trigger')

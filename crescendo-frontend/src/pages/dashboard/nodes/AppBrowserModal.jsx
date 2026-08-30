@@ -36,6 +36,13 @@ const markdownComponents = {
     h3: ({ ...props }) => <h3 style={{ color: 'var(--text-accent)', fontSize: '0.86rem', margin: '10px 0 4px' }} {...props} />,
 };
 
+const TRIGGER_ONLY_APPS = new Set(['schedule', 'form', 'native-form', 'rss']);
+const ACTION_ONLY_APPS = new Set([
+    'agent', 'readpdf', 'smtp', 'gemini', 'openai', 'sarvam', 'pomodoro',
+    'cat-facts', 'giphy', 'quotes', 'joke-api', 'nasa-apod', 'weather',
+    'github-stats', 'leetcode', 'http'
+]);
+
 /**
  * AppBrowserModal — universal app browser, connector, and options inspector.
  */
@@ -48,6 +55,7 @@ export default function AppBrowserModal({
     connectOnly = false,
     onConnected,
     initialAppKey = null,
+    targetType = 'all', // 'trigger' | 'action' | 'all'
 }) {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');
@@ -60,15 +68,31 @@ export default function AppBrowserModal({
     const [showPasswords, setShowPasswords] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const visibleApps = useMemo(() => {
+        if (!apps || !Array.isArray(apps)) return [];
+        return apps.filter((app) => {
+            const key = (app.appKey || '').toLowerCase();
+            if (targetType === 'trigger') {
+                if (app.hasTriggers !== undefined) return app.hasTriggers;
+                return !ACTION_ONLY_APPS.has(key);
+            }
+            if (targetType === 'action') {
+                if (app.hasActions !== undefined) return app.hasActions;
+                return !TRIGGER_ONLY_APPS.has(key);
+            }
+            return true;
+        });
+    }, [apps, targetType]);
+
     useEffect(() => {
-        if (initialAppKey && apps.length > 0) {
-            const found = apps.find(a => a.appKey === initialAppKey);
+        if (initialAppKey && visibleApps.length > 0) {
+            const found = visibleApps.find(a => a.appKey === initialAppKey);
             if (found) {
                 setDetailApp(found);
                 setDetailSection('connection');
             }
         }
-    }, [initialAppKey, apps]);
+    }, [initialAppKey, visibleApps]);
     const [platformKeyApps, setPlatformKeyApps] = useState(new Set());
     const [actionSearch, setActionSearch] = useState('');
     const searchRef = useRef(null);
@@ -76,11 +100,11 @@ export default function AppBrowserModal({
 
     const categories = useMemo(() => {
         const cats = new Set();
-        apps.forEach((a) => {
+        visibleApps.forEach((a) => {
             if (a.category) cats.add(a.category.toLowerCase());
         });
         return ['all', ...Array.from(cats).sort()];
-    }, [apps]);
+    }, [visibleApps]);
 
     const connectedAppKeys = useMemo(() => {
         return new Set(connections.map((c) => c.appKey));
@@ -103,7 +127,7 @@ export default function AppBrowserModal({
         const q = search.trim().toLowerCase();
         const map = new Map();
 
-        apps.forEach((app) => {
+        visibleApps.forEach((app) => {
             const appName = (app.name || '').toLowerCase();
             const appKey = (app.appKey || '').toLowerCase();
             const category = (app.category || '').toLowerCase();
@@ -168,23 +192,23 @@ export default function AppBrowserModal({
         });
 
         return map;
-    }, [apps, search]);
+    }, [visibleApps, search]);
 
     const filtered = useMemo(() => {
         if (!search.trim()) {
-            if (activeTab === 'all') return apps;
-            return apps.filter((a) => (a.category || '').toLowerCase() === activeTab);
+            if (activeTab === 'all') return visibleApps;
+            return visibleApps.filter((a) => (a.category || '').toLowerCase() === activeTab);
         }
 
         // Searching across all apps with relevance ranking
-        const matches = apps.filter((a) => searchScoreMap.has(a.appKey));
+        const matches = visibleApps.filter((a) => searchScoreMap.has(a.appKey));
         return matches.sort((a, b) => {
             const scoreA = searchScoreMap.get(a.appKey) || 0;
             const scoreB = searchScoreMap.get(b.appKey) || 0;
             if (scoreB !== scoreA) return scoreB - scoreA;
             return a.name.localeCompare(b.name);
         });
-    }, [apps, search, activeTab, searchScoreMap]);
+    }, [visibleApps, search, activeTab, searchScoreMap]);
 
     const grouped = useMemo(() => {
         if (search.trim()) {

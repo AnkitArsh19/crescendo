@@ -522,14 +522,45 @@ export default function WorkflowCanvas() {
     }, [setNodes, setEdges]);
 
 
-    const fitWorkflow = useCallback(() => {
-        reactFlowInstance?.fitView({
-            padding: 0.24,
-            minZoom: 0.35,
-            maxZoom: 1.1,
-            duration: 280,
-        });
-    }, [reactFlowInstance]);
+    const fitWorkflow = useCallback((targetNodes) => {
+        if (!reactFlowInstance) return;
+        const currentNodes = targetNodes || stateRefs.current?.nodes || nodes;
+        if (!currentNodes || currentNodes.length === 0) return;
+
+        // For small workflows (1-3 steps), standard fitView centers them comfortably
+        if (currentNodes.length <= 3) {
+            reactFlowInstance.fitView({
+                padding: 0.24,
+                minZoom: 0.85,
+                maxZoom: 1.05,
+                duration: 280,
+            });
+            return;
+        }
+
+        // For large workflows (4+ steps), keep zoom at a fixed, clear, readable scale (~0.88)
+        // and focus on the start of the workflow (trigger + initial actions).
+        // This ensures all step labels, icons, badges, and statuses remain completely legible,
+        // allowing natural horizontal/vertical scrolling to view subsequent steps.
+        const triggerNode = currentNodes.find((n) => n.type === 'trigger') || currentNodes[0];
+        if (triggerNode) {
+            const isVertical = currentNodes.some((n) => n.position.y > 200 && Math.abs(n.position.x - triggerNode.position.x) < 50);
+            const targetX = isVertical ? triggerNode.position.x + 120 : triggerNode.position.x + 360;
+            const targetY = isVertical ? triggerNode.position.y + 240 : triggerNode.position.y + 40;
+
+            reactFlowInstance.setCenter(targetX, targetY, {
+                zoom: 0.88,
+                duration: 280,
+            });
+        } else {
+            reactFlowInstance.fitView({
+                padding: 0.24,
+                minZoom: 0.85,
+                maxZoom: 1.05,
+                duration: 280,
+            });
+        }
+    }, [reactFlowInstance, nodes]);
 
     // Auto-fit once after workflow finishes loading
     const hasFittedRef = useRef(false);
@@ -1482,7 +1513,9 @@ export default function WorkflowCanvas() {
                     onDrop={onDrop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    defaultViewport={{ x: 200, y: 150, zoom: 0.75 }}
+                    defaultViewport={{ x: 200, y: 150, zoom: 0.88 }}
+                    minZoom={0.2}
+                    maxZoom={1.5}
                     snapToGrid
                     snapGrid={[16, 16]}
                     proOptions={{ hideAttribution: true }}
@@ -1642,12 +1675,20 @@ export default function WorkflowCanvas() {
 
             {/* ── App Browser Modal ── */}
             <AnimatePresence>
-                {showAppBrowser && (
-                    <AppBrowserModal
-                        apps={catalogApps}
-                        connections={connections}
-                        initialAppKey={appBrowserInitialAppKey}
-                        title={appBrowserTarget === 'new' ? 'Choose an App' : 'Select App'}
+                {showAppBrowser && (() => {
+                    const targetNode = appBrowserTarget === 'new'
+                        ? null
+                        : (nodes.find((n) => n.id === appBrowserTarget) || configNode);
+                    const isTriggerTarget = targetNode?.type === 'trigger' || appBrowserTarget === 'trigger';
+                    const targetType = isTriggerTarget ? 'trigger' : 'action';
+
+                    return (
+                        <AppBrowserModal
+                            apps={catalogApps}
+                            connections={connections}
+                            initialAppKey={appBrowserInitialAppKey}
+                            targetType={targetType}
+                            title={isTriggerTarget ? 'Choose Trigger App' : 'Choose Action App'}
                         onSelect={async (app, credentialSource, connectionId, connectionName) => {
                             setShowAppBrowser(false);
                             setAppBrowserInitialAppKey(null);
@@ -1725,8 +1766,9 @@ export default function WorkflowCanvas() {
                             setAppBrowserInitialAppKey(null);
                         }}
                     />
-                )}
-            </AnimatePresence>
+                );
+            })()}
+        </AnimatePresence>
         </div>
     );
 }

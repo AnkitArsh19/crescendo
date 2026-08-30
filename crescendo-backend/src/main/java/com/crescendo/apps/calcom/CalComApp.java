@@ -48,7 +48,7 @@ public class CalComApp implements AppDefinition {
                                 "name", "Booking Created",
                                 "description", "Receive notifications when a new Cal.com booking is created",
                                 "configSchema", List.of(
-                                        Map.of("key", "eventTypeId", "label", "Event Type ID (optional)", "type", "text")
+                                        Map.of("key", "eventTypeId", "label", "Event Type", "type", "dynamic_dropdown", "resourceType", "event_types", "required", false, "helpText", "Optionally filter by event type")
                                 )
                         ),
                         Map.of(
@@ -56,7 +56,7 @@ public class CalComApp implements AppDefinition {
                                 "name", "Booking Cancelled",
                                 "description", "Receive notifications when a Cal.com booking is cancelled",
                                 "configSchema", List.of(
-                                        Map.of("key", "eventTypeId", "label", "Event Type ID (optional)", "type", "text")
+                                        Map.of("key", "eventTypeId", "label", "Event Type", "type", "dynamic_dropdown", "resourceType", "event_types", "required", false, "helpText", "Optionally filter by event type")
                                 )
                         ),
                         Map.of(
@@ -64,7 +64,7 @@ public class CalComApp implements AppDefinition {
                                 "name", "Booking Rescheduled",
                                 "description", "Receive notifications when a Cal.com booking is rescheduled",
                                 "configSchema", List.of(
-                                        Map.of("key", "eventTypeId", "label", "Event Type ID (optional)", "type", "text")
+                                        Map.of("key", "eventTypeId", "label", "Event Type", "type", "dynamic_dropdown", "resourceType", "event_types", "required", false, "helpText", "Optionally filter by event type")
                                 )
                         ),
                         Map.of(
@@ -72,7 +72,7 @@ public class CalComApp implements AppDefinition {
                                 "name", "Meeting Ended",
                                 "description", "Receive notifications when a Cal.com meeting has ended",
                                 "configSchema", List.of(
-                                        Map.of("key", "eventTypeId", "label", "Event Type ID (optional)", "type", "text")
+                                        Map.of("key", "eventTypeId", "label", "Event Type", "type", "dynamic_dropdown", "resourceType", "event_types", "required", false, "helpText", "Optionally filter by event type")
                                 )
                         )
                 ),

@@ -148,6 +148,153 @@ public class WorkflowExpressionResolver {
         return target.toString();
     }
 
+    /**
+     * Resolves configuration in step test mode using provided sample input data.
+     * Handles system dynamic time tokens, {{steps.N.path}}, {{steps.trigger.path}},
+     * and direct {{path}} references against inputData.
+     */
+    public Map<String, Object> resolveForTest(Map<String, Object> configuration, Map<String, Object> inputData) {
+        if (configuration == null || configuration.isEmpty()) return Map.of();
+        Map<String, Object> sampleInput = inputData == null ? Map.of() : inputData;
+        Object resolved = resolveTestValue(configuration, sampleInput);
+        if (resolved instanceof Map<?, ?> map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            map.forEach((k, v) -> result.put(String.valueOf(k), v));
+            return result;
+        }
+        return Map.of();
+    }
+
+    private Object resolveTestValue(Object value, Map<String, Object> sampleInput) {
+        if (value instanceof Map<?, ?> rawMap) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            rawMap.forEach((k, child) -> result.put(String.valueOf(k), resolveTestValue(child, sampleInput)));
+            return result;
+        }
+        if (value instanceof List<?> list) {
+            List<Object> result = new ArrayList<>(list.size());
+            for (Object child : list) result.add(resolveTestValue(child, sampleInput));
+            return result;
+        }
+        if (value instanceof String text) {
+            return resolveTestString(text, sampleInput);
+        }
+        return value;
+    }
+
+    private static final Pattern GENERIC_VAR_PATTERN = Pattern.compile("\\{\\{([^}]+)\\}\\}");
+
+    private Object resolveTestString(String text, Map<String, Object> sampleInput) {
+        String trimmed = text.trim();
+
+        // 1. Exact system tokens
+        if (TIMESTAMP_PATTERN.matcher(trimmed).matches()) return System.currentTimeMillis();
+        if (TIMESTAMP_SEC_PATTERN.matcher(trimmed).matches()) return java.time.Instant.now().getEpochSecond();
+        if (TODAY_PATTERN.matcher(trimmed).matches()) return java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString();
+        Matcher timeMatcher = DYNAMIC_TIME_PATTERN.matcher(trimmed);
+        if (timeMatcher.matches()) {
+            return resolveDynamicTime(timeMatcher.group(1), timeMatcher.group(2), timeMatcher.group(3));
+        }
+
+        // 2. Embedded system tokens
+        String processed = text;
+        processed = TODAY_PATTERN.matcher(processed).replaceAll(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString());
+        processed = TIMESTAMP_PATTERN.matcher(processed).replaceAll(String.valueOf(System.currentTimeMillis()));
+        processed = TIMESTAMP_SEC_PATTERN.matcher(processed).replaceAll(String.valueOf(java.time.Instant.now().getEpochSecond()));
+
+        Matcher embeddedTimeMatcher = DYNAMIC_TIME_PATTERN.matcher(processed);
+        if (embeddedTimeMatcher.find()) {
+            StringBuffer timeBuf = new StringBuffer();
+            embeddedTimeMatcher.reset();
+            while (embeddedTimeMatcher.find()) {
+                String resolvedTime = resolveDynamicTime(embeddedTimeMatcher.group(1), embeddedTimeMatcher.group(2), embeddedTimeMatcher.group(3));
+                embeddedTimeMatcher.appendReplacement(timeBuf, Matcher.quoteReplacement(resolvedTime));
+            }
+            embeddedTimeMatcher.appendTail(timeBuf);
+            processed = timeBuf.toString();
+        }
+
+        // 3. Check for variable references {{...}}
+        Matcher varMatcher = GENERIC_VAR_PATTERN.matcher(processed);
+        if (!varMatcher.find()) return processed;
+
+        // If entire string is a single {{var}}, preserve data type (numbers, booleans, objects)
+        if (varMatcher.start() == 0 && varMatcher.end() == processed.length()) {
+            Object val = extractFromSampleInput(varMatcher.group(1).trim(), sampleInput);
+            return val != null ? val : processed;
+        }
+
+        varMatcher.reset();
+        StringBuffer sb = new StringBuffer();
+        while (varMatcher.find()) {
+            String expr = varMatcher.group(1).trim();
+            Object val = extractFromSampleInput(expr, sampleInput);
+            String replacement = val != null ? String.valueOf(val) : varMatcher.group(0);
+            varMatcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        varMatcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    private Object extractFromSampleInput(String expr, Map<String, Object> sampleInput) {
+        if (sampleInput == null || sampleInput.isEmpty()) return null;
+
+        // A. Direct exact match in sampleInput
+        if (sampleInput.containsKey(expr)) {
+            return sampleInput.get(expr);
+        }
+
+        // B. Handle steps.N.path or steps.trigger.path or step_id.path
+        if (expr.startsWith("steps.")) {
+            String sub = expr.substring("steps.".length());
+            int dotIdx = sub.indexOf('.');
+            if (dotIdx > 0) {
+                String stepKey = sub.substring(0, dotIdx);
+                String remainingPath = sub.substring(dotIdx + 1);
+
+                // 1. Check sampleInput.get("steps") -> Map -> get(stepKey)
+                Object stepsObj = sampleInput.get("steps");
+                if (stepsObj instanceof Map<?, ?> stepsMap) {
+                    Object stepNode = stepsMap.get(stepKey);
+                    if (stepNode != null) {
+                        Object resolved = extractNestedPath(remainingPath, stepNode);
+                        if (resolved != null) return resolved;
+                    }
+                }
+                // 2. Check sampleInput.get(stepKey)
+                Object stepNode = sampleInput.get(stepKey);
+                if (stepNode != null) {
+                    Object resolved = extractNestedPath(remainingPath, stepNode);
+                    if (resolved != null) return resolved;
+                }
+                // 3. Fallback: check if remainingPath exists directly in sampleInput
+                Object fallback = extractNestedPath(remainingPath, sampleInput);
+                if (fallback != null) return fallback;
+            }
+        }
+
+        // C. General dotted path extraction (e.g. data.customer.email or user.name)
+        return extractNestedPath(expr, sampleInput);
+    }
+
+    private Object extractNestedPath(String path, Object root) {
+        if (root == null || path == null || path.isBlank()) return root;
+        // Strip leading "data." or "payload." if applicable
+        Object current = root;
+        for (String part : path.split("\\.")) {
+            if (part.isBlank()) continue;
+            if (current instanceof Map<?, ?> map) {
+                current = map.get(part);
+            } else if (current instanceof List<?> list && part.matches("\\d+")) {
+                int index = Integer.parseInt(part);
+                current = index >= 0 && index < list.size() ? list.get(index) : null;
+            } else {
+                return null;
+            }
+        }
+        return current;
+    }
+
     private Object resolveReference(String stepReference, String path,
                                     Map<UUID, Map<String, Object>> outputs,
                                     Map<UUID, Steps_command> stepsById) {
@@ -169,8 +316,6 @@ public class WorkflowExpressionResolver {
         try {
             return UUID.fromString(reference);
         } catch (IllegalArgumentException ignored) {
-            // Legacy draft references use the persisted step order. This is deterministic,
-            // unlike the previous first-output-that-has-the-field fallback.
             try {
                 int order = Integer.parseInt(reference);
                 return stepsById.entrySet().stream()

@@ -40,9 +40,9 @@ public class MattermostApp implements AppDefinition {
                                                                 "description", "Post a message to a channel",
                                                                 "configSchema", List.of(
                                                                                 Map.of("key", "channelId", "label",
-                                                                                                "Channel ID", "type",
-                                                                                                "text", "required",
-                                                                                                true),
+                                                                                                "Channel", "type",
+                                                                                                "dynamic_dropdown", "resourceType", "channels",
+                                                                                                "required", true, "helpText", "Select Mattermost channel"),
                                                                                 Map.of("key", "message", "label",
                                                                                                 "Message", "type",
                                                                                                 "textarea", "required",
@@ -55,16 +55,16 @@ public class MattermostApp implements AppDefinition {
                                                                                 Map.of("key", "postId", "label",
                                                                                                 "Post ID", "type",
                                                                                                 "text", "required",
-                                                                                                true))),
+                                                                                                true, "helpText", "Post ID from earlier step"))),
                                                 Map.of(
                                                                 "actionKey", "create-channel",
                                                                 "name", "Create Channel",
                                                                 "description", "Create a new Mattermost channel",
                                                                 "configSchema", List.of(
                                                                                 Map.of("key", "teamId", "label",
-                                                                                                "Team ID", "type",
-                                                                                                "text", "required",
-                                                                                                true),
+                                                                                                "Team", "type",
+                                                                                                "dynamic_dropdown", "resourceType", "teams",
+                                                                                                "required", true, "helpText", "Select team"),
                                                                                 Map.of("key", "name", "label",
                                                                                                 "Channel Name (URL Safe)",
                                                                                                 "type", "text",
@@ -90,13 +90,13 @@ public class MattermostApp implements AppDefinition {
                                                                 "description", "Add a user to a channel",
                                                                 "configSchema", List.of(
                                                                                 Map.of("key", "channelId", "label",
-                                                                                                "Channel ID", "type",
-                                                                                                "text", "required",
-                                                                                                true),
+                                                                                                "Channel", "type",
+                                                                                                "dynamic_dropdown", "resourceType", "channels",
+                                                                                                "required", true, "helpText", "Select channel"),
                                                                                 Map.of("key", "userId", "label",
-                                                                                                "User ID", "type",
-                                                                                                "text", "required",
-                                                                                                true)))))
+                                                                                                "User", "type",
+                                                                                                "dynamic_dropdown", "resourceType", "users",
+                                                                                                "required", true, "helpText", "Select user to add")))))
                                 .credentialSchema(List.of(
                                                 Map.of("key", "baseUrl", "label", "Base URL", "type", "text",
                                                                 "required", true),

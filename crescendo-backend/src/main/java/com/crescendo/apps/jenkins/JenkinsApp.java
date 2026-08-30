@@ -37,7 +37,7 @@ public class JenkinsApp implements AppDefinition {
                                 "name", "Trigger Build",
                                 "description", "Trigger a Jenkins job build",
                                 "configSchema", List.of(
-                                        Map.of("key", "jobPath", "label", "Job Path", "type", "text", "required", true, "placeholder", "folder/job-name"),
+                                        Map.of("key", "jobPath", "label", "Job", "type", "dynamic_dropdown", "resourceType", "jobs", "required", true, "helpText", "Select Jenkins job to trigger"),
                                         Map.of("key", "parameters", "label", "Parameters (JSON)", "type", "json", "required", false)
                                 )
                         ),
@@ -46,7 +46,7 @@ public class JenkinsApp implements AppDefinition {
                                 "name", "Get Job",
                                 "description", "Fetch Jenkins job metadata",
                                 "configSchema", List.of(
-                                        Map.of("key", "jobPath", "label", "Job Path", "type", "text", "required", true)
+                                        Map.of("key", "jobPath", "label", "Job", "type", "dynamic_dropdown", "resourceType", "jobs", "required", true, "helpText", "Select Jenkins job to fetch")
                                 )
                         )
                 )

@@ -58,7 +58,11 @@ public class OAuthTokenRefreshService {
         this.oauthConfig = oauthConfig;
         this.lockService = lockService;
         this.userOAuthAppService = userOAuthAppService;
-        this.restTemplate = new RestTemplate();
+        java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(15))
+                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .build();
+        this.restTemplate = new RestTemplate(new org.springframework.http.client.JdkClientHttpRequestFactory(httpClient));
     }
 
     /**
@@ -173,6 +177,14 @@ public class OAuthTokenRefreshService {
                 }
             }
 
+            // Instagram: long-lived tokens are refreshed via GET /refresh_access_token
+            // (they do NOT use a standard refresh_token grant — they have no refresh_token)
+            if ("instagram".equals(appKey)) {
+                final String igClientSecret = effectiveClientSecret;
+                Map<String, Object> updated = refreshInstagramToken(latestCreds, igClientSecret, connectionId, latest);
+                return updated;
+            }
+
             // Exchange refresh token for new access token
             Map<String, Object> tokenResponse = exchangeRefreshToken(config, refreshToken, providerKey, effectiveClientId, effectiveClientSecret);
 
@@ -273,7 +285,61 @@ public class OAuthTokenRefreshService {
         }
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────
+    // ─── Token Exchange ──────────────────────────────────────────────
+
+    /**
+     * Instagram long-lived token refresh.
+     * Long-lived tokens (60 days) are refreshed via a GET — no refresh_token needed.
+     * See: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/long-lived-token
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> refreshInstagramToken(Map<String, Object> currentCreds,
+                                                       String clientSecret,
+                                                       UUID connectionId,
+                                                       Connections_command connection) {
+        String currentToken = asString(currentCreds.get("accessToken"));
+        if (currentToken == null || currentToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "No Instagram access token to refresh. Please reconnect.");
+        }
+        try {
+            String url = "https://graph.instagram.com/refresh_access_token"
+                    + "?grant_type=ig_refresh_token"
+                    + "&access_token=" + currentToken;
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.GET,
+                    new HttpEntity<>(new HttpHeaders()),
+                    (Class<Map<String, Object>>) (Class<?>) Map.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new RuntimeException("Instagram token refresh returned: " + response.getStatusCode());
+            }
+
+            Map<String, Object> body = response.getBody();
+            Map<String, Object> updated = new HashMap<>(currentCreds);
+            updated.put("accessToken", body.get("access_token"));
+
+            Object expiresIn = body.get("expires_in");
+            if (expiresIn != null) {
+                long seconds = expiresIn instanceof Number n ? n.longValue() : Long.parseLong(expiresIn.toString());
+                updated.put("expiresIn", seconds);
+                updated.put("tokenExpiresAt", Instant.now().plusSeconds(seconds).toString());
+            }
+
+            // Re-encrypt and persist
+            Map<String, Object> encrypted = cryptoService.seal(updated);
+            connection.setCredentials(encrypted);
+            connectionRepo.save(connection);
+
+            logger.info("[token-refresh] Refreshed Instagram long-lived token for connection {}", connectionId);
+            return updated;
+        } catch (Exception e) {
+            logger.error("[token-refresh] Instagram token refresh failed for connection {}: {}", connectionId, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Instagram token expired. Please reconnect.");
+        }
+    }
+
 
     private boolean isTokenExpired(Map<String, Object> credentials) {
         Object expiresAtObj = credentials.get("tokenExpiresAt");

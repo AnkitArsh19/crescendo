@@ -290,6 +290,22 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **Crescendo as OAuth 2.0 Provider**: Implements a full RFC 6749 / RFC 7636 Authorization Server using Spring Authorization Server. External developer applications can authenticate via PKCE authorization code flows to securely access `/api/v1/*` public APIs with fine-grained granular scopes (`workflow:read`, `email:send`, `domains:write`, `connections:read`, etc.).
 - **Bring-Your-Own-App (BYOA) Integration**: Users can register their own custom OAuth App credentials (Client ID & Client Secret) for third-party SaaS providers (Google, Slack, GitHub, Spotify, etc.) directly in Settings. The token exchange and automated background token refresh pipelines (`OAuthTokenRefreshService`) dynamically resolve and inject the user's encrypted custom credentials instead of shared platform defaults, giving developers full ownership over quotas and consent screens.
 
+### 18. Universal Dynamic Resource Resolution & Cascading Dropdowns (`ResourceProvider`)
+
+- **Zero Manual ID Entry**: Eliminates fragile copy-pasting of opaque entity IDs (`spreadsheetId`, `sheetId`, `databaseId`, `pageId`, `bucket`, `objectKey`, `contactId`, `ticketId`, `channelId`, `jobPath`) across all 114 application integrations.
+- **Provider SPI & Cache Architecture**: Integrations implement a decoupled `ResourceProvider` SPI defining `supportedResourceTypes()` and `contextResourceDescriptors()`. Results are fetched via authorized API requests and cached with granular TTLs in Redis to prevent API rate limits.
+- **Cascading Dependencies (`dependsOn`)**: Form fields declare dependent relationships (e.g. S3 Bucket $\rightarrow$ S3 Objects, Notion Database $\rightarrow$ Pages, Mattermost Team $\rightarrow$ Channels, Jenkins Folder $\rightarrow$ Jobs). When a parent resource changes, the frontend automatically invalidates and cascades queries to fetch child resources.
+
+### 19. Safety-First Step Testing & Real-Time Expression Resolution Engine
+
+- **Elimination of Blind Mutations**: Solved the classic integration platform flaw where "testing a step" inadvertently creates dummy records, charges credit cards, or sends premature customer messages.
+- **3-Tier Testing Architecture**:
+  1. *Check Setup (Non-mutating Pre-Flight)*: Validates connection health, required scopes, mandatory fields, and proves target resource existence using `ResourceProvider` probes without executing mutating HTTP verbs or action handlers.
+  2. *Trigger & Read-Only Sample Fetching*: Retrieves safe sample records (`/trigger-sample` and `/read-sample`) for downstream variable mapping.
+  3. *Gated Live Execution*: Real handler execution (`/live-run`) is strictly isolated behind an explicit confirmation modal with mandatory side-effect acknowledgment.
+- **Runtime Expression Evaluation Preview**: `WorkflowExpressionResolver.resolveForTest()` evaluates complex variable mappings (`{{steps.1.customerEmail}}`, `{{now}}`, `{{today}}`, `{{timestamp}}`) against sample input data in real-time, displaying the exact resolved "Data In" payload with native type preservation.
+- **Upstream Test Data Chaining**: Step test outputs are saved to canvas nodes, allowing downstream steps to immediately select upstream records (`[Use Step 1 Output]`) without manual JSON copy-pasting.
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads
@@ -335,11 +351,12 @@ OAuth callback testing and external webhook testing:
 
 A common challenge in integration platforms is testing hundreds of third-party actions without requiring developers to manage dozens of external developer accounts, live API keys, or flaky OAuth refresh tokens in CI.
 
-Crescendo utilizes a **3-Layer Zero-Credential Verification Strategy**:
+Crescendo utilizes a **4-Layer Zero-Credential Verification Strategy**:
 
-1. **Universal Catalog Contracts (`CatalogContractTest`)**: All 114 application integrations and 868 action mappings are loaded into memory and audited automatically in ~100ms. Asserts unique app/action keys, parameter schema types, handler registration parity, and valid JSON payload formatting without network connectivity or API tokens.
-2. **Local HTTP Mock Seams (`ResourceProviderHttpContractTest`)**: Verifies dynamic resource fetching (Gmail inboxes, Spotify playlists, Slack channels) and API formatting by spinning up lightweight embedded local web servers. By feeding dummy tokens (`"test-token-123"`) to the Java providers, tests assert precise OAuth Bearer token headers and UI dropdown serialization without calling external servers.
-3. **Native Email Pipeline Testing**: Transactional HTML template rendering (`EmailTemplateRendererTest`) and cryptographic DNS authentication strings for SPF, DKIM, and DMARC (`DnsVerificationServiceTest`) run completely in-memory in CI, while physical inbox placement and bounce webhooks are validated against a dedicated test subdomain.
+1. **Universal Catalog Contracts (`CatalogContractTest`, `OperationTestContractFactoryTest`)**: All 114 application integrations and 868 action mappings are loaded into memory and audited automatically in ~100ms. Asserts unique app/action keys, parameter schema types, test policy assignments (`READ_TARGET`, `READ_SAMPLE`, `LOCAL_SIMULATION`), handler registration parity, and valid JSON payload formatting without network connectivity or API tokens.
+2. **Step Setup & Non-Mutating Validation Suite (`StepSetupValidationServiceTest`, `StepTestControllerTest`)**: Verifies that step testing routes never fall back to admin credentials, execute local logic simulations safely, and resolve expression templates against sample input data.
+3. **Local HTTP Mock Seams (`ResourceProviderHttpContractTest`, `TriggerSampleServiceTest`)**: Verifies dynamic resource fetching (Gmail inboxes, Spotify playlists, Slack channels) and trigger sample generation by spinning up lightweight embedded local web servers. By feeding dummy tokens (`"test-token-123"`) to the Java providers, tests assert precise OAuth Bearer token headers and UI dropdown serialization without calling external servers.
+4. **Native Email Pipeline Testing**: Transactional HTML template rendering (`EmailTemplateRendererTest`) and cryptographic DNS authentication strings for SPF, DKIM, and DMARC (`DnsVerificationServiceTest`) run completely in-memory in CI, while physical inbox placement and bounce webhooks are validated against a dedicated test subdomain.
 
 Running tests locally requires **no user accounts, no active OAuth configurations, and zero secret keys in `application.properties`**:
 

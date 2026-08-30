@@ -47,8 +47,8 @@ public class TwitterApp implements AppDefinition {
                     Map.of("actionKey", "delete-tweet", "name", "Delete Tweet",
                         "description", "Delete an existing tweet",
                         "configSchema", List.of(
-                            Map.of("key", "tweetId", "label", "Tweet ID", "type", "text", "required", true,
-                                   "placeholder", "1234567890", "helpText", "ID of the tweet to delete")))
+                            Map.of("key", "tweetId", "label", "Tweet", "type", "dynamic_dropdown", "resourceType", "tweets", "required", true,
+                                   "helpText", "Select a recent tweet or provide ID from earlier step")))
                 )
         ).credentialSchema(List.of()).category("social").helpUrl("https://developer.x.com/en/portal/dashboard");
     }

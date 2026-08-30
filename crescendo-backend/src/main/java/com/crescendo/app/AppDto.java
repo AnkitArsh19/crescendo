@@ -28,7 +28,11 @@ public class AppDto {
             String category,
             String helpUrl,
             boolean internal,
-            boolean hasPlatformKey
+            boolean hasPlatformKey,
+            boolean hasTriggers,
+            boolean hasActions,
+            int triggerCount,
+            int actionCount
     ) implements Serializable {}
 
     /**

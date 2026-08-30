@@ -2,6 +2,7 @@ package com.crescendo.app;
 
 import com.crescendo.admin.PlatformKeyRepository;
 import com.crescendo.execution.action.ActionHandlerRegistry;
+import com.crescendo.execution.test.OperationTestContractFactory;
 import com.crescendo.shared.domain.valueobject.AppKey;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,7 @@ public class AppService {
     private final AppRepository appRepo;
     private final ActionHandlerRegistry actionHandlerRegistry;
     private final PlatformKeyRepository platformKeyRepo;
+    private final OperationTestContractFactory testContractFactory;
 
     @org.springframework.beans.factory.annotation.Value("${gemini.api.key:}")
     private String geminiApiKey;
@@ -49,10 +51,12 @@ public class AppService {
 
     public AppService(AppRepository appRepo, 
                       ActionHandlerRegistry actionHandlerRegistry, 
-                      PlatformKeyRepository platformKeyRepo) {
+                      PlatformKeyRepository platformKeyRepo,
+                      OperationTestContractFactory testContractFactory) {
         this.appRepo = appRepo;
         this.actionHandlerRegistry = actionHandlerRegistry;
         this.platformKeyRepo = platformKeyRepo;
+        this.testContractFactory = testContractFactory;
     }
 
     @Cacheable(value = "apps", key = "'all:v3'")
@@ -97,6 +101,8 @@ public class AppService {
     }
 
     private AppDto.AppSummaryResponse toSummary(App app, Set<String> platformKeyAppKeys) {
+        int triggerCount = app.getTriggers() != null ? app.getTriggers().size() : 0;
+        int actionCount = app.getActions() != null ? app.getActions().size() : 0;
         return new AppDto.AppSummaryResponse(
                 app.getAppKey(),
                 app.getName(),
@@ -108,7 +114,11 @@ public class AppService {
                 app.getCategory(),
                 app.getHelpUrl(),
                 app.isInternal(),
-                platformKeyAppKeys.contains(app.getAppKey())
+                platformKeyAppKeys.contains(app.getAppKey()),
+                triggerCount > 0,
+                actionCount > 0,
+                triggerCount,
+                actionCount
         );
     }
 
@@ -128,13 +138,24 @@ public class AppService {
                 app.getLogoUrl(),
                 app.getAuthType().name(),
                 app.getAltAuthType() != null ? app.getAltAuthType().name() : null,
-                app.getTriggers(),
-                runnableActions,
+                withTestContracts(app.getAppKey(), app.getTriggers(), true),
+                withTestContracts(app.getAppKey(), runnableActions, false),
                 app.getCredentialSchema(),
                 app.getCategory(),
                 app.getHelpUrl(),
                 app.isInternal(),
                 platformKeyAppKeys.contains(app.getAppKey())
         );
+    }
+
+    private List<Map<String, Object>> withTestContracts(String appKey,
+                                                         List<Map<String, Object>> operations,
+                                                         boolean trigger) {
+        if (operations == null) return List.of();
+        return operations.stream().map(operation -> {
+            Map<String, Object> enriched = new java.util.LinkedHashMap<>(operation);
+            enriched.put("testContract", testContractFactory.create(appKey, operation, trigger));
+            return enriched;
+        }).toList();
     }
 }

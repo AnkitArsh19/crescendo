@@ -10,6 +10,7 @@ import './SearchableSelect.css';
 export default function SearchableSelect({
     options = [],
     value = '',
+    valueLabel = '',
     onChange,
     placeholder = 'Select…',
     loading = false,
@@ -39,12 +40,18 @@ export default function SearchableSelect({
             (o) =>
                 o.label?.toLowerCase().includes(q) ||
                 o.description?.toLowerCase().includes(q) ||
-                o.id?.toLowerCase().includes(q)
+                String(o.id)?.toLowerCase().includes(q)
         );
     }, [options, search]);
 
-    const selectedOption = options.find((o) => o.id === value);
-    const displayText = selectedOption ? selectedOption.label : (value || null);
+    const selectedOption = useMemo(() => {
+        if (value === undefined || value === null || value === '') return null;
+        return options.find((o) => String(o.id) === String(value) || String(o.value) === String(value));
+    }, [options, value]);
+
+    const displayText = selectedOption
+        ? selectedOption.label
+        : (valueLabel || (options.length === 0 && loading ? 'Loading…' : (value || null)));
 
     // Calculate dropdown position relative to viewport
     const updatePosition = useCallback(() => {
