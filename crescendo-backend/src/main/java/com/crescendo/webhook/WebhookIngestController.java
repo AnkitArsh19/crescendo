@@ -132,6 +132,12 @@ public class WebhookIngestController {
             return ResponseEntity.ok(Map.of("message", "Figma ping received successfully"));
         }
 
+        if (webhook == null) {
+            logger.warn("[webhook] Webhook {} not found or inactive", webhookKey);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Webhook not found"));
+        }
+
         if (!verifySignature(webhook, rawBody, request)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Invalid webhook signature"));
@@ -459,12 +465,23 @@ public class WebhookIngestController {
     }
 
     private boolean verifySignature(Webhook webhook, String rawBody, HttpServletRequest request) {
-        String headerName = webhook.getProviderSignatureHeader();
-        String signature = request.getHeader(headerName);
+        if (webhook == null) {
+            return false;
+        }
 
-        // If no signature header is sent by client, allow webhook (secret enforcement is optional)
-        if (signature == null || signature.isBlank()) {
+        if (webhook.getSecretKey() == null || webhook.getSecretKey().isBlank()) {
             return true;
+        }
+
+        String headerName = webhook.getProviderSignatureHeader();
+        if (headerName == null || headerName.isBlank()) {
+            return true;
+        }
+
+        String signature = request.getHeader(headerName);
+        if (signature == null || signature.isBlank()) {
+            logger.warn("[webhook] Missing expected signature header '{}' for webhook {}", headerName, webhook.getWebhookKey());
+            return false;
         }
 
         String actualSignature = signature;
@@ -472,10 +489,6 @@ public class WebhookIngestController {
             actualSignature = actualSignature.substring(7);
         } else if (actualSignature.toLowerCase().startsWith("sha1=")) {
             actualSignature = actualSignature.substring(5);
-        }
-
-        if (webhook.getSecretKey() == null || webhook.getSecretKey().isBlank()) {
-            return true;
         }
 
         String body = rawBody != null ? rawBody : "";
