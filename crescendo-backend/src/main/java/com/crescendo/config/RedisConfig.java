@@ -92,8 +92,8 @@ public class RedisConfig implements CachingConfigurer {
                                 .allowIfSubType(java.util.List.class)
                                 .allowIfSubType(java.util.Map.class)
                                 .build(),
-                        DefaultTyping.NON_FINAL,
-                        JsonTypeInfo.As.WRAPPER_ARRAY
+                        DefaultTyping.OBJECT_AND_NON_CONCRETE,
+                        JsonTypeInfo.As.PROPERTY
                 )
                 .build();
     }

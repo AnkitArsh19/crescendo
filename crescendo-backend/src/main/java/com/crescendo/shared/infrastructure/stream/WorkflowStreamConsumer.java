@@ -64,6 +64,11 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
                     logger.info("[stream] Workflow activated: {}", aggregateId);
             case "WorkflowDeactivatedEvent" ->
                     logger.info("[stream] Workflow deactivated: {}", aggregateId);
+            case "WorkflowEdgeCreatedEvent", "WorkflowEdgeDeletedEvent" ->
+                    logger.info("[stream] Workflow edge event {}: edgeId={}, workflowId={}",
+                            eventType, aggregateId, unquote(String.valueOf(raw.getOrDefault("workflowId", "unknown"))));
+            case "WorkflowGraphSavedEvent" ->
+                    logger.info("[stream] Workflow graph saved: workflowId={}", aggregateId);
             case "WorkflowRunStartedEvent" ->
                     logger.info("[stream] Workflow run started: runId={}, workflowId={}",
                             aggregateId, unquote(String.valueOf(raw.getOrDefault("workflowId", "unknown"))));
