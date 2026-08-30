@@ -83,13 +83,6 @@ public class RedisConfig implements CachingConfigurer {
      * Jackson 3 JsonMapper configured for Redis serialization with type info embedded in JSON.
      * Polymorphic type info allows deserialization of cached objects back to their concrete types.
      * Java 8 date/time types are supported natively in Jackson 3 — no module registration needed.
-
-    *
-     * Uses WRAPPER_ARRAY (not PROPERTY) to avoid the nested-map token conflict:
-     * PROPERTY injects a field inside the object which breaks when a Map value is itself a Map
-     * (Jackson sees '{' where it expects a type-id string).
-     * Validator is narrowed to only crescendo types + collections — not Object.class — to avoid
-     * embedding type metadata into every primitive string/int in Map<String, Object> values.
      */
     private ObjectMapper redisObjectMapper() {
         return JsonMapper.builder()
@@ -99,7 +92,7 @@ public class RedisConfig implements CachingConfigurer {
                                 .allowIfSubType(java.util.List.class)
                                 .allowIfSubType(java.util.Map.class)
                                 .build(),
-                        DefaultTyping.NON_FINAL,
+                        DefaultTyping.EVERYTHING,
                         JsonTypeInfo.As.WRAPPER_ARRAY
                 )
                 .build();
@@ -147,7 +140,7 @@ public class RedisConfig implements CachingConfigurer {
                 new JacksonJsonRedisSerializer<>(redisObjectMapper(), Object.class);
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .prefixCacheNameWith("v3:")   // orphans v2 keys written with incompatible type-info format
+                .prefixCacheNameWith("crescendo:v1:")
                 .entryTtl(Duration.ofMinutes(30))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
@@ -157,10 +150,9 @@ public class RedisConfig implements CachingConfigurer {
                 "users",         defaultConfig.entryTtl(jitter(Duration.ofMinutes(15))),
                 "workflows",     defaultConfig.entryTtl(jitter(Duration.ofMinutes(30))),
                 "steps",         defaultConfig.entryTtl(jitter(Duration.ofMinutes(30))),
-                "workflowLists", defaultConfig.entryTtl(Duration.ofSeconds(60)),  // short-lived, no jitter needed
+                "workflowLists", defaultConfig.entryTtl(Duration.ofSeconds(60)),
                 "accessTiers",   defaultConfig.entryTtl(Duration.ofMinutes(5)),
                 "workflowRuns",  defaultConfig.entryTtl(Duration.ofHours(1)),
-                // Use JSON serialization for app catalog to prevent JDK serialization exceptions
                 "apps",          defaultConfig.entryTtl(jitter(Duration.ofHours(6)))
         );
 
@@ -187,4 +179,3 @@ public class RedisConfig implements CachingConfigurer {
         return Duration.ofMillis(Math.max(1, millis + jitterMs));
     }
 }
-

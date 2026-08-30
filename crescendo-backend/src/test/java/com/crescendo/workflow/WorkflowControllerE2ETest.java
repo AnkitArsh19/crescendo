@@ -91,31 +91,39 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
 
     private String createValidWorkflowForActivation(String name) throws Exception {
         String wfId = createWorkflowId(name);
-        String triggerBody = """
+        String graphBody = """
             {
-                "name": "Schedule Trigger",
-                "type": "TRIGGER",
-                "actionKey": "cron",
-                "appKey": "schedule",
-                "configuration": {
-                    "cronExpression": "0 0 * * * *"
-                }
+                "name": "%s",
+                "steps": [
+                    {
+                        "clientId": "trigger-1",
+                        "type": "TRIGGER",
+                        "name": "Schedule Trigger",
+                        "appKey": "schedule",
+                        "actionKey": "cron",
+                        "configuration": { "cronExpression": "0 0 * * * *" }
+                    },
+                    {
+                        "clientId": "action-1",
+                        "type": "ACTION",
+                        "name": "Log Action",
+                        "appKey": "crescendo-log",
+                        "actionKey": "print",
+                        "configuration": {}
+                    }
+                ],
+                "edges": [
+                    {
+                        "clientSourceId": "trigger-1",
+                        "clientTargetId": "action-1"
+                    }
+                ]
             }
-            """;
-        ResponseEntity<String> tResp = client().postForEntity(url("/workflows/" + wfId + "/steps"), auth(triggerBody), String.class);
-        assertThat(tResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            """.formatted(name);
 
-        String actionBody = """
-            {
-                "name": "Log Action",
-                "type": "ACTION",
-                "actionKey": "print",
-                "appKey": "crescendo-log",
-                "configuration": {}
-            }
-            """;
-        ResponseEntity<String> aResp = client().postForEntity(url("/workflows/" + wfId + "/steps"), auth(actionBody), String.class);
-        assertThat(aResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        ResponseEntity<String> gResp = client().exchange(
+                url("/workflows/" + wfId + "/graph"), HttpMethod.PUT, auth(graphBody), String.class);
+        assertThat(gResp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         return wfId;
     }
