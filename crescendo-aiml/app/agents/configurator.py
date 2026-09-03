@@ -24,13 +24,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from groq import AsyncGroq
 
 from app.agents.client import get_groq_client
+from app.agents.models import REASONING_MODEL
 from app.audit.logger import audit_log
 from app.catalog_sync import app_state
 from app.schemas.workflow import IntentResult, ResolvedStep
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "llama-3.3-70b-versatile"
+_MODEL = REASONING_MODEL
 
 
 # ---------------------------------------------------------------------------

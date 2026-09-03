@@ -17,6 +17,7 @@ from typing import Any, Optional
 from groq import AsyncGroq
 
 from app.agents.client import get_groq_client
+from app.agents.models import FAST_MODEL
 from app.schemas.workflow import IntentResult
 from app.audit.logger import audit_log
 
@@ -128,7 +129,7 @@ async def classify_intent(
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=FAST_MODEL,
             messages=[
                 {"role": "system", "content": _INTENT_SYSTEM + multi_turn_context},
                 {"role": "user",   "content": sanitized_prompt},
@@ -145,7 +146,7 @@ async def classify_intent(
     audit_log(
         user_id=user_id,
         stage="intent",
-        model="llama-3.1-8b-instant",
+        model=FAST_MODEL,
         prompt_tokens=usage.prompt_tokens if usage else 0,
         completion_tokens=usage.completion_tokens if usage else 0,
         validation_passed=True,

@@ -8,16 +8,20 @@ and only when a validated WorkflowSpec was checkpointed for the session.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Optional
 
 from groq import AsyncGroq
 
 from app.agents.client import get_groq_client
+from app.agents.models import REASONING_MODEL
 from app.audit.logger import audit_log
 from app.catalog_sync import app_state
 from app.schemas.workflow import WorkflowSpec
 
-_MODEL = "llama-3.3-70b-versatile"
+logger = logging.getLogger(__name__)
+
+_MODEL = REASONING_MODEL
 _REFINEMENT_PREFIXES = (
     "also ", "add ", "change ", "replace ", "remove ", "update ", "make ",
     "actually", "instead", "set ", "switch ", "modify ",
