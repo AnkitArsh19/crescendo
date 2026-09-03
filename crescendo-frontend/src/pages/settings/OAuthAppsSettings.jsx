@@ -88,7 +88,7 @@ export default function OAuthAppsSettings() {
     };
 
     const getRedirectUri = (providerKey) => {
-        const base = window.location.origin.includes('5173') ? 'http://localhost:8080' : window.location.origin;
+        const base = import.meta.env.VITE_API_URL || (window.location.origin.includes('5173') ? 'http://localhost:8080' : 'https://api.crescendo.run');
         return `${base}/connections/oauth/${providerKey || '{provider}'}/callback`;
     };
 

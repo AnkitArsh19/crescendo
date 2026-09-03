@@ -1,79 +1,62 @@
-# Docker Profile Example
-# Copy this file to application-docker.properties and modify as needed
-# This profile is used when running the app inside Docker containers
+# ==============================================================================
+# Docker & Production Environment Profile Template
+# ==============================================================================
+# This profile is active inside containerized environments (SPRING_PROFILES_ACTIVE=docker,prod).
+# It binds to container network DNS aliases and enforces production sizing and security defaults.
 
-# Command Database (Write Side) - Docker
-spring.datasource.command.url=jdbc:postgresql://postgres:5432/crescendo_command
-spring.datasource.command.username=your_username
-spring.datasource.command.password=your_password
+# ── Command Database (Write Side) - CQRS ──────────────────────────────────────
+spring.datasource.command.url=jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_COMMAND_DB:crescendo_command}
+spring.datasource.command.username=${POSTGRES_USER:crescendo_user}
+spring.datasource.command.password=${POSTGRES_PASSWORD:}
 spring.datasource.command.driver-class-name=org.postgresql.Driver
+# Right-sized for 2 vCPU / 4 GiB RAM host: 8 connections per pool (~160 MiB total in Postgres)
+spring.datasource.command.hikari.maximum-pool-size=8
+spring.datasource.command.hikari.minimum-idle=2
+spring.datasource.command.hikari.connection-timeout=20000
+spring.datasource.command.hikari.idle-timeout=300000
+spring.datasource.command.hikari.max-lifetime=1200000
 
-# Query Database (Read Side) - Docker
-spring.datasource.query.url=jdbc:postgresql://postgres:5432/crescendo_query
-spring.datasource.query.username=your_username
-spring.datasource.query.password=your_password
+# ── Query Database (Read Side) - CQRS ─────────────────────────────────────────
+spring.datasource.query.url=jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_QUERY_DB:crescendo_query}
+spring.datasource.query.username=${POSTGRES_USER:crescendo_user}
+spring.datasource.query.password=${POSTGRES_PASSWORD:}
 spring.datasource.query.driver-class-name=org.postgresql.Driver
+spring.datasource.query.hikari.maximum-pool-size=8
+spring.datasource.query.hikari.minimum-idle=2
+spring.datasource.query.hikari.connection-timeout=20000
+spring.datasource.query.hikari.idle-timeout=300000
+spring.datasource.query.hikari.max-lifetime=1200000
 
-# Docker Environment Settings
-spring.jpa.show-sql=true
+# ── Docker & Production Environment Settings ──────────────────────────────────
+spring.jpa.show-sql=false
 logging.level.org.springframework.web=INFO
 
-# HikariCP connection pool optimization & keepalive for Docker deployment
-spring.datasource.command.hikari.maximum-pool-size=20
-spring.datasource.command.hikari.minimum-idle=5
-spring.datasource.command.hikari.connection-timeout=30000
-spring.datasource.command.hikari.idle-timeout=600000
-spring.datasource.command.hikari.max-lifetime=1800000
-spring.datasource.command.hikari.keepalive-time=120000
+# ── Redis (Docker internal network container DNS alias) ────────────────────────
+spring.data.redis.host=${REDIS_HOST:crescendo-redis}
+spring.data.redis.port=${REDIS_PORT:6379}
+spring.data.redis.password=${REDIS_PASSWORD:}
+spring.data.redis.timeout=5000
+spring.data.redis.connect-timeout=3000
 
-spring.datasource.query.hikari.maximum-pool-size=20
-spring.datasource.query.hikari.minimum-idle=5
-spring.datasource.query.hikari.connection-timeout=30000
-spring.datasource.query.hikari.idle-timeout=600000
-spring.datasource.query.hikari.max-lifetime=1800000
-spring.datasource.query.hikari.keepalive-time=120000
+# ── Reverse Proxy & Cloudflare Tunnel Trust ────────────────────────────────────
+app.security.trust-forwarded-headers=${APP_SECURITY_TRUST_FORWARDED_HEADERS:true}
 
-# Required for encrypting connection credentials at rest (AES-256 Base64 key)
-credentials.crypto.key=REPLACE_WITH_BASE64_32_BYTE_KEY
+# ── Cookie Security (Cross-Subdomain app.crescendo.run -> api.crescendo.run) ──
+app.cookie.secure=${APP_COOKIE_SECURE:true}
+app.cookie.domain=${APP_COOKIE_DOMAIN:crescendo.run}
+app.cookie.same-site=${APP_COOKIE_SAME_SITE:Lax}
 
-# Public app URLs used for OAuth callbacks and native no-code public links
-app.frontend-url=http://localhost:3000
-app.backend-url=http://localhost:8080
-app.form.base-url=${app.backend-url}/public/forms
-app.approval.base-url=${app.backend-url}/public/approvals
+# ── Internal AI Microservice Direct Routing ───────────────────────────────────
+crescendo.python-ai.base-url=${CRESCENDO_PYTHON_AI_BASE_URL:http://crescendo-aiml:8000}
+crescendo.python-ai.service-token=${SERVICE_TOKEN:}
 
-# OAuth2 client registrations (for direct OAuth login/connect flows)
-# The Google client is reused for Google Sheets, Drive, Calendar, and Forms if those scopes are enabled.
-spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
-spring.security.oauth2.client.registration.google.client-secret=REPLACE_ME
-spring.security.oauth2.client.registration.github.client-id=REPLACE_ME
-spring.security.oauth2.client.registration.github.client-secret=REPLACE_ME
+# ── Persistent Storage (AWS S3 or S3-compatible R2/MinIO via endpoint override) 
+crescendo.storage.s3.bucket=${S3_BUCKET_NAME:crescendo-platform-storage}
+crescendo.storage.s3.region=${AWS_REGION:us-east-1}
+crescendo.storage.s3.access-key=${AWS_ACCESS_KEY_ID:}
+crescendo.storage.s3.secret-key=${AWS_SECRET_ACCESS_KEY:}
+crescendo.storage.s3.endpoint=${S3_ENDPOINT_OVERRIDE:}
 
-# Integration OAuth providers use the provider-key structure below:
-# crescendo.integrations.oauth.providers.{provider-key}.client-id=...
-# crescendo.integrations.oauth.providers.{provider-key}.client-secret=...
-# crescendo.integrations.oauth.providers.{provider-key}.authorize-url=...
-# crescendo.integrations.oauth.providers.{provider-key}.token-url=...
-# crescendo.integrations.oauth.providers.{provider-key}.scopes=...
-#
-# Use application.properties.example as the canonical source for the full provider matrix,
-# including Gmail, Google Sheets, Google Drive, Google Calendar, Google Forms,
-# Google Tasks, Google Slides, Google Docs, Microsoft Excel, Microsoft Outlook,
-# Microsoft Teams, GitHub, Discord, Notion, Linear, Airtable,
-# X, Reddit, Spotify, Twitch, Strava, Figma, LinkedIn, GitLab, and Shopify.
-
-# SMTP relay for crescendo-email action
-crescendo.email.smtp.host=REPLACE_ME
-crescendo.email.smtp.port=587
-crescendo.email.smtp.username=REPLACE_ME
-crescendo.email.smtp.password=REPLACE_ME
-
-# Optional provider keys for controlled internal connections
-gemini.api.key=REPLACE_ME_IF_USED
-sarvam.api.key=REPLACE_ME_IF_USED
-
-# Razorpay and PayPal are user-owned connection credentials by default.
-# Configure keyId/keySecret or clientId/clientSecret in the user's Connection UI.
-
-# Optional OAuth provider rows for newly added apps are listed in application.properties.example.
-# Token-based connections work immediately for Trello, Asana, HubSpot, Dropbox, etc.
+# ── Transactional Email Provider ──────────────────────────────────────────────
+crescendo.email.provider=${CRESCENDO_EMAIL_PROVIDER:brevo}
+brevo.api.key=${BREVO_API_KEY:}

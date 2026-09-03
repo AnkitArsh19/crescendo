@@ -337,14 +337,51 @@ This automatically orchestrates:
 3. Run AI/ML service via `uvicorn app.main:app --port 8000` from `crescendo-aiml`
 4. Run frontend via `npm install && npm run dev` from `crescendo-frontend`
 
-Containerized option:
+### Production Deployment (Docker Compose + Cloudflare Tunnel)
 
-- Use the provided compose files/examples to run backend + infra together
+Crescendo is containerized for production on an AWS EC2 instance (`c7i-flex.large`: 2 vCPU, 4 GiB RAM) behind Cloudflare Tunnel with **zero public open host ports**:
+
+1. **Configure Environment Secrets:**
+   ```bash
+   cp .env.example .env
+   # Populate .env with production database credentials, JWT secret, and OAuth keys
+   ```
+
+2. **Launch Production Stack:**
+   ```bash
+   docker compose up -d --build
+   ```
+   This orchestrates:
+   - **PostgreSQL 16** (Internal network only, dual CQRS databases: `crescendo_command` and `crescendo_query`)
+   - **Redis 8** (Internal network only, AOF persistence + `noeviction` stream protection)
+   - **Backend Engine (Java 25 Spring Boot)** (`-Xms256m -Xmx768m`, HikariCP 8+8 connections)
+   - **AI/ML Service (Python FastAPI + LangGraph)** (Direct Docker network routing)
+   - **Frontend (React SPA + Nginx)** (Internal network only, port 80)
+   - **Prometheus** (Localhost scrape on `127.0.0.1:9090`)
+   - **Cloudflare Tunnel (`cloudflared`)** (Outbound connector routing `app.crescendo.run`, `api.crescendo.run`, `ai.crescendo.run`)
+
+3. **Local Diagnostics & Monitoring (Optional):**
+   To launch the developer diagnostic UI (Grafana dashboards, RedisInsight, and host-mapped database ports):
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+   ```
+   - **Grafana**: `http://localhost:3001` (HikariCP pool graphs, JVM memory, Virtual Threads)
+   - **RedisInsight**: `http://localhost:5540`
+   - **Frontend**: `http://localhost:80`
+   - **Backend**: `http://localhost:8080`
+
+4. **Automated Database Backups:**
+   ```bash
+   # Scheduled cron job dumps both databases and syncs to AWS S3 / Cloudflare R2:
+   ./scripts/backup-db.sh
+   
+   # Safe disaster recovery:
+   ./scripts/restore-db.sh ./backups/<TIMESTAMP>
+   ```
 
 OAuth callback testing and external webhook testing:
 
-- Local development commonly runs through Cloudflare Tunnel to provide a public HTTPS domain.
-- Active testing domain: app.crescendo.run
+- In production, Cloudflare Tunnel securely connects `app.crescendo.run`, `api.crescendo.run`, and `ai.crescendo.run` without requiring any open inbound ports on EC2 security groups.
 - This enables realistic OAuth redirect URI testing and end-to-end webhook/provider callback flows.
 
 ## Testing strategy & zero-credential verification

@@ -1,0 +1,226 @@
+# ==============================================================================
+# Crescendo Automation Engine - Production Docker Compose
+# ==============================================================================
+# Target Host: AWS EC2 c7i-flex.large (2 vCPU, 4 GiB RAM)
+# Ingress: Cloudflare Tunnel (cloudflared) -> Internal Docker Network
+# Target Domains:
+#   - Frontend SPA: https://app.crescendo.run
+#   - Backend API:  https://api.crescendo.run
+#   - AI Microservice: https://ai.crescendo.run
+#
+# Usage:
+#   docker compose up -d --build
+# For local diagnostics with Grafana & RedisInsight:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 (CQRS Dual Database: Command + Query)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: crescendo-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crescendo_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_COMMAND_DB:-crescendo_command}
+    # Security: No public host port publishing. Accessible ONLY within crescendo-network.
+    volumes:
+      - crescendo_postgres_data:/var/lib/postgresql/data
+      - ./crescendo-backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crescendo_user} -d ${POSTGRES_COMMAND_DB:-crescendo_command}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 2. Redis 8 (WAL AOF Persistence + Stream Queues + Checkpoints)
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:8-alpine
+    container_name: crescendo-redis
+    # Security: No public host port publishing. Accessible ONLY within crescendo-network.
+    volumes:
+      - crescendo_redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 3. Crescendo Backend (Java 25 Spring Boot Engine)
+  # ----------------------------------------------------------------------------
+  crescendo-backend:
+    build:
+      context: ./crescendo-backend
+      dockerfile: Dockerfile
+    container_name: crescendo-backend
+    # Security: No public host port publishing. Routed via cloudflared / crescendo-network.
+    expose:
+      - "8080"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,prod
+      TZ: UTC
+      JAVA_OPTS: "-Xms256m -Xmx768m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Duser.timezone=UTC"
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 4. Crescendo AI/ML Service (Python 3.12 FastAPI + LangGraph Engine)
+  # ----------------------------------------------------------------------------
+  crescendo-aiml:
+    build:
+      context: ./crescendo-aiml
+      dockerfile: Dockerfile
+    container_name: crescendo-aiml
+    # Security: No public host port publishing. Routed via cloudflared / crescendo-network.
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://crescendo-redis:6379/1}
+      - JAVA_BACKEND_URL=http://crescendo-backend:8080/internal/catalog
+      - SERVICE_TOKEN=${SERVICE_TOKEN:-098bff927b6812c65292b8479ca447080c5be8a14d0a532b4d64711ac22380c7}
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      crescendo-backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 5. Crescendo Frontend (React SPA served via Nginx)
+  # ----------------------------------------------------------------------------
+  crescendo-frontend:
+    build:
+      context: ./crescendo-frontend
+      dockerfile: Dockerfile
+    container_name: crescendo-frontend
+    # Zero host ports: Reached internally via Docker network by cloudflared (http://crescendo-frontend:80)
+    expose:
+      - "80"
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    depends_on:
+      - crescendo-backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 6. Prometheus Telemetry (Scrapes Spring Boot /actuator/prometheus)
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crescendo-prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - crescendo_prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ----------------------------------------------------------------------------
+  # 7. Cloudflare Tunnel (Independent Ingress Infrastructure Service)
+  # ----------------------------------------------------------------------------
+  # Runs alongside application on crescendo-network without gating core app startup.
+  # Reaches frontend at http://crescendo-frontend:80 and backend at http://crescendo-backend:8080.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: crescendo-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    networks:
+      - crescendo-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  crescendo_postgres_data:
+  crescendo_redis_data:
+  crescendo_prometheus_data:
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  crescendo-network:
+    driver: bridge
