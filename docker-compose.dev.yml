@@ -1,0 +1,63 @@
+# ==============================================================================
+# Docker Compose - Local Development & Diagnostic Tooling Override
+# ==============================================================================
+# Usage for local diagnostics:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# This file adds RedisInsight, Grafana, and exposes Postgres/Redis ports
+# directly to the host for local IDE/database tool access (DBeaver, TablePlus, etc.)
+
+services:
+  postgres:
+    ports:
+      - "5433:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  crescendo-backend:
+    ports:
+      - "8080:8080"
+
+  crescendo-aiml:
+    ports:
+      - "8000:8000"
+
+  crescendo-frontend:
+    ports:
+      - "80:80"
+
+  # RedisInsight — Visual GUI for Redis cache keys, TTLs, and Streams
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: crescendo-redisinsight
+    ports:
+      - "5540:5540"
+    networks:
+      - crescendo-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # Grafana Visual Dashboard — real-time charts of Hikari pools, RPS, RAM, Virtual Threads
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crescendo-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=crescendo
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - crescendo_grafana_data:/var/lib/grafana
+    networks:
+      - crescendo-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  crescendo_grafana_data:

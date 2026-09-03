@@ -34,6 +34,8 @@ from app.schemas.agent import (
     ToolDefinition,
 )
 
+from app.agents.models import REASONING_MODEL
+
 logger = logging.getLogger(__name__)
 
 # Maximum number of (assistant tool-call + tool observation) pairs to keep in
@@ -43,7 +45,7 @@ logger = logging.getLogger(__name__)
 _WINDOW_MAX_TOOL_PAIRS = 5
 
 # Default model — configurable per request via AgentNextStepRequest.model
-_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+_DEFAULT_MODEL = REASONING_MODEL
 
 
 # ---------------------------------------------------------------------------

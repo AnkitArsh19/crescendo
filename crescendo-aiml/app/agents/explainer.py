@@ -11,6 +11,7 @@ from typing import Optional
 from groq import AsyncGroq
 
 from app.agents.client import get_groq_client
+from app.agents.models import FAST_MODEL
 from app.audit.logger import audit_log
 from app.schemas.workflow import WorkflowSpec
 
@@ -57,7 +58,7 @@ async def generate_explanation(
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=FAST_MODEL,
             messages=[
                 {"role": "system", "content": _EXPLAINER_SYSTEM},
                 {"role": "user",   "content": spec_summary},
@@ -73,7 +74,7 @@ async def generate_explanation(
     audit_log(
         user_id=user_id,
         stage="explainer",
-        model="llama-3.1-8b-instant",
+        model=FAST_MODEL,
         prompt_tokens=usage.prompt_tokens if usage else 0,
         completion_tokens=usage.completion_tokens if usage else 0,
         validation_passed=True,

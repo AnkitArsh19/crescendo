@@ -1,5 +1,6 @@
 package com.crescendo.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
@@ -16,20 +17,31 @@ public class RefreshTokenCookieService {
 
     private static final String COOKIE_NAME = "refresh_token";
 
+    @Value("${app.cookie.same-site:Lax}")
+    private String sameSite;
+
+    @Value("${app.cookie.domain:}")
+    private String cookieDomain;
+
     /// Sets the refresh token as a cookie with full security attributes.
     /// httpOnly=true  — JavaScript cannot read this cookie, preventing XSS token theft.
     /// secure=true    — cookie sent only over HTTPS (set false in local dev where HTTP is used).
     /// path="/auth"   — cookie is only sent to /auth/* endpoints, not every API call.
     ///                  This minimizes exposure; the browser won't attach it to /workflows requests.
-    /// sameSite=Strict — cookie is never sent on cross-site requests, blocking CSRF.
+    /// sameSite       — Lax allows same-site cross-subdomain calls (app.crescendo.run -> api.crescendo.run) while blocking CSRF.
     public void setRefreshToken(HttpServletResponse response, String token, long ttlMillis, boolean secure) {
-        ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, token)
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(COOKIE_NAME, token)
                 .httpOnly(true)
                 .secure(secure)
                 .path("/auth")
-                .sameSite("Strict")
-                .maxAge(Duration.ofMillis(ttlMillis))
-                .build();
+                .sameSite(sameSite)
+                .maxAge(Duration.ofMillis(ttlMillis));
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            builder.domain(cookieDomain.trim());
+        }
+
+        ResponseCookie cookie = builder.build();
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
@@ -37,13 +49,18 @@ public class RefreshTokenCookieService {
     /// The browser immediately discards a cookie with maxAge=0.
     /// All other attributes must exactly match the original cookie or the browser won't clear it.
     public void clear(HttpServletResponse response, boolean secure) {
-        ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, "")
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(COOKIE_NAME, "")
                 .httpOnly(true)
                 .secure(secure)
                 .path("/auth")
-                .sameSite("Strict")
-                .maxAge(Duration.ZERO)
-                .build();
+                .sameSite(sameSite)
+                .maxAge(Duration.ZERO);
+
+        if (cookieDomain != null && !cookieDomain.isBlank()) {
+            builder.domain(cookieDomain.trim());
+        }
+
+        ResponseCookie cookie = builder.build();
         response.addHeader("Set-Cookie", cookie.toString());
     }
 }

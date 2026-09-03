@@ -23,6 +23,7 @@ from typing import List, Optional
 from groq import AsyncGroq
 
 from app.agents.client import get_groq_client
+from app.agents.models import REASONING_MODEL
 from app.audit.logger import audit_log
 from app.catalog_sync import app_state
 from app.schemas.workflow import IntentResult, ResolvedStep, WorkflowEdge
@@ -253,7 +254,7 @@ async def resolve_steps(
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=REASONING_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": "Resolve the intent to catalog keys now."},
@@ -270,7 +271,7 @@ async def resolve_steps(
     audit_log(
         user_id=user_id,
         stage="resolver",
-        model="llama-3.3-70b-versatile",
+        model=REASONING_MODEL,
         prompt_tokens=usage.prompt_tokens if usage else 0,
         completion_tokens=usage.completion_tokens if usage else 0,
         validation_passed=True,
@@ -302,7 +303,7 @@ async def resolve_steps_corrected(
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=REASONING_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": "Correct and re-resolve the intent to valid catalog keys."},
@@ -319,7 +320,7 @@ async def resolve_steps_corrected(
     audit_log(
         user_id=user_id,
         stage="correction",
-        model="llama-3.3-70b-versatile",
+        model=REASONING_MODEL,
         prompt_tokens=usage.prompt_tokens if usage else 0,
         completion_tokens=usage.completion_tokens if usage else 0,
         validation_passed=False,
