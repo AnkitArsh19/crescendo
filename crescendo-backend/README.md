@@ -34,6 +34,14 @@ The backend incorporates an independent email marketing and transactional delive
 - **Cryptographic DNS Authentication**: Automatically evaluates domain DNS configuration records (`DnsVerificationService`), verifying valid Sender Policy Framework (SPF), DomainKeys Identified Mail (DKIM) TXT strings, and DMARC compliance to ensure inbox placement.
 - **Telemetry Injection & Bounce Webhooks**: Dynamically injects open-tracking image pixels (`/t/o/{emailId}`) and link click wrapper paths into outgoing HTML email template blocks while listening for SMTP delivery bounce event webhooks to maintain domain sender reputation.
 
+## In-App Notifications & Real-Time Event Fan-Out
+
+The backend provides a complete user notification subsystem under `com.crescendo.notification`:
+- **Indexed Persistent Storage**: PostgreSQL-backed `user_notification` table with composite indexing `(userId, isRead, createdAt)` ensuring fast paginated reads, unread count queries, and single/bulk mark-as-read transitions.
+- **Cross-Node Redis Pub/Sub Streaming**: Uses `NotificationSseService` hooked into Redis Pub/Sub topic `user-notifications:{userId}`. Clustered Spring Boot instances automatically fan out real-time events to connected client HTTP `SseEmitter`s (`/notifications/events`).
+- **Event Producers**: Integrated across domain events including workflow run completion (`WorkflowRunNotificationListener`), AI workflow draft generation (`WorkflowDraftController`), suspicious/new device logins (`LoginAlertService`), MFA state transitions (`MFANotificationListener`), and OAuth token refresh expirations (`OAuthTokenRefreshService`).
+- **Noise Control & Scheduled Maintenance**: Per-event user preferences and per-workflow noise modes (`ALWAYS`, `FAILURE_ONLY`, `NEVER`) mitigate notification spam, while a daily `@Scheduled` background worker (`NotificationCleanupJob`) automatically purges notifications older than 90 days.
+
 ## Quality Assurance & Zero-Credential Testing Strategy
 
 Crescendo implements a rigorous automated QA strategy that requires **no live external developer accounts, zero secret keys in local configuration files, and no internet connectivity to run**:
@@ -75,6 +83,9 @@ crescendo-backend/src/main/java/com/crescendo/
 │   ├── queue/ & resource/       # Execution job scheduling buffers and dynamic third-party integration catalog dropdown resource providers
 │   └── suspension/, test/       # Execution suspension/resume controllers for long-running Wait timers or human approval steps, alongside local execution mock helpers
 ├── logbook/                     # Immutable activity tracking, operational audit trails, user workflow modification logs, and regulatory compliance records
+├── notification/                # In-app notification inbox, real-time SSE streaming, noise governance preferences, and 90-day retention cleanup
+│   ├── preference/              # User event opt-in/opt-out preferences and category grouping DTOs
+│   └── workflow/                # Per-workflow notification noise rules (ALWAYS, FAILURE_ONLY, NEVER)
 ├── publicapi/                   # Publicly accessible Developer REST API endpoints, automated OpenAPI specification generator, and external SDK execution routing controllers
 ├── security/                    # Tenant perimeter defense, request sanitization, and cryptographic identity verification boundaries:
 │   ├── access/, oauth/          # OAuth Bearer token authorization filters, token reuse detection defenses, and fine-grained access permissions

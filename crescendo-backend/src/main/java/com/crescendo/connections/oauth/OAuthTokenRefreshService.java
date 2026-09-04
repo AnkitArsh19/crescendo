@@ -3,6 +3,9 @@ package com.crescendo.connections.oauth;
 import com.crescendo.connections.connections_command.Connections_command;
 import com.crescendo.connections.connections_command.Connections_commandRepository;
 import com.crescendo.connections.security.ConnectionCredentialsCryptoService;
+import com.crescendo.enums.ConnectionStatus;
+import com.crescendo.notification.NotificationType;
+import com.crescendo.notification.UserNotificationService;
 import com.crescendo.shared.infrastructure.lock.DistributedLockService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,18 +49,21 @@ public class OAuthTokenRefreshService {
     private final IntegrationOAuthConfig oauthConfig;
     private final DistributedLockService lockService;
     private final com.crescendo.settings.oauth.UserOAuthAppService userOAuthAppService;
+    private final UserNotificationService userNotificationService;
     private final RestTemplate restTemplate;
 
     public OAuthTokenRefreshService(Connections_commandRepository connectionRepo,
                                      ConnectionCredentialsCryptoService cryptoService,
                                      IntegrationOAuthConfig oauthConfig,
                                      DistributedLockService lockService,
-                                     com.crescendo.settings.oauth.UserOAuthAppService userOAuthAppService) {
+                                     com.crescendo.settings.oauth.UserOAuthAppService userOAuthAppService,
+                                     UserNotificationService userNotificationService) {
         this.connectionRepo = connectionRepo;
         this.cryptoService = cryptoService;
         this.oauthConfig = oauthConfig;
         this.lockService = lockService;
         this.userOAuthAppService = userOAuthAppService;
+        this.userNotificationService = userNotificationService;
         java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
                 .connectTimeout(java.time.Duration.ofSeconds(15))
                 .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
@@ -94,6 +100,7 @@ public class OAuthTokenRefreshService {
         String refreshToken = asString(credentials.get("refreshToken"));
         if (refreshToken == null || refreshToken.isBlank()) {
             logger.warn("[token-refresh] Token expired but no refresh token for connection {}", connectionId);
+            notifyTokenExpired(connection);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Access token expired and no refresh token available. Please reconnect the app.");
         }
@@ -145,9 +152,10 @@ public class OAuthTokenRefreshService {
             return cryptoService.open(refreshed.getCredentials());
         }
 
+        Connections_command latest = null;
         try {
             // Double-check after acquiring lock (another thread may have just refreshed)
-            Connections_command latest = connectionRepo.findById(connectionId)
+            latest = connectionRepo.findById(connectionId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Connection not found"));
             Map<String, Object> latestCreds = cryptoService.open(latest.getCredentials());
 
@@ -216,11 +224,40 @@ public class OAuthTokenRefreshService {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+            if (latest != null && (msg.contains("expired") || msg.contains("invalid_grant") || msg.contains("400") || msg.contains("401"))) {
+                try {
+                    latest.setStatus(ConnectionStatus.REAUTH);
+                    connectionRepo.save(latest);
+                    logger.warn("[token-refresh] Marked connection {} as REAUTH due to refresh token expiry", connectionId);
+                    notifyTokenExpired(latest);
+                } catch (Exception repoEx) {
+                    logger.warn("[token-refresh] Could not update connection status to REAUTH: {}", repoEx.getMessage());
+                }
+            }
             logger.error("[token-refresh] Refresh failed for connection {}: {}", connectionId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Token refresh failed: " + e.getMessage());
         } finally {
             lockService.unlock(lockKey, lockToken.get());
+        }
+    }
+
+    private void notifyTokenExpired(Connections_command connection) {
+        if (connection == null || connection.getUser() == null || userNotificationService == null) {
+            return;
+        }
+        try {
+            String appName = connection.getName() != null ? connection.getName() : connection.getAppKey();
+            userNotificationService.create(
+                    connection.getUser().getId(),
+                    NotificationType.CONNECTION_TOKEN_EXPIRED,
+                    "Connection Expired: " + appName,
+                    "Access token for " + appName + " has expired. Please reconnect the app.",
+                    Map.of("connectionId", connection.getId().toString(), "appKey", connection.getAppKey())
+            );
+        } catch (Exception e) {
+            logger.warn("[token-refresh] Failed to send notification for expired token: {}", e.getMessage());
         }
     }
 

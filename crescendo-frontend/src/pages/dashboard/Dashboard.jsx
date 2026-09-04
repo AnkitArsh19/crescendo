@@ -39,7 +39,7 @@ const starters = [
         desc: 'Audit new pull requests for security vulnerabilities with AI, then route high-risk alerts directly to Slack.',
         steps: [
             { name: 'New Pull Request', type: 'TRIGGER', appKey: 'github', actionKey: 'new-pr', configuration: {} },
-            { name: 'AI Code & Security Audit', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-2.5-flash', goal: 'Analyze the pull request diff for bugs, breaking changes, and security risks. Rate overall risk as LOW, MEDIUM, or HIGH.' } },
+            { name: 'AI Code & Security Audit', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Analyze the pull request diff for bugs, breaking changes, and security risks. Rate overall risk as LOW, MEDIUM, or HIGH.' } },
             { name: 'Check If High Risk', type: 'CONDITION', appKey: 'condition', actionKey: 'rule', configuration: { operator: 'CONTAINS', field: '{{step_2.finalAnswer}}', value: 'HIGH' } },
             { name: 'Dispatch Slack Alert', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🚨 High-risk Pull Request detected:\n{{step_2.finalAnswer}}' } },
         ],
@@ -53,7 +53,7 @@ const starters = [
         steps: [
             { name: 'Morning 8:00 AM Alarm', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 8 * * *' } },
             { name: 'Fetch Daily LeetCode', type: 'ACTION', appKey: 'leetcode', actionKey: 'daily-problem', configuration: {} },
-            { name: 'AI Problem Explainer & Hints', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-2.5-flash', goal: 'Provide 2 progressive algorithmic hints and time/space complexity targets without spoiling the full solution code.' } },
+            { name: 'AI Problem Explainer & Hints', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Provide 2 progressive algorithmic hints and time/space complexity targets without spoiling the full solution code.' } },
             { name: 'Post to Discord Study Room', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: '🎯 Daily LeetCode Challenge is live! Study hints:\n{{step_3.finalAnswer}}' } },
         ],
     },
@@ -66,7 +66,7 @@ const starters = [
         steps: [
             { name: 'Weekday 9:00 AM Cron', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 9 * * MON-FRI' } },
             { name: 'Top Hacker News Stories', type: 'ACTION', appKey: 'hackernews', actionKey: 'top-stories', configuration: { limit: 5 } },
-            { name: 'AI Executive Summary', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-2.5-flash', goal: 'Extract the top 3 architectural and tech takeaways from these articles.' } },
+            { name: 'AI Executive Summary', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Extract the top 3 architectural and tech takeaways from these articles.' } },
             { name: 'Append to Notion Journal', type: 'ACTION', appKey: 'notion', actionKey: 'append-block', configuration: { content: '{{step_3.finalAnswer}}' } },
         ],
     },
@@ -78,7 +78,7 @@ const starters = [
         desc: 'Classify inbound user feedback sentiment with AI. Log feedback to Sheets and immediately alert team on critical bugs.',
         steps: [
             { name: 'Receive Feedback Webhook', type: 'TRIGGER', appKey: 'crescendo-webhook', actionKey: 'incoming', configuration: { method: 'POST', urlPattern: '/feedback' } },
-            { name: 'AI Sentiment & Severity Triage', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-2.5-flash', goal: 'Classify user feedback into: POSITIVE, NEUTRAL, or CRITICAL_BUG.' } },
+            { name: 'AI Sentiment & Severity Triage', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Classify user feedback into: POSITIVE, NEUTRAL, or CRITICAL_BUG.' } },
             { name: 'Log to Google Sheets', type: 'ACTION', appKey: 'google-sheets', actionKey: 'appendRow', configuration: { spreadsheetId: 'feedback_db' } },
             { name: 'Check If Critical Bug', type: 'CONDITION', appKey: 'condition', actionKey: 'rule', configuration: { operator: 'CONTAINS', field: '{{step_2.finalAnswer}}', value: 'CRITICAL_BUG' } },
             { name: 'Alert On-Call Slack Channel', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🔥 Critical Bug reported by user: {{step_1.message}}' } },
@@ -117,7 +117,7 @@ const starters = [
         desc: 'Analyze new GitHub issues with AI to classify component tags and automatically sync into Linear engineering backlogs.',
         steps: [
             { name: 'New GitHub Issue', type: 'TRIGGER', appKey: 'github', actionKey: 'new-issue', configuration: {} },
-            { name: 'AI Severity & Domain Classifier', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-2.5-flash', goal: 'Classify this issue into frontend, backend, or DevOps and assign priority (Low/Medium/High).' } },
+            { name: 'AI Severity & Domain Classifier', type: 'ACTION', appKey: 'agent', actionKey: 'ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Classify this issue into frontend, backend, or DevOps and assign priority (Low/Medium/High).' } },
             { name: 'Create Linear Task', type: 'ACTION', appKey: 'linear', actionKey: 'create-issue', configuration: { title: '{{step_1.title}}', description: '{{step_2.finalAnswer}}' } },
         ],
     },

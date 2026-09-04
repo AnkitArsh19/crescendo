@@ -24,6 +24,9 @@ import PasskeyNudge from '../../components/PasskeyNudge';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import usePageMeta from '../../hooks/usePageMeta';
 import useWorkflowEventStream from '../../hooks/useWorkflowEventStream';
+import useNotificationStream from '../../hooks/useNotificationStream';
+import NotificationBell from '../../components/NotificationBell';
+import NotificationDrawer from '../../components/NotificationDrawer';
 import './DashboardLayout.css';
 
 const navItems = [
@@ -35,6 +38,7 @@ const navItems = [
 
 export default function DashboardLayout() {
     useWorkflowEventStream();
+    useNotificationStream();
     const { theme, toggleTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
@@ -252,13 +256,7 @@ export default function DashboardLayout() {
                             >
                                 {theme === 'dark' ? <HiSun /> : <HiMoon />}
                             </button>
-                            <button
-                                className="dash-topbar-btn"
-                                title="Notifications"
-                                aria-label="Notifications"
-                            >
-                                <HiOutlineBell />
-                            </button>
+                            <NotificationBell />
                         </div>
                     </div>
                 )}
@@ -296,6 +294,7 @@ export default function DashboardLayout() {
                     <Outlet context={{ toggleTheme, theme, collapsed, setCollapsed }} />
                 </div>
             </div>
+            <NotificationDrawer />
         </div>
     );
 }

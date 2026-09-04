@@ -306,6 +306,14 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **Runtime Expression Evaluation Preview**: `WorkflowExpressionResolver.resolveForTest()` evaluates complex variable mappings (`{{steps.1.customerEmail}}`, `{{now}}`, `{{today}}`, `{{timestamp}}`) against sample input data in real-time, displaying the exact resolved "Data In" payload with native type preservation.
 - **Upstream Test Data Chaining**: Step test outputs are saved to canvas nodes, allowing downstream steps to immediately select upstream records (`[Use Step 1 Output]`) without manual JSON copy-pasting.
 
+### 20. Real-Time Notification Inbox, SSE Streaming & Alert Noise Governance
+
+- **Persistent In-App Inbox**: Indexed PostgreSQL storage with composite index `(userId, isRead, createdAt)` providing performant paginated inbox queries, real-time unread badge counts, and optimistic bulk/single mark-as-read.
+- **Cross-Instance SSE via Redis Pub/Sub**: System events (workflow execution outcomes, AI draft completions, suspicious logins, MFA toggles, OAuth token expirations) persist a notification record and publish it to Redis Pub/Sub (`user-notifications:{userId}`). Clustered backend nodes fan out events directly to active client `EventSource` connections (`/notifications/events`) without poll-based database load.
+- **HTML5 Desktop Notifications**: Native browser `Notification` API delivery alerts users when backgrounded tabs are running, without requiring external push gateways or heavyweight client daemons.
+- **Per-Workflow Alert Granularity & Noise Control**: Prevents notification fatigue for high-frequency or batch workflows with per-workflow alert rules (`ALWAYS`, `FAILURE_ONLY`, `NEVER`) alongside per-category event opt-ins.
+- **Automated Retention Management**: A nightly `@Scheduled` background worker purges notification records older than the configured retention horizon (default 90 days), maintaining bounded storage growth.
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads

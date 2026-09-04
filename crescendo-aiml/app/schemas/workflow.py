@@ -96,6 +96,7 @@ class WorkflowDraftResponse(BaseModel):
     workflow_spec: Optional[WorkflowSpec] = None
     explanation: Optional[str] = None
     clarifying_questions: List[str] = []
+    suggested_options: List[Dict[str, Any]] = []
     error: Optional[str] = None
     success: bool
     session_id: Optional[str] = None   # echoed back so the client can resume

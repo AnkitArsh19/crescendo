@@ -1,6 +1,9 @@
 package com.crescendo.ai;
 
+import com.crescendo.security.AiRateLimiterQueueService;
 import com.crescendo.security.AppUserDetails;
+import com.crescendo.notification.NotificationType;
+import com.crescendo.notification.UserNotificationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -44,14 +47,20 @@ public class WorkflowDraftController {
     private final String pythonBaseUrl;
     private final String pythonServiceToken;
     private final AiContextService aiContextService;
+    private final AiRateLimiterQueueService aiRateLimiterQueueService;
+    private final UserNotificationService userNotificationService;
 
     public WorkflowDraftController(
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
             @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
-            AiContextService aiContextService) {
+            AiContextService aiContextService,
+            AiRateLimiterQueueService aiRateLimiterQueueService,
+            UserNotificationService userNotificationService) {
         this.pythonBaseUrl = pythonBaseUrl;
         this.pythonServiceToken = pythonServiceToken;
         this.aiContextService = aiContextService;
+        this.aiRateLimiterQueueService = aiRateLimiterQueueService;
+        this.userNotificationService = userNotificationService;
     }
 
     @PostMapping("/workflow-drafts")
@@ -67,39 +76,77 @@ public class WorkflowDraftController {
                     "AI workflow builder is not available yet.");
         }
 
-        // Build enriched context: user connections + bounded dynamic-data pre-fetch.
-        // This replaces the bare context pass-through — the AI now receives real
-        // connection IDs and live resource lists (e.g. Slack channels) instead of
-        // guessing from plain text.
-        Map<String, Object> enrichedContext =
-            aiContextService.buildContext(resolvedUserId, request.context());
+        Map<String, Object> response;
+        try {
+            response = aiRateLimiterQueueService.executeWithRateLimiting(resolvedUserId, () -> {
+                // Build enriched context: user connections + bounded dynamic-data pre-fetch.
+                // This replaces the bare context pass-through — the AI now receives real
+                // connection IDs and live resource lists (e.g. Slack channels) instead of
+                // guessing from plain text.
+                Map<String, Object> enrichedContext =
+                    aiContextService.buildContext(resolvedUserId, request.context());
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("userId", resolvedUserId.toString());
-        body.put("prompt", request.prompt());
-        body.put("context", enrichedContext);
-        if (request.session_id() != null && !request.session_id().isBlank()) {
-            body.put("session_id", request.session_id());
+                Map<String, Object> body = new HashMap<>();
+                body.put("userId", resolvedUserId.toString());
+                body.put("prompt", request.prompt());
+                body.put("context", enrichedContext);
+                if (request.session_id() != null && !request.session_id().isBlank()) {
+                    body.put("session_id", request.session_id());
+                }
+
+                RestClient.Builder builder = RestClient.builder()
+                        .baseUrl(trimTrailingSlash(pythonBaseUrl))
+                        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .defaultHeader(HttpHeaders.ACCEPT,       MediaType.APPLICATION_JSON_VALUE);
+
+                if (pythonServiceToken != null && !pythonServiceToken.isBlank()) {
+                    builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + pythonServiceToken);
+                }
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> res = builder.build()
+                        .post()
+                        .uri("/v1/workflow-drafts")
+                        .body(body)
+                        .retrieve()
+                        .body(Map.class);
+
+                return res != null ? res : Map.of();
+            });
+
+            try {
+                String preview = request.prompt().length() > 60
+                        ? request.prompt().substring(0, 57) + "..."
+                        : request.prompt();
+                userNotificationService.create(
+                        resolvedUserId,
+                        NotificationType.AI_WORKFLOW_GENERATED,
+                        "AI Workflow Draft Ready",
+                        "Draft generated for: \"" + preview + "\"",
+                        Map.of("prompt", request.prompt())
+                );
+            } catch (Exception notifEx) {
+                // non-blocking
+            }
+        } catch (Exception e) {
+            try {
+                String preview = request.prompt().length() > 60
+                        ? request.prompt().substring(0, 57) + "..."
+                        : request.prompt();
+                userNotificationService.create(
+                        resolvedUserId,
+                        NotificationType.AI_WORKFLOW_GENERATION_FAILED,
+                        "AI Workflow Generation Failed",
+                        "Failed to generate workflow for: \"" + preview + "\"",
+                        Map.of("prompt", request.prompt(), "error", e.getMessage() != null ? e.getMessage() : "")
+                );
+            } catch (Exception notifEx) {
+                // non-blocking
+            }
+            throw e;
         }
 
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl(trimTrailingSlash(pythonBaseUrl))
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT,       MediaType.APPLICATION_JSON_VALUE);
-
-        if (pythonServiceToken != null && !pythonServiceToken.isBlank()) {
-            builder.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + pythonServiceToken);
-        }
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> response = builder.build()
-                .post()
-                .uri("/v1/workflow-drafts")
-                .body(body)
-                .retrieve()
-                .body(Map.class);
-
-        return ResponseEntity.ok(response != null ? response : Map.of());
+        return ResponseEntity.ok(response);
     }
 
     /**

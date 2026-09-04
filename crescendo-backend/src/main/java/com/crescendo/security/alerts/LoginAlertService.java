@@ -3,6 +3,8 @@ package com.crescendo.security.alerts;
 import com.crescendo.auth.domain_event.UserSessionCreatedEvent;
 import com.crescendo.security.JWTService;
 import com.crescendo.emailservice.NotificationService;
+import com.crescendo.notification.NotificationType;
+import com.crescendo.notification.UserNotificationService;
 import com.crescendo.user.user_command.user_session.UserSession;
 import com.crescendo.user.user_command.user_session.UserSessionRepository;
 import com.crescendo.user.user_query.User_queryRepository;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -26,6 +29,7 @@ public class LoginAlertService {
     private final NotificationService notificationService;
     private final GeoIpService geoIpService;
     private final JWTService jwtService;
+    private final UserNotificationService userNotificationService;
     private final String frontendUrl;
 
     public LoginAlertService(
@@ -34,12 +38,14 @@ public class LoginAlertService {
             NotificationService notificationService,
             GeoIpService geoIpService,
             JWTService jwtService,
+            UserNotificationService userNotificationService,
             @Value("${app.frontend.url:${app.frontend-url:https://app.crescendo.run}}") String frontendUrl) {
         this.sessionRepo = sessionRepo;
         this.userQueryRepo = userQueryRepo;
         this.notificationService = notificationService;
         this.geoIpService = geoIpService;
         this.jwtService = jwtService;
+        this.userNotificationService = userNotificationService;
         this.frontendUrl = frontendUrl;
     }
 
@@ -110,6 +116,17 @@ public class LoginAlertService {
             }
 
             notificationService.sendSmartLoginAlertEmail(email, device, location, currentCountry, revokeUrl);
+            try {
+                userNotificationService.create(
+                        current.getUser().getId(),
+                        NotificationType.LOGIN_NEW_DEVICE,
+                        "New sign-in detected",
+                        "Sign-in from " + device + " (" + location + ")",
+                        Map.of("sessionId", current.getId().toString(), "device", device, "location", location)
+                );
+            } catch (Exception e) {
+                log.warn("Failed to create in-app notification for new device login: {}", e.getMessage());
+            }
         }
     }
 
@@ -119,6 +136,17 @@ public class LoginAlertService {
             String revokeToken = jwtService.issueSessionRevokeToken(user.getId(), event.getSessionId());
             String revokeUrl = frontendUrl + "/auth/revoke-session?token=" + revokeToken;
             notificationService.sendSuspiciousActivityEmail(user.getEmailId(), event.getOriginalIp(), event.getNewIp(), revokeUrl);
+            try {
+                userNotificationService.create(
+                        user.getId(),
+                        NotificationType.LOGIN_SUSPICIOUS,
+                        "Suspicious login activity detected",
+                        "IP address changed during active session from " + event.getOriginalIp() + " to " + event.getNewIp(),
+                        Map.of("sessionId", event.getSessionId().toString(), "originalIp", event.getOriginalIp(), "newIp", event.getNewIp())
+                );
+            } catch (Exception e) {
+                log.warn("Failed to create in-app notification for suspicious login: {}", e.getMessage());
+            }
         });
     }
 }

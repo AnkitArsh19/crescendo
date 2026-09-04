@@ -1,7 +1,7 @@
 """
 Stage 2 — App + Action Resolver  (async)
 ==========================================
-Uses llama-3.3-70b-versatile to map intent descriptions to exact catalog keys.
+Uses the high-reasoning model (REASONING_MODEL) to map intent descriptions to exact catalog keys.
 
 Phase 3 changes:
   - Fully async (AsyncGroq)

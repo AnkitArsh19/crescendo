@@ -83,24 +83,34 @@ async def create_workflow_draft(
     # Session management
     session_id = body.session_id or str(uuid4())
 
-    initial_state: PipelineState = {
-        "sanitized_prompt": sanitized_prompt,
-        "user_id": body.userId,
-        "context": body.context,
-        "session_id": session_id,
-        "is_continuation": body.session_id is not None,   # True = existing session, enables fast-path
-        "template_hit": False,
-        "intent": None,
-        "trigger_step": None,
-        "action_steps": [],
-        "resolved_edges": [],
-        # NOTE: workflow_spec and explanation are intentionally omitted here.
-        # Including them as None would wipe previously checkpointed values via
-        # LangGraph's default 'replace' reducer on multi-turn continuations.
-        "validation_errors": [],
-        "correction_attempted": False,
-        "final_response": None,
-    }
+    if body.session_id:
+        initial_state: PipelineState = {
+            "sanitized_prompt": sanitized_prompt,
+            "user_id": body.userId,
+            "context": body.context,
+            "session_id": session_id,
+            "is_continuation": True,
+            "template_hit": False,
+            "validation_errors": [],
+            "correction_attempted": False,
+            "final_response": None,
+        }
+    else:
+        initial_state: PipelineState = {
+            "sanitized_prompt": sanitized_prompt,
+            "user_id": body.userId,
+            "context": body.context,
+            "session_id": session_id,
+            "is_continuation": False,
+            "template_hit": False,
+            "intent": None,
+            "trigger_step": None,
+            "action_steps": [],
+            "resolved_edges": [],
+            "validation_errors": [],
+            "correction_attempted": False,
+            "final_response": None,
+        }
 
     graph = get_graph()
     config = {"configurable": {"thread_id": session_id}}

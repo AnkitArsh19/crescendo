@@ -121,7 +121,7 @@ public class AgentExecutionService {
             String userApiKey
     ) {
         String effectiveProvider = (provider != null && !provider.isBlank()) ? provider.trim().toLowerCase() : "gemini";
-        String effectiveModel = (model != null && !model.isBlank()) ? model.trim() : ("gemini".equals(effectiveProvider) ? "gemini-2.5-flash" : "gpt-4o");
+        String effectiveModel = (model != null && !model.isBlank()) ? model.trim() : ("gemini".equals(effectiveProvider) ? "gemma-4-26b" : "gpt-4o");
 
         String effectiveApiKey = (userApiKey != null && !userApiKey.isBlank() && !"null".equalsIgnoreCase(userApiKey)) ? userApiKey.trim() : null;
         if (effectiveApiKey == null && "gemini".equals(effectiveProvider)) {

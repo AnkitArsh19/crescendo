@@ -6,282 +6,423 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
     padding: 16px;
 }
 
-/* ─── Modal panel ─────────────────────────────────────────────────────────── */
+/* ─── Modal panel (Chatbot style, strictly bounded within viewport) ───────── */
 .nlwf-modal {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
-    border-radius: 14px;
+    background: var(--bg-secondary, #18181b);
+    border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.12));
+    border-radius: 16px;
     width: 100%;
-    max-width: 560px;
-    padding: 28px;
+    max-width: 620px;
+    height: 640px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
 }
 
 /* ─── Header ──────────────────────────────────────────────────────────────── */
 .nlwf-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-primary, rgba(255, 255, 255, 0.08));
+    background: var(--bg-secondary, #18181b);
+    flex-shrink: 0;
 }
 
 .nlwf-header-text h2 {
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary);
-    margin: 0 0 4px;
+    color: var(--text-primary, #ffffff);
+    margin: 0;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
 }
 
 .nlwf-header-text p {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary, #a1a1aa);
+    margin: 2px 0 0 0;
 }
 
 .nlwf-close {
     background: none;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-secondary, #a1a1aa);
     font-size: 18px;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
+    padding: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
+    justify-content: center;
     transition: color 0.15s, background 0.15s;
     flex-shrink: 0;
 }
 .nlwf-close:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
+    color: var(--text-primary, #ffffff);
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.06));
 }
 
-/* ─── Prompt area ─────────────────────────────────────────────────────────── */
-.nlwf-prompt-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-    display: block;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.nlwf-textarea {
-    width: 100%;
-    min-height: 120px;
-    resize: vertical;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 14px;
-    font-family: inherit;
-    padding: 12px 14px;
-    box-sizing: border-box;
-    outline: none;
-    transition: border-color 0.15s;
-    line-height: 1.55;
-}
-.nlwf-textarea:focus {
-    border-color: var(--text-accent);
-}
-.nlwf-textarea::placeholder {
-    color: var(--text-tertiary);
-}
-
-/* ─── Examples ────────────────────────────────────────────────────────────── */
-.nlwf-examples {
+/* ─── Chat Stream (Scrollable body) ───────────────────────────────────────── */
+.nlwf-chat-stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.nlwf-chat-stream::-webkit-scrollbar {
+    width: 6px;
+}
+.nlwf-chat-stream::-webkit-scrollbar-track {
+    background: transparent;
+}
+.nlwf-chat-stream::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+/* ─── Message Bubbles ─────────────────────────────────────────────────────── */
+.nlwf-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    animation: nlwf-msg-in 0.2s ease-out;
+}
+
+@keyframes nlwf-msg-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.nlwf-msg-user {
+    align-self: flex-end;
+    background: var(--text-accent, #6366f1);
+    color: #ffffff;
+    border-radius: 14px 14px 2px 14px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    word-break: break-word;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.nlwf-msg-assistant {
+    align-self: flex-start;
+    max-width: 96%;
+    gap: 8px;
+}
+
+.nlwf-ai-bubble {
+    background: var(--bg-primary, #09090b);
+    border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.1));
+    border-radius: 14px 14px 14px 2px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--text-primary, #ffffff);
+    line-height: 1.5;
+}
+
+.nlwf-ai-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-accent, #818cf8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+/* ─── Examples inside initial assistant message ───────────────────────────── */
+.nlwf-examples-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     margin-top: 10px;
 }
 
-.nlwf-example-chip {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-secondary);
-    border-radius: 20px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    padding: 4px 12px;
+.nlwf-example-chip-chat {
+    background: var(--bg-secondary, #18181b);
+    border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text-secondary, #d4d4d8);
+    padding: 8px 12px;
     cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-    white-space: nowrap;
-}
-.nlwf-example-chip:hover {
-    border-color: var(--text-accent);
-    color: var(--text-accent);
+    text-align: left;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-/* ─── Draft preview ───────────────────────────────────────────────────────── */
-.nlwf-draft {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-primary);
-    border-radius: 10px;
-    padding: 16px;
+.nlwf-example-chip-chat:hover {
+    border-color: var(--text-accent, #6366f1);
+    color: #ffffff;
+    background: rgba(99, 102, 241, 0.1);
+    transform: translateX(2px);
+}
+
+/* ─── Clarification Card inside chat ──────────────────────────────────────── */
+.nlwf-clarification-card {
+    background: var(--bg-primary, #09090b);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 12px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.nlwf-draft-title {
+.nlwf-clarification-questions-list {
+    margin: 0;
+    padding-left: 18px;
     font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 7px;
+    color: var(--text-primary, #e4e4e7);
+    line-height: 1.45;
+}
+.nlwf-clarification-questions-list li {
+    margin-bottom: 4px;
 }
 
-.nlwf-draft-steps {
+.nlwf-group-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.nlwf-group-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.nlwf-step-row {
+.nlwf-group-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--text-secondary);
+    justify-content: space-between;
 }
 
-.nlwf-step-num {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: rgba(99, 102, 241, 0.12);
-    color: var(--text-accent);
+.nlwf-group-name {
     font-size: 11px;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    color: var(--text-accent, #818cf8);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
-.nlwf-step-label {
-    color: var(--text-primary);
+.nlwf-group-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.nlwf-group-pill {
+    background: var(--bg-secondary, #18181b);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: var(--text-secondary, #d4d4d8);
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.nlwf-group-pill:hover {
+    border-color: var(--text-accent, #6366f1);
+    color: #ffffff;
+}
+
+.nlwf-group-pill.selected {
+    border-color: var(--text-accent, #6366f1);
+    background: rgba(99, 102, 241, 0.22);
+    color: #ffffff;
     font-weight: 500;
 }
 
-.nlwf-step-app {
-    color: var(--text-tertiary);
+.nlwf-group-custom-input {
+    background: var(--bg-secondary, #18181b);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.nlwf-group-custom-input:focus {
+    border-color: var(--text-accent, #6366f1);
+}
+
+.nlwf-apply-clarifications-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    margin-top: 4px;
+}
+.nlwf-apply-clarifications-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+.nlwf-apply-clarifications-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ─── Typing / Generating Indicator ───────────────────────────────────────── */
+.nlwf-typing-bubble {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-primary, #09090b);
+    border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.1));
+    border-radius: 14px;
+    width: fit-content;
+    color: var(--text-secondary, #a1a1aa);
     font-size: 12px;
 }
 
-/* ─── Error ───────────────────────────────────────────────────────────────── */
-.nlwf-error {
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: #f87171;
-}
-
-.nlwf-unavailable {
-    background: rgba(251, 191, 36, 0.08);
-    border: 1px solid rgba(251, 191, 36, 0.25);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: #fbbf24;
-}
-
-/* ─── Footer actions ──────────────────────────────────────────────────────── */
-.nlwf-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.nlwf-cancel-btn {
-    background: none;
-    border: 1px solid var(--border-primary);
-    border-radius: 8px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    padding: 9px 18px;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-}
-.nlwf-cancel-btn:hover {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
-}
-
-.nlwf-generate-btn {
+.nlwf-typing-dots {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    background: var(--text-accent);
-    color: var(--bg-primary);
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 9px 20px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s;
-}
-.nlwf-generate-btn:hover:not(:disabled) {
-    opacity: 0.88;
-    transform: translateY(-1px);
-}
-.nlwf-generate-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    gap: 4px;
 }
 
-.nlwf-create-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    background: #22c55e;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 9px 20px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s;
-}
-.nlwf-create-btn:hover:not(:disabled) {
-    opacity: 0.88;
-    transform: translateY(-1px);
-}
-.nlwf-create-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-/* ─── Spinner ─────────────────────────────────────────────────────────────── */
-.nlwf-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
+.nlwf-typing-dot {
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
-    animation: nlwf-spin 0.7s linear infinite;
+    background: var(--text-accent, #818cf8);
+    animation: nlwf-bounce 1.4s infinite ease-in-out both;
 }
-@keyframes nlwf-spin {
-    to { transform: rotate(360deg); }
+.nlwf-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.nlwf-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes nlwf-bounce {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Sticky Footer / Input Bar ───────────────────────────────────────────── */
+.nlwf-chat-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-primary, rgba(255, 255, 255, 0.08));
+    background: var(--bg-secondary, #18181b);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.nlwf-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-primary, #09090b);
+    border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.12));
+    border-radius: 10px;
+    padding: 4px 6px 4px 12px;
+    transition: border-color 0.15s;
+}
+
+.nlwf-input-row:focus-within {
+    border-color: var(--text-accent, #6366f1);
+}
+
+.nlwf-chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #ffffff);
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    padding: 6px 0;
+    max-height: 80px;
+    line-height: 1.45;
+}
+
+.nlwf-send-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--text-accent, #6366f1);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+    flex-shrink: 0;
+}
+
+.nlwf-send-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: scale(1.04);
+}
+.nlwf-send-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.nlwf-footer-hint-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+}
+
+.nlwf-footer-hint {
+    font-size: 11px;
+    color: var(--text-tertiary, #71717a);
+}
+
+.nlwf-footer-cancel-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary, #71717a);
+    font-size: 11.5px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+.nlwf-footer-cancel-btn:hover {
+    color: var(--text-primary, #ffffff);
 }
 
 /* ─── AI badge button in Workflows header ─────────────────────────────────── */
@@ -291,8 +432,8 @@
     gap: 6px;
     padding: 9px 16px;
     background: transparent;
-    color: var(--text-accent);
-    border: 1px solid var(--text-accent);
+    color: var(--text-accent, #6366f1);
+    border: 1px solid var(--text-accent, #6366f1);
     border-radius: 8px;
     font-size: 13px;
     font-weight: 500;

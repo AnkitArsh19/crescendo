@@ -55,11 +55,18 @@ public class StepTestController {
             String appKey,
             String actionKey,
             String triggerKey,
-            boolean isTrigger,
+            Boolean isTrigger,
             String connectionId,
             Map<String, Object> configuration,
             Map<String, Object> inputData,
-            boolean acknowledgeLiveRun) {}
+            Boolean acknowledgeLiveRun) {
+        public boolean booleanIsTrigger() {
+            return Boolean.TRUE.equals(isTrigger);
+        }
+        public boolean booleanAcknowledgeLiveRun() {
+            return Boolean.TRUE.equals(acknowledgeLiveRun);
+        }
+    }
 
     public record TestStepResponse(
             boolean success,
@@ -101,7 +108,7 @@ public class StepTestController {
             return ResponseEntity.badRequest().body(TestStepResponse.fail("Choose an app and operation before checking setup.", "SETUP_CHECK"));
         }
         StepSetupValidationService.SetupValidationResult result = setupValidationService.validate(
-                request.appKey(), operationKey, request.isTrigger(), request.connectionId(), request.configuration(),
+                request.appKey(), operationKey, request.booleanIsTrigger(), request.connectionId(), request.configuration(),
                 request.inputData(), userId(auth));
         return ResponseEntity.ok(TestStepResponse.setup(result));
     }
@@ -110,11 +117,11 @@ public class StepTestController {
     @PostMapping("/live-run")
     public ResponseEntity<TestStepResponse> runLive(@RequestBody TestStepRequest request, Authentication auth) {
         UUID userId = userId(auth);
-        if (!request.acknowledgeLiveRun()) {
+        if (!request.booleanAcknowledgeLiveRun()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(TestStepResponse.fail("Confirm that this live run may change data in the connected app.", "LIVE_RUN"));
         }
-        if (request.isTrigger()) {
+        if (request.booleanIsTrigger()) {
             return ResponseEntity.badRequest().body(TestStepResponse.fail("Triggers use setup checks and sample records; they cannot be run as live actions.", "LIVE_RUN"));
         }
         if (request.appKey() == null || request.actionKey() == null || request.actionKey().isBlank()) {
@@ -150,7 +157,7 @@ public class StepTestController {
     @PostMapping("/read-sample")
     public ResponseEntity<TestStepResponse> readSample(@RequestBody TestStepRequest request, Authentication auth) {
         UUID userId = userId(auth);
-        if (request.isTrigger()) {
+        if (request.booleanIsTrigger()) {
             return ResponseEntity.badRequest().body(TestStepResponse.fail("Trigger samples require a trigger-specific provider or captured event.", "READ_SAMPLE"));
         }
         if (request.appKey() == null || request.actionKey() == null || request.actionKey().isBlank()) {
@@ -207,7 +214,7 @@ public class StepTestController {
     }
 
     private String operationKey(TestStepRequest request) {
-        return request.isTrigger() ? request.triggerKey() : request.actionKey();
+        return request.booleanIsTrigger() ? request.triggerKey() : request.actionKey();
     }
 
     private Map<String, Object> credentialsForExactConnection(String appKey, String connectionId, UUID userId) {

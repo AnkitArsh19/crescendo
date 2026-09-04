@@ -1,7 +1,7 @@
 """
 Stage 3 — Context-Aware Configurator  (new in Phase 3)
 ========================================================
-Uses llama-3.3-70b-versatile to fill in the configuration for every resolved
+Uses the high-reasoning model (REASONING_MODEL) to fill in the configuration for every resolved
 step, using:
   1. The full configSchema injected by InternalCatalogController (tells the AI
      exactly what fields exist and what type they are)
@@ -63,12 +63,13 @@ def _build_schema_index(catalog: list) -> Dict[str, Dict[str, list]]:
 # ---------------------------------------------------------------------------
 
 def _resources_for_app(app_key: str, connection_id: str, context: Dict[str, Any]) -> List[Dict]:
-    """Return resource items for the given (appKey, connectionId) pair."""
+    """Return resource items for the given (appKey, connectionId) pair, annotated with resourceType."""
     items = []
     for resource_block in context.get("resources", []):
-        if (resource_block.get("appKey") == app_key and
-                resource_block.get("connectionId") == connection_id):
-            items.extend(resource_block.get("items", []))
+        if resource_block.get("appKey") == app_key and (not connection_id or resource_block.get("connectionId") == connection_id):
+            res_type = resource_block.get("resourceType", "")
+            for item in resource_block.get("items", []):
+                items.append({**item, "resourceType": res_type})
     return items
 
 
@@ -133,9 +134,14 @@ RULES:
      "trigger": {{ "config": {{}} }},
      "actions": [ {{ "config": {{}} }}, ... ]  // same order as input steps
    }}
-3. For fields whose configSchema type is "dynamic_dropdown", you MUST use
-   the "id" value from available_resources — NEVER use the label string.
-4. For "text" or "textarea" fields, infer a sensible default from the user request.
+3. For fields whose configSchema type is "dynamic_dropdown":
+   - Match the field's "resourceType" against available_resources items having the matching "resourceType".
+   - You MUST use the resource's "id" value — NEVER use the label string.
+   - If the user prompt mentions a specific resource name or purpose, choose the best matching resource.
+   - Otherwise, if matching resources exist for that resourceType, choose the first available resource.
+   - If no matching resources exist for that resourceType, set the value to null.
+4. For "text" or "textarea" fields (like content, message, text):
+   - Provide a helpful, concise default message tailored to the workflow trigger and user request.
 5. If a required field cannot be determined (no matching resource, no context),
    set its value to null — do NOT omit the key.
 6. For logic:if and logic:switch steps, read the shapeHint in the configSchema and
