@@ -53,18 +53,18 @@ public class AgentApp implements AppDefinition {
                                                 "label", "Model",
                                                 "type", "dropdown",
                                                 "required", false,
-                                                "default", "gemini-2.5-flash",
+                                                "default", "gemma-4-26b",
                                                 "options", List.of(
-                                                        "gemini-2.5-flash",
-                                                        "gemini-2.5-pro",
-                                                        "gemini-1.5-flash",
-                                                        "gemini-1.5-pro",
+                                                        "gemma-4-26b",
+                                                        "gemma-4-31b",
+                                                        "gemini-3.5-flash-lite",
+                                                        "gemini-3.8-flash",
                                                         "gpt-4o",
                                                         "gpt-4o-mini",
                                                         "llama-3.3-70b-versatile",
                                                         "llama-3.1-8b-instant"
                                                 ),
-                                                "helpText", "The LLM used for multi-step reasoning and function calling."
+                                                "helpText", "Recommended for agent loops: gemma-4-26b (14.4K RPD high throughput). For large context: gemini-3.5-flash-lite (500 RPD). Frontier: gemini-3.8-flash (20 RPD / BYOK)."
                                         ),
                                         Map.of(
                                                 "key", "systemPrompt",

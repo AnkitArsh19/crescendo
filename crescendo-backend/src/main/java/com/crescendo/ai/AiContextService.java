@@ -56,11 +56,15 @@ public class AiContextService {
         Map<String, Object> context = callerContext != null ? new LinkedHashMap<>(callerContext) : new LinkedHashMap<>();
         List<ConnectionsDto.ConnectionResponse> connections = connectionsQueryService.listConnections(userId);
 
-        context.put("connections", connections.stream().map(connection -> Map.<String, Object>of(
-                "connectionId", connection.id().toString(),
-                "appKey", connection.appKey(),
-                "label", Objects.requireNonNullElse(connection.name(), connection.appKey())
-        )).toList());
+        Map<String, Map<String, Object>> connectionMap = new LinkedHashMap<>();
+        for (ConnectionsDto.ConnectionResponse connection : connections) {
+            Map<String, Object> connData = new LinkedHashMap<>();
+            connData.put("connectionId", connection.id().toString());
+            connData.put("appKey", connection.appKey());
+            connData.put("label", Objects.requireNonNullElse(connection.name(), connection.appKey()));
+            connData.put("status", connection.status() != null ? connection.status() : "ACTIVE");
+            connectionMap.put(connection.id().toString(), connData);
+        }
 
         List<Map<String, Object>> resources = new ArrayList<>();
         for (ConnectionsDto.ConnectionResponse connection : connections) {
@@ -81,11 +85,16 @@ public class AiContextService {
                             )).toList()
                     ));
                 } catch (Exception exception) {
+                    Map<String, Object> connData = connectionMap.get(connection.id().toString());
+                    if (connData != null) {
+                        connData.put("status", "REAUTH");
+                    }
                     log.warn("[workflow-context] Resource snapshot skipped for {}:{} connection={}: {}",
                             connection.appKey(), descriptor.resourceType(), connection.id(), exception.getMessage());
                 }
             }
         }
+        context.put("connections", new ArrayList<>(connectionMap.values()));
         context.put("resources", resources);
         return context;
     }

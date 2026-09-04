@@ -50,12 +50,13 @@ export default function TestResultPanel({
             setInputError('');
             return {
                 appKey,
-                actionKey,
-                triggerKey,
-                isTrigger,
+                actionKey: isTrigger ? null : actionKey,
+                triggerKey: isTrigger ? (triggerKey || actionKey) : null,
+                isTrigger: Boolean(isTrigger),
                 connectionId: connectionId || null,
                 configuration: configuration || {},
                 inputData,
+                acknowledgeLiveRun: Boolean(liveAcknowledged),
             };
         } catch (error) {
             setInputError(error.message || 'Enter valid JSON sample data.');

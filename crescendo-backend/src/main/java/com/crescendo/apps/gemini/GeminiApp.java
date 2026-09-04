@@ -37,7 +37,20 @@ public class GeminiApp implements AppDefinition {
                             "name", "Text - Message",
                             "description", "Generate text using a prompt",
                             "configSchema", List.of(
-                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-2.5-flash"),
+                                    Map.of(
+                                            "key", "model",
+                                            "label", "Model",
+                                            "type", "dropdown",
+                                            "required", true,
+                                            "default", "gemini-3.5-flash-lite",
+                                            "options", List.of(
+                                                    "gemini-3.5-flash-lite",
+                                                    "gemma-4-26b",
+                                                    "gemma-4-31b",
+                                                    "gemini-3.8-flash"
+                                            ),
+                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD). High-throughput: gemma-4-26b (14.4K RPD)."
+                                    ),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true),
                                     Map.of("key", "temperature", "label", "Temperature", "type", "number", "required", false),
                                     Map.of("key", "maxOutputTokens", "label", "Max Tokens", "type", "number", "required", false)
@@ -48,7 +61,20 @@ public class GeminiApp implements AppDefinition {
                             "name", "Image - Analyze",
                             "description", "Analyze an image using a prompt",
                             "configSchema", List.of(
-                                    Map.of("key", "model", "label", "Model", "type", "text", "required", true, "default", "gemini-2.5-flash"),
+                                    Map.of(
+                                            "key", "model",
+                                            "label", "Model",
+                                            "type", "dropdown",
+                                            "required", true,
+                                            "default", "gemini-3.5-flash-lite",
+                                            "options", List.of(
+                                                    "gemini-3.5-flash-lite",
+                                                    "gemma-4-26b",
+                                                    "gemma-4-31b",
+                                                    "gemini-3.8-flash"
+                                            ),
+                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD). High-throughput: gemma-4-26b (14.4K RPD)."
+                                    ),
                                     Map.of("key", "imageUrl", "label", "Image URL", "type", "text", "required", true),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true)
                             )

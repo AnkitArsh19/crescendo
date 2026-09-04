@@ -139,7 +139,7 @@ public class LiveAppDiagnosticRunner {
 
     private DiagnosticResult testGemini(String key) {
         if (key == null || key.isBlank()) return new DiagnosticResult(true, 200, "Skipped (GEMINI_API_KEY not set)");
-        String[] candidateModels = {"gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3-flash-preview", "gemini-3.1-flash-lite"};
+        String[] candidateModels = {"gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3-flash-preview", "gemini-3.1-flash-lite"};
         for (String model : candidateModels) {
             try {
                 String url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + key;

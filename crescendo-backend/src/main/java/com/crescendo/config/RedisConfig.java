@@ -24,6 +24,7 @@ import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import com.crescendo.shared.infrastructure.sse.WorkflowSseService;
+import com.crescendo.notification.NotificationSseService;
 
 import java.time.Duration;
 import java.util.Map;
@@ -123,10 +124,12 @@ public class RedisConfig implements CachingConfigurer {
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
-            WorkflowSseService workflowSseService) {
+            WorkflowSseService workflowSseService,
+            NotificationSseService notificationSseService) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(workflowSseService, new PatternTopic("workflow-events:*"));
+        container.addMessageListener(notificationSseService, new PatternTopic(NotificationSseService.CHANNEL_PREFIX + "*"));
         return container;
     }
 

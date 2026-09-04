@@ -44,6 +44,7 @@ import AdminPage from './pages/dashboard/AdminPage';
 import Settings from './pages/settings/Settings';
 import ProfileSettings from './pages/settings/ProfileSettings';
 import SecuritySettings from './pages/settings/SecuritySettings';
+import NotificationsSettings from './pages/settings/NotificationsSettings';
 import ConnectedAccounts from './pages/settings/ConnectedAccounts';
 import OAuthAppsSettings from './pages/settings/OAuthAppsSettings';
 import DeveloperAppsSettings from './pages/settings/DeveloperAppsSettings';
@@ -188,6 +189,7 @@ function App() {
         <Route path="settings" element={<Settings />}>
           <Route index element={<ProfileSettings />} />
           <Route path="security" element={<SecuritySettings />} />
+          <Route path="notifications" element={<NotificationsSettings />} />
           <Route path="accounts" element={<ConnectedAccounts />} />
           <Route path="oauth-apps" element={<OAuthAppsSettings />} />
           <Route path="developer-api" element={<DeveloperAppsSettings />} />

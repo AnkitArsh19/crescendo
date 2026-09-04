@@ -4,6 +4,7 @@ import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
+import com.crescendo.security.AiRateLimiterQueueService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,9 +18,19 @@ import java.util.Map;
 public class GeminiTextHandler implements ActionHandler {
 
     private final tools.jackson.databind.ObjectMapper mapper = new tools.jackson.databind.ObjectMapper();
+    private final String platformApiKey;
+    private final AiRateLimiterQueueService aiRateLimiterQueueService;
 
-    @Value("${gemini.api.key:}")
-    private String platformApiKey;
+    public GeminiTextHandler() {
+        this("", null);
+    }
+
+    public GeminiTextHandler(
+            @Value("${gemini.api.key:}") String platformApiKey,
+            AiRateLimiterQueueService aiRateLimiterQueueService) {
+        this.platformApiKey = platformApiKey;
+        this.aiRateLimiterQueueService = aiRateLimiterQueueService;
+    }
 
     @Override
     public ActionResult execute(ActionContext context) {
@@ -27,27 +38,43 @@ public class GeminiTextHandler implements ActionHandler {
         Map<String, Object> creds = context.credentials();
 
         String apiKey = creds != null ? String.valueOf(creds.get("apiKey")) : null;
+        boolean isPlatformKey = false;
         if (apiKey == null || apiKey.isBlank() || "null".equalsIgnoreCase(apiKey)) {
             apiKey = platformApiKey;
+            isPlatformKey = true;
         }
         if (apiKey == null || apiKey.isBlank()) {
             return ActionResult.failure("API Key is required. Connect a Gemini account or set gemini.api.key in application.properties.");
         }
+
+        final String effectiveApiKey = apiKey;
+        if (isPlatformKey && aiRateLimiterQueueService != null) {
+            try {
+                return aiRateLimiterQueueService.executeWithRateLimiting(context.userId(), () -> executeGeminiCall(config, effectiveApiKey));
+            } catch (Exception e) {
+                return ActionResult.failure("Gemini Text Generation failed: " + e.getMessage());
+            }
+        } else {
+            return executeGeminiCall(config, effectiveApiKey);
+        }
+    }
+
+    private ActionResult executeGeminiCall(Map<String, Object> config, String apiKey) {
 
         RestClient client = RestClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta/models")
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .build();
 
-        String model = config.getOrDefault("model", "gemini-2.5-flash").toString();
+        String model = config.getOrDefault("model", "gemini-3.5-flash-lite").toString();
         if (model.startsWith("models/")) {
             model = model.substring("models/".length());
         }
-        // Map deprecated 1.5/1.0 names to active 2.5 models
-        if ("gemini-1.5-flash".equalsIgnoreCase(model) || "gemini-flash".equalsIgnoreCase(model)) {
-            model = "gemini-2.5-flash";
-        } else if ("gemini-1.5-pro".equalsIgnoreCase(model) || "gemini-pro".equalsIgnoreCase(model)) {
-            model = "gemini-2.5-pro";
+        // Map legacy/alias names to current flagship models
+        if ("gemini-flash".equalsIgnoreCase(model) || "gemini-flash-latest".equalsIgnoreCase(model)) {
+            model = "gemini-3.5-flash-lite";
+        } else if ("gemini-pro".equalsIgnoreCase(model) || "gemini-pro-latest".equalsIgnoreCase(model)) {
+            model = "gemini-3.8-flash";
         }
 
         String endpoint = "/" + model + ":generateContent?key=" + apiKey;

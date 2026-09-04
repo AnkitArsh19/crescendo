@@ -1,105 +1,131 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiX, HiOutlineLightningBolt, HiOutlineSparkles } from 'react-icons/hi';
+import { HiX, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowSmRight } from 'react-icons/hi';
 import { aiApi } from '../../api/aiApi';
 import { workflowApi } from '../../api/workflowApi';
 import useToastStore from '../../store/toastStore';
 import './NLWorkflowModal.css';
 
 const EXAMPLES = [
-    'Send a Slack message when a GitHub PR is merged',
+    'Send a Slack message when a GitHub commit happens, then post in Discord',
     'Add a row in Google Sheets when a Typeform is submitted',
-    'Email me when a new contact is added',
+    'Send a notification to Slack and an email when a GitHub PR is merged',
     'Post to Discord when a new workflow run fails',
 ];
 
-/**
- * NLWorkflowModal — Natural Language Workflow Builder
- *
- * Opens from the Workflows page. User types a plain-English description,
- * the backend proxies it to the Python AI service. Once generated,
- * it immediately creates the workflow and redirects to the canvas.
- */
 export default function NLWorkflowModal({ onClose }) {
     const navigate = useNavigate();
     const addToast = useToastStore(state => state.addToast);
     const toastSuccess = (msg) => addToast(msg, 'success');
     const toastError = (msg) => addToast(msg, 'error');
 
-    const [prompt, setPrompt] = useState('');
+    const [messages, setMessages] = useState([
+        {
+            id: 'welcome',
+            role: 'assistant',
+            text: 'Hi! Describe what you want to automate in plain English. I will draft the workflow, configure your triggers and actions, and connect the steps.',
+            examples: EXAMPLES,
+        }
+    ]);
+    const [inputText, setInputText] = useState('');
     const [generating, setGenerating] = useState(false);
-    const [error, setError] = useState(null);
-    const [unavailable, setUnavailable] = useState(false);
-
-    // Multi-turn clarification state
     const [sessionId, setSessionId] = useState(null);
-    const [clarifyingQuestions, setClarifyingQuestions] = useState([]);
-    const [suggestedOptions, setSuggestedOptions] = useState([]);
-    const [selectedOption, setSelectedOption] = useState('');
+    const initialPromptRef = useRef('');
 
-    // Default fallback options if AI asks open-ended questions without explicit list
-    const DEFAULT_APP_OPTIONS = [
-        { label: 'Slack (Post Message / Notification)', value: 'Slack' },
-        { label: 'Gmail (Send Email / Watch Inbox)', value: 'Gmail' },
-        { label: 'GitHub (Repository / PR / Issues)', value: 'GitHub' },
-        { label: 'Notion (Create Page / Database Row)', value: 'Notion' },
-        { label: 'Discord (Webhook / Channel Message)', value: 'Discord' },
-        { label: 'Google Sheets (Add Row / Update)', value: 'Google Sheets' },
-        { label: 'Webhook (HTTP Trigger / Action)', value: 'Webhook' }
-    ];
+    // Multi-group clarification state (mapped by group name)
+    const [selectedPills, setSelectedPills] = useState({});
+    const [customPills, setCustomPills] = useState({});
 
-    // ── Generate & Create Workflow from AI ────────────────────────────────────
-    async function handleGenerate(overridePrompt = null) {
-        const textToSubmit = overridePrompt || selectedOption || prompt;
-        if (!textToSubmit.trim()) return;
+    const chatStreamRef = useRef(null);
+    const textareaRef = useRef(null);
 
+    // Auto-scroll to bottom of chat
+    useEffect(() => {
+        if (chatStreamRef.current) {
+            chatStreamRef.current.scrollTo({
+                top: chatStreamRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [messages, generating]);
+
+    // Focus input on load
+    useEffect(() => {
+        textareaRef.current?.focus();
+    }, []);
+
+    // ── Submit message to AI ──────────────────────────────────────────────────
+    async function handleSend(promptText = null) {
+        const raw = typeof promptText === 'string' ? promptText : inputText;
+        const textToSubmit = String(raw || '').trim();
+        if (!textToSubmit || generating) return;
+
+        setInputText('');
         setGenerating(true);
-        setError(null);
-        setUnavailable(false);
+
+        // Append user's message to chat
+        const userMsgId = crypto.randomUUID();
+        setMessages(prev => [...prev, { id: userMsgId, role: 'user', text: textToSubmit }]);
+
+        // Retain cumulative context across clarification turns
+        let promptPayload = textToSubmit;
+        if (!initialPromptRef.current) {
+            initialPromptRef.current = textToSubmit;
+        } else if (sessionId) {
+            promptPayload = `${initialPromptRef.current}. Details: ${textToSubmit}`;
+        }
 
         try {
-            // 1. Fetch draft from AI (passing active sessionId if in multi-turn mode)
-            const data = await aiApi.createWorkflowDraft(textToSubmit.trim(), {}, sessionId);
+            const data = await aiApi.createWorkflowDraft(promptPayload, {}, sessionId);
 
             if (data.session_id) {
                 setSessionId(data.session_id);
             }
 
-            // Check if AI requires clarification / options
+            // Case A: AI requires clarification or options
             if (!data.workflow_spec && (data.clarifying_questions?.length > 0 || data.suggested_options?.length > 0)) {
-                setClarifyingQuestions(data.clarifying_questions || []);
-                const optionsList = data.suggested_options && data.suggested_options.length > 0
+                const optionsList = (data.suggested_options && data.suggested_options.length > 0)
                     ? data.suggested_options
-                    : DEFAULT_APP_OPTIONS;
-                setSuggestedOptions(optionsList);
-                if (optionsList.length > 0) {
-                    setSelectedOption(optionsList[0].value || optionsList[0].label);
-                }
+                    : [];
+
+                setMessages(prev => [
+                    ...prev,
+                    {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        text: 'I need a few details to configure this workflow accurately:',
+                        questions: data.clarifying_questions || [],
+                        options: optionsList,
+                    }
+                ]);
                 return;
             }
 
+            // Case B: Workflow spec returned
             const spec = data.workflow_spec;
             if (!spec) {
-                throw new Error("No workflow generated. Try rephrasing your prompt or selecting an option below.");
+                throw new Error("Could not draft workflow. Please rephrase or provide more details.");
             }
 
-            // Reset clarification state on success
-            setClarifyingQuestions([]);
-            setSuggestedOptions([]);
-            setSelectedOption('');
+            setMessages(prev => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    text: data.explanation || 'Workflow generated! Creating your workflow on the canvas now...',
+                    isSuccess: true,
+                }
+            ]);
 
-            // 2. Create the empty workflow
+            // Create empty workflow
             const created = await workflowApi.create({ name: spec.workflow_name || 'AI Generated Workflow' });
 
-            // 3. Format and save the steps
+            // Format steps
             const graphSteps = [];
-
-            // Trigger
             if (spec.trigger) {
-                const clientId = crypto.randomUUID();
                 graphSteps.push({
-                    clientId,
+                    clientId: crypto.randomUUID(),
                     type: 'TRIGGER',
                     name: spec.trigger.trigger_key || spec.trigger.app_key || 'Trigger',
                     actionKey: spec.trigger.trigger_key || spec.trigger.app_key,
@@ -109,13 +135,11 @@ export default function NLWorkflowModal({ onClose }) {
                 });
             }
 
-            // Actions
             if (spec.actions && spec.actions.length > 0) {
                 for (let i = 0; i < spec.actions.length; i++) {
                     const action = spec.actions[i];
-                    const clientId = crypto.randomUUID();
                     graphSteps.push({
-                        clientId,
+                        clientId: crypto.randomUUID(),
                         type: 'ACTION',
                         name: action.action_key || action.app_key || 'Action',
                         actionKey: action.action_key || action.app_key,
@@ -134,197 +158,254 @@ export default function NLWorkflowModal({ onClose }) {
                 });
             }
 
-            toastSuccess(`"${created.name}" created — configure the steps on the canvas.`);
-            onClose();
-            navigate(`/dashboard/workflows/${created.id}`);
+            const toastMsg = data.explanation
+                ? `"${created.name}" created: ${data.explanation}`
+                : `"${created.name}" created — configure the steps on the canvas.`;
+            toastSuccess(toastMsg);
+
+            // Small delay so user sees success message before redirect
+            setTimeout(() => {
+                onClose();
+                navigate(`/dashboard/workflows/${created.id}`);
+            }, 600);
 
         } catch (err) {
-            if (err.response?.status === 503) {
-                setUnavailable(true);
-            } else {
-                const msg = err.response?.data?.message || err.message || 'Failed to generate workflow. Please try again.';
-                setError(msg);
-                toastError(msg);
-            }
+            const msg = err.response?.data?.message || err.message || 'Failed to generate workflow. Please try again.';
+            setMessages(prev => [
+                ...prev,
+                {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    text: msg,
+                    isError: true,
+                }
+            ]);
+            toastError(msg);
         } finally {
             setGenerating(false);
+            textareaRef.current?.focus();
         }
     }
 
-    // ── Close on overlay click ───────────────────────────────────────────────
-    function handleOverlayClick(e) {
-        if (e.target === e.currentTarget) onClose();
+    // ── Multi-group clarification submission ──────────────────────────────────
+    function handleApplyAllClarifications(groupedOptions) {
+        const parts = [];
+        Object.keys(groupedOptions).forEach(groupKey => {
+            const custom = (customPills[groupKey] || '').trim();
+            const pillVal = selectedPills[groupKey];
+            if (custom) {
+                parts.push(custom);
+            } else if (pillVal) {
+                parts.push(pillVal);
+            }
+        });
+
+        if (parts.length > 0) {
+            // Combine all clarifications in one cohesive sentence
+            const combinedText = parts.join('. ');
+            handleSend(combinedText);
+        }
     }
 
-    // ── Keyboard: Ctrl/Cmd+Enter to generate ────────────────────────────────
-    function handleKeyDown(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleGenerate();
+    // Helper: group options array by group/appKey
+    function getGroupedOptions(options = []) {
+        const groups = {};
+        options.forEach(opt => {
+            const groupName = opt.group || (opt.appKey ? `${opt.appKey.toUpperCase()} Target` : 'Options');
+            if (!groups[groupName]) groups[groupName] = [];
+            groups[groupName].push(opt);
+        });
+        return groups;
     }
+
     return (
-        <div className="nlwf-overlay" onClick={handleOverlayClick}>
+        <div className="nlwf-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <motion.div
                 className="nlwf-modal"
                 role="dialog"
                 aria-modal="true"
                 aria-label="Build workflow with AI"
-                initial={{ opacity: 0, scale: 0.65, y: 40 }}
+                initial={{ opacity: 0, scale: 0.85, y: 30 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.75, y: 20 }}
-                transition={{ type: "spring", stiffness: 380, damping: 18, mass: 0.8 }}
+                exit={{ opacity: 0, scale: 0.85, y: 20 }}
+                transition={{ type: "spring", stiffness: 380, damping: 22 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
+                {/* ── Fixed Header ── */}
                 <div className="nlwf-header">
                     <div className="nlwf-header-text">
                         <h2>
-                            <HiOutlineSparkles />
+                            <HiOutlineSparkles style={{ color: 'var(--text-accent, #6366f1)' }} />
                             Build with AI
                         </h2>
-                        <p>Describe what you want to automate in plain English.</p>
+                        <p>Describe your automation workflow in plain English.</p>
                     </div>
-                    <button className="nlwf-close" onClick={onClose} aria-label="Close">
+                    <button className="nlwf-close" onClick={onClose} aria-label="Close modal">
                         <HiX />
                     </button>
                 </div>
 
-                {/* Prompt */}
-                <div>
-                    <span className="nlwf-prompt-label">What should this workflow do?</span>
-                    <textarea
-                        className="nlwf-textarea"
-                        placeholder="e.g. Send a Slack message when a GitHub PR is merged"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        rows={4}
-                        autoFocus
-                    />
-                    {/* Example chips */}
-                    <div className="nlwf-examples">
-                        {EXAMPLES.map((ex) => (
-                            <button
-                                key={ex}
-                                className="nlwf-example-chip"
-                                onClick={() => setPrompt(ex)}
-                                type="button"
-                                title={`Use prompt: "${ex}"`}
-                                aria-label={`Use prompt: ${ex}`}
-                            >
-                                {ex}
-                            </button>
-                        ))}
-                    </div>
+                {/* ── Scrollable Chat Stream ── */}
+                <div className="nlwf-chat-stream" ref={chatStreamRef}>
+                    {messages.map((msg) => {
+                        if (msg.role === 'user') {
+                            return (
+                                <div key={msg.id} className="nlwf-msg nlwf-msg-user">
+                                    {msg.text}
+                                </div>
+                            );
+                        }
+
+                        // Assistant message
+                        const groupedOptions = msg.options ? getGroupedOptions(msg.options) : {};
+                        const hasGroups = Object.keys(groupedOptions).length > 0;
+
+                        return (
+                            <div key={msg.id} className="nlwf-msg nlwf-msg-assistant">
+                                <div className="nlwf-ai-bubble" style={msg.isError ? { borderColor: '#ef4444' } : {}}>
+                                    <div className="nlwf-ai-bubble-header">
+                                        <HiOutlineSparkles />
+                                        <span>Crescendo AI</span>
+                                    </div>
+                                    <div>{msg.text}</div>
+
+                                    {/* Clickable prompt examples on welcome message */}
+                                    {msg.examples && (
+                                        <div className="nlwf-examples-grid">
+                                            {msg.examples.map((ex) => (
+                                                <button
+                                                    key={ex}
+                                                    type="button"
+                                                    className="nlwf-example-chip-chat"
+                                                    onClick={() => handleSend(ex)}
+                                                >
+                                                    <HiArrowSmRight style={{ color: 'var(--text-accent, #6366f1)', flexShrink: 0 }} />
+                                                    <span>{ex}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Clarification questions and grouped options */}
+                                    {msg.questions && msg.questions.length > 0 && (
+                                        <div className="nlwf-clarification-card" style={{ marginTop: '12px' }}>
+                                            <ul className="nlwf-clarification-questions-list">
+                                                {msg.questions.map((q, idx) => (
+                                                    <li key={idx}><strong>{q}</strong></li>
+                                                ))}
+                                            </ul>
+
+                                            {hasGroups && (
+                                                <div className="nlwf-group-container">
+                                                    {Object.entries(groupedOptions).map(([groupKey, opts]) => (
+                                                        <div key={groupKey} className="nlwf-group-box">
+                                                            <div className="nlwf-group-header">
+                                                                <span className="nlwf-group-name">{groupKey}</span>
+                                                            </div>
+                                                            <div className="nlwf-group-pills">
+                                                                {opts.map((opt, i) => {
+                                                                    const val = opt.value || opt.label;
+                                                                    const isSelected = selectedPills[groupKey] === val;
+                                                                    return (
+                                                                        <button
+                                                                            key={i}
+                                                                            type="button"
+                                                                            className={`nlwf-group-pill ${isSelected ? 'selected' : ''}`}
+                                                                            onClick={() => {
+                                                                                setSelectedPills(prev => ({
+                                                                                    ...prev,
+                                                                                    [groupKey]: isSelected ? '' : val
+                                                                                }));
+                                                                            }}
+                                                                        >
+                                                                            {opt.itemLabel || opt.label}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            <input
+                                                                type="text"
+                                                                className="nlwf-group-custom-input"
+                                                                placeholder={`Or type custom for ${groupKey}...`}
+                                                                value={customPills[groupKey] || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setCustomPills(prev => ({ ...prev, [groupKey]: val }));
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleApplyAllClarifications(groupedOptions);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+
+                                                    <button
+                                                        type="button"
+                                                        className="nlwf-apply-clarifications-btn"
+                                                        onClick={() => handleApplyAllClarifications(groupedOptions)}
+                                                    >
+                                                        <HiOutlineLightningBolt />
+                                                        <span>Apply Clarifications & Continue</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Thinking / generating bubble */}
+                    {generating && (
+                        <div className="nlwf-msg nlwf-msg-assistant">
+                            <div className="nlwf-typing-bubble">
+                                <div className="nlwf-typing-dots">
+                                    <div className="nlwf-typing-dot" />
+                                    <div className="nlwf-typing-dot" />
+                                    <div className="nlwf-typing-dot" />
+                                </div>
+                                <span>Designing workflow pipeline…</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* Clarification / Dropdown Selector Block */}
-                {clarifyingQuestions.length > 0 && (
-                    <div className="nlwf-clarification-box" style={{
-                        marginTop: '1rem',
-                        padding: '1rem',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '8px'
-                    }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#ffffff', fontSize: '0.9rem' }}>
-                            Clarification Required
-                        </div>
-                        {clarifyingQuestions.map((q, idx) => (
-                            <p key={idx} style={{ fontSize: '0.85rem', color: '#cccccc', marginBottom: '0.5rem' }}>{q}</p>
-                        ))}
-
-                        <label style={{ display: 'block', fontSize: '0.8rem', color: '#888888', marginBottom: '0.3rem' }}>
-                            Select Target Option
-                        </label>
-                        <select
-                            value={selectedOption}
-                            onChange={(e) => setSelectedOption(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.5rem 0.75rem',
-                                background: '#121212',
-                                color: '#ffffff',
-                                border: '1px solid rgba(255, 255, 255, 0.18)',
-                                borderRadius: '6px',
-                                fontSize: '0.85rem',
-                                outline: 'none'
+                {/* ── Pinned Bottom Input Bar (Never covered by taskbar) ── */}
+                <div className="nlwf-chat-footer">
+                    <div className="nlwf-input-row">
+                        <textarea
+                            ref={textareaRef}
+                            className="nlwf-chat-input"
+                            rows={1}
+                            placeholder="Type a workflow description or answer..."
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend();
+                                }
                             }}
-                        >
-                            {suggestedOptions.map((opt, i) => {
-                                const val = typeof opt === 'string' ? opt : (opt.value || opt.label);
-                                const lbl = typeof opt === 'string' ? opt : (opt.label || opt.value);
-                                return <option key={i} value={val}>{lbl}</option>;
-                            })}
-                        </select>
-
+                        />
                         <button
                             type="button"
-                            onClick={() => handleGenerate(selectedOption)}
-                            title="Continue with selected option"
-                            aria-label="Continue with Selected Option"
-                            style={{
-                                marginTop: '0.85rem',
-                                padding: '0.45rem 0.9rem',
-                                background: '#ffffff',
-                                color: '#000000',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                transition: 'opacity 0.2s ease'
-                            }}
+                            className="nlwf-send-btn"
+                            onClick={() => handleSend()}
+                            disabled={!inputText.trim() || generating}
+                            title="Send prompt (Enter)"
+                            aria-label="Send"
                         >
-                            Continue with Selected Option
+                            <HiOutlineLightningBolt />
                         </button>
                     </div>
-                )}
-
-                {/* Unavailable notice */}
-                {unavailable && (
-                    <div className="nlwf-unavailable">
-                        The AI service is not configured yet. Ask your team to set up the Python microservice.
+                    <div className="nlwf-footer-hint-row">
+                        <span className="nlwf-footer-hint">Press <strong>Enter ↵</strong> to send · Shift+Enter for newline</span>
+                        <button type="button" className="nlwf-footer-cancel-btn" onClick={onClose}>Cancel</button>
                     </div>
-                )}
-
-                {/* Error */}
-                {error && !unavailable && (
-                    <div className="nlwf-error">
-                        {error}
-                    </div>
-                )}
-
-                {/* Footer actions */}
-                <div className="nlwf-actions">
-                    <button
-                        className="nlwf-cancel-btn"
-                        onClick={onClose}
-                        type="button"
-                        title="Cancel workflow generation"
-                        aria-label="Cancel"
-                    >
-                        Cancel
-                    </button>
-
-                    <button
-                        className="nlwf-generate-btn"
-                        onClick={handleGenerate}
-                        disabled={!prompt.trim() || generating}
-                        type="button"
-                        title="Generate and create workflow with AI"
-                        aria-label="Generate workflow"
-                    >
-                        {generating ? (
-                            <>
-                                <span className="nlwf-spinner" />
-                                Generating & Creating…
-                            </>
-                        ) : (
-                            <>
-                                <HiOutlineLightningBolt />
-                                Generate
-                            </>
-                        )}
-                    </button>
                 </div>
             </motion.div>
         </div>

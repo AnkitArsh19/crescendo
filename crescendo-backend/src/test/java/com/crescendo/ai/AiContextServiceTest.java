@@ -73,8 +73,8 @@ class AiContextServiceTest {
 
         assertEquals("draft-1", first.get("requestId"));
         assertEquals(List.of(
-                Map.of("connectionId", slackConnectionId.toString(), "appKey", "slack", "label", "Engineering Slack"),
-                Map.of("connectionId", notionConnectionId.toString(), "appKey", "notion", "label", "Team wiki")
+                Map.of("connectionId", slackConnectionId.toString(), "appKey", "slack", "label", "Engineering Slack", "status", "ACTIVE"),
+                Map.of("connectionId", notionConnectionId.toString(), "appKey", "notion", "label", "Team wiki", "status", "ACTIVE")
         ), first.get("connections"));
         assertEquals(List.of(
                 Map.of("connectionId", slackConnectionId.toString(), "appKey", "slack", "resourceType", "channels", "items", List.of(

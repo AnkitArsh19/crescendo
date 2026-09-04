@@ -1439,7 +1439,7 @@ export default function ConfigPanelBody({
         if (!data.configuration || Object.keys(data.configuration).length === 0) {
             updates.configuration = {
                 provider: "gemini",
-                model: "gemini-2.5-flash",
+                model: "gemini-3.5-flash-lite",
                 systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
                 prompt: "{{steps.1.data}}",
                 temperature: 0.7,
@@ -1462,10 +1462,10 @@ export default function ConfigPanelBody({
         if (isAgentNode) {
             const currentProvider = data.configuration?.provider || 'gemini';
             let modelOptions = [
-                { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Recommended - Fast & Smart)' },
-                { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Deep Reasoning)' },
-                { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-                { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+                { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Recommended - High Quota 500 RPD)' },
+                { id: 'gemma-4-26b', label: 'Gemma 4 26B (High Throughput - 14.4K RPD)' },
+                { id: 'gemma-4-31b', label: 'Gemma 4 31B (Deep Reasoning - 14.4K RPD)' },
+                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Agentic Reasoning)' },
             ];
             if (currentProvider === 'openai') {
                 modelOptions = [
@@ -1498,7 +1498,7 @@ export default function ConfigPanelBody({
                     label: 'Model',
                     type: 'dropdown',
                     options: modelOptions,
-                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.5-flash'),
+                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.5-flash-lite'),
                     helpText: 'The LLM used for multi-step reasoning and function calling.'
                 },
                 {
@@ -1646,6 +1646,8 @@ export default function ConfigPanelBody({
                     appKey: nd.appKey,
                     appName,
                     operationName: opName,
+                    name: `${appName} · ${opName}`,
+                    sampleData: nd.sampleData || nd.testOutput,
                     fields,
                 };
             });
@@ -2271,7 +2273,7 @@ export default function ConfigPanelBody({
                             configuration={data.configuration || {}}
                             isTrigger={isTrigger}
                             initialInputData={data.inputData || data.sampleData || null}
-                            availablePreviousSteps={availablePreviousSteps}
+                            availablePreviousSteps={previousStepVariables || []}
                             onSaveSampleData={(sample) => {
                                 updateNodeData(configNode.id, { sampleData: sample, testOutput: sample });
                             }}

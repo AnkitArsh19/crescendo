@@ -860,7 +860,8 @@ export default function WorkflowCanvas() {
                     configuration: {
                         systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
                         prompt: "{{steps.1.data}}",
-                        model: "llama-3.3-70b-versatile",
+                        provider: "gemini",
+                        model: "gemini-3.8-flash",
                         temperature: 0.7,
                         maxIterations: 10,
                         returnIntermediateSteps: true,
@@ -1750,7 +1751,8 @@ export default function WorkflowCanvas() {
                                     configuration: isAgent ? {
                                         systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
                                         prompt: "{{steps.1.data}}",
-                                        model: "llama-3.3-70b-versatile",
+                                        provider: "gemini",
+                                        model: "gemini-3.8-flash",
                                         temperature: 0.7,
                                         maxIterations: 10,
                                         returnIntermediateSteps: true,

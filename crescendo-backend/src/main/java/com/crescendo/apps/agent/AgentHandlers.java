@@ -40,7 +40,7 @@ public class AgentHandlers {
         ));
 
         String provider = String.valueOf(config.getOrDefault("provider", "gemini"));
-        String model = String.valueOf(config.getOrDefault("model", "gemini-2.5-flash"));
+        String model = String.valueOf(config.getOrDefault("model", "gemini-3.5-flash-lite"));
         String apiKey = creds.get("apiKey") != null ? String.valueOf(creds.get("apiKey")) : null;
 
         int maxIterations = 10;
