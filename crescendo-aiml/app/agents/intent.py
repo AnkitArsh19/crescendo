@@ -48,7 +48,13 @@ RULES:
    You MUST set needs_clarification=true if ANY of the following apply:
    - The trigger does not explicitly name a specific application (e.g. "when a file is uploaded" -> which app? Dropbox? Google Drive? -> MUST clarify).
    - The action does not explicitly name a specific application (e.g. "alert me", "send a message", "do onboarding" -> which app? Slack? Jira? -> MUST clarify).
-   - Missing configurations or settings can be skipped, but if the APP NAME itself is missing from the user's prompt, YOU MUST ASK FOR CLARIFICATION.
+   - Missing configurations or settings (like channel names, repo names, sheet names) can be skipped, but if the APP NAME itself is completely missing or ambiguous, YOU MUST ASK FOR CLARIFICATION.
+   IMPORTANT PHRASING RULES:
+   - English requests often put actions first: "Send a Slack message when a GitHub commit happens. Then send a message in Discord".
+     Here, Trigger = GitHub commit ("when a github commit happens"), Actions = ["Send Slack message", "Send Discord message"].
+     Because GitHub, Slack, and Discord are all explicitly named apps, needs_clarification MUST BE false!
+   - NEVER ask "what event in App should trigger" if a different trigger app is already stated in the prompt.
+   - Do NOT ask for channel names, repo names, or settings during intent classification. Only clarify if the application itself is unknown.
 4. If needs_clarification=true, populate clarifying_questions with ≤3 specific questions.
 5. Set has_branching=true when the user describes conditional logic, for example:
    - "If X, do Y, otherwise do Z"
@@ -114,6 +120,10 @@ async def classify_intent(
                 f"PREVIOUSLY UNDERSTOOD INTENT:\n"
                 f"  Trigger: {trigger}\n"
                 + "\n".join(f"  Action: {a}" for a in (actions or []))
+                + "\n\nCRITICAL INSTRUCTION FOR FOLLOW-UP/CLARIFICATION:\n"
+                "- The user is continuing or answering questions for the above workflow.\n"
+                "- RETAIN the existing trigger and actions from PREVIOUSLY UNDERSTOOD INTENT unless the user explicitly asks to replace them.\n"
+                "- Do NOT set needs_clarification=true or ask 'what event should trigger' if the trigger or actions are already established in PREVIOUSLY UNDERSTOOD INTENT."
             )
     multi_turn_context = ("\n\n" + "\n\n".join(context_lines)) if context_lines else ""
 

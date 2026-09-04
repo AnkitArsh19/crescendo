@@ -10,7 +10,7 @@ Routing functions (conditional edges) are also defined here.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from langgraph.graph import END
 
 from app.agents.client import get_groq_client
@@ -274,9 +274,24 @@ async def intent_node(state: PipelineState) -> dict:
 
 async def clarify_node(state: PipelineState) -> dict:
     intent: IntentResult = state["intent"]
+    suggested_options = []
+    # Suggest only the user's active connected apps rather than random apps
+    for conn in state.get("context", {}).get("connections", []):
+        if conn.get("status") == "ACTIVE":
+            app_key = conn.get("appKey")
+            label = conn.get("label") or app_key
+            if app_key:
+                suggested_options.append({
+                    "group": "Connected Apps",
+                    "appKey": app_key,
+                    "label": label,
+                    "value": f"Use {label}"
+                })
     response = WorkflowDraftResponse(
         success=True,
+        workflow_spec=None,
         clarifying_questions=intent.clarifying_questions,
+        suggested_options=suggested_options,
         session_id=state.get("session_id"),
     )
     return {
@@ -342,6 +357,74 @@ async def configurator_node(state: PipelineState) -> dict:
 # Node: validator
 # ---------------------------------------------------------------------------
 
+def _extract_dynamic_clarifications(
+    trigger_step: ResolvedStep,
+    action_steps: List[ResolvedStep],
+    context: Dict[str, Any]
+) -> Tuple[List[str], List[Dict[str, Any]]]:
+    """
+    Inspects steps for missing required configSchema fields and matches them
+    generically against available resources in context["resources"] by exact resourceType.
+    """
+    from app.agents.validator import _build_catalog_index
+    from app.catalog_sync import app_state
+
+    catalog = app_state.get("catalog", [])
+    if not catalog:
+        return [], []
+
+    index = _build_catalog_index(catalog)
+    resources = context.get("resources", [])
+    questions: List[str] = []
+    options: List[Dict[str, Any]] = []
+
+    steps_to_check = [(trigger_step, "triggers")] + [(s, "actions") for s in action_steps]
+
+    for step, op_type in steps_to_check:
+        app_entry = index.get(step.app_key, {})
+        schema = app_entry.get(op_type, {}).get(step.action_key, [])
+        for field in schema:
+            if not isinstance(field, dict):
+                continue
+            if field.get("required") and field.get("type") not in ("section", "info"):
+                field_key = field.get("key", "")
+                val = step.config.get(field_key)
+                if val is None or val == "":
+                    field_label = field.get("label") or field_key
+                    step_name = step.display_name or step.app_key
+                    field_resource_type = field.get("resourceType")
+
+                    # Check for live account resources matching this step's appKey AND resourceType
+                    matching_blocks = [
+                        r for r in resources
+                        if r.get("appKey") == step.app_key
+                        and (not field_resource_type or r.get("resourceType") == field_resource_type)
+                        and r.get("items")
+                    ]
+                    if matching_blocks:
+                        app_title = step.app_key.replace("-", " ").title()
+                        group_name = f"{app_title}: {field_label}"
+                        q = f"Which {field_label} in {app_title} should be used for {step_name}?"
+                        if q not in questions:
+                            questions.append(q)
+                        for block in matching_blocks:
+                            for item in block.get("items", []):
+                                item_label = item.get("label") or item.get("id")
+                                opt = {
+                                    "group": group_name,
+                                    "appKey": step.app_key,
+                                    "fieldKey": field_key,
+                                    "fieldLabel": field_label,
+                                    "stepName": step_name,
+                                    "label": f"{app_title}: {item_label}",
+                                    "itemLabel": item_label,
+                                    "value": f"Use {item_label} for {field_label} in {app_title}"
+                                }
+                                if opt not in options:
+                                    options.append(opt)
+    return questions, options
+
+
 async def validator_node(state: PipelineState) -> dict:
     trigger_step: Optional[ResolvedStep] = state.get("trigger_step")
     action_steps: List[ResolvedStep] = state.get("action_steps", [])
@@ -359,32 +442,29 @@ async def validator_node(state: PipelineState) -> dict:
 
     spec = _build_spec(state)
 
-    errors = (
+    structural_errors = (
         validate_workflow(spec)
-        + validate_required_config(trigger_step, action_steps)
         + validate_edges(trigger_step, action_steps, edges)
     )
 
-    if not errors:
-        logger.info("Validation passed for user %s", state["user_id"])
-        return {"workflow_spec": spec, "validation_errors": []}
+    if structural_errors:
+        if state.get("correction_attempted"):
+            error_msg = f"Workflow validation failed after correction: {'; '.join(structural_errors[:3])}"
+            logger.warning("Structural validation failed (post-correction) for user %s: %s", state["user_id"], structural_errors)
+            return {
+                "validation_errors": structural_errors,
+                "final_response": WorkflowDraftResponse(
+                    success=False,
+                    error=error_msg,
+                    session_id=state.get("session_id"),
+                ),
+            }
+        logger.warning("Structural validation failed (will retry) for user %s: %s", state["user_id"], structural_errors)
+        return {"validation_errors": structural_errors, "workflow_spec": spec}
 
-    # Errors found
-    if state.get("correction_attempted"):
-        # Second failure — surface error to user
-        error_msg = f"Workflow validation failed after correction: {'; '.join(errors[:3])}"
-        logger.warning("Validation failed (post-correction) for user %s: %s", state["user_id"], errors)
-        return {
-            "validation_errors": errors,
-            "final_response": WorkflowDraftResponse(
-                success=False,
-                error=error_msg,
-                session_id=state.get("session_id"),
-            ),
-        }
-
-    logger.warning("Validation failed (will retry) for user %s: %s", state["user_id"], errors)
-    return {"validation_errors": errors, "workflow_spec": spec}
+    # Structural validation passed — return workflow spec so the user's workflow is drafted on canvas
+    logger.info("Structural validation passed for user %s (ready for canvas)", state["user_id"])
+    return {"workflow_spec": spec, "validation_errors": []}
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +514,12 @@ async def explainer_node(state: PipelineState) -> dict:
     if spec is None:
         spec = _build_spec(state)
 
-    explanation = await generate_explanation(spec, state["user_id"], get_groq_client())
+    explanation = await generate_explanation(
+        workflow_spec=spec,
+        user_id=state["user_id"],
+        groq_client=get_groq_client(),
+        context=state.get("context"),
+    )
 
     return {
         "explanation": explanation,

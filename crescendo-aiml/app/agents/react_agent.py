@@ -256,7 +256,7 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
         import asyncio
         import os
         api_key = request.api_key or os.getenv("GEMINI_API_KEY", "")
-        model = request.model or "gemini-2.5-flash"
+        model = request.model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
         if not api_key:
             return AgentNextStepResponse(
                 decision="final_answer",

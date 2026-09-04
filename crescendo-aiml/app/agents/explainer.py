@@ -36,6 +36,7 @@ async def generate_explanation(
     workflow_spec: WorkflowSpec,
     user_id: str,
     groq_client: Optional[AsyncGroq] = None,
+    context: Optional[dict] = None,
 ) -> str:
     """
     Stage 5: generate a plain-English explanation of the workflow.
@@ -83,7 +84,17 @@ async def generate_explanation(
 
     text = (response.choices[0].message.content or "").strip()
     if not text:
-        return _fallback_explanation(workflow_spec)
+        text = _fallback_explanation(workflow_spec)
+
+    reauth_labels = []
+    used_apps = {workflow_spec.trigger.app_key} | {a.app_key for a in workflow_spec.actions}
+    for conn in (context or {}).get("connections", []):
+        if conn.get("appKey") in used_apps and conn.get("status") in ("REAUTH", "EXPIRED"):
+            label = conn.get("label") or conn.get("appKey")
+            if label not in reauth_labels:
+                reauth_labels.append(label)
+    if reauth_labels:
+        text += f"\n\nNote: Your connection to {', '.join(reauth_labels)} needs re-authentication. Please reconnect in Settings > Connections before activating."
 
     logger.info("Stage 5 explanation generated for user %s", user_id)
     return text
