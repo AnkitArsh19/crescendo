@@ -47,7 +47,7 @@ RULES:
 3. CRITICAL RULE for needs_clarification:
    You MUST set needs_clarification=true if ANY of the following apply:
    - The trigger does not explicitly name a specific application (e.g. "when a file is uploaded" -> which app? Dropbox? Google Drive? -> MUST clarify).
-   - The action does not explicitly name a specific application (e.g. "alert me", "send a message", "do onboarding" -> which app? Slack? Jira? -> MUST clarify).
+   - Any action does not explicitly name a specific application (e.g. "alert me", "send a message", "do onboarding" -> which app? Slack? Microsoft Teams? -> MUST clarify).
    - Missing configurations or settings (like channel names, repo names, sheet names) can be skipped, but if the APP NAME itself is completely missing or ambiguous, YOU MUST ASK FOR CLARIFICATION.
    IMPORTANT PHRASING RULES:
    - English requests often put actions first: "Send a Slack message when a GitHub commit happens. Then send a message in Discord".
@@ -55,7 +55,13 @@ RULES:
      Because GitHub, Slack, and Discord are all explicitly named apps, needs_clarification MUST BE false!
    - NEVER ask "what event in App should trigger" if a different trigger app is already stated in the prompt.
    - Do NOT ask for channel names, repo names, or settings during intent classification. Only clarify if the application itself is unknown.
-4. If needs_clarification=true, populate clarifying_questions with ≤3 specific questions.
+4. COMPREHENSIVE ONE-TURN CLARIFICATION:
+   - You MUST inspect BOTH the trigger AND all actions in the user request for missing or ambiguous applications.
+   - If multiple steps are ambiguous (e.g., the trigger mentions "mail" AND an action mentions "send a message"), DO NOT ask for only one step. You MUST generate clarifying questions for ALL ambiguous steps in clarifying_questions in a SINGLE turn (up to 3 questions).
+   - Formulate clear, role-specific questions naming candidate apps. For example:
+     - "Which email service should trigger the workflow (e.g., Gmail, Microsoft Outlook)?"
+     - "Which messaging app should send the notification (e.g., Slack, Microsoft Teams)?"
+   - When clarifying details are supplied by the user (e.g., in "Details: ..."), check if they satisfy the missing apps. If all apps are now known, set needs_clarification=false!
 5. Set has_branching=true when the user describes conditional logic, for example:
    - "If X, do Y, otherwise do Z"
    - "Only run the next step when condition is met"
@@ -145,12 +151,30 @@ async def classify_intent(
                 {"role": "user",   "content": sanitized_prompt},
             ],
             temperature=0.1,
-            max_tokens=512,
+            max_tokens=2048,
             response_format={"type": "json_object"},
         )
     except Exception as exc:
-        logger.exception("Stage 1 (intent) Groq call failed for user %s", user_id)
-        raise RuntimeError(f"Intent classifier LLM error: {exc}") from exc
+        err_str = str(exc).lower()
+        if "max completion tokens" in err_str or "json_validate_failed" in err_str:
+            logger.warning("Stage 1 hit token limit or JSON format issue for user %s; retrying with simplified context...", user_id)
+            try:
+                response = await client.chat.completions.create(
+                    model=FAST_MODEL,
+                    messages=[
+                        {"role": "system", "content": _INTENT_SYSTEM},
+                        {"role": "user",   "content": sanitized_prompt},
+                    ],
+                    temperature=0.1,
+                    max_tokens=2048,
+                    response_format={"type": "json_object"},
+                )
+            except Exception as retry_exc:
+                logger.exception("Stage 1 retry also failed for user %s", user_id)
+                raise RuntimeError(f"Intent classifier LLM error: {retry_exc}") from retry_exc
+        else:
+            logger.exception("Stage 1 (intent) Groq call failed for user %s", user_id)
+            raise RuntimeError(f"Intent classifier LLM error: {exc}") from exc
 
     usage = response.usage
     audit_log(

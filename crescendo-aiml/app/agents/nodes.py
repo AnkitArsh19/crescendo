@@ -26,6 +26,7 @@ from app.agents.validator import (
     validate_required_config,
     validate_workflow,
 )
+from app.catalog_sync import app_state
 from app.schemas.workflow import (
     ActionNode,
     IntentResult,
@@ -60,23 +61,35 @@ def _unpack_lc(value: Any) -> Any:
 # Helper: build WorkflowSpec from resolved steps in state
 # ---------------------------------------------------------------------------
 
+
+def _app_display_name(app_key: str) -> str:
+    if not app_key:
+        return "App"
+    catalog = app_state.get("catalog", [])
+    for a in catalog:
+        if a.get("appKey") == app_key:
+            return a.get("name") or app_key.replace("-", " ").title()
+    return app_key.replace("-", " ").title()
+
+
 def _build_spec(state: PipelineState) -> WorkflowSpec:
     trigger_step: ResolvedStep = state["trigger_step"]
     action_steps: List[ResolvedStep] = state.get("action_steps", [])
     edges: List[WorkflowEdge] = state.get("resolved_edges", [])
     intent: Optional[IntentResult] = state.get("intent")
 
-    if intent:
-        # Use intent descriptions for a readable workflow name
-        trigger_label = intent.trigger_description[:60]
-        action_labels = [d[:30] for d in intent.action_descriptions[:3]]
-        workflow_name = f"{trigger_label} → {' → '.join(action_labels)}"[:100]
-        description = intent.trigger_description
+    trigger_name = _app_display_name(trigger_step.app_key)
+    action_names = [_app_display_name(s.app_key) for s in action_steps]
+    if action_names:
+        workflow_name = f"{trigger_name} → {' → '.join(action_names)}"
     else:
-        workflow_name = (
-            f"{trigger_step.app_key} → "
-            + " → ".join(s.app_key for s in action_steps)
-        )
+        workflow_name = f"{trigger_name} Workflow"
+
+    if intent:
+        # Keep the detailed natural-language description in description
+        actions_desc = ", ".join(intent.action_descriptions) if intent.action_descriptions else ""
+        description = f"{intent.trigger_description}" + (f" → {actions_desc}" if actions_desc else "")
+    else:
         description = workflow_name
 
     return WorkflowSpec(
@@ -272,14 +285,157 @@ async def intent_node(state: PipelineState) -> dict:
 # Node: clarify (short-circuit when needs_clarification=True)
 # ---------------------------------------------------------------------------
 
+_CLARIFY_DOMAINS = [
+    {
+        "name": "Email Service",
+        "keywords": ["email", "mail", "inbox", "gmail", "outlook", "smtp"],
+        "default_apps": ["gmail", "microsoft-outlook"],
+    },
+    {
+        "name": "Messaging App",
+        "keywords": ["message", "chat", "notify", "notification", "alert", "slack", "discord", "teams", "sms", "whatsapp", "telegram"],
+        "default_apps": ["slack", "discord", "microsoft-teams"],
+    },
+    {
+        "name": "Spreadsheet / Table",
+        "keywords": ["sheet", "spreadsheet", "table", "excel", "airtable", "row", "column", "csv", "data"],
+        "default_apps": ["google-sheets", "microsoft-excel", "airtable"],
+    },
+    {
+        "name": "Developer Platform",
+        "keywords": ["git", "github", "gitlab", "repo", "repository", "commit", "push", "pull request", "pr", "issue", "branch"],
+        "default_apps": ["github", "gitlab"],
+    },
+    {
+        "name": "Calendar Service",
+        "keywords": ["calendar", "event", "meeting", "schedule", "invite"],
+        "default_apps": ["google-calendar", "microsoft-outlook"],
+    },
+    {
+        "name": "Form Service",
+        "keywords": ["form", "survey", "typeform", "response", "submission"],
+        "default_apps": ["google-forms", "typeform"],
+    },
+    {
+        "name": "Task / Project Tool",
+        "keywords": ["task", "todo", "project", "trello", "asana", "notion", "clickup", "toggl"],
+        "default_apps": ["notion", "google-tasks", "toggl"],
+    },
+    {
+        "name": "Cloud Storage",
+        "keywords": ["drive", "dropbox", "box", "file", "folder", "cloud storage", "upload"],
+        "default_apps": ["google-drive", "dropbox"],
+    },
+    {
+        "name": "Social Platform",
+        "keywords": ["social", "tweet", "post", "twitter", "x", "instagram", "facebook", "youtube", "linkedin"],
+        "default_apps": ["twitter", "linkedin"],
+    },
+]
+
+
+def _get_apps_for_domain(domain: dict) -> List[Dict[str, str]]:
+    """
+    Dynamically finds matching apps from the backend catalog based on domain keywords,
+    falling back to default_apps if catalog sync hasn't loaded yet.
+    """
+    catalog = app_state.get("catalog", [])
+    if catalog:
+        keywords = domain.get("keywords", [])
+        matched = []
+        default_keys = set(domain.get("default_apps", []))
+        for app in catalog:
+            key = app.get("appKey", "")
+            name = app.get("name", "")
+            desc = app.get("description", "")
+            searchable = f"{key} {name} {desc}".lower()
+            if any(kw in searchable for kw in keywords):
+                matched.append({
+                    "appKey": key,
+                    "label": name or _app_display_name(key),
+                    "is_default": key in default_keys,
+                })
+        if matched:
+            # Prioritize flagship/default apps first, then sort alphabetically by label
+            matched.sort(key=lambda x: (0 if x["is_default"] else 1, x["label"]))
+            return [{"appKey": m["appKey"], "label": m["label"]} for m in matched]
+
+    # Offline / pre-sync fallback
+    return [
+        {"appKey": k, "label": _app_display_name(k)}
+        for k in domain.get("default_apps", [])
+    ]
+
+
 async def clarify_node(state: PipelineState) -> dict:
     intent: IntentResult = state["intent"]
     suggested_options = []
-    # Suggest only the user's active connected apps rather than random apps
-    for conn in state.get("context", {}).get("connections", []):
-        if conn.get("status") == "ACTIVE":
+
+    # Active user connections
+    active_connections = [
+        conn for conn in state.get("context", {}).get("connections", [])
+        if conn.get("status") == "ACTIVE"
+    ]
+
+    added_options = set()
+    questions = intent.clarifying_questions or []
+
+    for question in questions:
+        q_lower = question.lower()
+        matched_domain = None
+        for domain in _CLARIFY_DOMAINS:
+            if any(k in q_lower for k in domain["keywords"]):
+                matched_domain = domain
+                break
+
+        if matched_domain:
+            if any(w in q_lower for w in ["trigger", "when", "start", "receive", "incoming"]):
+                group_name = f"{matched_domain['name']} (Trigger)"
+            elif any(w in q_lower for w in ["action", "send", "post", "update", "notify", "destination", "target"]):
+                group_name = f"{matched_domain['name']} (Action)"
+            else:
+                group_name = matched_domain["name"]
+
+            domain_apps = _get_apps_for_domain(matched_domain)
+            domain_keys = {item["appKey"] for item in domain_apps}
+
+            # Active connections for this domain first
+            domain_active = [
+                conn for conn in active_connections
+                if conn.get("appKey") in domain_keys
+            ]
+            for conn in domain_active:
+                app_key = conn.get("appKey")
+                label = conn.get("label") or _app_display_name(app_key)
+                opt_key = (group_name, app_key, label)
+                if opt_key not in added_options:
+                    added_options.add(opt_key)
+                    suggested_options.append({
+                        "group": group_name,
+                        "appKey": app_key,
+                        "label": label,
+                        "value": f"Use {label}"
+                    })
+
+            # If fewer than 2 active options, supplement with dynamic catalog suggestions
+            if len(domain_active) < 2:
+                for suggestion in domain_apps[:3]:
+                    if not any(c.get("appKey") == suggestion["appKey"] for c in domain_active):
+                        opt_key = (group_name, suggestion["appKey"], suggestion["label"])
+                        if opt_key not in added_options:
+                            added_options.add(opt_key)
+                            suggested_options.append({
+                                "group": group_name,
+                                "appKey": suggestion["appKey"],
+                                "label": suggestion["label"],
+                                "value": f"Use {suggestion['label']}"
+                            })
+
+    # If no questions matched any domain, fallback to top active connections (max 6, not 25+)
+    if not suggested_options:
+        for conn in active_connections[:6]:
             app_key = conn.get("appKey")
-            label = conn.get("label") or app_key
+            label = conn.get("label") or _app_display_name(app_key)
             if app_key:
                 suggested_options.append({
                     "group": "Connected Apps",
@@ -287,6 +443,7 @@ async def clarify_node(state: PipelineState) -> dict:
                     "label": label,
                     "value": f"Use {label}"
                 })
+
     response = WorkflowDraftResponse(
         success=True,
         workflow_spec=None,
@@ -402,7 +559,7 @@ def _extract_dynamic_clarifications(
                         and r.get("items")
                     ]
                     if matching_blocks:
-                        app_title = step.app_key.replace("-", " ").title()
+                        app_title = _app_display_name(step.app_key)
                         group_name = f"{app_title}: {field_label}"
                         q = f"Which {field_label} in {app_title} should be used for {step_name}?"
                         if q not in questions:
