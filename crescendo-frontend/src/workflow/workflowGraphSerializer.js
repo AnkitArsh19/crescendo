@@ -150,10 +150,9 @@ export function nodeToStepPayload(node, appDetailsByKey = {}) {
     const schemaFields = parseConfigSchema(def?.configSchema || {});
     const configuration = toPersistedConfig(schemaFields, node.data?.configuration || {});
 
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const rawConnId = node.data?.connectionId;
-    let safeConnectionId = (typeof rawConnId === 'string' && UUID_REGEX.test(rawConnId.trim()))
-        ? rawConnId.trim()
+    let safeConnectionId = (rawConnId && rawConnId !== 'ADMIN_KEY' && rawConnId !== 'null' && rawConnId !== 'undefined')
+        ? String(rawConnId).trim()
         : null;
 
     // For agent node: store connection in config (for execution BYOK), but keep top-level connectionId null
@@ -174,8 +173,8 @@ export function nodeToStepPayload(node, appDetailsByKey = {}) {
     }
 
     const rawBackendId = node.data?._backendId;
-    const safeBackendId = (typeof rawBackendId === 'string' && UUID_REGEX.test(rawBackendId.trim()))
-        ? rawBackendId.trim()
+    const safeBackendId = (rawBackendId && rawBackendId !== 'null' && rawBackendId !== 'undefined')
+        ? String(rawBackendId).trim()
         : null;
 
     return {

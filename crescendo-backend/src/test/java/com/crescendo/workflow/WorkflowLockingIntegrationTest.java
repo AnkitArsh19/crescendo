@@ -2,6 +2,7 @@ package com.crescendo.workflow;
 
 import com.crescendo.BaseIntegrationTest;
 import com.crescendo.security.access.AccessControlService;
+import com.crescendo.steps.steps_command.Steps_commandRepository;
 import com.crescendo.user.user_command.User_command;
 import com.crescendo.user.user_command.User_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_command;
@@ -28,6 +29,9 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
     private Workflow_commandService commandService;
 
     @Autowired
+    private Steps_commandRepository stepsRepo;
+
+    @Autowired
     private Workflow_commandRepository commandRepo;
 
     @Autowired
@@ -41,6 +45,7 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        stepsRepo.deleteAll();
         commandRepo.deleteAll();
         userRepo.deleteAll();
 
