@@ -1,6 +1,8 @@
 name: Release Desktop App
 
 on:
+  release:
+    types: [published, prereleased]
   push:
     tags:
       - 'v*'
@@ -70,7 +72,9 @@ jobs:
         id: release_tag
         shell: bash
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          if [[ -n "${{ github.event.release.tag_name }}" ]]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ inputs.tag_name || 'v0.1.0' }}" >> $GITHUB_OUTPUT
