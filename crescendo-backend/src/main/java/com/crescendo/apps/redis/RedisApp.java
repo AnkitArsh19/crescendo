@@ -35,7 +35,7 @@ public class RedisApp implements AppDefinition {
                 - **Set**: Set the value of a key in redis
                 """,
                 "https://www.google.com/s2/favicons?domain=redis.io&sz=128", // Generic icon
-                AuthType.OAUTH2, // Placeholder, redis uses connection string
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(

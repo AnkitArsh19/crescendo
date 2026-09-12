@@ -97,6 +97,7 @@ public class YouTubeApp implements AppDefinition {
         ).credentialSchema(List.of(
                         Map.of("key", "accessToken", "label", "OAuth Access Token", "type", "password", "required", false),
                         Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", false)))
+                .altAuthType(AuthType.APIKEY)
                 .category("social")
                 .helpUrl("https://developers.google.com/youtube/v3");
     }

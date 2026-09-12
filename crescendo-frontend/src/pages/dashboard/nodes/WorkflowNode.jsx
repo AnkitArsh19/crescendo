@@ -39,12 +39,12 @@ function WorkflowNode({ data, selected, type }) {
     }, []);
 
     const KNOWN_APP_LOGOS = {
-        spotify: 'https://www.google.com/s2/favicons?domain=spotify.com&sz=128',
-        discord: 'https://www.google.com/s2/favicons?domain=discord.com&sz=128',
-        slack: 'https://www.google.com/s2/favicons?domain=slack.com&sz=128',
-        telegram: 'https://www.google.com/s2/favicons?domain=telegram.org&sz=128',
-        gemini: 'https://www.google.com/s2/favicons?domain=google.com&sz=128',
-        sarvam: 'https://www.google.com/s2/favicons?domain=sarvam.ai&sz=128',
+        spotify: 'https://icons.duckduckgo.com/ip3/spotify.com.ico',
+        discord: 'https://icons.duckduckgo.com/ip3/discord.com.ico',
+        slack: 'https://icons.duckduckgo.com/ip3/slack.com.ico',
+        telegram: 'https://icons.duckduckgo.com/ip3/telegram.org.ico',
+        gemini: 'https://icons.duckduckgo.com/ip3/google.com.ico',
+        sarvam: 'https://icons.duckduckgo.com/ip3/sarvam.ai.ico',
         github: '/icons/github.svg',
         leetcode: '/icons/leetcode.svg',
     };
@@ -69,8 +69,11 @@ function WorkflowNode({ data, selected, type }) {
                                 src={logoSrc} 
                                 alt="" 
                                 className="wf-node__app-img app-logo-img"
+                                referrerPolicy="no-referrer"
+                                crossOrigin="anonymous"
+                                loading="lazy"
                                 onError={(e) => {
-                                    const fallback = data.appKey ? (KNOWN_APP_LOGOS[data.appKey] || `https://www.google.com/s2/favicons?domain=${data.appKey}.com&sz=128`) : null;
+                                    const fallback = data.appKey ? (KNOWN_APP_LOGOS[data.appKey] || `https://icons.duckduckgo.com/ip3/${data.appKey}.com.ico`) : null;
                                     if (fallback && e.target.src !== fallback) {
                                         e.target.src = fallback;
                                     } else {

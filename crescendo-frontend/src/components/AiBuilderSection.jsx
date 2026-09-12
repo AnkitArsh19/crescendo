@@ -134,7 +134,7 @@ export default function AiBuilderSection() {
 
                     {/* ── Generated Feature Cards ── */}
                     <div className="ai-cards-row">
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence>
                             {current.steps.map((step, idx) => (
                                 <div key={`${current.id}-${step.app}-${idx}`} className="ai-workflow-card-wrapper">
                                     <motion.div

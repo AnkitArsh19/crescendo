@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { HiChevronRight } from 'react-icons/hi';
+import { useWorkflowList } from '../hooks/useWorkflows';
 import './Breadcrumbs.css';
 
 /** Map raw path segments to human-readable labels. */
@@ -43,6 +44,7 @@ function labelFor(segment) {
 
 export default function Breadcrumbs({ className = '' }) {
   const { pathname } = useLocation();
+  const { data: workflows = [] } = useWorkflowList();
 
   // Only show inside /dashboard/** and /settings/** paths
   const shouldShow =
@@ -52,11 +54,32 @@ export default function Breadcrumbs({ className = '' }) {
   const segments = pathname.split('/').filter(Boolean);
 
   // Build crumbs: each crumb has a label + the accumulated href
-  const crumbs = segments.map((seg, idx) => ({
-    label: labelFor(seg),
-    href: '/' + segments.slice(0, idx + 1).join('/'),
-    isId: isId(seg),
-  }));
+  const crumbs = segments.map((seg, idx) => {
+    let label = labelFor(seg);
+    let isSegmentId = isId(seg);
+    const href = '/' + segments.slice(0, idx + 1).join('/');
+
+    // Resolve workflow IDs to human-readable workflow names
+    const matchedWorkflow = workflows.find((w) => w.id === seg);
+    if (matchedWorkflow) {
+      label = matchedWorkflow.name;
+      isSegmentId = false;
+    } else if (isSegmentId) {
+      if (idx === 2 && (segments[1] === 'history' || segments[1] === 'workflows')) {
+        label = 'Workflow';
+        isSegmentId = false;
+      } else if (idx === 3 && segments[1] === 'history') {
+        label = `Run #${seg.substring(0, 8)}`;
+        isSegmentId = false;
+      }
+    }
+
+    return {
+      label,
+      href,
+      isId: isSegmentId,
+    };
+  });
 
   // If only 1 segment (e.g. "/dashboard"), render "Dashboard"
   if (crumbs.length < 2) {

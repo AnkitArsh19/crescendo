@@ -51,6 +51,22 @@ public class NotificationSseService implements MessageListener {
         return emitter;
     }
 
+    /**
+     * Sends periodic keepalive ping to prevent HTTP/3 QUIC idle stream resets and Cloudflare timeouts.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 20000)
+    public void sendHeartbeat() {
+        emitters.forEach((userId, list) -> {
+            for (SseEmitter emitter : list) {
+                try {
+                    emitter.send(SseEmitter.event().comment("ping"));
+                } catch (Exception e) {
+                    removeEmitter(userId, emitter);
+                }
+            }
+        });
+    }
+
     public void broadcastNotification(UUID userId, UserNotificationDto notification) {
         if (userId == null || notification == null) return;
         try {

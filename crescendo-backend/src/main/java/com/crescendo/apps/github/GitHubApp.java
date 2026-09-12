@@ -107,6 +107,9 @@ public class GitHubApp implements AppDefinition {
                             Map.of("key", "prerelease", "label", "Pre-release?", "type", "dropdown", "required", false,
                                    "options", List.of(Map.of("value","false","label","No"), Map.of("value","true","label","Yes")), "helpText", "Mark as pre-release")))
                 )
-        ).credentialSchema(List.of()).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://github.com/settings/developers");
+        ).credentialSchema(List.of(
+                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true,
+                        "placeholder", "ghp_...", "helpText", "Create a token in GitHub Settings -> Developer settings -> Personal access tokens")
+        )).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://github.com/settings/developers");
     }
 }

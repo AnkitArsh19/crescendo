@@ -7,6 +7,10 @@
 graphify-out/
 /Test/
 
+### Tauri / Rust Build Artifacts ###
+**/src-tauri/target/
+**/src-tauri/gen/
+
 ### Environment Variables ###
 **/.env
 **/.env.*

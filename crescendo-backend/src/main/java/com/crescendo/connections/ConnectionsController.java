@@ -87,4 +87,15 @@ public class ConnectionsController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * POST /connections/test — validate raw connection credentials before saving.
+     */
+    @PostMapping("/test")
+    public ResponseEntity<java.util.Map<String, Object>> testCredentials(
+            @Valid @RequestBody ConnectionsDto.CreateConnectionRequest req,
+            Authentication auth) {
+        var result = commandService.testCredentials(req.appKey(), req.credentials());
+        return ResponseEntity.ok(result);
+    }
+
 }

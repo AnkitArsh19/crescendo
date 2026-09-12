@@ -2,6 +2,7 @@ package com.crescendo.security.oauth;
 
 import com.crescendo.auth.dto.AuthDto;
 import com.crescendo.auth.service.AuthenticationService;
+import com.crescendo.auth.token.DesktopHandoffService;
 import com.crescendo.enums.AuthProvider;
 import com.crescendo.security.RefreshTokenCookieService;
 import com.crescendo.security.mfa.MFAService;
@@ -52,6 +53,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final RefreshTokenCookieService cookieService;
     private final User_commandRepository userRepo;
     private final UserIdentityRepository identityRepo;
+    private final DesktopHandoffService desktopHandoffService;
 
     // Frontend URL to redirect to after OAuth success. Configured in application.properties.
     @Value("${app.frontend.url:${app.frontend-url:https://app.crescendo.run}}")
@@ -67,12 +69,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                                      MFAService mfaService,
                                      RefreshTokenCookieService cookieService,
                                      User_commandRepository userRepo,
-                                     UserIdentityRepository identityRepo) {
+                                     UserIdentityRepository identityRepo,
+                                     DesktopHandoffService desktopHandoffService) {
         this.authService = authService;
         this.mfaService = mfaService;
         this.cookieService = cookieService;
         this.userRepo = userRepo;
         this.identityRepo = identityRepo;
+        this.desktopHandoffService = desktopHandoffService;
     }
 
     @Override
@@ -128,13 +132,36 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 clientIp, deviceId, deviceLabel
         );
 
-        // Set refresh token as HttpOnly cookie.
+        // Set refresh token as HttpOnly cookie (used by browser web session).
         long ttlMs = Duration.between(Instant.now(), loginResp.refreshExpiresAt()).toMillis();
         cookieService.setRefreshToken(response, loginResp.refreshToken(), ttlMs, secureCookie);
 
-        // Redirect to the frontend callback page with the access token in the URL fragment.
-        // Fragment (#) is never sent to servers in HTTP requests, providing an extra layer of safety.
-        // The frontend reads it from window.location.hash and stores it in memory.
+        // Check if this OAuth flow was initiated from the Crescendo desktop app.
+        // Two signals — either is sufficient (belt-and-suspenders):
+        //   1. crescendo_from_desktop cookie (set by the frontend before initiating OAuth)
+        //   2. saved 'from' parameter extracted from the stored authorization request URL
+        //      (the frontend appends ?from=desktop to the /oauth2/authorization endpoint)
+        String savedState = request.getParameter("state");
+        boolean fromDesktopParam = savedState != null && request.getQueryString() != null &&
+                "desktop".equalsIgnoreCase(request.getParameter("from"));
+        boolean fromDesktop = "true".equals(extractCookieValue(request, "crescendo_from_desktop")) || fromDesktopParam;
+        if (fromDesktop) {
+            // Clear the one-time desktop-origin cookie immediately.
+            ResponseCookie clearDesktopCookie = ResponseCookie.from("crescendo_from_desktop", "")
+                    .httpOnly(false).secure(false).path("/").maxAge(Duration.ZERO).sameSite("Lax").build();
+            response.addHeader("Set-Cookie", clearDesktopCookie.toString());
+
+            // Issue a one-time, 60-second handoff code instead of putting raw tokens in the URL.
+            // The browser navigates to /open-app?code=... which fires crescendo://auth/callback?code=...
+            // Desktop app then exchanges this code directly via POST /auth/desktop-handoff/exchange.
+            String code = desktopHandoffService.issueCode(UUID.fromString(loginResp.userId()), deviceId, deviceLabel);
+            String openAppUrl = frontendUrl + "/open-app?code=" + URLEncoder.encode(code, StandardCharsets.UTF_8);
+            response.sendRedirect(openAppUrl);
+            return;
+        }
+
+        // Standard web browser redirect: access token in URL fragment (never sent to servers),
+        // refresh token lives in the HttpOnly cookie set above.
         String redirectUrl = frontendUrl + "/oauth/callback"
                 + "#access_token=" + loginResp.accessToken()
                 + "&expires_at=" + URLEncoder.encode(loginResp.accessExpiresAt().toString(), StandardCharsets.UTF_8);

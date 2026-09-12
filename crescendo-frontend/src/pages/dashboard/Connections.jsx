@@ -9,12 +9,15 @@ import {
   HiOutlineShieldCheck, HiOutlineExternalLink, HiOutlineKey,
   HiOutlineLockClosed, HiOutlineArrowLeft, HiOutlineEye, HiOutlineEyeOff,
   HiOutlineChevronDown, HiOutlineChevronRight, HiOutlineInformationCircle,
+  HiOutlineExclamationCircle,
   HiCheck,
 } from 'react-icons/hi';
 import useConnectionStore from '../../store/connectionStore';
 import { appCatalogApi } from '../../api/appCatalogApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import AppBrowserModal from './nodes/AppBrowserModal';
+import { isTauri } from '../../utils/platform';
+import { openExternalBrowser } from '../../utils/desktopAuth';
 import './Connections.css';
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -50,16 +53,44 @@ export default function Connections() {
     }
   }, [fetchConnections]);
 
-  // Handle ?connect=<appKey> from canvas redirect
+  // Listen for desktop OAuth deep link completion
+  useEffect(() => {
+    const handleConnectionUpdated = () => {
+      fetchConnections();
+    };
+    window.addEventListener('crescendo-connection-updated', handleConnectionUpdated);
+    return () => window.removeEventListener('crescendo-connection-updated', handleConnectionUpdated);
+  }, [fetchConnections]);
+
+  // Handle ?reconnect=<id>&app=<appKey> or ?connect=<appKey> from notifications / canvas
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const connectKey = params.get('connect');
-    if (connectKey && apps.length > 0) {
-      setPreselectedAppKey(connectKey);
-      setShowAddModal(true);
-      window.history.replaceState({}, '', window.location.pathname);
+    const reconnectId = params.get('reconnect');
+    const appKey = params.get('app') || params.get('connect');
+    if (!reconnectId && !appKey) return;
+
+    if (connections.length > 0 || apps.length > 0) {
+      // 1. First priority: find existing connection to edit / reconnect
+      const targetConn = connections.find(
+        (c) =>
+          (reconnectId && c.id === reconnectId) ||
+          (appKey && c.appKey === appKey)
+      );
+
+      if (targetConn) {
+        setEditTarget(targetConn);
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
+      // 2. If no matching connection, open Add Connection modal directly for this app
+      if (appKey && apps.length > 0) {
+        setPreselectedAppKey(appKey);
+        setShowAddModal(true);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
-  }, [apps]);
+  }, [connections, apps]);
 
   const filtered = connections.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -227,6 +258,7 @@ export default function Connections() {
             apps={apps}
             connections={connections}
             connectOnly={true}
+            initialAppKey={preselectedAppKey}
             title="Add Connection"
             onClose={() => { setShowAddModal(false); setPreselectedAppKey(null); }}
             onConnected={() => { fetchConnections(); }}
@@ -267,8 +299,23 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
   const [isSaving, setIsSaving] = useState(false);
   const [testState, setTestState] = useState(null); // { loading, success, message }
   const [error, setError] = useState(null);
+  const [isWaitingDesktopOAuth, setIsWaitingDesktopOAuth] = useState(false);
+  const [lastAuthUrl, setLastAuthUrl] = useState(null);
 
-  const isOAuth = app?.authType === 'OAUTH2' || connection.authType === 'OAUTH2';
+  // Listen for desktop OAuth deep-link completion
+  useEffect(() => {
+    const handler = (ev) => {
+      const detail = ev.detail;
+      if (detail?.connectionId === connection.id || detail?.appKey === connection.appKey) {
+        setIsWaitingDesktopOAuth(false);
+        onReconnected?.();
+      }
+    };
+    window.addEventListener('crescendo-connection-updated', handler);
+    return () => window.removeEventListener('crescendo-connection-updated', handler);
+  }, [connection.id, connection.appKey, onReconnected]);
+
+  const isOAuth = app?.authType === 'OAUTH2' || app?.altAuthType === 'OAUTH2' || connection.authType === 'OAUTH2';
   const schema = app?.credentialSchema || [];
 
   const handleTest = async () => {
@@ -286,8 +333,17 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
   };
 
   const handleReconnectOAuth = async () => {
+    setError(null);
     try {
       const { authorizationUrl } = await appCatalogApi.getOAuthUrl(connection.appKey, { connectionId: connection.id });
+      setLastAuthUrl(authorizationUrl);
+
+      if (isTauri()) {
+        setIsWaitingDesktopOAuth(true);
+        await openExternalBrowser(authorizationUrl);
+        return;
+      }
+
       const popup = window.open(authorizationUrl, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
       if (popup) {
         const handler = (ev) => {
@@ -352,6 +408,24 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
         <div className="conn-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {error && <div className="abm-error-toast">{error}</div>}
 
+          {/* Status Alert if expired/reauth */}
+          {(connection.status === 'REAUTH' || connection.status === 'ERROR') && (
+            <div style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              padding: '12px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              color: '#f59e0b',
+              fontSize: '0.82rem'
+            }}>
+              <HiOutlineExclamationCircle style={{ fontSize: '1.25rem', flexShrink: 0 }} />
+              <span>Authorization has expired for this connection. Reconnect below to resume automated workflows.</span>
+            </div>
+          )}
+
           {/* Connection Name */}
           <label className="abm-form-label">
             Connection Display Name
@@ -364,8 +438,68 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
             />
           </label>
 
-          {/* OAuth Provider Box */}
-          {isOAuth && (
+          {/* OAuth Provider Box or Desktop Browser Waiting State */}
+          {isWaitingDesktopOAuth ? (
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-secondary)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-accent)'
+              }}>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                  style={{ display: 'flex' }}
+                >
+                  <HiOutlineRefresh size={22} />
+                </motion.div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Authorizing {app?.name || connection.appKey} in browser
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginTop: '4px', maxWidth: '320px', lineHeight: 1.4 }}>
+                  Complete authorization in your default browser. This dialog will update and close automatically once finished.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className="conn-btn-primary"
+                  style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onClick={async () => {
+                    if (lastAuthUrl) await openExternalBrowser(lastAuthUrl);
+                  }}
+                >
+                  <HiOutlineExternalLink /> Reopen Browser
+                </button>
+                <button
+                  type="button"
+                  className="conn-modal-btn conn-modal-cancel"
+                  style={{ fontSize: '0.78rem', padding: '6px 12px' }}
+                  onClick={() => setIsWaitingDesktopOAuth(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : isOAuth && (
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>

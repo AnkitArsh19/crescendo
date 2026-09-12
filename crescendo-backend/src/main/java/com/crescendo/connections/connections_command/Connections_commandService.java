@@ -85,7 +85,7 @@ public class Connections_commandService {
         AppKey appKey = AppKey.of(req.appKey());
         App app = appRepository.findById(appKey)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown appKey: " + req.appKey()));
-        validateCredentialsForAuthType(app.getAuthType(), req.credentials());
+        validateCredentialsForAuthType(app, req.credentials());
         var encryptedCredentials = cryptoService.seal(req.credentials());
 
         List<Connections_command> existingList = connectionRepo.findByUser_IdOrderByCreatedAtDesc(userId)
@@ -138,7 +138,7 @@ public class Connections_commandService {
         if (req.credentials() != null) {
             App app = appRepository.findById(AppKey.of(connection.getAppKey()))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown appKey: " + connection.getAppKey()));
-            validateCredentialsForAuthType(app.getAuthType(), req.credentials());
+            validateCredentialsForAuthType(app, req.credentials());
             connection.setCredentials(cryptoService.seal(req.credentials()));
             connection.setStatus(ConnectionStatus.ACTIVE);
         }
@@ -222,6 +222,25 @@ public class Connections_commandService {
                 result.put("message", "Connection failed: " + e.getMessage());
                 logger.warn("[test-connection] {} connection {} — FAILED: {}", appKey, connectionId, e.getMessage());
             }
+        }
+        return result;
+    }
+
+    /**
+     * Tests connection credentials directly before saving.
+     */
+    public Map<String, Object> testCredentials(String appKey, Map<String, Object> credentials) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("provider", appKey);
+        try {
+            String testMessage = performTestCall(appKey, credentials != null ? credentials : Map.of());
+            result.put("success", true);
+            result.put("message", testMessage);
+            logger.info("[test-credentials] {} — OK", appKey);
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", e.getMessage());
+            logger.warn("[test-credentials] {} — FAILED: {}", appKey, e.getMessage());
         }
         return result;
     }
@@ -423,6 +442,191 @@ public class Connections_commandService {
                 yield "Twitter/X: authenticated ✓";
             }
 
+            // ── Mailchimp ──
+            case "mailchimp" -> {
+                String apiKey = getToken(credentials, "apiKey", "accessToken");
+                String dc = "us1";
+                if (apiKey.contains("-")) {
+                    dc = apiKey.substring(apiKey.lastIndexOf('-') + 1);
+                }
+                String basicAuth = java.util.Base64.getEncoder().encodeToString(("anystring:" + apiKey).getBytes());
+                restClient.get()
+                        .uri("https://" + dc + ".api.mailchimp.com/3.0/ping")
+                        .header(HttpHeaders.AUTHORIZATION, "Basic " + basicAuth)
+                        .retrieve().body(String.class);
+                yield "Mailchimp: API key valid ✓";
+            }
+
+            // ── HubSpot ──
+            case "hubspot" -> {
+                String token = getToken(credentials, "apiKey", "accessToken");
+                restClient.get()
+                        .uri("https://api.hubapi.com/crm/v3/objects/contacts?limit=1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(String.class);
+                yield "HubSpot: authenticated ✓";
+            }
+
+            // ── Todoist ──
+            case "todoist" -> {
+                String token = getToken(credentials, "apiKey", "accessToken");
+                restClient.get()
+                        .uri("https://api.todoist.com/rest/v2/projects")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(String.class);
+                yield "Todoist: authenticated ✓";
+            }
+
+            // ── Trello ──
+            case "trello" -> {
+                String key = getToken(credentials, "apiKey", "key");
+                String token = getToken(credentials, "apiToken", "token", "accessToken");
+                restClient.get()
+                        .uri("https://api.trello.com/1/members/me?key=" + key + "&token=" + token)
+                        .retrieve().body(String.class);
+                yield "Trello: authenticated ✓";
+            }
+
+            // ── Asana ──
+            case "asana" -> {
+                String token = getToken(credentials, "accessToken", "apiKey");
+                restClient.get()
+                        .uri("https://app.asana.com/api/1.0/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(String.class);
+                yield "Asana: authenticated ✓";
+            }
+
+            // ── Brevo ──
+            case "brevo" -> {
+                String key = getToken(credentials, "apiKey");
+                restClient.get()
+                        .uri("https://api.brevo.com/v3/account")
+                        .header("api-key", key)
+                        .retrieve().body(String.class);
+                yield "Brevo: authenticated ✓";
+            }
+
+            // ── Dropbox ──
+            case "dropbox" -> {
+                String token = getToken(credentials, "accessToken");
+                restClient.post()
+                        .uri("https://api.dropboxapi.com/2/users/get_current_account")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(String.class);
+                yield "Dropbox: authenticated ✓";
+            }
+
+            // ── Typeform ──
+            case "typeform" -> {
+                String token = getToken(credentials, "accessToken");
+                restClient.get()
+                        .uri("https://api.typeform.com/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().body(String.class);
+                yield "Typeform: authenticated ✓";
+            }
+
+            // ── Weather (OpenWeatherMap) ──
+            case "weather" -> {
+                String key = getToken(credentials, "apiKey");
+                restClient.get()
+                        .uri("https://api.openweathermap.org/data/2.5/weather?q=London&appid=" + key)
+                        .retrieve().body(String.class);
+                yield "Weather: API key valid ✓";
+            }
+
+            // ── Marketstack ──
+            case "marketstack" -> {
+                String key = getToken(credentials, "accessKey", "apiKey");
+                restClient.get()
+                        .uri("https://api.marketstack.com/v1/eod/latest?access_key=" + key + "&symbols=AAPL&limit=1")
+                        .retrieve().body(String.class);
+                yield "Marketstack: access key valid ✓";
+            }
+
+            // ── Giphy ──
+            case "giphy" -> {
+                String key = getToken(credentials, "apiKey");
+                restClient.get()
+                        .uri("https://api.giphy.com/v1/gifs/trending?api_key=" + key + "&limit=1")
+                        .retrieve().body(String.class);
+                yield "Giphy: API key valid ✓";
+            }
+
+            // ── Postgres / PostgreSQL ──
+            case "postgres", "postgresql" -> {
+                String host = str(credentials.getOrDefault("host", "localhost"));
+                String port = str(credentials.getOrDefault("port", "5432"));
+                String database = str(credentials.getOrDefault("database", "postgres"));
+                String user = str(credentials.getOrDefault("user", credentials.get("username")));
+                if (user == null || user.isBlank()) user = "postgres";
+                String password = str(credentials.getOrDefault("password", ""));
+                String sslMode = str(credentials.getOrDefault("sslMode", "prefer"));
+
+                String url = "jdbc:postgresql://" + host + ":" + port + "/" + database + "?sslmode=" + sslMode + "&loginTimeout=6";
+                java.util.Properties props = new java.util.Properties();
+                props.setProperty("user", user);
+                props.setProperty("password", password);
+                try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, props);
+                     java.sql.Statement stmt = conn.createStatement()) {
+                    stmt.setQueryTimeout(5);
+                    stmt.execute("SELECT 1");
+                    yield "Postgres: connected successfully (" + conn.getMetaData().getDatabaseProductVersion() + ") ✓";
+                } catch (Exception e) {
+                    throw new RuntimeException("Postgres connection failed: " + e.getMessage(), e);
+                }
+            }
+
+            // ── MySQL ──
+            case "mysql" -> {
+                String host = str(credentials.getOrDefault("host", "localhost"));
+                String port = str(credentials.getOrDefault("port", "3306"));
+                String database = str(credentials.getOrDefault("database", ""));
+                String user = str(credentials.getOrDefault("username", credentials.get("user")));
+                if (user == null || user.isBlank()) user = "root";
+                String password = str(credentials.getOrDefault("password", ""));
+
+                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?connectTimeout=5000&socketTimeout=5000";
+                try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, password);
+                     java.sql.Statement stmt = conn.createStatement()) {
+                    stmt.setQueryTimeout(5);
+                    stmt.execute("SELECT 1");
+                    yield "MySQL: connected successfully (" + conn.getMetaData().getDatabaseProductVersion() + ") ✓";
+                } catch (Exception e) {
+                    throw new RuntimeException("MySQL connection failed: " + e.getMessage(), e);
+                }
+            }
+
+            // ── Redis ──
+            case "redis" -> {
+                String host = str(credentials.getOrDefault("host", "localhost"));
+                int port = 6379;
+                try {
+                    port = Integer.parseInt(str(credentials.getOrDefault("port", 6379)));
+                } catch (Exception ignored) {}
+                try (java.net.Socket socket = new java.net.Socket()) {
+                    socket.connect(new java.net.InetSocketAddress(host, port), 4000);
+                    yield "Redis: reachable at " + host + ":" + port + " ✓";
+                } catch (Exception e) {
+                    throw new RuntimeException("Redis connection failed: " + e.getMessage(), e);
+                }
+            }
+
+            // ── MongoDB ──
+            case "mongodb", "mongoDb" -> {
+                String uri = str(credentials.get("connectionString"));
+                if (uri == null || uri.isBlank()) {
+                    throw new RuntimeException("MongoDB connection string is required");
+                }
+                try (com.mongodb.client.MongoClient client = com.mongodb.client.MongoClients.create(uri)) {
+                    client.getDatabase("admin").runCommand(new org.bson.Document("ping", 1));
+                    yield "MongoDB: connected successfully ✓";
+                } catch (Exception e) {
+                    throw new RuntimeException("MongoDB connection failed: " + e.getMessage(), e);
+                }
+            }
+
             // ── Default (no-auth apps) ──
             default -> appKey + ": connection OK (no test endpoint available)";
         };
@@ -465,7 +669,8 @@ public class Connections_commandService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Connection not found"));
     }
 
-    private void validateCredentialsForAuthType(AuthType authType, java.util.Map<String, Object> credentials) {
+    private void validateCredentialsForAuthType(App app, java.util.Map<String, Object> credentials) {
+        AuthType authType = app.getAuthType();
         if (authType == AuthType.NONE) {
             if (credentials != null && !credentials.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -476,7 +681,25 @@ public class Connections_commandService {
 
         if (credentials == null || credentials.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Credentials are required for auth type " + authType.name());
+                    "Credentials are required for " + app.getName());
+        }
+
+        // If the app defines a credentialSchema, validate that required fields are present
+        List<Map<String, Object>> schema = app.getCredentialSchema();
+        if (schema != null && !schema.isEmpty()) {
+            for (Map<String, Object> field : schema) {
+                Boolean required = (Boolean) field.getOrDefault("required", false);
+                if (Boolean.TRUE.equals(required)) {
+                    String key = (String) field.get("key");
+                    Object val = credentials.get(key);
+                    if (isBlankValue(val)) {
+                        String label = (String) field.getOrDefault("label", key);
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                label + " is required for " + app.getName());
+                    }
+                }
+            }
+            return;
         }
 
         boolean hasUsableSecret = credentials.entrySet().stream()
@@ -484,7 +707,7 @@ public class Connections_commandService {
 
         if (!hasUsableSecret) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Credentials must include at least one non-empty secret field (e.g., apiKey, accessToken, refreshToken, clientSecret)");
+                    "Credentials must include at least one non-empty credential field (e.g., apiKey, token, password, secret)");
         }
     }
 
@@ -494,6 +717,9 @@ public class Connections_commandService {
         return k.contains("token")
                 || k.contains("secret")
                 || k.contains("apikey")
+                || k.contains("password")
+                || k.contains("connectionstring")
+                || k.contains("key")
                 || k.equals("api_key")
                 || k.equals("apiKey");
     }

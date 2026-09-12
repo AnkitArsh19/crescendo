@@ -1,0 +1,139 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Package Desktop (${{ matrix.platform }})
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: crescendo-frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: crescendo-frontend
+
+      - name: Determine Release Tag
+        id: release_tag
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.tag_name || 'v0.1.0' }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Tauri App & Create/Update Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_API_URL: https://api.crescendo.run
+        with:
+          projectPath: crescendo-frontend
+          tagName: ${{ steps.release_tag.outputs.tag }}
+          releaseName: 'Crescendo Desktop ${{ steps.release_tag.outputs.tag }}'
+          releaseBody: |
+            ### Crescendo Native Desktop Client (${{ steps.release_tag.outputs.tag }})
+            
+            Universal desktop automation client for Windows, macOS, and Linux.
+            Connected to Cloudflare Tunnel production backend (`https://api.crescendo.run`).
+
+            #### Downloads
+            - **Windows**: `crescendo-desktop-setup.exe` (or `Crescendo_*_x64-setup.exe` / `.msi`)
+            - **macOS**: `crescendo-desktop.dmg` (Universal binary for Apple Silicon and Intel)
+            - **Linux**: `crescendo-desktop.AppImage` (or `.deb`)
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Upload Canonical Asset Names for Direct README Downloads (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          EXE_FILE=$(find crescendo-frontend/src-tauri/target/release/bundle/nsis/ -type f -name "*setup.exe" | head -n 1)
+          if [ -n "$EXE_FILE" ]; then
+            cp "$EXE_FILE" crescendo-desktop-setup.exe
+            gh release upload "$TAG" crescendo-desktop-setup.exe --clobber
+          fi
+
+      - name: Upload Canonical Asset Names for Direct README Downloads (macOS)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          DMG_FILE=$(find crescendo-frontend/src-tauri/target/ -type f -name "*.dmg" | head -n 1)
+          if [ -n "$DMG_FILE" ]; then
+            cp "$DMG_FILE" crescendo-desktop.dmg
+            gh release upload "$TAG" crescendo-desktop.dmg --clobber
+          fi
+
+      - name: Upload Canonical Asset Names for Direct README Downloads (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release_tag.outputs.tag }}
+        run: |
+          APPIMAGE_FILE=$(find crescendo-frontend/src-tauri/target/release/bundle/appimage/ -type f -name "*.AppImage" | head -n 1)
+          if [ -n "$APPIMAGE_FILE" ]; then
+            cp "$APPIMAGE_FILE" crescendo-desktop.AppImage
+            gh release upload "$TAG" crescendo-desktop.AppImage --clobber
+          fi

@@ -26,8 +26,7 @@ import java.util.HashMap;
 @Configuration
 @EnableJpaRepositories(
         basePackages = {
-                "com.crescendo.auth.token.email",
-                "com.crescendo.auth.token.password",
+                "com.crescendo.auth.token",
                 "com.crescendo.emailservice.domain",
                 "com.crescendo.user.user_command",
                 "com.crescendo.storage.storage_command",
@@ -54,7 +53,8 @@ import java.util.HashMap;
                 "com.crescendo.execution.suspension",
                 "com.crescendo.emailservice.customevent",
                 "com.crescendo.emailservice.dmarc",
-                "com.crescendo.emailservice.outboundwebhook"
+                "com.crescendo.emailservice.outboundwebhook",
+                "com.crescendo.notification"
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "commandTransactionManager"
@@ -137,8 +137,7 @@ public class CommandDBConfig {
                                 "com.crescendo.emailservice.suppression",
                                 "com.crescendo.webhook",
                                 "com.crescendo.security.mfa",
-                                "com.crescendo.auth.token.email",
-                                "com.crescendo.auth.token.password",
+                                "com.crescendo.auth.token",
                                 "com.crescendo.emailservice.domain",
                                 "com.crescendo.settings.oauth",
                                 "com.crescendo.admin",
@@ -149,7 +148,8 @@ public class CommandDBConfig {
                                 "com.crescendo.execution.suspension",
                                 "com.crescendo.emailservice.customevent",
                                 "com.crescendo.emailservice.dmarc",
-                                "com.crescendo.emailservice.outboundwebhook"
+                                "com.crescendo.emailservice.outboundwebhook",
+                                "com.crescendo.notification"
                         )
                         .properties(props)
                         .build();

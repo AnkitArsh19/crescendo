@@ -37,7 +37,7 @@ public class GiphyApp implements AppDefinition {
 
                 **Authentication:** API Key (create one in the Giphy Developer Portal).
                 """,
-                "https://www.google.com/s2/favicons?domain=giphy.com&sz=128", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=giphy.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "search-gifs", "name", "Search GIFs",
@@ -61,6 +61,9 @@ public class GiphyApp implements AppDefinition {
                                    "placeholder", "10", "helpText", "Number of GIFs"),
                             ratingField))
                 )
-        ).credentialSchema(List.of()).category("fun").helpUrl("https://developers.giphy.com/dashboard/");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true,
+                        "placeholder", "e.g. 1a2b3c4d5e...", "helpText", "Obtain your API key from the Giphy Developer Portal")
+        )).category("fun").helpUrl("https://developers.giphy.com/dashboard/");
     }
 }

@@ -37,10 +37,14 @@ public class GoogleDriveResourceProvider implements ResourceProvider {
     public List<ResourceOption> listResources(Map<String, Object> credentials,
                                                String resourceType,
                                                Map<String, String> params) {
+        if (credentials == null || !credentials.containsKey("accessToken") || credentials.get("accessToken") == null) {
+            logger.warn("[google-drive] Cannot list resources without valid accessToken");
+            return List.of();
+        }
         String accessToken = credentials.get("accessToken").toString();
 
         return switch (resourceType) {
-            case "files" -> listFiles(accessToken, params.get("folderId"), null);
+            case "files" -> listFiles(accessToken, params != null ? params.get("folderId") : null, null);
             case "folders" -> listFiles(accessToken, null, "application/vnd.google-apps.folder");
             case "drives" -> listSharedDrives(accessToken);
             default -> List.of();

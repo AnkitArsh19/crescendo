@@ -2,6 +2,7 @@ package com.crescendo.emailservice;
 
 import com.crescendo.emailservice.provider.EmailMessage;
 import com.crescendo.emailservice.provider.EmailProvider;
+import com.crescendo.emailservice.provider.EmailSendResult;
 import com.crescendo.enums.EmailType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final EmailProvider emailProvider;
 
+    @org.springframework.beans.factory.annotation.Value("${crescendo.mail.from:noreply@crescendo.run}")
+    private String defaultFromEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:https://app.crescendo.run}")
+    private String frontendUrl;
+
     public NotificationServiceImpl(@Qualifier("brevoEmailProvider") EmailProvider emailProvider) {
         this.emailProvider = emailProvider;
     }
@@ -27,7 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             EmailMessage msg = new EmailMessage(
                     to,
-                    from,
+                    from != null ? from : defaultFromEmail,
                     subject,
                     htmlBody,
                     null,
@@ -35,8 +42,14 @@ public class NotificationServiceImpl implements NotificationService {
                     EmailType.TRANSACTIONAL,
                     UUID.randomUUID().toString()
             );
-            emailProvider.send(msg);
-            log.info("Sent transactional email '{}' to {}", subject, to);
+            EmailSendResult result = emailProvider.send(msg);
+            if (result != null && result.success()) {
+                log.info("Sent transactional email '{}' to {}", subject, to);
+            } else {
+                String reason = result != null ? result.error() : "Unknown provider response";
+                log.warn("[EMAIL NOTICE] Email delivery via '{}' for '{}' to {} was not completed: {}",
+                        emailProvider.providerName(), subject, to, reason);
+            }
         } catch (Exception e) {
             log.error("Failed to send transactional email '{}' to {}", subject, to, e);
         }
@@ -44,24 +57,44 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendPasswordResetToken(String email, String plainToken) {
-        String url = "https://app.crescendo.run/auth/reset-password?token=" + plainToken;
-        sendAsync(email, "noreply@crescendo.run", "Reset your Crescendo password", EmailTemplateRenderer.renderPasswordReset(url));
+        String base = (frontendUrl != null ? frontendUrl : "https://app.crescendo.run").replaceAll("/+$", "");
+        String url = base + "/reset-password?token=" + plainToken;
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        log.info("[PASSWORD RESET LINK] For: {}", email);
+        log.info("Reset URL : {}", url);
+        log.info("Raw Token : {}", plainToken);
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        sendAsync(email, defaultFromEmail, "Reset your Crescendo password", EmailTemplateRenderer.renderPasswordReset(url));
     }
 
     @Override
     public void sendEmailVerificationToken(String email, String plainToken) {
-        String url = "https://app.crescendo.run/auth/verify-email?token=" + plainToken;
-        sendAsync(email, "noreply@crescendo.run", "Verify your Crescendo account", EmailTemplateRenderer.renderEmailVerification(url));
+        String base = (frontendUrl != null ? frontendUrl : "https://app.crescendo.run").replaceAll("/+$", "");
+        String url = base + "/verify-email?token=" + plainToken;
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        log.info("[EMAIL VERIFICATION LINK] For: {}", email);
+        log.info("Verify URL: {}", url);
+        log.info("Raw Token : {}", plainToken);
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        sendAsync(email, defaultFromEmail, "Verify your Crescendo account", EmailTemplateRenderer.renderEmailVerification(url));
     }
 
     @Override
     public void sendPasskeyRecoveryLink(String email, String recoveryToken) {
-        String url = "https://app.crescendo.run/auth/recover-passkey?token=" + recoveryToken;
-        sendAsync(email, "noreply@crescendo.run", "Recover your Crescendo passkey", EmailTemplateRenderer.renderPasskeyRecovery(url));
+        String base = (frontendUrl != null ? frontendUrl : "https://app.crescendo.run").replaceAll("/+$", "");
+        String url = base + "/auth/recover-passkey?token=" + recoveryToken;
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        log.info("[PASSKEY RECOVERY LINK] For: {}", email);
+        log.info("Recovery URL: {}", url);
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        sendAsync(email, defaultFromEmail, "Recover your Crescendo passkey", EmailTemplateRenderer.renderPasskeyRecovery(url));
     }
 
     @Override
     public void sendPasswordlessSignupOtp(String email, String otp) {
+        log.info("════════════════════════════════════════════════════════════════════════════════");
+        log.info("[SIGNUP OTP] Code for {}: {}", email, otp);
+        log.info("════════════════════════════════════════════════════════════════════════════════");
         sendAsync(email, "noreply@crescendo.run", "Your Crescendo verification code", EmailTemplateRenderer.renderPasswordlessSignupOtp(otp));
     }
 

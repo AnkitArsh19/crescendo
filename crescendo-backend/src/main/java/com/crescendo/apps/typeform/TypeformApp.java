@@ -51,6 +51,6 @@ public class TypeformApp implements AppDefinition {
                 )
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).altAuthType(AuthType.OAUTH2).category("marketing");
+        )).altAuthType(AuthType.APIKEY).category("marketing");
     }
 }

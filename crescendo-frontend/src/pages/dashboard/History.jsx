@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   HiOutlineClock,
@@ -58,16 +58,22 @@ const statusConfig = {
 
 export default function History() {
   const navigate = useNavigate();
+  const { workflowId: paramWorkflowId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const workflowId = paramWorkflowId || searchParams.get('workflowId') || null;
   const currentPage = parseInt(searchParams.get('page') || '0', 10);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const { runs, page, isLoading, error, fetchAllRuns } = useLogbookStore();
+  const { runs, page, isLoading, error, fetchAllRuns, fetchWorkflowRuns } = useLogbookStore();
   const { data: workflows = [] } = useWorkflowList();
 
   useEffect(() => {
-    fetchAllRuns(currentPage);
-  }, [fetchAllRuns, currentPage]);
+    if (workflowId) {
+      fetchWorkflowRuns(workflowId, currentPage);
+    } else {
+      fetchAllRuns(currentPage);
+    }
+  }, [fetchAllRuns, fetchWorkflowRuns, workflowId, currentPage]);
 
   const workflowNames = {};
   workflows.forEach((w) => { workflowNames[w.id] = w.name; });
@@ -85,8 +91,21 @@ export default function History() {
       {/* Header */}
       <div className="hist-header">
         <div>
-          <h1 className="hist-title">Run History</h1>
+          <h1 className="hist-title">
+            {workflowId && workflowNames[workflowId]
+              ? `Run History: ${workflowNames[workflowId]}`
+              : 'Run History'}
+          </h1>
           <p className="hist-subtitle">
+            {workflowId && (
+              <span className="hist-filter-pill">
+                Filtered to <strong>{workflowNames[workflowId] || 'this workflow'}</strong>
+                <Link to="/dashboard/history" className="hist-clear-btn" title="View runs for all workflows">
+                  ✕ Clear
+                </Link>
+                {' • '}
+              </span>
+            )}
             {page ? `${page.totalElements} total run${page.totalElements !== 1 ? 's' : ''}` : 'Loading...'}
           </p>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+import { redirectToDesktopHandoff } from '../../utils/desktopAuth';
 
 /**
  * Handles the redirect from the backend after a successful OAuth login.
@@ -19,13 +20,33 @@ export default function OAuthCallback() {
     const expiresAt = params.get('expires_at');
 
     if (accessToken) {
-      // Store the access token in zustand
+      // Check if this flow originated from the desktop app (via param, sessionStorage, or cookie)
+      const searchParams = new URLSearchParams(window.location.search);
+      const cookies = typeof document !== 'undefined' ? document.cookie.split(';').map(c => c.trim()) : [];
+      const hasDesktopCookie = cookies.some(c => c.startsWith('crescendo_from_desktop=true'));
+      const fromDesktop = searchParams.get('from') === 'desktop' || 
+                          sessionStorage.getItem('crescendo_from_desktop') === 'true' ||
+                          hasDesktopCookie;
+
+      // Maintain valid web session in zustand as well
       useAuthStore.setState({
         accessToken,
         accessExpiresAt: expiresAt,
       });
 
-      // Now fetch user profile using the token, then redirect
+      if (fromDesktop) {
+        checkAuth().catch(() => {});
+        redirectToDesktopHandoff(navigate, accessToken);
+        return;
+      }
+
+      // Store the access token in zustand for web browser
+      useAuthStore.setState({
+        accessToken,
+        accessExpiresAt: expiresAt,
+      });
+
+      // Now fetch user profile using the token, then redirect to web dashboard
       checkAuth().then(() => {
         navigate('/dashboard', { replace: true, state: { justLoggedIn: true } });
       });

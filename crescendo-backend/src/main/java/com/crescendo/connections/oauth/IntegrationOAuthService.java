@@ -370,6 +370,18 @@ public class IntegrationOAuthService {
             Connections_command existing = connectionRepo.findByIdAndUser_Id(reconnectConnectionId, userId)
                     .orElse(null);
             if (existing != null) {
+                // If the provider (e.g. Google) did not re-issue a refresh_token during reconnection, retain the existing one
+                if (!credentials.containsKey("refreshToken") || credentials.get("refreshToken") == null) {
+                    try {
+                        Map<String, Object> oldCreds = cryptoService.open(existing.getCredentials());
+                        if (oldCreds.containsKey("refreshToken") && oldCreds.get("refreshToken") != null) {
+                            credentials.put("refreshToken", oldCreds.get("refreshToken"));
+                            encryptedCredentials = cryptoService.seal(credentials);
+                        }
+                    } catch (Exception e) {
+                        logger.warn("[oauth] Could not preserve previous refreshToken for connection {}: {}", reconnectConnectionId, e.getMessage());
+                    }
+                }
                 existing.setCredentials(encryptedCredentials);
                 existing.setName(connectionName);
                 existing.setStatus(ConnectionStatus.ACTIVE);
@@ -657,9 +669,24 @@ public class IntegrationOAuthService {
             }
 
         } else if ("linear".equals(providerKey)) {
-            // Linear uses GraphQL — skip for now, just use generic name
-            identity.put("displayName", null);
-            identity.put("email", null);
+            try {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(asStr(credentials.get("accessToken")));
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                Map<String, String> body = Map.of("query", "{ viewer { id name email } }");
+                HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
+                ResponseEntity<Map> resp = restTemplate.exchange("https://api.linear.app/graphql", HttpMethod.POST, request, Map.class);
+                if (resp.getBody() != null && resp.getBody().get("data") instanceof Map data) {
+                    if (data.get("viewer") instanceof Map viewer) {
+                        identity.put("displayName", asStr(viewer.get("name")));
+                        identity.put("email", asStr(viewer.get("email")));
+                    }
+                }
+            } catch (Exception e) {
+                logger.warn("Could not fetch Linear viewer identity: {}", e.getMessage());
+                identity.put("displayName", null);
+                identity.put("email", null);
+            }
         }
 
         return identity;

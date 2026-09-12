@@ -92,7 +92,7 @@ export function createDraftStore() {
         reset(newRevision = null) {
             changedNodeIds = new Set();
             deletedBackendIds = new Set();
-            if (newRevision) serverRevision = newRevision;
+            if (newRevision != null) serverRevision = newRevision;
         },
 
         /**

@@ -29,7 +29,7 @@ public class MarketstackApp implements AppDefinition {
 
                 **Authentication:** API Key (create one on the Marketstack dashboard).
                 """,
-                "https://www.google.com/s2/favicons?domain=marketstack.com&sz=128", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=marketstack.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "marketstack:eod:getLatest", "name", "Latest EOD",
@@ -40,6 +40,9 @@ public class MarketstackApp implements AppDefinition {
                                         Map.of("key", "limit", "label", "Limit", "type", "text", "required", false,
                                                 "placeholder", "10")))
                 )
-        ).credentialSchema(List.of()).category("finance").helpUrl("https://marketstack.com/documentation");
+        ).credentialSchema(List.of(
+                Map.of("key", "accessKey", "label", "Access Key", "type", "password", "required", true,
+                        "placeholder", "e.g. 1a2b3c4d5e...", "helpText", "Obtain your API access_key from the Marketstack dashboard")
+        )).category("finance").helpUrl("https://marketstack.com/documentation");
     }
 }

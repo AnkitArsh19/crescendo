@@ -14,13 +14,18 @@ import {
     HiOutlineDocumentText,
     HiOutlineLightningBolt,
     HiOutlineRefresh,
+    HiOutlineCheckCircle,
+    HiOutlineExclamationCircle,
 } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { appCatalogApi } from '../../../api/appCatalogApi';
+import { connectionsApi } from '../../../api/connectionsApi';
 import useConnectionStore from '../../../store/connectionStore';
 import api from '../../../api/axios';
+import { isTauri } from '../../../utils/platform';
+import { openExternalBrowser } from '../../../utils/desktopAuth';
 import './AppBrowserModal.css';
 
 const markdownComponents = {
@@ -67,6 +72,8 @@ export default function AppBrowserModal({
     const [credentials, setCredentials] = useState({});
     const [showPasswords, setShowPasswords] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
+    const [testResult, setTestResult] = useState(null);
 
     const visibleApps = useMemo(() => {
         if (!apps || !Array.isArray(apps)) return [];
@@ -95,8 +102,33 @@ export default function AppBrowserModal({
     }, [initialAppKey, visibleApps]);
     const [platformKeyApps, setPlatformKeyApps] = useState(new Set());
     const [actionSearch, setActionSearch] = useState('');
+    const [isWaitingDesktopOAuth, setIsWaitingDesktopOAuth] = useState(false);
+    const [lastAuthUrl, setLastAuthUrl] = useState(null);
     const searchRef = useRef(null);
     const { createConnection } = useConnectionStore();
+
+    useEffect(() => {
+        const handleConnectionUpdated = async (ev) => {
+            setIsWaitingDesktopOAuth(false);
+            const conns = await connectionsApi.list().catch(() => []);
+            onConnected?.(ev?.detail?.data);
+            if (detailApp && !connectOnly) {
+                const targetId = ev?.detail?.connectionId;
+                const matching = targetId
+                    ? conns.find((c) => c.id === targetId)
+                    : conns.find((c) => c.appKey === detailApp.appKey);
+                onSelect?.(detailApp, 'PERSONAL', matching?.id || targetId, matching?.name || ev?.detail?.connectionName);
+                onClose?.();
+            } else if (connectOnly) {
+                onClose?.();
+            }
+            setDetailApp(null);
+            setActiveConnectMode(null);
+        };
+
+        window.addEventListener('crescendo-connection-updated', handleConnectionUpdated);
+        return () => window.removeEventListener('crescendo-connection-updated', handleConnectionUpdated);
+    }, [detailApp, connectOnly, onConnected, onSelect, onClose]);
 
     const categories = useMemo(() => {
         const cats = new Set();
@@ -268,9 +300,16 @@ export default function AppBrowserModal({
     const handleOpenOptions = (e, app, defaultTab = 'overview') => {
         e?.stopPropagation();
         setConnectError(null);
+        setTestResult(null);
         setDetailApp(app);
         setDetailSection(defaultTab);
-        setActiveConnectMode(null);
+        const hasOAuth = app.authType === 'OAUTH2' || app.altAuthType === 'OAUTH2';
+        const hasApiKey = app.authType === 'APIKEY' || app.altAuthType === 'APIKEY' || (app.credentialSchema && app.credentialSchema.length > 0);
+        if (defaultTab === 'connection' && !hasOAuth && hasApiKey) {
+            setActiveConnectMode('APIKEY');
+        } else {
+            setActiveConnectMode(null);
+        }
         setName(`My ${app.name}`);
         setCredentials({});
         setActionSearch('');
@@ -286,9 +325,10 @@ export default function AppBrowserModal({
             return;
         }
 
-        if (app.authType === 'OAUTH2') {
+        if (app.authType === 'OAUTH2' || app.altAuthType === 'OAUTH2') {
             setName(`My ${app.name}`);
             setDetailApp(app);
+            setDetailSection('connection');
             startOAuth(app);
             return;
         }
@@ -302,6 +342,13 @@ export default function AppBrowserModal({
         try {
             const providerKey = app.appKey;
             const { authorizationUrl } = await appCatalogApi.getOAuthUrl(providerKey, opts);
+            setLastAuthUrl(authorizationUrl);
+
+            if (isTauri()) {
+                setIsWaitingDesktopOAuth(true);
+                await openExternalBrowser(authorizationUrl);
+                return;
+            }
 
             const popup = window.open(authorizationUrl, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
             if (popup) {
@@ -411,13 +458,34 @@ export default function AppBrowserModal({
         }
     };
 
+    const handleTestCredentials = async () => {
+        setIsTesting(true);
+        setTestResult(null);
+        setConnectError(null);
+        try {
+            const res = await connectionsApi.testRaw({
+                appKey: detailApp.appKey,
+                name: name.trim() || `My ${detailApp.name}`,
+                credentials,
+            });
+            setTestResult(res);
+        } catch (e) {
+            setTestResult({
+                success: false,
+                message: e.response?.data?.message || 'Connection test failed',
+            });
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
     // ── Detail / Options View Rendering ──────────────────────────────────────
     if (detailApp) {
         const isConnected = connectedAppKeys.has(detailApp.appKey);
         const existingConnection = connections.find((c) => c.appKey === detailApp.appKey);
         const hasSchema = detailApp.credentialSchema && detailApp.credentialSchema.length > 0;
         const hasApiKey = detailApp.authType === 'APIKEY' || detailApp.altAuthType === 'APIKEY' || hasSchema;
-        const hasOAuth = detailApp.authType === 'OAUTH2';
+        const hasOAuth = detailApp.authType === 'OAUTH2' || detailApp.altAuthType === 'OAUTH2';
         const isNoAuth = detailApp.authType === 'NONE';
         const hasPlatformKey = Boolean((detailApp.hasPlatformKey || platformKeyApps.has(detailApp.appKey)) && !connectOnly);
 
@@ -457,12 +525,15 @@ export default function AppBrowserModal({
             });
         }
         if (hasApiKey) {
+            const isDatabase = detailApp.category === 'database';
             methods.push({
                 id: 'APIKEY',
-                title: hasSchema ? 'API Credentials' : 'API Key / Token',
+                title: isDatabase ? 'Database Credentials' : (hasSchema ? 'API Credentials' : 'API Key / Token'),
                 badge: hasOAuth ? 'Manual' : 'Direct',
                 badgeClass: hasOAuth ? 'badge-manual' : 'badge-direct',
-                description: `Authenticate using your ${detailApp.name} API key or personal access token.`,
+                description: isDatabase
+                    ? `Authenticate using your ${detailApp.name} host, port, database, and credentials.`
+                    : `Authenticate using your ${detailApp.name} API key or personal access token.`,
                 icon: <HiOutlineKey />,
             });
         }
@@ -513,7 +584,7 @@ export default function AppBrowserModal({
                                     {activeConnectMode === 'CUSTOM_OAUTH2'
                                         ? `Custom OAuth · ${detailApp.name}`
                                         : activeConnectMode === 'APIKEY'
-                                        ? `API Credentials · ${detailApp.name}`
+                                        ? (detailApp.category === 'database' ? `Database Credentials · ${detailApp.name}` : `API Credentials · ${detailApp.name}`)
                                         : `${detailApp.name}`}
                                 </span>
                             </div>
@@ -569,6 +640,33 @@ export default function AppBrowserModal({
 
                         {/* Error Toast */}
                         {connectError && <div className="abm-error-toast">{connectError}</div>}
+
+                        {/* Desktop OAuth Waiting Banner */}
+                        {isWaitingDesktopOAuth && (
+                            <div style={{
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                borderRadius: 8,
+                                padding: '14px 18px',
+                                margin: '0 24px 16px',
+                                textAlign: 'center'
+                            }}>
+                                <div style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-accent)', marginBottom: 4 }}>
+                                    Authorizing in your default browser…
+                                </div>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 10px 0' }}>
+                                    Please approve permissions in your browser. This window will connect automatically once completed.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="abm-btn-secondary"
+                                    onClick={() => setIsWaitingDesktopOAuth(false)}
+                                    style={{ fontSize: '0.78rem', padding: '4px 12px' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
 
                         {/* Detail Navigation Tabs */}
                         {!activeConnectMode && (
@@ -839,6 +937,63 @@ export default function AppBrowserModal({
                                             </button>
                                         ))}
                                     </div>
+                                ) : isWaitingDesktopOAuth ? (
+                                    /* Desktop Browser Waiting State */
+                                    <div className="abm-oauth-direct-box" style={{ textAlign: 'center', padding: '32px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+                                        <div style={{
+                                            width: 56,
+                                            height: 56,
+                                            borderRadius: '50%',
+                                            background: 'rgba(59, 130, 246, 0.1)',
+                                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            position: 'relative'
+                                        }}>
+                                            <motion.div
+                                                animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                                                transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    borderRadius: '50%',
+                                                    background: 'rgba(59, 130, 246, 0.2)'
+                                                }}
+                                            />
+                                            <HiOutlineExternalLink style={{ fontSize: '1.5rem', color: 'var(--text-accent)', zIndex: 1 }} />
+                                        </div>
+
+                                        <div>
+                                            <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                Authorizing {detailApp.name} in browser
+                                            </h4>
+                                            <p style={{ margin: '6px 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, maxWidth: '340px' }}>
+                                                We opened {detailApp.name} in your default browser. Complete authorization and Crescendo Desktop will automatically connect.
+                                            </p>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                                            <button
+                                                type="button"
+                                                className="abm-btn-primary"
+                                                style={{ padding: '8px 16px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                onClick={async () => {
+                                                    if (lastAuthUrl) await openExternalBrowser(lastAuthUrl);
+                                                }}
+                                            >
+                                                <HiOutlineRefresh /> Reopen Browser
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="abm-btn-secondary"
+                                                style={{ padding: '8px 16px', fontSize: '0.84rem' }}
+                                                onClick={() => setIsWaitingDesktopOAuth(false)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
                                 ) : activeConnectMode === 'OAUTH2' ? (
                                     /* 1-Click OAuth Box */
                                     <div className="abm-oauth-direct-box">
@@ -1003,12 +1158,25 @@ export default function AppBrowserModal({
                                             )
                                         )}
 
-                                        <div className="abm-security-note">
-                                            <HiOutlineShieldCheck />
-                                            <span>Credentials are encrypted with AES-256-GCM before storage.</span>
-                                        </div>
+                                        {testResult && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '10px 14px',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontSize: '0.82rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                background: testResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                                border: testResult.success ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)',
+                                                color: testResult.success ? '#10b981' : '#ef4444',
+                                            }}>
+                                                {testResult.success ? <HiOutlineCheckCircle style={{ fontSize: '1.25rem', flexShrink: 0 }} /> : <HiOutlineExclamationCircle style={{ fontSize: '1.25rem', flexShrink: 0 }} />}
+                                                <span>{testResult.message}</span>
+                                            </div>
+                                        )}
 
-                                        <div className="abm-form-footer">
+                                        <div className="abm-form-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '16px' }}>
                                             <button
                                                 type="button"
                                                 className="abm-btn-secondary"
@@ -1017,15 +1185,29 @@ export default function AppBrowserModal({
                                             >
                                                 Back
                                             </button>
-                                            <button
-                                                type="button"
-                                                className="abm-btn-primary"
-                                                onClick={activeConnectMode === 'CUSTOM_OAUTH2' ? handleOAuthConnectFromForm : handleCreateConnection}
-                                                disabled={isSubmitting}
-                                                title={`Save and connect ${detailApp.name}`}
-                                            >
-                                                {isSubmitting ? 'Connecting…' : (activeConnectMode === 'CUSTOM_OAUTH2' ? 'Authorize Custom App' : 'Save Connection')}
-                                            </button>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {activeConnectMode === 'APIKEY' && (
+                                                    <button
+                                                        type="button"
+                                                        className="abm-btn-secondary"
+                                                        style={{ borderColor: 'var(--brand-primary, #6366f1)', color: 'var(--brand-primary, #6366f1)' }}
+                                                        onClick={handleTestCredentials}
+                                                        disabled={isTesting || isSubmitting}
+                                                        title="Test connection with current credentials"
+                                                    >
+                                                        {isTesting ? 'Testing…' : 'Test Connection'}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="abm-btn-primary"
+                                                    onClick={activeConnectMode === 'CUSTOM_OAUTH2' ? handleOAuthConnectFromForm : handleCreateConnection}
+                                                    disabled={isSubmitting || isTesting}
+                                                    title={`Save and connect ${detailApp.name}`}
+                                                >
+                                                    {isSubmitting ? 'Connecting…' : (activeConnectMode === 'CUSTOM_OAUTH2' ? 'Authorize Custom App' : 'Save Connection')}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -1199,7 +1381,7 @@ export default function AppBrowserModal({
                                                                 Options
                                                             </button>
                                                         </>
-                                                    ) : needsAuth && app.authType === 'OAUTH2' ? (
+                                                    ) : needsAuth ? (
                                                         <>
                                                             <button
                                                                 type="button"

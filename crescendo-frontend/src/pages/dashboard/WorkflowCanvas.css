@@ -126,14 +126,16 @@
 .canvas-page {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 0px);
+    height: 100%;
+    min-height: 0;
+    flex: 1;
     overflow: hidden;
     position: relative;
 }
 
 /* ── Top Bar ── */
 .canvas-topbar {
-    height: 50px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -148,7 +150,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    min-width: 200px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 360px;
 }
 
 .canvas-topbar-center {
@@ -159,13 +163,15 @@
     background: var(--bg-card);
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-full);
+    flex-shrink: 0;
 }
 
 .canvas-topbar-right {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-width: 200px;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: flex-end;
 }
 
@@ -198,6 +204,9 @@
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background var(--transition-fast);
+    min-width: 0;
+    max-width: clamp(160px, 22vw, 320px);
+    overflow: hidden;
 }
 
 .canvas-name-display:hover {
@@ -208,11 +217,16 @@
     font-size: 0.88rem;
     font-weight: 600;
     color: var(--text-accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .canvas-name-edit-icon {
     font-size: 0.68rem;
     color: var(--text-tertiary);
+    flex-shrink: 0;
 }
 
 .canvas-name-display:hover .canvas-name-edit-icon {
@@ -223,6 +237,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
 }
 
 .canvas-name-input {
@@ -235,7 +250,8 @@
     border: 1px solid var(--border-hover);
     border-radius: var(--radius-sm);
     outline: none;
-    width: 180px;
+    width: min(280px, 45vw);
+    min-width: 140px;
 }
 
 .canvas-name-save {
@@ -1440,7 +1456,34 @@
     }
 
     .cpb-input-with-vars .cpb-input:not(textarea) {
-        padding-right: 100px !important;
+        padding-right: 105px !important;
+    }
+
+    .cpb-textarea-field-wrap {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        position: relative;
+    }
+
+    .cpb-field-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        padding: 0 2px;
+    }
+
+    .cpb-field-toolbar-hint {
+        font-size: 0.72rem;
+        color: var(--text-tertiary);
+        font-weight: 500;
+        letter-spacing: 0.2px;
+    }
+
+    .cpb-field-toolbar .var-insert {
+        position: static !important;
+        margin: 0 !important;
     }
 
     .var-insert {
@@ -3152,7 +3195,7 @@
     @media (max-width: 760px) {
         .canvas-topbar {
             height: auto;
-            min-height: 50px;
+            min-height: 60px;
             flex-wrap: wrap;
             gap: 4px;
             padding: 6px 10px;

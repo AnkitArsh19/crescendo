@@ -543,6 +543,6 @@ Salesforce is the world's leading cloud-based CRM software. It provides customer
                 Map.of("key", "instanceUrl", "label", "Instance URL", "type", "text", "required", true, "placeholder", "https://your-domain.my.salesforce.com"),
                 Map.of("key", "accessToken", "label", "Access Token", "type", "password", "required", true),
                 Map.of("key", "apiVersion", "label", "API Version", "type", "text", "required", false, "placeholder", "v60.0")
-        )).altAuthType(AuthType.OAUTH2).category("crm");
+        )).altAuthType(AuthType.APIKEY).category("crm");
     }
 }

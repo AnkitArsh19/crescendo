@@ -32,6 +32,22 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
 
 		Optional<UserSession> findByRefreshTokenHash(String refreshTokenHash);
 
+	/**
+	 * Returns the active session that was created by rotating the token identified by
+	 * {@code predecessorHash}. Used by rotation-reuse detection to confirm that this exact
+	 * revoked token is the direct predecessor in the rotation chain — not just any recently
+	 * revoked token for the same user. This scoping is what prevents the user-wide timing
+	 * window vulnerability (documented in django-oauth-toolkit #1617).
+	 */
+	@Query("""
+			select s from UserSession s
+			where s.predecessorTokenHash = :hash
+			  and s.revokedAt is null
+			  and s.expiresAt > :now
+			""")
+	Optional<UserSession> findActiveSuccessorByPredecessorHash(@org.springframework.data.repository.query.Param("hash") String hash, Instant now);
+
+
     /**
      * Gets the user's most recent sessions to check device/location history for login alerts.
      */

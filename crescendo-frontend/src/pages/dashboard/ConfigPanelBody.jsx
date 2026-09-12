@@ -15,6 +15,8 @@ import { HiOutlineBolt } from 'react-icons/hi2';
 import ConditionRuleBuilder from './nodes/ConditionRuleBuilder';
 import { DateTimePickerField } from './fields/DateTimePickerField';
 import { FileOrUrlField } from './fields/FileOrUrlField';
+import { isTauri } from '../../utils/platform';
+import { openExternalBrowser } from '../../utils/desktopAuth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Common output fields per app — used when we don't have real test data yet
@@ -587,7 +589,7 @@ function getOutputFieldsForApp(appKey, isTriggerStep) {
 // DynamicDropdownField — uses SearchableSelect + resourceApi
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DynamicDropdownField({ field, appKey, connectionId, credentialSource, config, value, onChange }) {
+function DynamicDropdownField({ field, appKey, connectionId, credentialSource, config, value, onChange, hasPlatformKey, selectedConnections }) {
     const [options, setOptions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -595,22 +597,29 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
     const [aiMismatch, setAiMismatch] = useState(false);
     const prevParamsRef = useRef('');
 
-    // In ADMIN_KEY mode, pass the sentinel string; the backend will resolve the platform bot token
-    const effectiveConnectionId = (credentialSource === 'ADMIN_KEY' || (!connectionId && credentialSource !== 'PERSONAL'))
-        ? 'ADMIN_KEY'
-        : connectionId;
+    // Safely determine effective connection ID:
+    // 1. Explicit connectionId set on step
+    // 2. If platform-key app (Telegram, Gemini, Sarvam) and in ADMIN_KEY mode
+    // 3. Fallback to user's first active connection for this app if not yet assigned
+    const fallbackConnId = (!connectionId && !hasPlatformKey && selectedConnections?.length > 0)
+        ? selectedConnections[0].id
+        : null;
+
+    const effectiveConnectionId = connectionId
+        || (hasPlatformKey && (credentialSource === 'ADMIN_KEY' || !credentialSource) ? 'ADMIN_KEY' : null)
+        || fallbackConnId;
 
     const dependsOn = Array.isArray(field.dependsOn) ? field.dependsOn : [];
 
-    const canFetch = appKey && effectiveConnectionId && field.resourceType
-        && dependsOn.every((dep) => config[dep]);
+    const canFetch = Boolean(appKey && effectiveConnectionId && field.resourceType
+        && dependsOn.every((dep) => config[dep]));
 
     const fetchOptions = useCallback(async () => {
         if (!canFetch) return;
         const params = {};
         dependsOn.forEach((dep) => { params[dep] = config[dep]; });
 
-        const paramKey = JSON.stringify(params);
+        const paramKey = `${effectiveConnectionId}:${JSON.stringify(params)}`;
         if (paramKey === prevParamsRef.current) return;
         prevParamsRef.current = paramKey;
 
@@ -658,7 +667,7 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
         } finally {
             setLoading(false);
         }
-    }, [canFetch, appKey, connectionId, field.resourceType, field.dependsOn, config, value, onChange]);
+    }, [canFetch, appKey, effectiveConnectionId, field.resourceType, field.dependsOn, config, value, onChange]);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchOptions(); }, [fetchOptions]);
@@ -671,6 +680,17 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
             prevParamsRef.current = '';
         }
     }, [canFetch]);
+
+    if (!effectiveConnectionId && !hasPlatformKey) {
+        return (
+            <SearchableSelect
+                options={[]}
+                value=""
+                placeholder={selectedConnections?.length > 0 ? `Select account in Setup to choose ${field.label.toLowerCase()}…` : `Connect account in Setup to choose ${field.label.toLowerCase()}…`}
+                disabled
+            />
+        );
+    }
 
     if (!canFetch && field.dependsOn.length > 0) {
         return (
@@ -730,10 +750,19 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
                             try {
                                 const { authorizationUrl } = await appCatalogApi.getOAuthUrl('discord');
                                 if (authorizationUrl) {
-                                    window.open(authorizationUrl, '_blank', 'width=600,height=700');
+                                    if (isTauri()) {
+                                        await openExternalBrowser(authorizationUrl);
+                                    } else {
+                                        window.open(authorizationUrl, '_blank', 'width=600,height=700');
+                                    }
                                 }
                             } catch {
-                                window.open('https://discord.com/oauth2/authorize?client_id=1482384946461937777&scope=bot&permissions=534723950672', '_blank', 'width=600,height=700');
+                                const fallbackUrl = 'https://discord.com/oauth2/authorize?client_id=1482384946461937777&scope=bot&permissions=534723950672';
+                                if (isTauri()) {
+                                    await openExternalBrowser(fallbackUrl);
+                                } else {
+                                    window.open(fallbackUrl, '_blank', 'width=600,height=700');
+                                }
                             }
                         }}
                         title="Open Discord to invite the bot to another server"
@@ -1136,7 +1165,7 @@ function LogicRuleBuilder({ field, value, onChange, availableVariables }) {
     );
 }
 
-function DynamicField({ field, appKey, connectionId, credentialSource, config, value, onChange, availableVariables }) {
+function DynamicField({ field, appKey, connectionId, credentialSource, config, value, onChange, availableVariables, appDetail, selectedConnections }) {
     const inputRef = useRef(null);
 
     // Insert variable template at cursor position or append
@@ -1172,6 +1201,8 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
                     field={field} appKey={appKey} connectionId={connectionId}
                     credentialSource={credentialSource}
                     config={config} value={value} onChange={onChange}
+                    hasPlatformKey={Boolean(appDetail?.hasPlatformKey)}
+                    selectedConnections={selectedConnections}
                 />
             );
 
@@ -1214,14 +1245,21 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
                 </div>
             );
         }
-
         case 'dropdown':
             return (
                 <SearchableSelect
                     options={(field.options || []).map((opt) =>
-                        typeof opt === 'string' ? { id: opt, label: opt } : { id: opt.value, label: opt.label }
+                        typeof opt === 'string'
+                            ? { id: opt, label: opt }
+                            : {
+                                id: opt.id ?? opt.value ?? opt.label,
+                                label: opt.label ?? opt.name ?? opt.id ?? opt.value,
+                                description: opt.description,
+                                disabled: opt.disabled,
+                                tooltip: opt.tooltip,
+                            }
                     )}
-                    value={value || ''}
+                    value={value ?? field.default ?? ''}
                     onChange={onChange}
                     placeholder={`Select ${field.label}…`}
                     searchable={field.options?.length > 6}
@@ -1232,14 +1270,14 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
             return (
                 <select
                     className="cpb-input cpb-select"
-                    value={value || ''}
+                    value={value ?? field.default ?? ''}
                     onChange={(e) => onChange(e.target.value)}
                 >
-                    {(field.options || []).map((opt) => {
-                        const optVal = typeof opt === 'string' ? opt : (opt.value ?? '');
-                        const optLabel = typeof opt === 'string' ? opt : (opt.label || opt.value || '');
+                    {(field.options || []).map((opt, idx) => {
+                        const optVal = typeof opt === 'string' ? opt : (opt.id ?? opt.value ?? opt.label ?? '');
+                        const optLabel = typeof opt === 'string' ? opt : (opt.label ?? opt.name ?? opt.id ?? opt.value ?? '');
                         return (
-                            <option key={optVal} value={optVal}>{optLabel}</option>
+                            <option key={optVal || `sel-${idx}`} value={optVal}>{optLabel}</option>
                         );
                     })}
                 </select>
@@ -1247,7 +1285,13 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
 
         case 'textarea':
             return (
-                <div className="cpb-input-with-vars">
+                <div className="cpb-textarea-field-wrap">
+                    {hasVars && (
+                        <div className="cpb-field-toolbar">
+                            <span className="cpb-field-toolbar-hint">Supports dynamic variables</span>
+                            <VariableInsertButton availableVariables={availableVariables} onInsert={handleInsertVariable} />
+                        </div>
+                    )}
                     <textarea
                         ref={inputRef}
                         className="cpb-input cpb-textarea"
@@ -1255,7 +1299,6 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
                         placeholder={field.placeholder}
                         onChange={(e) => onChange(e.target.value)}
                     />
-                    {hasVars && <VariableInsertButton availableVariables={availableVariables} onInsert={handleInsertVariable} />}
                 </div>
             );
 
@@ -1283,7 +1326,13 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
 
         case 'json':
             return (
-                <div className="cpb-input-with-vars">
+                <div className="cpb-textarea-field-wrap">
+                    {hasVars && (
+                        <div className="cpb-field-toolbar">
+                            <span className="cpb-field-toolbar-hint">Supports dynamic variables</span>
+                            <VariableInsertButton availableVariables={availableVariables} onInsert={handleInsertVariable} />
+                        </div>
+                    )}
                     <textarea
                         ref={inputRef}
                         className="cpb-input cpb-json"
@@ -1291,7 +1340,6 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
                         placeholder={field.placeholder || '{}'}
                         onChange={(e) => onChange(e.target.value)}
                     />
-                    {hasVars && <VariableInsertButton availableVariables={availableVariables} onInsert={handleInsertVariable} />}
                 </div>
             );
 
@@ -1439,7 +1487,7 @@ export default function ConfigPanelBody({
         if (!data.configuration || Object.keys(data.configuration).length === 0) {
             updates.configuration = {
                 provider: "gemini",
-                model: "gemini-3.5-flash-lite",
+                model: "gemini-3.8-flash",
                 systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
                 prompt: "{{steps.1.data}}",
                 temperature: 0.7,
@@ -1462,20 +1510,20 @@ export default function ConfigPanelBody({
         if (isAgentNode) {
             const currentProvider = data.configuration?.provider || 'gemini';
             let modelOptions = [
-                { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Recommended - High Quota 500 RPD)' },
-                { id: 'gemma-4-26b', label: 'Gemma 4 26B (High Throughput - 14.4K RPD)' },
-                { id: 'gemma-4-31b', label: 'Gemma 4 31B (Deep Reasoning - 14.4K RPD)' },
-                { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Agentic Reasoning)' },
+                { id: 'gemini-3.8-flash', value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Agentic Reasoning)' },
+                { id: 'gemini-3.5-flash-lite', value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Recommended - High Quota 500 RPD)' },
+                { id: 'gemma-4-26b', value: 'gemma-4-26b', label: 'Gemma 4 26B (High Throughput - 14.4K RPD)' },
+                { id: 'gemma-4-31b', value: 'gemma-4-31b', label: 'Gemma 4 31B (Deep Reasoning - 14.4K RPD)' },
             ];
             if (currentProvider === 'openai') {
                 modelOptions = [
-                    { id: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
-                    { id: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast)' },
+                    { id: 'gpt-4o', value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
+                    { id: 'gpt-4o-mini', value: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast)' },
                 ];
             } else if (currentProvider === 'groq') {
                 modelOptions = [
-                    { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)' },
-                    { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Groq)' },
+                    { id: 'llama-3.3-70b-versatile', value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Groq)' },
+                    { id: 'llama-3.1-8b-instant', value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Groq)' },
                 ];
             }
 
@@ -1486,9 +1534,9 @@ export default function ConfigPanelBody({
                     type: 'dropdown',
                     required: true,
                     options: [
-                        { id: 'gemini', label: 'Google Gemini (Platform Default / Connected Key)' },
-                        { id: 'openai', label: 'OpenAI (Requires Connected Account)' },
-                        { id: 'groq', label: 'Groq (Requires Connected Account)' },
+                        { id: 'gemini', value: 'gemini', label: 'Google Gemini (Platform Default / Connected Key)' },
+                        { id: 'openai', value: 'openai', label: 'OpenAI (Requires Connected Account)' },
+                        { id: 'groq', value: 'groq', label: 'Groq (Requires Connected Account)' },
                     ],
                     default: 'gemini',
                     helpText: 'Select AI provider: Google Gemini (default / platform key), OpenAI (BYOK), or Groq (BYOK).'
@@ -1497,8 +1545,9 @@ export default function ConfigPanelBody({
                     key: 'model',
                     label: 'Model',
                     type: 'dropdown',
+                    dependsOn: 'provider',
                     options: modelOptions,
-                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.5-flash-lite'),
+                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.8-flash'),
                     helpText: 'The LLM used for multi-step reasoning and function calling.'
                 },
                 {
@@ -1586,6 +1635,19 @@ export default function ConfigPanelBody({
     const selectedCatalogApp = (catalogApps || []).find((a) => a.appKey === data.appKey);
     const isNoAuthApp = selectedCatalogApp?.authType === 'NONE';
 
+    // ── Auto-bind single connection if not set ──
+    useEffect(() => {
+        if (data.appKey && !data.connectionId && !appDetail?.hasPlatformKey && !isNoAuthApp && selectedConnections.length === 1) {
+            const singleConn = selectedConnections[0];
+            updateNodeData(configNode.id, {
+                connectionId: singleConn.id,
+                account: singleConn.id,
+                accountName: singleConn.accountEmail || singleConn.accountDisplayName || singleConn.name || '',
+                credentialSource: 'PERSONAL',
+            });
+        }
+    }, [data.appKey, data.connectionId, appDetail?.hasPlatformKey, isNoAuthApp, selectedConnections, configNode.id, updateNodeData]);
+
     // ── Tab completion state ──
     // For platform-key apps (Telegram, Gemini, Sarvam), default to ADMIN_KEY (managed) when not set
     const isUsingAdminKey = appDetail?.hasPlatformKey && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource);
@@ -1657,7 +1719,10 @@ export default function ConfigPanelBody({
     const updateConfig = (key, value) => {
         const newConfig = { ...(data.configuration || {}), [key]: value };
         configSchema.forEach((field) => {
-            if (field.dependsOn.includes(key) && newConfig[field.key] !== undefined) {
+            const depends = Array.isArray(field.dependsOn)
+                ? field.dependsOn
+                : field.dependsOn ? [field.dependsOn] : [];
+            if (depends.includes(key) && newConfig[field.key] !== undefined) {
                 delete newConfig[field.key];
             }
         });
@@ -1761,21 +1826,45 @@ export default function ConfigPanelBody({
     // Handle OAuth connect inline or open connection modal for API key apps
     const handleNewConnection = async (reconnectConnectionId) => {
         if (!data.appKey) return;
-        if (appDetail?.authType === 'OAUTH2') {
+        if (appDetail?.authType === 'OAUTH2' || appDetail?.altAuthType === 'OAUTH2') {
             try {
-                const { authorizationUrl } = await appCatalogApi.getOAuthUrl(data.appKey, reconnectConnectionId || undefined);
+                const { authorizationUrl } = await appCatalogApi.getOAuthUrl(data.appKey, reconnectConnectionId ? { connectionId: reconnectConnectionId } : {});
                 if (authorizationUrl) {
+                    if (isTauri()) {
+                        await openExternalBrowser(authorizationUrl);
+                        return;
+                    }
                     window.open(authorizationUrl, '_blank', 'width=600,height=700');
                     return;
                 }
-            } catch {
-                // fall through to connection modal
+            } catch (err) {
+                if (reconnectConnectionId) {
+                    const msg = err?.response?.data?.message || err.message || 'Could not start OAuth reconnect';
+                    useToastStore.getState().addToast(msg, 'error');
+                    return;
+                }
+                // fall through to connection modal for new connections
             }
         }
         if (onOpenAppBrowser) {
             onOpenAppBrowser(data.appKey);
         }
     };
+
+    // Listen for desktop OAuth deep-link completion to auto-select newly connected account
+    useEffect(() => {
+        const handleConnectionUpdated = (e) => {
+            const { connectionId, appKey, connectionName } = e.detail || {};
+            if (connectionId && appKey === data.appKey) {
+                updateNodeData(configNode.id, {
+                    connectionId,
+                    connectionName: connectionName || undefined,
+                });
+            }
+        };
+        window.addEventListener('crescendo-connection-updated', handleConnectionUpdated);
+        return () => window.removeEventListener('crescendo-connection-updated', handleConnectionUpdated);
+    }, [configNode?.id, data?.appKey, updateNodeData]);
 
     // Close account menu on outside click
     useEffect(() => {
@@ -1966,8 +2055,8 @@ export default function ConfigPanelBody({
                             <div className="cpb-field">
                                 <label className="cpb-label">Account <span className="cpb-required">*</span></label>
 
-                                {/* Platform-key apps (Telegram, Gemini, Sarvam): show managed card by default */}
-                                {appDetail?.hasPlatformKey && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource) ? (
+                                {/* Platform-key apps (Telegram, Gemini, Sarvam, Agent): show managed card by default */}
+                                {(appDetail?.hasPlatformKey || isAgentNode) && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource) ? (
                                     <>
                                         <div className="cpb-account-card">
                                             <div className="cpb-account-left">
@@ -1977,7 +2066,7 @@ export default function ConfigPanelBody({
                                                 </div>
                                                 <div className="cpb-account-info">
                                                     <span className="cpb-account-name">
-                                                        {data.appKey === 'telegram' ? '@crescendo_app_bot' : `Crescendo ${data.appName || data.appKey}`}
+                                                        {isAgentNode ? 'Crescendo AI Platform' : data.appKey === 'telegram' ? '@crescendo_app_bot' : `Crescendo ${data.appName || data.appKey}`}
                                                     </span>
                                                     <span className="cpb-account-hint">Managed · No setup needed</span>
                                                 </div>
@@ -1992,7 +2081,7 @@ export default function ConfigPanelBody({
                                                                 updateNodeData(configNode.id, { credentialSource: 'PERSONAL', connectionId: null, account: null, accountName: '' });
                                                                 if (onOpenAppBrowser) onOpenAppBrowser(data.appKey);
                                                             }}>
-                                                                Use my own {data.appKey === 'telegram' ? 'bot token' : 'API key'}
+                                                                Use my own {isAgentNode ? 'API key / BYOK' : data.appKey === 'telegram' ? 'bot token' : 'API key'}
                                                             </button>
                                                         </div>
                                                     )}
@@ -2087,7 +2176,7 @@ export default function ConfigPanelBody({
                                             </div>
                                             <div className="cpb-account-actions">
                                                 <button type="button" className="cpb-account-change" title="Change or switch account" aria-label="Change account" onClick={() => {
-                                                    if (appDetail?.hasPlatformKey) {
+                                                    if (appDetail?.hasPlatformKey || isAgentNode) {
                                                         updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
                                                     } else {
                                                         updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
@@ -2117,7 +2206,7 @@ export default function ConfigPanelBody({
                                                             <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
                                                                 Reconnect
                                                             </button>
-                                                            {appDetail?.hasPlatformKey && (
+                                                            {(appDetail?.hasPlatformKey || isAgentNode) && (
                                                                 <button type="button" onClick={() => {
                                                                     setAccountMenuOpen(false);
                                                                     updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
@@ -2238,6 +2327,8 @@ export default function ConfigPanelBody({
                                         value={(data.configuration || {})[field.key]}
                                         onChange={(val) => updateConfig(field.key, val)}
                                         availableVariables={previousStepVariables}
+                                        appDetail={appDetail}
+                                        selectedConnections={selectedConnections}
                                     />
                                     {field.helpText && (
                                         <span className="cpb-help">{field.helpText}</span>
@@ -2284,11 +2375,11 @@ export default function ConfigPanelBody({
 
             {/* ── Footer ── */}
             <div className="canvas-config-footer">
-                {isTrigger ? (
-                    // Trigger nodes: clear contents but keep node position
+                {(isTrigger || configNode?.id === '1' || configNode?.id === '2' || nodeIndex <= 1 || nodeCount <= 2) ? (
+                    // Trigger or primary action node: clear contents but keep node position
                     <button
                         className="canvas-config-btn"
-                        title="Clear this trigger's configuration"
+                        title={isTrigger ? "Clear this trigger's configuration" : "Clear this action's configuration"}
                         onClick={onClear || onDelete}
                         style={{ color: 'var(--text-tertiary)' }}
                     >

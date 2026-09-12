@@ -52,13 +52,13 @@ import {
     HiOutlineArrowsExpand,
     HiSun,
     HiMoon,
-    HiMenuAlt2,
     HiOutlineChip,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
 import BranchNode from './nodes/BranchNode';
 import DeleteableEdge from './nodes/DeleteableEdge';
 import { Dock, DockIcon } from '../../components/ui/Dock';
+import ThemeToggle from '../../components/ThemeToggle';
 import './WorkflowCanvas.css';
 
 // 'branch' handles logic:if and logic:switch — these nodes render named output ports
@@ -217,7 +217,7 @@ let nodeId = 3;
 export default function WorkflowCanvas() {
     const navigate = useNavigate();
     const { workflowId: routeWorkflowId } = useParams();
-    const { toggleTheme, theme, collapsed, setCollapsed } = useOutletContext();
+    const { toggleTheme, theme } = useOutletContext();
     const { data: loadedWorkflow, isLoading: isLoadingDetail, isError: isDetailError } = useWorkflowDetail(routeWorkflowId);
     const saveWorkflowGraph = useSaveWorkflowGraph();
     const activateWorkflow = useActivateWorkflow();
@@ -288,6 +288,57 @@ export default function WorkflowCanvas() {
             // Non-fatal; UI will show fallback labels.
         }
     }, []);
+
+    // ── Lock document scroll while Canvas is mounted ──
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        const prevHtmlOverflow = document.documentElement.style.overflow;
+        const prevBodyOverflow = document.body.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.documentElement.style.overflow = prevHtmlOverflow;
+            document.body.style.overflow = prevBodyOverflow;
+        };
+    }, []);
+
+    // ── Dedicated Windows touchpad pinch-zoom & ctrl+wheel zoom handler ──
+    useEffect(() => {
+        const wrapper = reactFlowWrapper.current;
+        if (!wrapper || !reactFlowInstance) return undefined;
+
+        const handleWheel = (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const delta = -e.deltaY * (e.deltaMode === 1 ? 20 : 1);
+                const clampedDelta = Math.sign(delta) * Math.min(Math.abs(delta), 15);
+                const zoomFactor = 1 + clampedDelta * 0.025;
+
+                const rect = wrapper.getBoundingClientRect();
+                const pointerX = e.clientX - rect.left;
+                const pointerY = e.clientY - rect.top;
+
+                const vp = reactFlowInstance.getViewport();
+                const minZ = 0.2;
+                const maxZ = 1.5;
+                const nextZoom = Math.min(Math.max(vp.zoom * zoomFactor, minZ), maxZ);
+                if (nextZoom === vp.zoom) return;
+                const scale = nextZoom / vp.zoom;
+
+                const nextX = pointerX - (pointerX - vp.x) * scale;
+                const nextY = pointerY - (pointerY - vp.y) * scale;
+
+                reactFlowInstance.setViewport({ x: nextX, y: nextY, zoom: nextZoom });
+            }
+        };
+
+        wrapper.addEventListener('wheel', handleWheel, { passive: false });
+        return () => {
+            wrapper.removeEventListener('wheel', handleWheel);
+        };
+    }, [reactFlowInstance]);
 
     const stateRefs = useRef({ nodes, edges, workflowId, workflowName, catalogApps, appDetailsByKey });
     useEffect(() => {
@@ -956,6 +1007,7 @@ export default function WorkflowCanvas() {
     );
 
     // Clear trigger node — reset its data without removing the node
+    // Clear trigger node — reset its data without removing the node
     const clearTriggerNode = useCallback(
         (id) => {
             setNodes((nds) => {
@@ -965,13 +1017,26 @@ export default function WorkflowCanvas() {
                             ...n,
                             data: {
                                 label: 'Select Trigger',
-                                stepIndex: n.data.stepIndex,
-                                _vertical: n.data._vertical,
+                                stepIndex: n.data?.stepIndex || 1,
+                                _vertical: n.data?._vertical,
                                 // All config cleared
-                                appKey: undefined, appName: undefined, iconUrl: undefined,
-                                connectionId: null, actionKey: '', triggerKey: '',
-                                triggerType: '', triggerName: '', actionName: '',
-                                configuration: {}, _backendId: n.data._backendId,
+                                appKey: undefined,
+                                app: undefined,
+                                appName: undefined,
+                                iconUrl: undefined,
+                                connectionId: null,
+                                actionKey: '',
+                                triggerKey: '',
+                                triggerType: '',
+                                triggerName: '',
+                                actionName: '',
+                                credentialSource: null,
+                                account: null,
+                                accountName: '',
+                                configuration: {},
+                                sampleData: null,
+                                testOutput: null,
+                                _backendId: n.data?._backendId,
                             },
                         }
                         : n
@@ -986,13 +1051,64 @@ export default function WorkflowCanvas() {
         [setNodes, edges, pushHistory]
     );
 
-    // Delete node (action nodes only — trigger nodes use clearTriggerNode)
+    // Clear action node — reset its data without removing the node
+    const clearActionNode = useCallback(
+        (id) => {
+            setNodes((nds) => {
+                const updated = nds.map((n) =>
+                    n.id === id
+                        ? {
+                            ...n,
+                            data: {
+                                label: 'Select Action',
+                                stepIndex: n.data?.stepIndex || 2,
+                                _vertical: n.data?._vertical,
+                                // All config cleared
+                                appKey: undefined,
+                                app: undefined,
+                                appName: undefined,
+                                iconUrl: undefined,
+                                connectionId: null,
+                                actionKey: '',
+                                action: '',
+                                actionName: '',
+                                triggerKey: '',
+                                triggerType: '',
+                                triggerName: '',
+                                credentialSource: null,
+                                account: null,
+                                accountName: '',
+                                configuration: {},
+                                sampleData: null,
+                                testOutput: null,
+                                _backendId: n.data?._backendId,
+                            },
+                        }
+                        : n
+                );
+                draftRef.current?.markChanged(id);
+                pushHistory(updated, edges);
+                return updated;
+            });
+            setConfigNode(null);
+            useToastStore.getState().addToast('Action cleared. Reconfigure it to continue.', 'info');
+        },
+        [setNodes, edges, pushHistory]
+    );
+
+    // Delete node (nodes 1 and 2 clear instead of removing)
     const deleteNode = useCallback(
         (id) => {
-            const nodeToDelete = nodes.find(n => n.id === id);
-            // Guard: never hard-delete the trigger node — clear it instead
-            if (nodeToDelete?.type === 'trigger') {
+            const nodeToDelete = nodes.find((n) => n.id === id);
+            // Guard: never remove node 1 (trigger) — clear it instead
+            if (nodeToDelete?.type === 'trigger' || id === '1' || nodeToDelete?.data?.stepIndex === 1) {
                 clearTriggerNode(id);
+                return;
+            }
+            // Guard: never remove node 2 (primary action) or sole remaining action — clear it instead
+            const isSoleAction = nodes.filter((n) => n.type !== 'trigger').length <= 1;
+            if (id === '2' || nodeToDelete?.data?.stepIndex === 2 || isSoleAction) {
+                clearActionNode(id);
                 return;
             }
             if (nodeToDelete?.data?._backendId) {
@@ -1018,7 +1134,7 @@ export default function WorkflowCanvas() {
             if (lastSelectedNodeId === id) setLastSelectedNodeId(null);
             setContextMenu(null);
         },
-        [configNode, lastSelectedNodeId, vertical, nodes, edges, clearTriggerNode, commitGraph]
+        [configNode, lastSelectedNodeId, vertical, nodes, edges, clearTriggerNode, clearActionNode, commitGraph]
     );
 
     // Helper: update node data fields for a specific node ID
@@ -1329,13 +1445,6 @@ export default function WorkflowCanvas() {
             {/* ── Top bar ── */}
             <div className="canvas-topbar">
                 <div className="canvas-topbar-left">
-                    <button
-                        className="canvas-topbar-icon-btn"
-                        onClick={() => setCollapsed(!collapsed)}
-                        title="Toggle sidebar"
-                    >
-                        <HiMenuAlt2 />
-                    </button>
                     {editingName ? (
                         <div className="canvas-name-edit">
                             <input
@@ -1351,7 +1460,7 @@ export default function WorkflowCanvas() {
                             </button>
                         </div>
                     ) : (
-                        <div className="canvas-name-display" onClick={() => setEditingName(true)}>
+                        <div className="canvas-name-display" onClick={() => setEditingName(true)} title={`${workflowName} (click to rename)`}>
                             <span className="canvas-name-text">{workflowName}</span>
                             <HiOutlinePencil className="canvas-name-edit-icon" />
                         </div>
@@ -1488,9 +1597,7 @@ export default function WorkflowCanvas() {
                 </Dock>
 
                 <div className="canvas-topbar-right">
-                    <button className="canvas-topbar-icon-btn" onClick={toggleTheme} title="Toggle theme">
-                        {theme === 'dark' ? <HiSun /> : <HiMoon />}
-                    </button>
+                    <ThemeToggle className="canvas-topbar-icon-btn" />
                 </div>
             </div>
 
@@ -1532,6 +1639,8 @@ export default function WorkflowCanvas() {
                     connectionRadius={40}
                     deleteKeyCode={null}
                     edgesReconnectable={false}
+                    zoomOnPinch={true}
+                    preventScrolling={true}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={18} size={1.6} color="var(--dot-color-bright)" />
                     <MiniMap
@@ -1600,14 +1709,21 @@ export default function WorkflowCanvas() {
                                 <HiOutlineDuplicate /> Duplicate
                             </button>
                             <div className="canvas-ctx-divider" />
-                            <button
-                                className="canvas-ctx-item danger"
-                                onClick={() => deleteNode(contextMenu.nodeId)}
-                                title="Delete this step from the workflow"
-                                aria-label="Delete step"
-                            >
-                                <HiOutlineTrash /> Delete
-                            </button>
+                            {(() => {
+                                const targetNode = nodes.find((n) => n.id === contextMenu.nodeId);
+                                const isNode1 = targetNode?.type === 'trigger' || contextMenu.nodeId === '1' || targetNode?.data?.stepIndex === 1;
+                                const isNode2 = contextMenu.nodeId === '2' || targetNode?.data?.stepIndex === 2 || nodes.filter(n => n.type !== 'trigger').length <= 1;
+                                return (
+                                    <button
+                                        className="canvas-ctx-item danger"
+                                        onClick={() => deleteNode(contextMenu.nodeId)}
+                                        title={isNode1 ? "Clear this trigger's configuration" : isNode2 ? "Clear this action's configuration" : "Delete this step from the workflow"}
+                                        aria-label={isNode1 ? "Clear trigger" : isNode2 ? "Clear action" : "Delete step"}
+                                    >
+                                        <HiOutlineTrash /> {isNode1 ? 'Clear Trigger' : isNode2 ? 'Clear Action' : 'Delete'}
+                                    </button>
+                                );
+                            })()}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1619,6 +1735,7 @@ export default function WorkflowCanvas() {
                     {configNode && (
                         <>
                             <motion.div
+                                key="config-backdrop"
                                 className="canvas-config-backdrop"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
@@ -1627,6 +1744,7 @@ export default function WorkflowCanvas() {
                                 onClick={() => setConfigNode(null)}
                             />
                             <motion.div
+                                key="config-modal"
                                 className="canvas-config-modal"
                                 initial={{ opacity: 0, scale: 0.65, y: 40 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1653,7 +1771,14 @@ export default function WorkflowCanvas() {
                                     }}
                                     onClose={() => setConfigNode(null)}
                                     onDelete={() => deleteNode(configNode.id)}
-                                    onClear={() => clearTriggerNode(configNode.id)}
+                                    onClear={() => {
+                                        const isTrig = configNode?.type === 'trigger' || configNode?.id === '1' || configNode?.data?.stepIndex === 1;
+                                        if (isTrig) {
+                                            clearTriggerNode(configNode.id);
+                                        } else {
+                                            clearActionNode(configNode.id);
+                                        }
+                                    }}
                                     onSaveAndClose={() => {
                                         // Save current step data to backend (silent partial save) then close panel
                                         saveCoordinatorRef.current?.saveAuto();

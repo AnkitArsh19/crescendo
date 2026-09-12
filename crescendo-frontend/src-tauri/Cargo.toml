@@ -1,0 +1,22 @@
+[package]
+name = "crescendo-desktop"
+version = "0.1.0"
+description = "Crescendo Workflow Automation Desktop App"
+authors = ["Ankit Arsh <ankitarsh19@gmail.com>"]
+edition = "2021"
+
+[lib]
+name = "crescendo_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+

@@ -26,7 +26,7 @@ public class SimpleApiApp implements AppDefinition {
 
                 **Authentication:** Requires a One Simple API token.
                 """,
-                "/icons/simple_api.svg", AuthType.NONE,
+                "/icons/simple_api.svg", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "execute", "name", "Execute Operation",

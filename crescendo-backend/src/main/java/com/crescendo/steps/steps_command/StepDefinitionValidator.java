@@ -56,7 +56,8 @@ public class StepDefinitionValidator {
             }
         } else if (type == StepType.ACTION) {
             boolean validAction = appDef.actions().stream()
-                    .anyMatch(a -> actionKey.equals(a.get("actionKey")));
+                    .anyMatch(a -> actionKey.equals(a.get("actionKey")))
+                    || ("agent".equals(appKey) && ("agent:ai_agent".equals(actionKey) || "ai_agent".equals(actionKey)));
             if (!validAction) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid action key for app: " + actionKey);
             }
@@ -66,9 +67,14 @@ public class StepDefinitionValidator {
             if (userId == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest workflows cannot use authenticated connections");
             }
-            // Verify the user owns the connection and it matches the appKey
+            // Verify the user owns the connection and it matches the appKey (or is an AI provider for agent nodes)
             connectionsRepo.findByIdAndUser_Id(connectionId, userId)
-                    .filter(c -> c.getAppKey().equals(appKey))
+                    .filter(c -> {
+                        if ("agent".equals(appKey)) {
+                            return java.util.Set.of("agent", "gemini", "openai", "groq", "anthropic", "openrouter").contains(c.getAppKey());
+                        }
+                        return c.getAppKey().equals(appKey);
+                    })
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or unauthorized connection for this app"));
         }
     }

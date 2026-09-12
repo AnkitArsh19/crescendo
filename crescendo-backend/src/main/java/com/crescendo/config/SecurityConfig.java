@@ -105,6 +105,9 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC, jakarta.servlet.DispatcherType.FORWARD, jakarta.servlet.DispatcherType.ERROR).permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/apps", "/apps/**").permitAll()
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/register",
@@ -122,6 +125,7 @@ public class SecurityConfig {
                                 "/auth/sessions/revoke-confirm",
                                 "/auth/sessions/revoke-by-token",
                                 "/auth/verify-email", // token is in query param, no auth header available
+                                "/auth/desktop-handoff/exchange", // public one-time code exchange
                                 "/mfa/challenge", // called before tokens are issued (post-login MFA step)
                                 "/mfa/backup-code", // called before tokens are issued (backup code login)
                                 "/actuator/**",
@@ -205,10 +209,18 @@ public class SecurityConfig {
         CorsConfiguration cfg = new CorsConfiguration();
         /// Always use allowedOriginPatterns — setAllowedOrigins("*") is incompatible
         /// with allowCredentials=true and throws at runtime.
-        if (allowedOrigins == null || allowedOrigins.isEmpty()) {
-            allowedOrigins = List.of("http://localhost:5173", "https://app.crescendo.run");
+        List<String> cleanOrigins = (allowedOrigins != null)
+                ? allowedOrigins.stream().filter(s -> s != null && !s.isBlank()).toList()
+                : List.of();
+        if (cleanOrigins.isEmpty()) {
+            cleanOrigins = List.of(
+                    "http://localhost:5173",
+                    "https://app.crescendo.run",
+                    "http://tauri.localhost",
+                    "tauri://localhost"
+            );
         }
-        cfg.setAllowedOriginPatterns(allowedOrigins);
+        cfg.setAllowedOriginPatterns(cleanOrigins);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setExposedHeaders(List.of("Location", "Authorization", "X-Device-Id", "X-Guest-Session"));

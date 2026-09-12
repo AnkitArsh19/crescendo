@@ -66,8 +66,10 @@ public class DataSeeder {
       Set<String> staleKeys = new HashSet<>();
       Set<String> legacyKeys = redisTemplate.keys("apps::*");
       Set<String> v2Keys = redisTemplate.keys("v2:apps::*");
+      Set<String> v1Keys = redisTemplate.keys("crescendo:v1:apps*");
       if (legacyKeys != null) staleKeys.addAll(legacyKeys);
       if (v2Keys != null) staleKeys.addAll(v2Keys);
+      if (v1Keys != null) staleKeys.addAll(v1Keys);
       if (!staleKeys.isEmpty()) {
            redisTemplate.delete(staleKeys);
            logger.info("[seeder] Evicted {} stale app cache keys from Redis", staleKeys.size());

@@ -7,6 +7,10 @@ import './index.css'
 import App from './App.jsx'
 import { queryClient } from './queryClient'
 
+if (typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__)) {
+  document.body.classList.add('is-tauri-desktop');
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

@@ -27,7 +27,7 @@ public class GoogleTranslateApp implements AppDefinition {
                 
                 **Authentication:** Requires a Google Cloud API Key or OAuth2 token with Cloud Translation API enabled.
                 """,
-                "https://www.google.com/s2/favicons?domain=translate.google.com&sz=128", AuthType.OAUTH2,
+                "https://www.google.com/s2/favicons?domain=translate.google.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of(
@@ -41,8 +41,7 @@ public class GoogleTranslateApp implements AppDefinition {
                     )
                 )
         ).credentialSchema(List.of(
-            Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", false),
-            Map.of("key", "accessToken", "label", "OAuth2 Token", "type", "password", "required", false)
+            Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true)
         )).category("productivity");
     }
 }

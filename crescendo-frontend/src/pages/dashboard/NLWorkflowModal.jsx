@@ -1,10 +1,15 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { HiX, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowSmRight } from 'react-icons/hi';
+import { HiArrowUp } from 'react-icons/hi2';
 import { aiApi } from '../../api/aiApi';
 import { workflowApi } from '../../api/workflowApi';
+import { connectionsApi } from '../../api/connectionsApi';
+import useConnectionStore from '../../store/connectionStore';
 import useToastStore from '../../store/toastStore';
+import { workflowKeys } from '../../hooks/useWorkflows';
 import './NLWorkflowModal.css';
 
 const EXAMPLES = [
@@ -16,6 +21,7 @@ const EXAMPLES = [
 
 export default function NLWorkflowModal({ onClose }) {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const addToast = useToastStore(state => state.addToast);
     const toastSuccess = (msg) => addToast(msg, 'success');
     const toastError = (msg) => addToast(msg, 'error');
@@ -32,6 +38,7 @@ export default function NLWorkflowModal({ onClose }) {
     const [generating, setGenerating] = useState(false);
     const [sessionId, setSessionId] = useState(null);
     const initialPromptRef = useRef('');
+    const cumulativeClarificationsRef = useRef([]);
 
     // Multi-group clarification state (mapped by group name)
     const [selectedPills, setSelectedPills] = useState({});
@@ -72,8 +79,10 @@ export default function NLWorkflowModal({ onClose }) {
         let promptPayload = textToSubmit;
         if (!initialPromptRef.current) {
             initialPromptRef.current = textToSubmit;
+            cumulativeClarificationsRef.current = [];
         } else if (sessionId) {
-            promptPayload = `${initialPromptRef.current}. Details: ${textToSubmit}`;
+            cumulativeClarificationsRef.current.push(textToSubmit);
+            promptPayload = `${initialPromptRef.current}. Details: ${cumulativeClarificationsRef.current.join('. ')}`;
         }
 
         try {
@@ -89,6 +98,10 @@ export default function NLWorkflowModal({ onClose }) {
                     ? data.suggested_options
                     : [];
 
+                // Reset pill selection state for the new turn
+                setSelectedPills({});
+                setCustomPills({});
+
                 setMessages(prev => [
                     ...prev,
                     {
@@ -100,6 +113,11 @@ export default function NLWorkflowModal({ onClose }) {
                     }
                 ]);
                 return;
+            }
+
+            // Check if backend returned explicit failure
+            if (data.success === false || data.error) {
+                throw new Error(data.error || "Could not draft workflow. Please rephrase or provide more details.");
             }
 
             // Case B: Workflow spec returned
@@ -121,32 +139,76 @@ export default function NLWorkflowModal({ onClose }) {
             // Create empty workflow
             const created = await workflowApi.create({ name: spec.workflow_name || 'AI Generated Workflow' });
 
-            // Format steps
+            // Look up user's active connections to pre-bind them to created steps
+            let userConns = useConnectionStore.getState().connections || [];
+            if (userConns.length === 0) {
+                try {
+                    const fetched = await connectionsApi.list();
+                    userConns = Array.isArray(fetched) ? fetched : [];
+                } catch {
+                    userConns = [];
+                }
+            }
+
+            const resolveConnectionForApp = (appKey) => {
+                if (!appKey) return null;
+                return userConns.find((c) => c.appKey === appKey && c.status === 'ACTIVE')
+                    || userConns.find((c) => c.appKey === appKey)
+                    || null;
+            };
+
+            // Format steps & connecting edges
             const graphSteps = [];
+            const edgePayloads = [];
+            let prevClientId = null;
+
             if (spec.trigger) {
+                const triggerClientId = crypto.randomUUID();
+                const trigConn = resolveConnectionForApp(spec.trigger.app_key);
+                const trigConfig = { ...(spec.trigger.config || {}) };
+                if (trigConn) {
+                    trigConfig._credentialSource = 'PERSONAL';
+                }
                 graphSteps.push({
-                    clientId: crypto.randomUUID(),
+                    clientId: triggerClientId,
                     type: 'TRIGGER',
                     name: spec.trigger.trigger_key || spec.trigger.app_key || 'Trigger',
                     actionKey: spec.trigger.trigger_key || spec.trigger.app_key,
                     appKey: spec.trigger.app_key,
-                    parentStepId: null,
-                    configuration: spec.trigger.config || {}
+                    connectionId: trigConn ? trigConn.id : null,
+                    configuration: trigConfig
                 });
+                prevClientId = triggerClientId;
             }
 
             if (spec.actions && spec.actions.length > 0) {
                 for (let i = 0; i < spec.actions.length; i++) {
                     const action = spec.actions[i];
+                    const actionClientId = crypto.randomUUID();
+                    const actionConn = resolveConnectionForApp(action.app_key);
+                    const actionConfig = { ...(action.config || {}) };
+                    if (actionConn) {
+                        actionConfig._credentialSource = 'PERSONAL';
+                    }
                     graphSteps.push({
-                        clientId: crypto.randomUUID(),
+                        clientId: actionClientId,
                         type: 'ACTION',
                         name: action.action_key || action.app_key || 'Action',
                         actionKey: action.action_key || action.app_key,
                         appKey: action.app_key,
-                        parentStepId: null,
-                        configuration: action.config || {}
+                        connectionId: actionConn ? actionConn.id : null,
+                        configuration: actionConfig
                     });
+
+                    if (prevClientId) {
+                        edgePayloads.push({
+                            clientSourceId: prevClientId,
+                            clientTargetId: actionClientId,
+                            sourceHandle: 'out',
+                            targetHandle: 'in'
+                        });
+                    }
+                    prevClientId = actionClientId;
                 }
             }
 
@@ -154,9 +216,14 @@ export default function NLWorkflowModal({ onClose }) {
                 await workflowApi.updateGraph(created.id, {
                     revision: created.revision,
                     steps: graphSteps,
+                    edges: edgePayloads,
                     deletedStepIds: []
                 });
             }
+
+            // Invalidate React Query cache so the canvas loads fresh workflow detail with latest revision
+            queryClient.invalidateQueries({ queryKey: workflowKeys.all });
+            queryClient.invalidateQueries({ queryKey: workflowKeys.detail(created.id) });
 
             const toastMsg = data.explanation
                 ? `"${created.name}" created: ${data.explanation}`
@@ -170,7 +237,7 @@ export default function NLWorkflowModal({ onClose }) {
             }, 600);
 
         } catch (err) {
-            const msg = err.response?.data?.message || err.message || 'Failed to generate workflow. Please try again.';
+            const msg = err.response?.data?.message || err.response?.data?.error || err.response?.data?.detail || err.message || 'Failed to generate workflow. Please try again.';
             setMessages(prev => [
                 ...prev,
                 {
@@ -399,7 +466,7 @@ export default function NLWorkflowModal({ onClose }) {
                             title="Send prompt (Enter)"
                             aria-label="Send"
                         >
-                            <HiOutlineLightningBolt />
+                            <HiArrowUp />
                         </button>
                     </div>
                     <div className="nlwf-footer-hint-row">

@@ -30,14 +30,22 @@ The frontend incorporates an offline, highly performant automated testing suite 
 ```text
 crescendo-frontend/
 ├── public/                 # Static graphical assets, favicon files, and client manifest specifications
+├── scripts/                # Development scripts (run-tauri.js with port fallback)
+├── src-tauri/              # Tauri v2 Rust native desktop client (lib.rs, single-instance, deep-link)
+│   ├── capabilities/       # Tauri permission capability manifests (default.json)
+│   ├── Cargo.toml          # Rust dependencies (tauri, single-instance, deep-link, opener)
+│   └── tauri.conf.json     # Tauri app configuration (window, titlebar, protocol schemes)
 ├── src/
-│   ├── components/         # Reusable structural user interface primitives, modals, canvas toolbars, and alert notifications
-│   ├── pages/              # Primary routing destinations including Dashboard, Canvas Studio, Email Services, Docs, and Settings
+│   ├── components/         # Reusable structural UI primitives, modals, canvas toolbars, DesktopTitlebar
+│   ├── hooks/              # Custom hooks (useDesktopAuth deep-link listener, useNotificationStream)
+│   ├── pages/              # Primary routing destinations including Dashboard, Canvas Studio, Email Services, Docs, Settings
+│   │   ├── auth/           # Authentication pages (Login, Register, DesktopAuthPrompt, DesktopAuthEntry, OpenApp)
 │   │   ├── dashboard/      # Main operational dashboards, workflow overviews, and NLWorkflowModal AI builder integrations
 │   │   ├── docs/           # Structured user reference guides, API specifications, and SDK usage instructions
 │   │   └── settings/       # Workspace tenant configuration, TemplateBlockEditor email tools, and API key management
 │   ├── services/           # REST API communication adapters, SSE stream connection handlers, and WebAuthn authenticators
 │   ├── styles/             # Global vanilla CSS stylesheets, monochrome theme variable tokens, and animation definitions
+│   ├── utils/              # Client utilities (desktopAuth.js, deviceFingerprint.js, platform.js)
 │   ├── App.jsx             # Root React application layout, router boundaries, and global toast state provider registration
 │   └── main.jsx            # Application mount initialization, Vite Hot Module Replacement execution, and DOM binding
 ├── package.json            # Node dependency registries, scripts, and package version specifications
@@ -56,14 +64,21 @@ cd crescendo-frontend
 # 2. Install complete Node project dependency modules
 npm ci  # or npm install for initial environment synchronization
 
-# 3. Launch the fast Vite local development server (Default binding on http://localhost:3000)
+# 3. Launch the fast Vite local web development server (Default binding on http://localhost:5173)
 npm run dev
 
-# 4. Execute the offline Vitest unit and component test suite
+# 4. Launch the Native Desktop App (Tauri v2 + Rust) in local development
+npm run tauri dev
+
+# 5. Execute the offline Vitest unit and component test suite
 npm test -- --run
 
-# 5. Compile and bundle optimized production code distribution files
+# 6. Compile and bundle optimized web production distribution files
 npm run build
+
+# 7. Compile and package native desktop installers (.exe, .dmg, .AppImage, .deb)
+npm run tauri build
 ```
 
 For customized network backend proxy endpoints or local environment adjustments, copy `.env.example` to `.env.local` and specify your preferred interface variables.
+

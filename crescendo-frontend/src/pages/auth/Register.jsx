@@ -1,52 +1,60 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {
-    HiOutlineUser,
-    HiOutlineMail,
-    HiOutlineLockClosed,
-    HiOutlineEye,
-    HiOutlineEyeOff,
-    HiOutlineKey,
-} from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineKey, HiOutlineDesktopComputer } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
 import { SiGithub } from 'react-icons/si';
 import { useTheme } from '../../components/ThemeContext';
 import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
-import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
 import api from '../../api/axios';
+import { browserSupportsWebAuthn, startRegistration } from '@simplewebauthn/browser';
 import { getDeviceMetadata } from '../../utils/deviceFingerprint';
 import { BorderBeam } from '../../components/ui/BorderBeam';
+import { isTauri } from '../../utils/platform';
+import { redirectToDesktopHandoff } from '../../utils/desktopAuth';
+import DesktopAuthPrompt from './DesktopAuthPrompt';
 import './Auth.css';
 
-function getStrength(pw) {
-    if (!pw) return 0;
-    let s = 0;
-    if (pw.length >= 6) s++;
-    if (pw.length >= 10) s++;
-    if (/[A-Z]/.test(pw) && /[0-9]/.test(pw)) s++;
-    if (/[^A-Za-z0-9]/.test(pw)) s++;
-    return Math.min(s, 4);
-}
-
-const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-
 const registerSchema = z.object({
-    username: z.string().min(1, 'Username is required').max(100, 'Username cannot exceed 100 characters'),
+    username: z.string().min(3, 'Username must be at least 3 characters'),
     email: z.string().email('Please enter a valid email address'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
+    password: z.string().min(8, 'Password must be at least 8 characters')
+        .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+        .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+        .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
+const getStrength = (pass) => {
+    let score = 0;
+    if (!pass) return 0;
+    if (pass.length >= 8) score += 1;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    return score;
+};
+
+const strengthLabels = ['Weak', 'Fair', 'Good', 'Strong'];
+
 export default function Register() {
+    if (isTauri()) {
+        return <DesktopAuthPrompt mode="register" />;
+    }
+
     const { theme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+
+    const isFromDesktop = searchParams.get('from') === 'desktop';
+    if (isFromDesktop && typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('crescendo_from_desktop', 'true');
+    }
+    const fromDesktop = isFromDesktop || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('crescendo_from_desktop') === 'true');
+
     const registerFn = useAuthStore((state) => state.register);
 
     const [showPw, setShowPw] = useState(false);
@@ -70,10 +78,37 @@ export default function Register() {
 
     const onSubmit = async (data) => {
         setGlobalError('');
+
+        // When registering on behalf of desktop app, do NOT establish a web session in the browser.
+        if (fromDesktop) {
+            try {
+                const { deviceId, deviceLabel } = getDeviceMetadata();
+                const response = await api.post('/auth/register', {
+                    email: data.email,
+                    username: data.username,
+                    password: data.password,
+                    deviceId,
+                    deviceLabel
+                });
+
+                const { accessToken, refreshToken, accessExpiresAt } = response.data;
+                useAuthStore.getState().setTokens(accessToken, accessExpiresAt, refreshToken);
+                useAuthStore.getState().checkAuth().catch(() => {});
+                await redirectToDesktopHandoff(navigate, accessToken);
+                return;
+            } catch (error) {
+                if (error.response?.status === 409) {
+                    setGlobalError('Email or username already taken');
+                } else {
+                    setGlobalError(error.response?.data?.message || 'Failed to create account');
+                }
+                return;
+            }
+        }
+
+        // Regular browser register flow
         try {
             await registerFn(data.email, data.username, data.password);
-
-            // Redirect to dashboard on successful registration
             navigate('/dashboard', { state: { justLoggedIn: true } });
         } catch (error) {
             setGlobalError(error.message);
@@ -83,10 +118,15 @@ export default function Register() {
     const updatePasswordlessData = (field) => (event) => setPasswordlessData((current) => ({ ...current, [field]: event.target.value }));
 
     const handleOAuthLogin = (provider) => {
+        if (fromDesktop) {
+            sessionStorage.setItem('crescendo_from_desktop', 'true');
+            document.cookie = 'crescendo_from_desktop=true; path=/; max-age=600; SameSite=Lax';
+        }
         const { deviceId, deviceLabel } = getDeviceMetadata();
         document.cookie = `crescendo_device_id_transfer=${encodeURIComponent(deviceId)}; path=/; max-age=300; SameSite=Lax`;
         document.cookie = `crescendo_device_label_transfer=${encodeURIComponent(deviceLabel)}; path=/; max-age=300; SameSite=Lax`;
-        window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider}`;
+        const desktopParam = fromDesktop ? '?from=desktop' : '';
+        window.location.href = `https://api.crescendo.run/oauth2/authorization/${provider}${desktopParam}`;
     };
 
     const startPasswordless = async (event) => {
@@ -120,6 +160,14 @@ export default function Register() {
                 verificationSessionId: options.verificationSessionId,
                 credentialName: 'Passkey',
             });
+
+            if (fromDesktop) {
+                useAuthStore.getState().setTokens(tokens.accessToken, tokens.accessExpiresAt, tokens.refreshToken);
+                useAuthStore.getState().checkAuth().catch(() => {});
+                await redirectToDesktopHandoff(navigate, tokens.accessToken);
+                return;
+            }
+
             useAuthStore.getState().setTokens(tokens.accessToken, tokens.accessExpiresAt, tokens.refreshToken, tokens.refreshExpiresAt);
             await useAuthStore.getState().checkAuth();
             navigate('/dashboard', { state: { justLoggedIn: true } });
@@ -134,9 +182,22 @@ export default function Register() {
         return (
             <div className="auth-card">
                 <BorderBeam duration={8} borderWidth={2.5} />
-                <Link to="/" className="auth-logo"><img src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'} alt="Crescendo" /><span className="auth-logo-text">Crescendo</span></Link>
-                <div className="auth-header"><h1 className="auth-title">Create account with a passkey</h1><p className="auth-subtitle">Verify your email first, then use your device’s secure screen lock instead of a password.</p></div>
-                {globalError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: 16, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 6 }}>{globalError}</div>}
+                <Link to="/" className="auth-logo">
+                    <img src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'} alt="Crescendo" />
+                    <span className="auth-logo-text">Crescendo</span>
+                </Link>
+
+                <div className="auth-header">
+                    <h1 className="auth-title">Create a passkey</h1>
+                    <p className="auth-subtitle">Use your device fingerprint, face, or security key instead of a password.</p>
+                </div>
+
+                {globalError && (
+                    <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '6px' }}>
+                        {globalError}
+                    </div>
+                )}
+
                 {passwordlessStep === 'details' ? (
                     <form className="auth-form" onSubmit={startPasswordless}>
                         <Input label="Username" value={passwordlessData.username} onChange={updatePasswordlessData('username')} placeholder="Choose a username" icon={<HiOutlineUser />} required />
@@ -168,8 +229,30 @@ export default function Register() {
 
             <div className="auth-header">
                 <h1 className="auth-title">Create an account</h1>
-                <p className="auth-subtitle">Start automating your workflows today</p>
+                <p className="auth-subtitle">
+                    {fromDesktop
+                        ? 'Set up your account to start automating on desktop'
+                        : 'Start automating your workflows today'}
+                </p>
             </div>
+
+            {fromDesktop && (
+                <div style={{
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    marginBottom: '16px',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                }}>
+                    <HiOutlineDesktopComputer style={{ color: '#3b82f6', flexShrink: 0 }} size={18} />
+                    <span>Creating account for Crescendo Desktop. Once registered, your session will connect in the desktop app.</span>
+                </div>
+            )}
 
             {globalError && (
                 <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '6px' }}>
@@ -181,11 +264,11 @@ export default function Register() {
                 <Input
                     label="Username"
                     type="text"
-                    placeholder="Enter your username"
+                    placeholder="Choose a username"
                     icon={<HiOutlineUser />}
-                    {...register("username")}
-                    error={errors.username?.message}
                     autoComplete="username"
+                    {...register('username')}
+                    error={errors.username?.message}
                 />
 
                 <Input
@@ -193,40 +276,30 @@ export default function Register() {
                     type="email"
                     placeholder="Enter your email"
                     icon={<HiOutlineMail />}
-                    {...register("email")}
-                    error={errors.email?.message}
                     autoComplete="email"
+                    {...register('email')}
+                    error={errors.email?.message}
                 />
 
                 <Input
                     label="Password"
                     type={showPw ? 'text' : 'password'}
-                    placeholder="Create a password"
+                    placeholder="Create a strong password"
                     icon={<HiOutlineLockClosed />}
                     rightIcon={showPw ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                     onRightIconClick={() => setShowPw(!showPw)}
-                    {...register("password")}
+                    autoComplete="new-password"
+                    {...register('password')}
                     error={errors.password?.message}
-                    autoComplete="new-password"
-                />
-
-                <Input
-                    label="Confirm password"
-                    type="password"
-                    placeholder="Re-enter your password"
-                    icon={<HiOutlineLockClosed />}
-                    {...register("confirmPassword")}
-                    error={errors.confirmPassword?.message}
-                    autoComplete="new-password"
                 />
 
                 {watchPassword && (
-                    <div style={{ marginTop: '-4px', marginBottom: errors.password || errors.confirmPassword ? 0 : '8px' }}>
-                        <div className="password-strength">
-                            {[1, 2, 3, 4].map((i) => (
+                    <div className="password-strength">
+                        <div className="password-strength-bars">
+                            {[0, 1, 2, 3].map((level) => (
                                 <div
-                                    key={i}
-                                    className={`password-strength-bar ${i <= strength
+                                    key={level}
+                                    className={`strength-bar ${level < strength
                                         ? strength <= 1
                                             ? 'weak'
                                             : strength <= 2
@@ -290,16 +363,18 @@ export default function Register() {
             </form>
 
             <div className="auth-footer">
-                Already have an account? <Link to="/login">Log in</Link>
-                <div style={{ marginTop: '16px' }}>
-                    <button
-                        type="button"
-                        onClick={() => { useAuthStore.getState().enterGuestMode(); navigate('/dashboard'); }}
-                        style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                        Continue as guest
-                    </button>
-                </div>
+                Already have an account? <Link to={fromDesktop ? "/login?from=desktop" : "/login"}>Log in</Link>
+                {!fromDesktop && (
+                    <div style={{ marginTop: '16px' }}>
+                        <button
+                            type="button"
+                            onClick={() => { useAuthStore.getState().enterGuestMode(); navigate('/dashboard'); }}
+                            style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                        >
+                            Continue as guest
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

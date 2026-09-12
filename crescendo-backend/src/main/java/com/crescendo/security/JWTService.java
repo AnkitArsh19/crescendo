@@ -20,12 +20,27 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class JWTService {
+
+    private static final Logger log = LoggerFactory.getLogger(JWTService.class);
+
+    // Grace period for rotation-reuse detection. Two concurrent refresh requests from the
+    // same browser tab can arrive within milliseconds of each other; treating the second
+    // stale-but-recently-revoked token as a theft signal would purge all user sessions.
+    // Tokens revoked within this window are rejected silently without mass-revocation.
+    //
+    // 5 seconds matches Connect2id's default grace period. The actual benign race window
+    // is < 300ms; 5s is ample safety margin while being far too short for a real attacker
+    // who would show up much later with a stolen token.
+    private static final Duration ROTATION_GRACE_PERIOD = Duration.ofSeconds(5);
 
     private final UserSessionRepository userSessionRepository;
     private final DomainEventPublisher eventPublisher;
@@ -60,7 +75,7 @@ public class JWTService {
         Instant now = Instant.now();
         // 30 days for remember-me sessions, default otherwise
         Long ttl = rememberMe ? 2_592_000_000L : null;
-        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, null, null, null, null, now, ttl);
+        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, null, null, null, null, now, ttl, null);
         String access = buildAccessToken(principal, refreshIssue.sessionId(), now, mfaVerified, amr);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
@@ -69,7 +84,7 @@ public class JWTService {
                                     String clientIp, String deviceId, String deviceLabel, boolean rememberMe) {
         Instant now = Instant.now();
         Long ttl = rememberMe ? 2_592_000_000L : null;
-        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now, ttl);
+        RefreshIssue refreshIssue = createRefreshSession(user, userAgent, clientIp, deviceId, deviceLabel, null, now, ttl, null);
         String access = buildAccessToken(principal, refreshIssue.sessionId(), now, false, null);
         return new TokenPair(access, refreshIssue.plainToken(), now.plusMillis(accessExpirationMs), refreshIssue.expiresAt());
     }
@@ -106,12 +121,12 @@ public class JWTService {
 
             if (rotateOnRefresh) {
                 session.setRevokedAt(now);
-                RefreshIssue ri = createRefreshSession(user, userAgent, 
-                        session.getLastIp() != null ? session.getLastIp().value() : null, 
-                        session.getDeviceId() != null ? session.getDeviceId().value() : null, 
-                        session.getDeviceLabel(), 
-                        session.getClientIp() != null ? session.getClientIp().value() : null, 
-                        now, null);
+                RefreshIssue ri = createRefreshSession(user, userAgent,
+                        session.getLastIp() != null ? session.getLastIp().value() : null,
+                        session.getDeviceId() != null ? session.getDeviceId().value() : null,
+                        session.getDeviceLabel(),
+                        session.getClientIp() != null ? session.getClientIp().value() : null,
+                        now, null, hash); // pass current hash as predecessor
                 outRefresh = ri.plainToken();
                 refreshExpires = ri.expiresAt();
                 newAccess = buildAccessToken(principal, ri.sessionId(), now, false, null);
@@ -120,11 +135,45 @@ public class JWTService {
         });
         if (active.isPresent()) return active;
 
-        // Rotation reuse detection: a valid-but-revoked token being presented again is a strong
-        // signal that a previously issued token was stolen. We nuke all active sessions
-        // for that user as a precaution — they will need to log in again.
+        // Rotation-reuse detection: a revoked token being presented again may signal theft
+        // OR a benign concurrent refresh race (two browser components calling checkAuth() at once).
+        //
+        // Two-step determination:
+        //   1. Is this the IMMEDIATE PREDECESSOR in the rotation chain?  We check for an active
+        //      successor session that carries this token's hash in its predecessorTokenHash column.
+        //      If no successor exists, the token was revoked by logout/admin — just reject it.
+        //   2. If a successor EXISTS, the token was rotated legitimately. Apply the grace window:
+        //      - Within ROTATION_GRACE_PERIOD (5s): reject silently — benign race.
+        //      - After ROTATION_GRACE_PERIOD: full breach response (revoke all sessions for user).
+        //
+        // This scoping fix prevents the user-wide timing vulnerability documented in
+        // django-oauth-toolkit issue #1617 where a grace period keyed only on user_id + time
+        // could suppress a real breach detection when two separate sessions overlap.
         userSessionRepository.findByRefreshTokenHash(hash).ifPresent(reused -> {
-            if (reused.getRevokedAt() != null && reused.getExpiresAt().isAfter(now)) {
+            if (reused.getRevokedAt() == null || !reused.getExpiresAt().isAfter(now)) return; // fully expired, nothing to do
+
+            boolean hasActiveSuccessor = userSessionRepository
+                    .findActiveSuccessorByPredecessorHash(hash, now)
+                    .isPresent();
+
+            if (!hasActiveSuccessor) {
+                // Revoked without a successor = explicit logout or admin revoke.
+                // Reject the request; no theft indicator, no mass-revocation.
+                log.info("[AUTH] Revoked token presented with no active successor (logout/revoke path). User={}",
+                        reused.getUser().getId());
+                return;
+            }
+
+            // There IS an active successor: this was a rotation event. Check timing.
+            Duration sinceRevoked = Duration.between(reused.getRevokedAt(), now);
+            if (sinceRevoked.compareTo(ROTATION_GRACE_PERIOD) <= 0) {
+                // Within grace window: silent reject — almost certainly a concurrent refresh race.
+                log.info("[AUTH] Rotation grace: predecessor replayed {} ms after rotation — benign concurrent request. User={}",
+                        sinceRevoked.toMillis(), reused.getUser().getId());
+            } else {
+                // Outside grace window: real reuse after rotation. Treat as possible theft.
+                log.warn("[AUTH] Rotation reuse outside grace ({} ms) — possible token theft. Revoking all sessions for user={}",
+                        sinceRevoked.toMillis(), reused.getUser().getId());
                 revokeAllForUser(reused.getUser().getId());
             }
         });
@@ -236,7 +285,7 @@ public class JWTService {
 
     private RefreshIssue createRefreshSession(User_command user, String userAgent,
                                               String clientIp, String deviceId, String deviceLabel, String originalClientIp,
-                                              Instant now, Long customTtlMs) {
+                                              Instant now, Long customTtlMs, String predecessorHash) {
         if (deviceId != null && !deviceId.isBlank()) {
             List<UserSession> activeSameDevice = userSessionRepository.findAllByUser_IdAndDeviceId_ValueAndRevokedAtIsNullAndExpiresAtAfter(user.getId(), deviceId, now);
             activeSameDevice.forEach(s -> s.setRevokedAt(now));
@@ -250,6 +299,11 @@ public class JWTService {
         session.applyFingerprint(userAgent, clientIp, deviceId, deviceLabel);
         if (originalClientIp != null) {
             session.setClientIp(IpAddress.of(originalClientIp));
+        }
+        // Record which token was rotated to create this session.
+        // This is what scopes reuse detection to the exact rotation chain.
+        if (predecessorHash != null) {
+            session.setPredecessorTokenHash(predecessorHash);
         }
         userSessionRepository.save(session);
 

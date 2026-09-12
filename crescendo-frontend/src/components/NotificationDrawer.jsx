@@ -5,8 +5,10 @@ import {
   HiOutlineX,
   HiOutlineCog,
   HiOutlineInbox,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import useNotificationStore from '../store/notificationStore';
+import { getCachedApps } from '../api/appCatalogCache';
 import NotificationItem from './NotificationItem';
 import './NotificationDrawer.css';
 
@@ -25,10 +27,14 @@ export default function NotificationDrawer() {
     isLoading,
     fetchMore,
     markAllAsRead,
+    deleteAllNotificationItems,
   } = useNotificationStore();
 
   // Close drawer on Escape key
   useEffect(() => {
+    if (isDrawerOpen) {
+      getCachedApps();
+    }
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isDrawerOpen) {
         closeDrawer();
@@ -113,14 +119,26 @@ export default function NotificationDrawer() {
                   </button>
                 </div>
 
-                {unreadCount > 0 && (
-                  <button
-                    className="notif-mark-all-btn"
-                    onClick={markAllAsRead}
-                  >
-                    Mark all read
-                  </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {unreadCount > 0 && (
+                    <button
+                      className="notif-mark-all-btn"
+                      onClick={markAllAsRead}
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      className="notif-clear-all-btn"
+                      onClick={deleteAllNotificationItems}
+                      title="Delete all notifications"
+                    >
+                      <HiOutlineTrash size={13} />
+                      <span>Delete all</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -16,7 +16,11 @@ public class NasaHandlers {
         if (platformApiKey != null && !platformApiKey.isBlank()) {
             return platformApiKey;
         }
-        return context.getCredential("apiKey");
+        String key = context.getCredential("apiKey");
+        if (key != null && !key.isBlank()) {
+            return key;
+        }
+        return "DEMO_KEY";
     }
 
     @ActionMapping(appKey = "nasa", actionKey = "nasa:apod:get")

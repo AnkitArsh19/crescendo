@@ -1,1 +1,79 @@
-/* App.css - intentionally empty, all styles in index.css and component CSS files */
+/* App.css - global styles and desktop app offsets */
+
+/* Desktop App (Tauri) Titlebar Offsets */
+body.is-tauri-desktop {
+  padding-top: 38px;
+}
+
+/* Landing Page fixed navbar and hero offsets */
+body.is-tauri-desktop .navbar {
+  top: 38px;
+}
+
+body.is-tauri-desktop .navbar-mobile-menu {
+  top: 102px; /* 38px titlebar + 64px navbar */
+}
+
+body.is-tauri-desktop .hero {
+  padding-top: 122px; /* 84px base + 38px titlebar */
+}
+
+/* Dashboard sidebar, topbar, and main container */
+body.is-tauri-desktop .dash-sidebar {
+  top: 38px;
+  height: calc(100vh - 38px);
+}
+
+body.is-tauri-desktop .dash-topbar {
+  top: 38px;
+}
+
+body.is-tauri-desktop .dash-main {
+  min-height: calc(100vh - 38px);
+}
+
+body.is-tauri-desktop .canvas-page {
+  height: 100%;
+  max-height: calc(100vh - 38px);
+}
+
+body.is-tauri-desktop:has(.canvas-mode),
+body.is-tauri-desktop:has(.dash-content-canvas) {
+  overflow: hidden !important;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+body.is-tauri-desktop .resend-studio-root {
+  top: 38px;
+  height: calc(100vh - 38px);
+}
+
+/* Auth views */
+body.is-tauri-desktop .auth-split-layout {
+  min-height: calc(100vh - 38px);
+}
+
+body.is-tauri-desktop .auth-theme-toggle {
+  top: 58px; /* 20px base + 38px titlebar */
+}
+
+/* Docs view */
+body.is-tauri-desktop .docs-topbar {
+  top: 38px;
+}
+
+body.is-tauri-desktop .docs-sidebar {
+  top: 38px;
+  height: calc(100vh - 38px);
+}
+
+/* Notification Drawer */
+body.is-tauri-desktop .notif-drawer-backdrop {
+  top: 38px;
+  height: calc(100vh - 38px);
+}
+
+body.is-tauri-desktop .notif-drawer-panel {
+  height: calc(100vh - 38px);
+}

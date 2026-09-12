@@ -68,6 +68,14 @@ public class UserSession {
     @Column(name = "refresh_token_hash", nullable = false, length = 100)
     private String refreshTokenHash;
 
+    /// SHA-256 hash of the immediately preceding token in the rotation chain.
+    /// Set only when this session was created by rotating a previous one (not on initial login).
+    /// Used by rotation-reuse detection to scope the grace period to the exact predecessor—not
+    /// any revoked token belonging to this user—preventing false-positive mass-revocations
+    /// when two concurrent refresh requests race each other on page load.
+    @Column(name = "predecessor_token_hash", length = 100)
+    private String predecessorTokenHash;
+
     /// Absolute point in time when this refresh token becomes invalid.  Matches the
     /// TTL configured in jwt.refresh.expiration so the DB row and the token itself
     /// expire at approximately the same moment.
@@ -201,6 +209,14 @@ public class UserSession {
 
     public void setRefreshTokenHash(String refreshTokenHash) {
         this.refreshTokenHash = refreshTokenHash;
+    }
+
+    public String getPredecessorTokenHash() {
+        return predecessorTokenHash;
+    }
+
+    public void setPredecessorTokenHash(String predecessorTokenHash) {
+        this.predecessorTokenHash = predecessorTokenHash;
     }
 
     public Instant getRevokedAt() {

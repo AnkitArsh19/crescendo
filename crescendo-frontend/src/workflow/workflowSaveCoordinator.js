@@ -192,10 +192,16 @@ export function createSaveCoordinator(callbacks) {
 
                 const { deletedBackendIds, serverRevision } = draft.getDelta();
 
-                const steps = nodes.map(node => {
+                const steps = [];
+                for (const node of nodes) {
                     const payload = nodeToStepPayload(node, appDetailsByKey);
-                    if (!payload) return null;
-                    return {
+                    if (!payload) {
+                        const err = `Cannot save: step "${node.data?.label || node.id}" is missing required app or action configuration.`;
+                        onSaveError(err);
+                        useToastStore.getState().addToast(err, 'error');
+                        return null;
+                    }
+                    steps.push({
                         clientId: node.id,
                         backendId: payload.backendId,
                         type: payload.type,
@@ -204,13 +210,16 @@ export function createSaveCoordinator(callbacks) {
                         appKey: payload.appKey,
                         connectionId: payload.connectionId,
                         configuration: payload.configuration
-                    };
-                }).filter(Boolean);
+                    });
+                }
 
-                const edgePayloads = edgesToPayload(edges);
+                const validNodeIds = new Set(steps.map(s => s.clientId));
+                const edgePayloads = edgesToPayload(edges).filter(
+                    e => validNodeIds.has(e.clientSourceId) && validNodeIds.has(e.clientTargetId)
+                );
 
                 const resp = await saveGraph(id, {
-                    name: (getWorkflowName() || '').trim() || 'Untitled',
+                    name: (getWorkflowName() || '').trim().slice(0, 255) || 'Untitled',
                     revision: serverRevision,
                     steps,
                     edges: edgePayloads,
@@ -279,10 +288,14 @@ export function createSaveCoordinator(callbacks) {
                 const id = await ensureWorkflow(nodes);
                 if (!id) return;
 
-                const steps = nodes.map(node => {
+                const steps = [];
+                for (const node of nodes) {
                     const payload = nodeToStepPayload(node, appDetailsByKey);
-                    if (!payload) return null;
-                    return {
+                    if (!payload) {
+                        // Draft node not yet configured with valid appKey/actionKey — skip autosave
+                        return;
+                    }
+                    steps.push({
                         clientId: node.id,
                         backendId: payload.backendId,
                         type: payload.type,
@@ -291,15 +304,18 @@ export function createSaveCoordinator(callbacks) {
                         appKey: payload.appKey,
                         connectionId: payload.connectionId,
                         configuration: payload.configuration
-                    };
-                }).filter(Boolean);
+                    });
+                }
 
-                const edgePayloads = edgesToPayload(edges);
+                const validNodeIds = new Set(steps.map(s => s.clientId));
+                const edgePayloads = edgesToPayload(edges).filter(
+                    e => validNodeIds.has(e.clientSourceId) && validNodeIds.has(e.clientTargetId)
+                );
 
                 const { deletedBackendIds, serverRevision } = draft.getDelta();
 
                 const resp = await saveGraph(id, {
-                    name: (getWorkflowName() || '').trim() || 'Untitled',
+                    name: (getWorkflowName() || '').trim().slice(0, 255) || 'Untitled',
                     revision: serverRevision,
                     steps,
                     edges: edgePayloads,
@@ -319,8 +335,15 @@ export function createSaveCoordinator(callbacks) {
                 onDirtyChange(draft.isDirty());
             } catch (err) {
                 if (err.response?.status === 409) {
-                    const msg = err.response?.data?.message || 'Workflow modified by another session. Please refresh.';
-                    useToastStore.getState().addToast(msg, 'error');
+                    try {
+                        const freshWf = await workflowClient.get(id);
+                        if (freshWf && freshWf.revision != null) {
+                            draft.setRevision(freshWf.revision);
+                        }
+                    } catch {
+                        const msg = err.response?.data?.message || 'Workflow modified by another session. Please refresh.';
+                        useToastStore.getState().addToast(msg, 'error');
+                    }
                 }
                 // Other autosave failures are silently swallowed
             }
