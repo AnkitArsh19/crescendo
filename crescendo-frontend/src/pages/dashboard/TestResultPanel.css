@@ -443,3 +443,52 @@
 .trp-copy-btn {
     border-left: 1px solid var(--border-primary);
 }
+
+.trp-upstream-header-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 6px;
+}
+
+.trp-upstream-hint {
+    font-size: 0.69rem;
+    color: var(--text-tertiary);
+    font-weight: 450;
+}
+
+.trp-test-btn-sub {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    text-align: center;
+    margin-top: -2px;
+    line-height: 1.4;
+}
+
+.trp-live-prompt-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--bg-card) 90%, var(--text-accent) 10%);
+    border: 1px solid color-mix(in srgb, var(--border-primary) 70%, var(--text-accent) 30%);
+    margin-top: 10px;
+}
+
+.trp-live-prompt-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.trp-live-prompt-info strong {
+    font-size: 0.78rem;
+    color: var(--text-primary);
+}
+
+.trp-live-prompt-info span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}

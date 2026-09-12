@@ -117,24 +117,54 @@ export function toPersistedConfig(schemaFields, config) {
 export function nodeToStepPayload(node, appDetailsByKey = {}) {
     // 'branch' nodes (logic:if, logic:switch) are ACTION type steps on the backend
     const stepType = node.type === 'trigger' ? 'TRIGGER' : 'ACTION';
-    const appKey = node.data?.appKey;
+    let appKey = node.data?.appKey;
     if (!appKey) return null;
 
-    const opKey = stepType === 'TRIGGER'
+    // Normalization for legacy / alias appKeys
+    if (appKey === 'condition' || appKey === 'branch') {
+        appKey = 'logic';
+    }
+
+    let opKey = stepType === 'TRIGGER'
         ? (node.data?.triggerKey || node.data?.actionKey || null)
         : (node.data?.actionKey || null);
+
+    if (appKey === 'agent') {
+        const agentActions = appDetailsByKey['agent']?.actions || [];
+        const matchedAction = agentActions.find((a) => a.actionKey === 'agent:ai_agent' || a.actionKey === 'ai_agent');
+        opKey = matchedAction ? matchedAction.actionKey : (node.data?.actionKey || 'agent:ai_agent');
+    } else if (appKey === 'logic' && (!opKey || opKey === 'rule')) {
+        opKey = 'logic:if';
+    }
+
     if (!opKey) return null;
 
     const detail = appDetailsByKey[appKey];
     const defs = stepType === 'TRIGGER'
         ? (Array.isArray(detail?.triggers) ? detail.triggers : [])
         : (Array.isArray(detail?.actions) ? detail.actions : []);
-    const def = defs.find((d) => (d.triggerKey || d.actionKey) === opKey);
+    const def = defs.find((d) => {
+        const key = d.triggerKey || d.actionKey;
+        return key === opKey || (appKey === 'agent' && (key === 'ai_agent' || key === 'agent:ai_agent'));
+    });
     const schemaFields = parseConfigSchema(def?.configSchema || {});
     const configuration = toPersistedConfig(schemaFields, node.data?.configuration || {});
 
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const rawConnId = node.data?.connectionId;
-    const safeConnectionId = (rawConnId && rawConnId !== 'ADMIN_KEY' && rawConnId !== 'null') ? rawConnId : null;
+    let safeConnectionId = (typeof rawConnId === 'string' && UUID_REGEX.test(rawConnId.trim()))
+        ? rawConnId.trim()
+        : null;
+
+    // For agent node: store connection in config (for execution BYOK), but keep top-level connectionId null
+    // so remote backend validator does not reject with "Invalid or unauthorized connection for this app".
+    if (appKey === 'agent') {
+        if (safeConnectionId) {
+            configuration.connectionId = safeConnectionId;
+            configuration._connectionId = safeConnectionId;
+        }
+        safeConnectionId = null;
+    }
 
     if (node.data?.credentialSource) {
         configuration._credentialSource = node.data.credentialSource;
@@ -143,9 +173,14 @@ export function nodeToStepPayload(node, appDetailsByKey = {}) {
         configuration._iconUrl = node.data.iconUrl;
     }
 
+    const rawBackendId = node.data?._backendId;
+    const safeBackendId = (typeof rawBackendId === 'string' && UUID_REGEX.test(rawBackendId.trim()))
+        ? rawBackendId.trim()
+        : null;
+
     return {
         clientId: node.id,
-        backendId: node.data?._backendId || null,
+        backendId: safeBackendId,
         type: stepType,
         name: node.data?.label || (stepType === 'TRIGGER' ? 'Trigger' : 'Action'),
         appKey,

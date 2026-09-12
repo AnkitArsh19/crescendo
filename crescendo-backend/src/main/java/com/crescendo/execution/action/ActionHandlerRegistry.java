@@ -1,11 +1,12 @@
 package com.crescendo.execution.action;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -28,13 +29,11 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Look-up is O(1) via the composite key {@code appKey:actionKey}.
  *
- * <p>The method-level scan is deferred to {@code @PostConstruct} to avoid
- * circular dependency issues (the constructor calling {@code getBean()} on
- * every bean can trigger premature instantiation of beans that depend on
- * this registry).
+ * <p>The method-level scan is deferred to {@code afterSingletonsInstantiated} to avoid
+ * circular dependency issues.
  */
 @Component
-public class ActionHandlerRegistry {
+public class ActionHandlerRegistry implements SmartInitializingSingleton {
 
     private static final Logger logger = LoggerFactory.getLogger(ActionHandlerRegistry.class);
 
@@ -49,7 +48,7 @@ public class ActionHandlerRegistry {
     }
 
     @PostConstruct
-    void init() {
+    void initClassLevel() {
         // ── Pattern 1: class-level @ActionMapping (implements ActionHandler) ──
         for (ActionHandler handler : classLevelHandlers) {
             ActionMapping mapping = handler.getClass().getAnnotation(ActionMapping.class);
@@ -62,7 +61,15 @@ public class ActionHandlerRegistry {
             handlers.put(key, handler);
             logger.debug("Registered class-level handler: {} → {}", key, handler.getClass().getSimpleName());
         }
+    }
 
+    @Override
+    public void afterSingletonsInstantiated() {
+        registerMethodLevelHandlers();
+        logger.info("ActionHandlerRegistry initialised with {} handler(s)", handlers.size());
+    }
+
+    private void registerMethodLevelHandlers() {
         // ── Pattern 2: method-level @ActionMapping on plain @Component beans ──
         String[] beanNames = applicationContext.getBeanDefinitionNames();
         for (String beanName : beanNames) {

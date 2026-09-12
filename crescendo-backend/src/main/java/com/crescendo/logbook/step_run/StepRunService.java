@@ -93,13 +93,14 @@ public class StepRunService {
                     "Step run must be RUNNING to fail, currently " + stepRun.getStatus());
         }
 
+        String safeErrorMessage = sanitizationService.sanitizeString(errorMessage);
         stepRun.setStatus(StepRunStatus.FAILED);
-        stepRun.setErrorMessage(errorMessage);
+        stepRun.setErrorMessage(safeErrorMessage);
         stepRun.setCompletedAt(Instant.now());
 
         eventPublisher.publish(
                 new StepRunCompletedEvent(stepRunId, stepRun.getWorkflowRunId(),
-                        stepRun.getStepId(), StepRunStatus.FAILED, errorMessage));
+                        stepRun.getStepId(), StepRunStatus.FAILED, safeErrorMessage));
     }
 
     /**

@@ -31,7 +31,7 @@ public class PostgresApp implements AppDefinition {
                 - **Update**: Update rows in a table
                 """,
                 "https://www.google.com/s2/favicons?domain=postgresql.org&sz=128", // Generic icon
-                AuthType.OAUTH2, // Placeholder
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(
@@ -97,11 +97,12 @@ public class PostgresApp implements AppDefinition {
                         )
                 )
         ).credentialSchema(List.of(
-                Map.of("key", "host", "label", "Host", "type", "string", "required", true),
-                Map.of("key", "port", "label", "Port", "type", "number", "required", true, "default", 5432),
-                Map.of("key", "database", "label", "Database", "type", "string", "required", true),
-                Map.of("key", "user", "label", "User", "type", "string", "required", true),
-                Map.of("key", "password", "label", "Password", "type", "string")
+                Map.of("key", "host", "label", "Host", "type", "string", "required", true, "placeholder", "localhost"),
+                Map.of("key", "port", "label", "Port", "type", "number", "required", true, "default", 5432, "placeholder", "5432"),
+                Map.of("key", "database", "label", "Database", "type", "string", "required", true, "placeholder", "postgres"),
+                Map.of("key", "user", "label", "User", "type", "string", "required", true, "placeholder", "postgres"),
+                Map.of("key", "password", "label", "Password", "type", "password", "required", false, "placeholder", "••••••••"),
+                Map.of("key", "sslMode", "label", "SSL Mode", "type", "string", "required", false, "default", "prefer", "placeholder", "prefer")
         )).category("database");
     }
 }

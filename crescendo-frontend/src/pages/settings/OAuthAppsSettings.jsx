@@ -29,7 +29,7 @@ export default function OAuthAppsSettings() {
                 appCatalogApi.list()
             ]);
             setOauthApps(Array.isArray(myApps) ? myApps : []);
-            setCatalogApps(Array.isArray(allApps) ? allApps.filter(app => app.authType === 'OAUTH2') : []);
+            setCatalogApps(Array.isArray(allApps) ? allApps.filter(app => app.authType === 'OAUTH2' || app.altAuthType === 'OAUTH2') : []);
         } catch {
             addToast('Failed to load OAuth configurations', 'error');
         } finally {

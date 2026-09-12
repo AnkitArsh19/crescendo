@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { flushSync } from 'react-dom';
 
 const ThemeContext = createContext();
 
@@ -9,6 +8,7 @@ export function ThemeProvider({ children }) {
     return saved || 'dark';
   });
   const isTransitioningRef = useRef(false);
+  const lastToggleTimeRef = useRef(0);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -16,11 +16,28 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const toggleTheme = useCallback((arg) => {
-    if (isTransitioningRef.current || document.documentElement.dataset.magicuiThemeVt === 'active') {
+    const now = Date.now();
+    // Protect against rapid toggling crashes with 400ms cooldown
+    if (now - lastToggleTimeRef.current < 400 || isTransitioningRef.current) {
+      return;
+    }
+    lastToggleTimeRef.current = now;
+
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+
+    const applyTheme = () => {
+      setTheme(nextTheme);
+    };
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
+    if (typeof document.startViewTransition !== 'function' || prefersReducedMotion) {
+      applyTheme();
       return;
     }
 
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
     const duration = 650;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -28,7 +45,7 @@ export function ThemeProvider({ children }) {
     let cx = null;
     let cy = null;
 
-    // 1. Prioritize measuring the imaginary anchor object placed directly inside the theme button
+    // 1. Prioritize measuring the anchor object placed directly inside the theme button
     const anchor = document.getElementById('theme-toggle-anchor');
     if (anchor) {
       const rect = anchor.getBoundingClientRect();
@@ -38,17 +55,17 @@ export function ThemeProvider({ children }) {
       }
     }
 
-    // 2. Fallback to event target or bounding rect if anchor is not rendered (e.g. offscreen or dashboard)
+    // 2. Fallback to event target or bounding rect if anchor is not rendered
     if (cx == null || cy == null || (cx === 0 && cy === 0)) {
       if (arg && arg.currentTarget && typeof arg.currentTarget.getBoundingClientRect === 'function') {
         const rect = arg.currentTarget.getBoundingClientRect();
         cx = rect.left + rect.width / 2;
         cy = rect.top + rect.height / 2;
-      } else if (arg && typeof arg.x === 'number' && typeof arg.y === 'number') {
+      } else if (arg && typeof arg.x === 'number' && typeof arg.y === 'number' && (arg.x > 0 || arg.y > 0)) {
         cx = arg.x;
         cy = arg.y;
       } else {
-        const btn = document.querySelector('.theme-toggle');
+        const btn = document.querySelector('.crescendo-theme-toggle, .theme-toggle, .dash-topbar-btn');
         if (btn) {
           const rect = btn.getBoundingClientRect();
           cx = rect.left + rect.width / 2;
@@ -65,17 +82,7 @@ export function ThemeProvider({ children }) {
       Math.max(cy, viewportHeight - cy)
     );
 
-    const applyTheme = () => {
-      setTheme(nextTheme);
-    };
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (typeof document.startViewTransition !== 'function' || prefersReducedMotion) {
-      applyTheme();
-      return;
-    }
-
-    // Convert coordinates to percentages of the snapshot reference box to avoid Windows fractional scale (e.g. 125%/150%) positioning bugs (#989)
+    // Convert coordinates to percentages to handle DPI/display scaling cleanly
     const toX = (x) => `${(x / viewportWidth) * 100}%`;
     const toY = (y) => `${(y / viewportHeight) * 100}%`;
     const point = (x, y) => `${toX(x)} ${toY(y)}`;
@@ -99,35 +106,43 @@ export function ThemeProvider({ children }) {
     };
 
     isTransitioningRef.current = true;
-    const transition = document.startViewTransition(() => {
-      flushSync(() => {
+
+    try {
+      const transition = document.startViewTransition(() => {
         applyTheme();
       });
-    });
 
-    if (typeof transition?.finished?.finally === 'function') {
-      transition.finished.finally(cleanup).catch(() => {});
-    } else {
-      cleanup();
-    }
+      if (transition?.finished) {
+        transition.finished.catch(() => {}).finally(cleanup);
+      } else {
+        cleanup();
+      }
 
-    const ready = transition?.ready;
-    if (ready && typeof ready.then === 'function') {
-      ready
-        .then(() => {
-          document.documentElement.animate(
-            {
-              clipPath,
-            },
-            {
-              duration,
-              easing: 'ease-in-out',
-              fill: 'forwards',
-              pseudoElement: '::view-transition-new(root)',
+      if (transition?.ready) {
+        transition.ready
+          .then(() => {
+            try {
+              document.documentElement.animate(
+                { clipPath },
+                {
+                  duration,
+                  easing: 'ease-in-out',
+                  fill: 'forwards',
+                  pseudoElement: '::view-transition-new(root)',
+                }
+              );
+            } catch {
+              // ignore animation failure
             }
-          );
-        })
-        .catch(() => {});
+          })
+          .catch(() => {});
+      }
+
+      // Safety timeout to ensure isTransitioningRef is ALWAYS released
+      setTimeout(cleanup, duration + 100);
+    } catch {
+      applyTheme();
+      cleanup();
     }
   }, [theme]);
 

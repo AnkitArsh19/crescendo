@@ -183,6 +183,32 @@ class AuthenticationControllerE2ETest extends BaseIntegrationTest {
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
+
+        @Test
+        @DisplayName("Replaying rotated token within 5s grace period does NOT revoke successor session")
+        void refresh_replayWithinGracePeriod_doesNotRevokeSuccessor() throws Exception {
+            ResponseEntity<String> regResp = client().postForEntity(url("/auth/register"),
+                    json(reg("grace@crescendo.test", "graceuser", "P@ssword123!")), String.class);
+            String token1 = objectMapper.readTree(regResp.getBody()).get("refreshToken").asText();
+
+            // 1. First refresh rotates token1 -> token2
+            ResponseEntity<String> firstRefresh = client().postForEntity(url("/auth/refresh"),
+                    json(new AuthDto.RefreshTokenRequest(token1)), String.class);
+            assertThat(firstRefresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+            String token2 = objectMapper.readTree(firstRefresh.getBody()).get("refreshToken").asText();
+
+            // 2. Replay token1 immediately (benign race condition within 5s grace period)
+            ResponseEntity<String> replayedRefresh = client().postForEntity(url("/auth/refresh"),
+                    json(new AuthDto.RefreshTokenRequest(token1)), String.class);
+            // Replayed token is rejected (401), but does NOT trigger family revocation
+            assertThat(replayedRefresh.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+            // 3. Successor token2 is STILL active and valid
+            ResponseEntity<String> secondRefresh = client().postForEntity(url("/auth/refresh"),
+                    json(new AuthDto.RefreshTokenRequest(token2)), String.class);
+            assertThat(secondRefresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(objectMapper.readTree(secondRefresh.getBody()).get("accessToken").asText()).isNotBlank();
+        }
     }
 
     @Nested
@@ -226,6 +252,90 @@ class AuthenticationControllerE2ETest extends BaseIntegrationTest {
                     jsonBearer(null, accessToken), String.class);
 
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /auth/desktop-handoff")
+    class DesktopHandoff {
+
+        @Test
+        @DisplayName("issue without Bearer token returns 401 Unauthorized")
+        void issue_unauthenticated_returns401() {
+            ResponseEntity<String> resp = client().postForEntity(
+                    url("/auth/desktop-handoff/issue"),
+                    json(java.util.Map.of("deviceId", "dev-123")),
+                    String.class
+            );
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("issue with valid Bearer token returns 200 with one-time code")
+        void issue_authenticated_returns200WithCode() throws Exception {
+            ResponseEntity<String> regResp = client().postForEntity(url("/auth/register"),
+                    json(reg("handoff1@crescendo.test", "handoff1", "P@ssword123!")), String.class);
+            String accessToken = objectMapper.readTree(regResp.getBody()).get("accessToken").asText();
+
+            ResponseEntity<String> issueResp = client().postForEntity(
+                    url("/auth/desktop-handoff/issue"),
+                    jsonBearer(java.util.Map.of("deviceId", "dev-123", "deviceLabel", "Test Desktop"), accessToken),
+                    String.class
+            );
+
+            assertThat(issueResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+            JsonNode body = objectMapper.readTree(issueResp.getBody());
+            assertThat(body.has("code")).isTrue();
+            assertThat(body.get("code").asText()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("exchange with valid code returns 200 with tokens, and replay returns 401")
+        void exchange_validCode_returnsTokens_andReplayRejected() throws Exception {
+            ResponseEntity<String> regResp = client().postForEntity(url("/auth/register"),
+                    json(reg("handoff2@crescendo.test", "handoff2", "P@ssword123!")), String.class);
+            String accessToken = objectMapper.readTree(regResp.getBody()).get("accessToken").asText();
+
+            // 1. Issue code
+            ResponseEntity<String> issueResp = client().postForEntity(
+                    url("/auth/desktop-handoff/issue"),
+                    jsonBearer(java.util.Map.of("deviceId", "dev-456", "deviceLabel", "Windows Test"), accessToken),
+                    String.class
+            );
+            String code = objectMapper.readTree(issueResp.getBody()).get("code").asText();
+
+            // 2. Exchange code (public endpoint, no Bearer token needed)
+            ResponseEntity<String> exchangeResp = client().postForEntity(
+                    url("/auth/desktop-handoff/exchange"),
+                    json(java.util.Map.of("code", code)),
+                    String.class
+            );
+
+            assertThat(exchangeResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+            JsonNode tokens = objectMapper.readTree(exchangeResp.getBody());
+            assertThat(tokens.has("accessToken")).isTrue();
+            assertThat(tokens.get("accessToken").asText()).isNotBlank();
+            assertThat(tokens.has("refreshToken")).isTrue();
+            assertThat(tokens.get("refreshToken").asText()).isNotBlank();
+
+            // 3. Replay attack: attempt to exchange the same code a second time
+            ResponseEntity<String> replayResp = client().postForEntity(
+                    url("/auth/desktop-handoff/exchange"),
+                    json(java.util.Map.of("code", code)),
+                    String.class
+            );
+            assertThat(replayResp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("exchange with unknown code returns 401 Unauthorized")
+        void exchange_invalidCode_returns401() {
+            ResponseEntity<String> resp = client().postForEntity(
+                    url("/auth/desktop-handoff/exchange"),
+                    json(java.util.Map.of("code", "non-existent-code-123456789")),
+                    String.class
+            );
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 }

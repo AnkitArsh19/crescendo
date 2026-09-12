@@ -234,6 +234,8 @@ public class OAuthTokenRefreshService {
                 } catch (Exception repoEx) {
                     logger.warn("[token-refresh] Could not update connection status to REAUTH: {}", repoEx.getMessage());
                 }
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Authorization expired for " + latest.getName() + ". Please reconnect.");
             }
             logger.error("[token-refresh] Refresh failed for connection {}: {}", connectionId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -254,7 +256,11 @@ public class OAuthTokenRefreshService {
                     NotificationType.CONNECTION_TOKEN_EXPIRED,
                     "Connection Expired: " + appName,
                     "Access token for " + appName + " has expired. Please reconnect the app.",
-                    Map.of("connectionId", connection.getId().toString(), "appKey", connection.getAppKey())
+                    Map.of(
+                            "connectionId", connection.getId().toString(),
+                            "appKey", connection.getAppKey(),
+                            "appName", appName
+                    )
             );
         } catch (Exception e) {
             logger.warn("[token-refresh] Failed to send notification for expired token: {}", e.getMessage());

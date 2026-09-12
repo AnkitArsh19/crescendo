@@ -48,6 +48,9 @@ public class NasaApodApp implements AppDefinition {
                             Map.of("key", "sol", "label", "Sol (Mars Day)", "type", "text", "required", false,
                                    "placeholder", "1000", "helpText", "Martian sol number")))
                 )
-        ).credentialSchema(List.of()).category("fun").helpUrl("https://api.nasa.gov/");
+        ).credentialSchema(List.of(
+                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true,
+                        "placeholder", "e.g. DEMO_KEY or your NASA API key", "helpText", "Register for a personal API key at api.nasa.gov for higher rate limits")
+        )).altAuthType(AuthType.APIKEY).category("fun").helpUrl("https://api.nasa.gov/");
     }
 }

@@ -82,6 +82,11 @@ public class GitLabApp implements AppDefinition {
                         "configSchema", List.of(projField,
                             Map.of("key", "issueIid", "label", "Issue ID", "type", "text", "required", true, "helpText", "Internal issue ID")))
                 )
-        ).credentialSchema(List.of()).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://gitlab.com/-/user_settings/applications");
+        ).credentialSchema(List.of(
+                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true,
+                        "placeholder", "glpat-...", "helpText", "Create a token in GitLab User Settings -> Access Tokens"),
+                Map.of("key", "server", "label", "GitLab Server URL", "type", "text", "required", false,
+                        "placeholder", "https://gitlab.com", "helpText", "Leave blank for gitlab.com")
+        )).altAuthType(AuthType.APIKEY).category("developer").helpUrl("https://gitlab.com/-/user_settings/applications");
     }
 }

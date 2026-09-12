@@ -71,7 +71,14 @@ public class UserNotificationService {
             }
         }
 
-        // 3. Persist and broadcast via SSE
+        // 3. Deduplicate connection token expired notifications if an unread alert already exists
+        if (type == NotificationType.CONNECTION_TOKEN_EXPIRED
+                && userNotificationRepository.existsByUserIdAndTypeAndTitleAndIsReadFalse(userId, type, title)) {
+            log.debug("Unread token expired alert already exists for user {} with title '{}', skipping duplicate", userId, title);
+            return null;
+        }
+
+        // 4. Persist and broadcast via SSE
         UserNotification notification = new UserNotification(
                 UUID.randomUUID(),
                 userId,
@@ -131,6 +138,11 @@ public class UserNotificationService {
                     return true;
                 })
                 .orElse(false);
+    }
+
+    @Transactional
+    public int deleteAll(UUID userId) {
+        return userNotificationRepository.deleteAllByUserId(userId);
     }
 
     @Transactional(readOnly = true)

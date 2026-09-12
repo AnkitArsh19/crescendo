@@ -33,7 +33,7 @@ public class MongoDbApp implements AppDefinition {
                 - Search Index operations
                 """,
                 "https://www.google.com/s2/favicons?domain=mongodb.com&sz=128",
-                AuthType.OAUTH2, // Placeholder, MongoDB uses connection string usually, but sticking to standard auth schemas
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(

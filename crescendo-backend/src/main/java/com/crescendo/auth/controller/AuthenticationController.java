@@ -2,8 +2,10 @@ package com.crescendo.auth.controller;
 
 import com.crescendo.auth.dto.AuthDto;
 import com.crescendo.auth.service.AuthenticationService;
+import com.crescendo.auth.token.DesktopHandoffService;
 import com.crescendo.security.AppUserDetails;
 import com.crescendo.security.RefreshTokenCookieService;
+import com.crescendo.security.TokenPair;
 import com.crescendo.security.mfa.MFAService;
 import com.crescendo.user.user_command.User_command;
 import jakarta.servlet.http.Cookie;
@@ -26,17 +28,19 @@ import java.util.UUID;
  * All authentication endpoints live under /auth.
  *
  * Public endpoints (no JWT required):
- *   POST /auth/register         — local email+password sign-up
- *   POST /auth/login            — local login (returns 202 + mfaRequired=true if MFA is enabled)
- *   POST /auth/refresh          — rotate access token using refresh cookie or request body
- *   POST /auth/forgot-password  — send password-reset email
- *   POST /auth/reset-password   — consume reset token and set new password
- *   POST /auth/verify-email     — consume email-verification link
+ *   POST /auth/register                      — local email+password sign-up
+ *   POST /auth/login                         — local login (returns 202 + mfaRequired=true if MFA enabled)
+ *   POST /auth/refresh                       — rotate access token using refresh cookie or request body
+ *   POST /auth/forgot-password               — send password-reset email
+ *   POST /auth/reset-password                — consume reset token and set new password
+ *   POST /auth/verify-email                  — consume email-verification link
+ *   POST /auth/desktop-handoff/exchange      — exchange a one-time handoff code for a token pair (RFC 8252)
  *
  * Authenticated endpoints (Bearer JWT required):
- *   POST  /auth/logout                — revoke refresh token + clear cookie
- *   PATCH /auth/change-password       — old-password + new-password
- *   POST  /auth/resend-verification   — send a new verification email
+ *   POST  /auth/logout                       — revoke refresh token + clear cookie
+ *   PATCH /auth/change-password              — old-password + new-password
+ *   POST  /auth/resend-verification          — send a new verification email
+ *   POST  /auth/desktop-handoff/issue        — issue a one-time desktop handoff code (RFC 8252)
  */
 @RestController
 @RequestMapping("/auth")
@@ -45,6 +49,7 @@ public class AuthenticationController {
     private final AuthenticationService authService;
     private final MFAService mfaService;
     private final RefreshTokenCookieService cookieService;
+    private final DesktopHandoffService desktopHandoffService;
 
     /// Controls whether the refresh-token cookie carries the Secure flag.
     /// Set to false in local development (HTTP), true in all deployed environments (HTTPS).
@@ -61,10 +66,12 @@ public class AuthenticationController {
 
     public AuthenticationController(AuthenticationService authService,
                                     MFAService mfaService,
-                                    RefreshTokenCookieService cookieService) {
+                                    RefreshTokenCookieService cookieService,
+                                    DesktopHandoffService desktopHandoffService) {
         this.authService = authService;
         this.mfaService = mfaService;
         this.cookieService = cookieService;
+        this.desktopHandoffService = desktopHandoffService;
     }
 
     // REGISTRATION
@@ -253,5 +260,45 @@ public class AuthenticationController {
             }
         }
         return request.getRemoteAddr();
+    }
+
+    // ── Desktop Handoff (RFC 8252 simplified) ────────────────────────────────────
+
+    /**
+     * Issues a one-time, 60-second handoff code for the currently authenticated browser user.
+     * The code is navigated to /open-app?code=... which fires a deep-link into the desktop app.
+     * Requires a valid Bearer JWT (the browser must already be logged in).
+     */
+    @PostMapping("/desktop-handoff/issue")
+    public ResponseEntity<java.util.Map<String, String>> issueDesktopHandoffCode(
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication auth) {
+        UUID userId = currentUserId(auth);
+        String deviceId    = body != null ? body.get("deviceId")    : null;
+        String deviceLabel = body != null ? body.get("deviceLabel") : null;
+        String code = desktopHandoffService.issueCode(userId, deviceId, deviceLabel);
+        return ResponseEntity.ok(java.util.Map.of("code", code));
+    }
+
+    /**
+     * Exchanges a one-time handoff code for a full token pair (access + refresh).
+     * This endpoint is PUBLIC — no JWT required — because the desktop app calling it
+     * does not yet have a token. The code itself is the credential.
+     *
+     * Returns tokens in the response BODY (not a cookie) so the desktop app can store them.
+     */
+    @PostMapping("/desktop-handoff/exchange")
+    public ResponseEntity<java.util.Map<String, Object>> exchangeDesktopHandoffCode(
+            @RequestBody java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String code = body.get("code");
+        String userAgent = request.getHeader("User-Agent");
+        TokenPair tokens = desktopHandoffService.exchangeCode(code, userAgent, clientIp(request));
+        return ResponseEntity.ok(java.util.Map.of(
+                "accessToken",     tokens.accessToken(),
+                "refreshToken",    tokens.refreshToken(),
+                "accessExpiresAt", tokens.accessExpiresAt().toString(),
+                "refreshExpiresAt", tokens.refreshExpiresAt().toString()
+        ));
     }
 }

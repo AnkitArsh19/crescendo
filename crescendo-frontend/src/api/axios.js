@@ -35,8 +35,10 @@ api.interceptors.response.use(
 
     // If it's a 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't intercept calls to the auth/refresh or login endpoints themselves
-      if (originalRequest.url.includes('/auth/refresh') || originalRequest.url.includes('/auth/login')) {
+      // Don't intercept calls to the auth/refresh or login endpoints themselves.
+      // Also exclude /auth/logout — a 401 there just means the session is already gone;
+      // attempting to refresh would be meaningless and causes a confusing 401 cascade.
+      if (originalRequest.url.includes('/auth/refresh') || originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/logout')) {
         return Promise.reject(error);
       }
 
@@ -52,7 +54,13 @@ api.interceptors.response.use(
         if (!refreshPromise) {
           // Single-flight refresh to avoid race conditions where two simultaneous 401s
           // rotate refresh tokens and make one request fail with "Invalid or expired refresh token".
-          refreshPromise = axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+          let tokenToUse = authStore.refreshToken;
+          if (!tokenToUse) {
+            try {
+              tokenToUse = localStorage.getItem('crescendo_refresh_token');
+            } catch { /* ignore */ }
+          }
+          refreshPromise = axios.post(`${API_BASE_URL}/auth/refresh`, tokenToUse ? { refreshToken: tokenToUse } : {}, {
             withCredentials: true
           })
             .then((response) => {

@@ -10,7 +10,6 @@ import {
     HiOutlineLogout,
     HiOutlineUser,
     HiOutlineMail,
-    HiMenuAlt2,
     HiOutlineBell,
     HiOutlineShieldCheck,
     HiSun,
@@ -22,6 +21,7 @@ import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
 import PasskeyNudge from '../../components/PasskeyNudge';
 import Breadcrumbs from '../../components/Breadcrumbs';
+import ThemeToggle from '../../components/ThemeToggle';
 import usePageMeta from '../../hooks/usePageMeta';
 import useWorkflowEventStream from '../../hooks/useWorkflowEventStream';
 import useNotificationStream from '../../hooks/useNotificationStream';
@@ -72,7 +72,20 @@ export default function DashboardLayout() {
         <div className="dashboard">
             {/* Sidebar */}
             <aside className={`dash-sidebar ${collapsed ? 'collapsed' : ''} ${isCanvas ? 'canvas-mode' : ''}`}>
-                <div className="dash-sidebar-header">
+                <div
+                    className="dash-sidebar-header"
+                    onClick={() => setCollapsed((prev) => !prev)}
+                    role="button"
+                    tabIndex={0}
+                    title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setCollapsed((prev) => !prev);
+                        }
+                    }}
+                >
                     <img
                         src={theme === 'dark' ? '/logo-white.svg' : '/logo-black.svg'}
                         alt="Crescendo"
@@ -239,8 +252,17 @@ export default function DashboardLayout() {
                 </div>
             </aside>
 
+            {/* In canvas mode, clicking outside the expanded sidebar collapses it back */}
+            {isCanvas && !collapsed && (
+                <div
+                    className="dash-sidebar-backdrop"
+                    onClick={() => setCollapsed(true)}
+                    aria-hidden="true"
+                />
+            )}
+
             {/* Main */}
-            <div className={`dash-main ${isCanvas ? 'canvas-mode' : ''}`}>
+            <div className={`dash-main ${collapsed ? 'collapsed' : ''} ${isCanvas ? 'canvas-mode' : ''}`}>
                 {/* Top bar — only show default topbar when NOT on canvas */}
                 {!isCanvas && (
                     <div className="dash-topbar">
@@ -248,14 +270,7 @@ export default function DashboardLayout() {
                             <Breadcrumbs />
                         </div>
                         <div className="dash-topbar-right">
-                            <button
-                                className="dash-topbar-btn"
-                                onClick={toggleTheme}
-                                title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-                                aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-                            >
-                                {theme === 'dark' ? <HiSun /> : <HiMoon />}
-                            </button>
+                            <ThemeToggle className="dash-topbar-btn" />
                             <NotificationBell />
                         </div>
                     </div>

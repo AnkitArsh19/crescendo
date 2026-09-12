@@ -28,7 +28,7 @@ public class MySQLApp implements AppDefinition {
                 
                 **Authentication:** Requires host, port, database name, username, and password credentials.
                 """,
-                "https://www.google.com/s2/favicons?domain=mysql.com&sz=128", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=mysql.com&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of("actionKey", "executeQuery", "name", "Execute Query", "description", "Execute a SQL query",

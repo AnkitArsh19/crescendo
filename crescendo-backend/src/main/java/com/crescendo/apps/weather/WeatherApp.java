@@ -28,7 +28,7 @@ public class WeatherApp implements AppDefinition {
 
                 **Authentication:** None natively (uses a demo API key by default, but you can provide your own OpenWeatherMap key).
                 """,
-                "https://www.google.com/s2/favicons?domain=openweathermap.org&sz=128", AuthType.NONE,
+                "https://www.google.com/s2/favicons?domain=openweathermap.org&sz=128", AuthType.APIKEY,
                 List.of(),
                 List.of(
                     Map.of("actionKey", "get-weather", "name", "Get Current Weather",
@@ -66,7 +66,10 @@ public class WeatherApp implements AppDefinition {
                             Map.of("key", "lon", "label", "Longitude", "type", "text", "required", true),
                             Map.of("key", "units", "label", "Units", "type", "text", "required", false, "placeholder", "metric")))
                 )
-        ).credentialSchema(List.of()).category("data")
+        ).credentialSchema(List.of(
+                Map.of("key", "apiKey", "label", "API Key", "type", "password", "required", true,
+                        "placeholder", "e.g. 8a9b2c3d4e...", "helpText", "Obtain your free API key at openweathermap.org/api_keys")
+        )).category("data")
                 .helpUrl("https://openweathermap.org/appid");
     }
 }

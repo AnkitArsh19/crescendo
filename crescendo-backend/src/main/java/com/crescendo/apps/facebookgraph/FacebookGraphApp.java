@@ -123,6 +123,6 @@ public class FacebookGraphApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "Access Token", "type", "password", "required", true),
                 Map.of("key", "graphVersion", "label", "Graph Version", "type", "text", "required", false, "placeholder", "v26.0")
-        )).altAuthType(AuthType.OAUTH2).category("social").helpUrl("https://developers.facebook.com/docs/graph-api/");
+        )).altAuthType(AuthType.APIKEY).category("social").helpUrl("https://developers.facebook.com/docs/graph-api/");
     }
 }

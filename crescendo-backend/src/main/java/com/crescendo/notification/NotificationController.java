@@ -90,6 +90,13 @@ public class NotificationController {
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
+    @DeleteMapping
+    public ResponseEntity<Map<String, Integer>> deleteAllNotifications(Authentication authentication) {
+        UUID userId = AuthenticatedUser.userId(authentication);
+        int deleted = notificationService.deleteAll(userId);
+        return ResponseEntity.ok(Map.of("deleted", deleted));
+    }
+
     @GetMapping("/preferences")
     public ResponseEntity<List<NotificationPreferenceDto>> getPreferences(Authentication authentication) {
         UUID userId = AuthenticatedUser.userId(authentication);

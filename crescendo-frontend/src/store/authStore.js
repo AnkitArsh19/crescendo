@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import api from '../api/axios';
 import { getDeviceMetadata } from '../utils/deviceFingerprint';
 
+// Single-flight guard: if checkAuth() is already in-flight, all subsequent callers
+// share the same promise instead of firing independent POST /auth/refresh requests.
+// This is the fix for the concurrent mount problem (App.jsx + DesktopAuthEntry.jsx both
+// calling checkAuth() within milliseconds, causing rotation-reuse detection to trigger).
+let _checkAuthPromise = null;
+
 const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
@@ -14,47 +20,86 @@ const useAuthStore = create((set, get) => ({
   refreshExpiresAt: null,
 
   setTokens: (accessToken, accessExpiresAt, refreshToken, refreshExpiresAt) => {
+    if (refreshToken) {
+      try {
+        localStorage.setItem('crescendo_refresh_token', refreshToken);
+      } catch { /* ignore */ }
+    }
     set({
       accessToken,
       accessExpiresAt,
-      refreshToken: refreshExpiresAt ? refreshToken : undefined, 
+      refreshToken: refreshToken || get().refreshToken,
+      refreshExpiresAt: refreshExpiresAt || get().refreshExpiresAt,
     });
   },
 
   // Called on app mount to restore session from the token (if stored or fetched).
   // Proactively refreshes the access token before hitting /users/me to avoid
   // a 401 console error on every page load.
+  // Single-flight: concurrent callers share the active promise so only one
+  // POST /auth/refresh is sent regardless of how many components mount at once.
   checkAuth: async () => {
-    // Guest mode: no session to restore, just stop loading
-    if (get().isGuest) {
-      set({ isLoading: false });
-      return;
-    }
-    try {
-      // If we don't have an access token, try refreshing first (HttpOnly cookie).
-      // This avoids the 401 console error from hitting /users/me with no token.
-      if (!get().accessToken) {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.crescendo.run';
-        const refreshResp = await fetch(`${API_BASE_URL}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}',
-        });
-        if (!refreshResp.ok) {
-          // No valid refresh token — user is not logged in
-          set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null });
-          return;
-        }
-        const tokens = await refreshResp.json();
-        set({ accessToken: tokens.accessToken, accessExpiresAt: tokens.accessExpiresAt });
+    if (_checkAuthPromise) return _checkAuthPromise;
+
+    _checkAuthPromise = (async () => {
+      // Guest mode: no session to restore, just stop loading
+      if (get().isGuest) {
+        set({ isLoading: false });
+        return;
       }
-      // Now we have a token — fetch user profile
-      const response = await api.get('/users/me');
-      set({ user: response.data, isAuthenticated: true, isLoading: false });
-    } catch {
-      // Any failure means no valid session
-      set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null });
+      try {
+        // If we don't have an access token, try refreshing first (HttpOnly cookie or stored refreshToken).
+        // This avoids the 401 console error from hitting /users/me with no token.
+        if (!get().accessToken) {
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.crescendo.run';
+          let tokenToUse = get().refreshToken;
+          if (!tokenToUse) {
+            try {
+              tokenToUse = localStorage.getItem('crescendo_refresh_token');
+            } catch { /* ignore */ }
+          }
+          const refreshResp = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tokenToUse ? { refreshToken: tokenToUse } : {}),
+          });
+          if (!refreshResp.ok) {
+            try {
+              localStorage.removeItem('crescendo_refresh_token');
+            } catch { /* ignore */ }
+            // No valid refresh token — user is not logged in
+            set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null, refreshToken: null });
+            return;
+          }
+          const tokens = await refreshResp.json();
+          if (tokens.refreshToken) {
+            try {
+              localStorage.setItem('crescendo_refresh_token', tokens.refreshToken);
+            } catch { /* ignore */ }
+          }
+          // Persist rotated refresh token too (backend rotates on every refresh).
+          // Without this DesktopAuthEntry cannot forward a valid refresh_token to the desktop app.
+          set({
+            accessToken: tokens.accessToken,
+            accessExpiresAt: tokens.accessExpiresAt,
+            refreshToken: tokens.refreshToken || tokenToUse || get().refreshToken,
+            refreshExpiresAt: tokens.refreshExpiresAt || get().refreshExpiresAt,
+          });
+        }
+        // Now we have a token — fetch user profile
+        const response = await api.get('/users/me');
+        set({ user: response.data, isAuthenticated: true, isLoading: false });
+      } catch {
+        // Any failure means no valid session
+        set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null });
+      }
+    })();
+
+    try {
+      await _checkAuthPromise;
+    } finally {
+      _checkAuthPromise = null;
     }
   },
 
@@ -192,6 +237,9 @@ const useAuthStore = create((set, get) => ({
       refreshToken: null,
     });
     localStorage.removeItem('crescendo_guest_session');
+    try {
+      localStorage.removeItem('crescendo_refresh_token');
+    } catch { /* ignore */ }
   },
 
   // ── Guest Mode ──────────────────────────────────────────────────────
@@ -230,6 +278,9 @@ const useAuthStore = create((set, get) => ({
       accessExpiresAt: null,
       refreshToken: null,
     });
+    try {
+      localStorage.removeItem('crescendo_refresh_token');
+    } catch { /* ignore */ }
   },
 }));
 

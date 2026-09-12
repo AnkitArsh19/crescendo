@@ -22,5 +22,8 @@ export const connectionsApi = {
 
   test: (id) =>
     api.post(`/connections/${id}/test`).then((r) => r.data),
+
+  testRaw: (data) =>
+    api.post('/connections/test', data).then((r) => r.data),
 };
 

@@ -7,6 +7,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,7 @@ public class AgentExecutionService {
 
     public AgentExecutionService(
             SubWorkflowToolRunner subWorkflowToolRunner,
-            ActionHandlerRegistry actionHandlerRegistry,
+            @Lazy ActionHandlerRegistry actionHandlerRegistry,
             ObjectMapper objectMapper,
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
             @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
@@ -150,6 +151,9 @@ public class AgentExecutionService {
             String inputJson = safeJson(executionContext);
             history.add(new AgentNextStepRequest.ConversationTurn("user", inputJson, null));
         }
+        if (history.isEmpty()) {
+            history.add(new AgentNextStepRequest.ConversationTurn("user", "Instructions: " + systemPrompt, null));
+        }
 
         int accumulatedTokens = 0;
 
@@ -213,12 +217,16 @@ public class AgentExecutionService {
             if (response.isFinalAnswer()) {
                 log.info("Agent run={} completed with final answer after {} iterations (tokensUsed={})",
                         agentSessionId, iteration, accumulatedTokens);
-                return Map.of(
-                        "status", "COMPLETED",
-                        "iterations", iteration,
-                        "tokensUsed", accumulatedTokens,
-                        "result", response.finalAnswer() != null ? response.finalAnswer() : ""
-                );
+                String answer = response.finalAnswer() != null ? response.finalAnswer() : "";
+                Map<String, Object> finalMap = new HashMap<>();
+                finalMap.put("status", "COMPLETED");
+                finalMap.put("iterations", iteration);
+                finalMap.put("tokensUsed", accumulatedTokens);
+                finalMap.put("result", answer);
+                finalMap.put("finalAnswer", answer);
+                finalMap.put("output", answer);
+                finalMap.put("text", answer);
+                return finalMap;
             }
 
             // ── 3b. Tool call — dispatch through ActionHandlerRegistry ────

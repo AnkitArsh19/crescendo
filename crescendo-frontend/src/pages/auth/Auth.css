@@ -33,10 +33,17 @@
     align-items: center;
     gap: 12px;
     text-decoration: none;
+    font-family: var(--font-sans);
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-accent);
+    letter-spacing: -0.3px;
     margin-bottom: auto;
+}
+
+.auth-brand span {
+    font-family: var(--font-sans);
+    font-weight: 700;
 }
 
 .auth-brand img {
@@ -44,6 +51,7 @@
 }
 
 .auth-brand-text h1 {
+    font-family: var(--font-sans);
     font-size: 3rem;
     font-weight: 700;
     line-height: 1.1;
@@ -132,12 +140,64 @@ body.light .auth-card {
     height: 28px;
 }
 
+/* Always visible brand logo for standalone auth cards */
+.auth-card-logo {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    text-decoration: none;
+}
+
+.auth-card-logo img {
+    height: 28px;
+    object-fit: contain;
+}
+
 .auth-logo-text {
-    font-family: var(--font-sans);
+    font-family: var(--font-sans) !important;
     font-size: 1.3rem;
     font-weight: 700;
     color: var(--text-accent);
     letter-spacing: -0.5px;
+}
+
+.auth-copy-link-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px dashed var(--border-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.auth-copy-link-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+}
+
+.auth-code-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: var(--text-primary);
 }
 
 .auth-header {

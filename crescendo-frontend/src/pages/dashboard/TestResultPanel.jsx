@@ -5,6 +5,7 @@ import {
   HiOutlineSparkles, HiOutlineDocumentText, HiOutlineArrowCircleRight
 } from 'react-icons/hi';
 import { stepTestApi } from '../../api/workflowApi';
+import { downloadFile } from '../../utils/download';
 import './TestResultPanel.css';
 
 /**
@@ -177,18 +178,11 @@ export default function TestResultPanel({
     const handleDownloadJSON = () => {
         const dataToExport = activeResultTab === 'dataIn' ? (result?.data?.dataIn || result?.data) : result?.data;
         if (!dataToExport) return;
-        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
         const resultKind = result.mode === 'LIVE_RUN'
             ? 'live-run'
             : result.mode === 'READ_SAMPLE' ? 'read-sample' : 'setup-check';
-        anchor.download = `${appKey}-${operationKey}-${resultKind}.json`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
+        const filename = `${appKey}-${operationKey}-${resultKind}.json`;
+        downloadFile(filename, dataToExport);
     };
 
     const handleCopyJSON = () => {
@@ -208,9 +202,9 @@ export default function TestResultPanel({
                 <HiOutlineShieldCheck aria-hidden="true" />
                 <span>
                     {isTrigger ? (
-                        <><strong>Test Trigger</strong> retrieves sample event records without activating live workflows.</>
+                        <><strong>Test Trigger:</strong> Safely fetches sample event records without activating live workflows.</>
                     ) : (
-                        <><strong>Check setup</strong> verifies your connection, fields, and selected resources without changing data.</>
+                        <><strong>Two-phase testing:</strong> 1) <em>Check step</em> verifies connections & resolves dynamic variables safely. 2) <em>Run live action</em> executes the step on the connected service.</>
                     )}
                 </span>
             </div>
@@ -218,7 +212,10 @@ export default function TestResultPanel({
             {/* Quick Upstream Sample Selector */}
             {!isTrigger && availablePreviousSteps.length > 0 && (
                 <div className="trp-upstream-selector">
-                    <span className="trp-upstream-label">Quick sample data:</span>
+                    <div className="trp-upstream-header-wrap">
+                        <span className="trp-upstream-label">Simulate previous steps:</span>
+                        <span className="trp-upstream-hint">Click a step below to simulate incoming data for variables like {`{{steps.1.data}}`}:</span>
+                    </div>
                     <div className="trp-upstream-btns">
                         {availablePreviousSteps.map((step) => (
                             <button
@@ -226,9 +223,9 @@ export default function TestResultPanel({
                                 type="button"
                                 className="trp-upstream-btn"
                                 onClick={() => handleUsePreviousStepSample(step)}
-                                title={`Use sample output from Step ${step.stepIndex}: ${step.name}`}
+                                title={`Simulate output from Step ${step.stepIndex}: ${step.name}`}
                             >
-                                <HiOutlineSparkles /> Step {step.stepIndex} ({step.name})
+                                <HiOutlineSparkles /> Load Step {step.stepIndex} ({step.appName}) Data
                             </button>
                         ))}
                     </div>
@@ -236,9 +233,9 @@ export default function TestResultPanel({
             )}
 
             {!isTrigger && (
-                <>
+                <div className="trp-sample-input-wrap">
                     <label className="trp-input-label" htmlFor={`test-input-${operationKey}`}>
-                        Sample input data <span>Optional — use earlier-step data to preview mappings</span>
+                        Simulated Step Input (JSON) <span>Simulates data passed from earlier steps during this test</span>
                     </label>
                     <textarea
                         id={`test-input-${operationKey}`}
@@ -246,11 +243,12 @@ export default function TestResultPanel({
                         value={inputText}
                         onChange={(event) => setInputText(event.target.value)}
                         spellCheck="false"
-                        placeholder='{\n  "email": "user@example.com",\n  "amount": 99.00\n}'
+                        rows={4}
+                        placeholder='{\n  "email": "user@example.com",\n  "subject": "Hello"\n}'
                         aria-describedby={inputError ? `test-input-error-${operationKey}` : undefined}
                     />
                     {inputError && <p id={`test-input-error-${operationKey}`} className="trp-input-error">{inputError}</p>}
-                </>
+                </div>
             )}
 
             {/* Main Action Buttons */}
@@ -265,14 +263,17 @@ export default function TestResultPanel({
                         {fetchingSample ? <LoadingLabel label="Fetching sample record…" /> : <><HiOutlineSparkles className="trp-test-btn-icon" /> Test Trigger / Fetch Sample Record</>}
                     </button>
                 ) : (
-                    <button
-                        type="button"
-                        className={`trp-test-btn ${checking ? 'testing' : ''}`}
-                        onClick={checkSetup}
-                        disabled={checking || fetchingSample || runningLive || !canCheck}
-                    >
-                        {checking ? <LoadingLabel label="Checking setup…" /> : <><HiOutlineShieldCheck className="trp-test-btn-icon" /> Check setup</>}
-                    </button>
+                    <>
+                        <button
+                            type="button"
+                            className={`trp-test-btn ${checking ? 'testing' : ''}`}
+                            onClick={checkSetup}
+                            disabled={checking || fetchingSample || runningLive || !canCheck}
+                        >
+                            {checking ? <LoadingLabel label="Checking setup & resolving variables…" /> : <><HiOutlineShieldCheck className="trp-test-btn-icon" /> Check Step (Safe Verification)</>}
+                        </button>
+                        <span className="trp-test-btn-sub">Verifies credentials and previews resolved variables without altering external data.</span>
+                    </>
                 )}
             </div>
 
@@ -379,9 +380,15 @@ export default function TestResultPanel({
 
                     {/* Live Action & Read Sample Action Buttons */}
                     {liveAllowed && result.success && !showLiveConfirmation && (
-                        <button type="button" className="trp-live-open" onClick={() => setShowLiveConfirmation(true)}>
-                            <HiOutlinePlay /> Run live action…
-                        </button>
+                        <div className="trp-live-prompt-card">
+                            <div className="trp-live-prompt-info">
+                                <strong>Ready to execute for real?</strong>
+                                <span>You can execute this action live in your connected account to verify the actual output.</span>
+                            </div>
+                            <button type="button" className="trp-live-open" onClick={() => setShowLiveConfirmation(true)}>
+                                <HiOutlinePlay /> Run live action…
+                            </button>
+                        </div>
                     )}
                     {canFetchReadSample && (
                         <button type="button" className="trp-read-sample" onClick={fetchReadSample} disabled={fetchingSample || runningLive}>
@@ -444,14 +451,33 @@ function LoadingLabel({ label }) {
     return <><span className="trp-loading-inline"><i /><i /><i /></span>{label}</>;
 }
 
-function flattenData(obj) {
+function flattenData(obj, maxRows = 200, maxDepth = 5) {
     if (!obj || typeof obj !== 'object') return [];
     const rows = [];
-    const visit = (value, prefix = '') => Object.entries(value).forEach(([key, child]) => {
-        const fullKey = prefix ? `${prefix}.${key}` : key;
-        if (child && typeof child === 'object' && !Array.isArray(child)) visit(child, fullKey);
-        else rows.push({ key: fullKey, value: Array.isArray(child) ? JSON.stringify(child) : String(child ?? '') });
-    });
-    visit(obj);
+    const seen = new WeakSet();
+    const visit = (value, prefix = '', depth = 0) => {
+        if (depth > maxDepth || rows.length >= maxRows) return;
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) return;
+            seen.add(value);
+        }
+        for (const [key, child] of Object.entries(value)) {
+            if (rows.length >= maxRows) break;
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+            if (child && typeof child === 'object' && !Array.isArray(child)) {
+                visit(child, fullKey, depth + 1);
+            } else {
+                rows.push({
+                    key: fullKey,
+                    value: Array.isArray(child) ? JSON.stringify(child) : String(child ?? '')
+                });
+            }
+        }
+    };
+    try {
+        visit(obj);
+    } catch {
+        // Safe fallback if traversal fails
+    }
     return rows;
 }

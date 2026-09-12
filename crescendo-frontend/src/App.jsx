@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastProvider from './components/ToastProvider';
 import ErrorPage from './pages/errors/ErrorPage';
 import usePageMeta from './hooks/usePageMeta';
+import DesktopTitlebar from './components/DesktopTitlebar';
+import useDesktopAuth from './hooks/useDesktopAuth';
+import { isTauri } from './utils/platform';
 import './App.css';
 
 // Landing
@@ -28,6 +31,9 @@ import RevokeSessionConfirm from './pages/auth/RevokeSessionConfirm';
 import OAuthCallback from './pages/auth/OAuthCallback';
 import OAuthComplete from './pages/OAuthComplete';
 import MfaChallenge from './pages/auth/MfaChallenge';
+import DesktopAuthSuccess from './pages/auth/DesktopAuthSuccess';
+import OpenApp from './pages/auth/OpenApp';
+import DesktopAuthEntry from './pages/auth/DesktopAuthEntry';
 
 // Dashboard
 import DashboardLayout from './pages/dashboard/DashboardLayout';
@@ -70,10 +76,53 @@ import SuppressionsPage from './pages/dashboard/email/SuppressionsPage';
 import DocsPage from './pages/docs/DocsPage';
 
 function LandingPage() {
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+
+  useEffect(() => {
+    if (isTauri() && !isLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
   usePageMeta(
     'Crescendo — Workflow Automation',
     'Build, orchestrate, and monitor complex workflows with Crescendo\'s visual builder. Connect Gmail, Slack, Google Sheets, Discord, and more.',
   );
+
+  // In desktop mode, if checking auth or already authenticated, avoid flashing marketing landing page
+  if (isTauri() && (isLoading || isAuthenticated)) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-primary, #09090b)',
+        color: 'var(--text-secondary, #8e8e96)',
+        gap: '16px'
+      }}>
+        <img
+          src="/logo-white.svg"
+          alt="Crescendo"
+          style={{ width: '48px', height: '48px', opacity: 0.9 }}
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+        <div style={{
+          width: '24px',
+          height: '24px',
+          border: '2px solid rgba(255, 255, 255, 0.1)',
+          borderTopColor: 'var(--text-accent, #ffffff)',
+          borderRadius: '50%',
+          animation: 'crescendo-spin 0.8s linear infinite'
+        }} />
+        <style>{`@keyframes crescendo-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <>
       <DotCanvas />
@@ -94,9 +143,13 @@ function LandingPage() {
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  useDesktopAuth();
 
   useEffect(() => {
     checkAuth();
+    if (isTauri()) {
+      document.body.classList.add('is-tauri-desktop');
+    }
   }, [checkAuth]);
 
   // Handle docs subdomain routing
@@ -111,6 +164,7 @@ function App() {
 
   return (
     <>
+    <DesktopTitlebar />
     <ToastProvider />
     <Routes>
       {/* Landing */}
@@ -141,10 +195,20 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/auth/recover-passkey" element={<RecoverPasskey />} />
         <Route path="/auth/revoke-session" element={<RevokeSessionConfirm />} />
+        <Route path="/auth/desktop-success" element={<OpenApp />} />
       </Route>
+      {/* Streamlined Desktop Auth & Open App Routes (matches ChatGPT Codex architecture) */}
+      <Route path="/desktop-auth" element={<DesktopAuthEntry />} />
+      <Route path="/open-app" element={<OpenApp />} />
+      <Route path="/open_app" element={<OpenApp />} />
+      <Route path="/openapp" element={<OpenApp />} />
       <Route path="/verify-email" element={<AuthLayout />}>
+        <Route index element={<VerifyEmail />} />
+      </Route>
+      <Route path="/auth/verify-email" element={<AuthLayout />}>
         <Route index element={<VerifyEmail />} />
       </Route>
       <Route path="/oauth/callback" element={<OAuthCallback />} />
@@ -169,6 +233,7 @@ function App() {
         <Route path="workflows/new" element={<WorkflowCanvas />} />
         <Route path="workflows/:workflowId" element={<WorkflowCanvas key={window.location.pathname} />} />
         <Route path="history" element={<History />} />
+        <Route path="history/:workflowId" element={<History />} />
         <Route path="history/:workflowId/:runId" element={<RunDetail />} />
         <Route path="connections" element={<Connections />} />
         <Route path="admin" element={<AdminPage />} />

@@ -90,6 +90,7 @@ public class AppService {
 
         if (geminiApiKey != null && !geminiApiKey.isBlank()) {
             keys.add("gemini");
+            keys.add("agent");
         }
         if (sarvamApiKey != null && !sarvamApiKey.isBlank()) {
             keys.add("sarvam");
@@ -127,7 +128,8 @@ public class AppService {
             .filter(a -> {
                 Object actionKey = a.get("actionKey");
                 return actionKey != null
-                    && actionHandlerRegistry.hasHandler(app.getAppKey(), actionKey.toString());
+                    && (actionHandlerRegistry.hasHandler(app.getAppKey(), actionKey.toString())
+                        || "agent".equals(app.getAppKey()));
             })
             .toList();
 

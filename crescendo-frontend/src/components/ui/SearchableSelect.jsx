@@ -46,7 +46,10 @@ export default function SearchableSelect({
 
     const selectedOption = useMemo(() => {
         if (value === undefined || value === null || value === '') return null;
-        return options.find((o) => String(o.id) === String(value) || String(o.value) === String(value));
+        return options.find((o) => {
+            const optId = o.id ?? o.value ?? o.label;
+            return String(optId) === String(value);
+        });
     }, [options, value]);
 
     const displayText = selectedOption
@@ -234,35 +237,40 @@ export default function SearchableSelect({
                 ) : filtered.length === 0 && (!allowCustom || !search.trim()) ? (
                     <div className="ss-empty">{search ? 'No matches' : emptyMessage}</div>
                 ) : (
-                    filtered.map((opt, idx) => (
-                        <button
-                            key={opt.id}
-                            type="button"
-                            className={`ss-option ${value === opt.id ? 'selected' : ''} ${focusIdx === idx ? 'focused' : ''} ${opt.disabled ? 'disabled' : ''}`}
-                            onClick={(e) => {
-                                if (opt.disabled) {
-                                    e.preventDefault();
-                                    return;
-                                }
-                                handleSelect(opt.id);
-                            }}
-                            onMouseEnter={() => {
-                                if (!opt.disabled) setFocusIdx(idx);
-                            }}
-                            title={opt.tooltip || ''}
-                            style={opt.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                        >
-                            <div className="ss-option-content">
-                                <div className="ss-option-label">{opt.label}</div>
-                                {opt.description && (
-                                    <div className="ss-option-desc">{opt.description}</div>
+                    filtered.map((opt, idx) => {
+                        const optId = opt.id ?? opt.value ?? opt.label;
+                        const optLabel = opt.label ?? opt.name ?? opt.id ?? opt.value ?? '';
+                        const isSelected = String(value) === String(optId);
+                        return (
+                            <button
+                                key={optId ?? `opt-${idx}`}
+                                type="button"
+                                className={`ss-option ${isSelected ? 'selected' : ''} ${focusIdx === idx ? 'focused' : ''} ${opt.disabled ? 'disabled' : ''}`}
+                                onClick={(e) => {
+                                    if (opt.disabled) {
+                                        e.preventDefault();
+                                        return;
+                                    }
+                                    handleSelect(optId);
+                                }}
+                                onMouseEnter={() => {
+                                    if (!opt.disabled) setFocusIdx(idx);
+                                }}
+                                title={opt.tooltip || ''}
+                                style={opt.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            >
+                                <div className="ss-option-content">
+                                    <div className="ss-option-label">{optLabel}</div>
+                                    {opt.description && (
+                                        <div className="ss-option-desc">{opt.description}</div>
+                                    )}
+                                </div>
+                                {isSelected && (
+                                    <HiCheck className="ss-option-check" />
                                 )}
-                            </div>
-                            {value === opt.id && (
-                                <HiCheck className="ss-option-check" />
-                            )}
-                        </button>
-                    ))
+                            </button>
+                        );
+                    })
                 )}
             </div>
         </div>

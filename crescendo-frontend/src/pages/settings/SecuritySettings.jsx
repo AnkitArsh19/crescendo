@@ -18,6 +18,7 @@ import {
 import Input from '../../components/ui/Input';
 import Toggle from '../../components/ui/Toggle';
 import Stepper from '../../components/ui/Stepper';
+import { downloadFile } from '../../utils/download';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
 import { sessionsApi } from '../../api/sessionsApi';
@@ -324,15 +325,7 @@ export default function SecuritySettings() {
 
     const handleDownload = () => {
         const text = backupCodes.join('\n');
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'crescendo-backup-codes.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        downloadFile('crescendo-backup-codes.txt', text, 'text/plain');
     };
 
     return (
@@ -686,7 +679,7 @@ export default function SecuritySettings() {
 
                                 <AnimatePresence mode="wait">
                                     {/* Step 0: Scan QR */}
-                                    {mfaStep === 0 && qrData && (
+                                    {mfaStep === 0 && qrData ? (
                                         <motion.div
                                             key="step-0"
                                             initial={{ opacity: 0, x: -10 }}
@@ -736,10 +729,7 @@ export default function SecuritySettings() {
                                                 </button>
                                             </div>
                                         </motion.div>
-                                    )}
-
-                                    {/* Step 1: Verify */}
-                                    {mfaStep === 1 && (
+                                    ) : mfaStep === 1 ? (
                                         <motion.div
                                             key="step-1"
                                             initial={{ opacity: 0, x: -10 }}
@@ -784,10 +774,7 @@ export default function SecuritySettings() {
                                                 </button>
                                             </div>
                                         </motion.div>
-                                    )}
-
-                                    {/* Step 2: Backup Codes */}
-                                    {mfaStep === 2 && backupCodes.length > 0 && (
+                                    ) : mfaStep === 2 && backupCodes.length > 0 ? (
                                         <motion.div
                                             key="step-2"
                                             initial={{ opacity: 0, x: -10 }}
@@ -829,7 +816,7 @@ export default function SecuritySettings() {
                                                 </button>
                                             </div>
                                         </motion.div>
-                                    )}
+                                    ) : null}
                                 </AnimatePresence>
                             </motion.div>
                         )}

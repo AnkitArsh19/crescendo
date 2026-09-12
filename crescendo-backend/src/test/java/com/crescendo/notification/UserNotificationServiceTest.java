@@ -184,4 +184,49 @@ class UserNotificationServiceTest {
         when(userNotificationRepository.markAllReadByUserId(userId)).thenReturn(5);
         assertEquals(5, userNotificationService.markAllRead(userId));
     }
+
+    @Test
+    void testCreateNotification_ConnectionTokenExpired_SuppressesDuplicateWhenUnreadExists() {
+        String title = "Connection Expired: Linear Connection";
+        when(notificationPreferenceRepository.findByUserIdAndType(userId, NotificationType.CONNECTION_TOKEN_EXPIRED))
+                .thenReturn(Optional.empty());
+        when(userNotificationRepository.existsByUserIdAndTypeAndTitleAndIsReadFalse(userId, NotificationType.CONNECTION_TOKEN_EXPIRED, title))
+                .thenReturn(true);
+
+        UserNotification result = userNotificationService.create(
+                userId,
+                NotificationType.CONNECTION_TOKEN_EXPIRED,
+                title,
+                "Access token has expired",
+                Map.of("connectionId", UUID.randomUUID().toString())
+        );
+
+        assertNull(result);
+        verify(userNotificationRepository, never()).save(any());
+        verify(notificationSseService, never()).broadcastNotification(any(), any());
+    }
+
+    @Test
+    void testCreateNotification_ConnectionTokenExpired_CreatesWhenNoUnreadExists() {
+        String title = "Connection Expired: Linear Connection";
+        when(notificationPreferenceRepository.findByUserIdAndType(userId, NotificationType.CONNECTION_TOKEN_EXPIRED))
+                .thenReturn(Optional.empty());
+        when(userNotificationRepository.existsByUserIdAndTypeAndTitleAndIsReadFalse(userId, NotificationType.CONNECTION_TOKEN_EXPIRED, title))
+                .thenReturn(false);
+        when(userNotificationRepository.save(any(UserNotification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UserNotification result = userNotificationService.create(
+                userId,
+                NotificationType.CONNECTION_TOKEN_EXPIRED,
+                title,
+                "Access token has expired",
+                Map.of("connectionId", UUID.randomUUID().toString())
+        );
+
+        assertNotNull(result);
+        assertEquals(title, result.getTitle());
+        verify(userNotificationRepository).save(any(UserNotification.class));
+        verify(notificationSseService).broadcastNotification(eq(userId), any());
+    }
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineCheckCircle,
@@ -16,6 +16,7 @@ import {
   HiOutlineCheck,
 } from 'react-icons/hi';
 import useNotificationStore from '../store/notificationStore';
+import { getCachedApps } from '../api/appCatalogCache';
 
 function formatRelativeTime(dateString) {
   if (!dateString) return '';
@@ -120,6 +121,44 @@ export default function NotificationItem({ notification }) {
   const { id, type, title, body, metadata, isRead, createdAt } = notification;
   const config = getTypeConfig(type);
 
+  const [matchedApp, setMatchedApp] = useState(null);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  // Look up app in catalog for connection / token expired notifications
+  useEffect(() => {
+    let isMounted = true;
+    const isConnType = type?.startsWith('CONNECTION_') || metadata?.appKey || metadata?.connectionId;
+    if (!isConnType) return;
+
+    getCachedApps().then((apps) => {
+      if (!isMounted || !Array.isArray(apps)) return;
+
+      const appKey = metadata?.appKey;
+      let app = null;
+      if (appKey) {
+        app = apps.find((a) => a.appKey === appKey);
+      }
+      if (!app && (title || body)) {
+        const text = `${title || ''} ${body || ''}`.toLowerCase();
+        // Match by appKey or app name
+        app = apps.find(
+          (a) =>
+            (a.appKey && text.includes(a.appKey.toLowerCase())) ||
+            (a.name && text.includes(a.name.toLowerCase()))
+        );
+      }
+      if (app) {
+        setMatchedApp(app);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [type, metadata?.appKey, metadata?.connectionId, title, body]);
+
+  const appLogoUrl = !imgFailed && (matchedApp?.logoUrl || (matchedApp?.appKey ? `/icons/${matchedApp.appKey}.svg` : null));
+
   const handleClick = () => {
     if (!isRead) {
       markAsRead([id]);
@@ -130,7 +169,16 @@ export default function NotificationItem({ notification }) {
       navigate('/dashboard/history');
     } else if (metadata?.connectionId || type?.startsWith('CONNECTION_')) {
       closeDrawer();
-      navigate('/dashboard/connections');
+      const params = new URLSearchParams();
+      if (metadata?.connectionId) {
+        params.set('reconnect', metadata.connectionId);
+      }
+      const appKey = metadata?.appKey || matchedApp?.appKey;
+      if (appKey) {
+        params.set('app', appKey);
+      }
+      const queryStr = params.toString();
+      navigate(`/dashboard/connections${queryStr ? `?${queryStr}` : ''}`);
     } else if (type?.startsWith('LOGIN_') || type?.startsWith('MFA_')) {
       closeDrawer();
       navigate('/dashboard/settings/security');
@@ -157,8 +205,17 @@ export default function NotificationItem({ notification }) {
       role="button"
       tabIndex={0}
     >
-      <div className={`notif-item-icon ${config.colorClass}`}>
-        {config.icon}
+      <div className={`notif-item-icon ${!appLogoUrl ? config.colorClass : ''}`}>
+        {appLogoUrl ? (
+          <img
+            src={appLogoUrl}
+            alt={matchedApp?.name || 'App'}
+            className="notif-app-icon-img"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          config.icon
+        )}
       </div>
 
       <div className="notif-item-content">

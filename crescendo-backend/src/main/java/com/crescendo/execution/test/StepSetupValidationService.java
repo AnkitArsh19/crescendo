@@ -98,6 +98,10 @@ public class StepSetupValidationService {
             return null;
         }
         if (connectionId == null || connectionId.isBlank() || "ADMIN_KEY".equalsIgnoreCase(connectionId)) {
+            if ("agent".equalsIgnoreCase(appKey) || "gemini".equalsIgnoreCase(appKey) || "telegram".equalsIgnoreCase(appKey) || "sarvam".equalsIgnoreCase(appKey)) {
+                checks.add(pass("connection", "Connection", "Using Crescendo's managed " + app.getName() + " platform credentials."));
+                return null;
+            }
             checks.add(fail("connection", "Connection", "Choose the exact account this step should use. Crescendo will not fall back to another account."));
             return null;
         }

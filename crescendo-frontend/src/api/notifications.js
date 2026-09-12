@@ -27,6 +27,11 @@ export const deleteNotification = async (id) => {
   return response.data;
 };
 
+export const deleteAllNotifications = async () => {
+  const response = await api.delete('/notifications');
+  return response.data;
+};
+
 export const getNotificationPreferences = async () => {
   const response = await api.get('/notifications/preferences');
   return response.data;

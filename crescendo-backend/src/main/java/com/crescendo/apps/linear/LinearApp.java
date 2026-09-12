@@ -33,7 +33,7 @@ public class LinearApp implements AppDefinition {
                 Authenticate using a Linear API Key or OAuth2.
                 """,
                 "https://www.google.com/s2/favicons?domain=linear.app&sz=128",
-                AuthType.APIKEY,
+                AuthType.OAUTH2,
                 List.of(),
                 List.of(
                         // ISSUE
@@ -49,6 +49,6 @@ public class LinearApp implements AppDefinition {
                 )
         ).credentialSchema(List.of(
                 Map.of("key", "apiToken", "label", "API Key", "type", "password", "required", true)
-        )).altAuthType(AuthType.OAUTH2).category("task-management");
+        )).altAuthType(AuthType.APIKEY).category("task-management");
     }
 }

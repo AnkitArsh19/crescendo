@@ -1,0 +1,131 @@
+/* ==========================================================================
+   Desktop Titlebar — Figma-Inspired Native Desktop Window Chrome
+   ========================================================================== */
+
+.desktop-titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  background: var(--bg-glass, rgba(14, 14, 16, 0.88));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 9999;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+  color: var(--text-secondary, #a1a1aa);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 0.8125rem;
+}
+
+[data-theme="light"] .desktop-titlebar {
+  background: rgba(250, 250, 250, 0.92);
+  border-bottom: 1px solid var(--border-primary, #e4e4e7);
+  color: var(--text-secondary, #52525b);
+}
+
+/* macOS Inset for Native Red/Yellow/Green Traffic Lights */
+.titlebar-mac-spacer {
+  width: 76px;
+  height: 100%;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+/* Brand & Window Title */
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px;
+  height: 100%;
+  -webkit-app-region: drag;
+  pointer-events: none;
+}
+
+.titlebar-logo-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.titlebar-name {
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-accent, #fafafa);
+}
+
+/* Center Spacer */
+.titlebar-center {
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+/* Windows 11 Native-Style Window Control Buttons */
+.titlebar-controls-win {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn-win {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #a1a1aa);
+  cursor: default;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  padding: 0;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn-win:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+[data-theme="light"] .titlebar-btn-win {
+  color: var(--text-secondary, #52525b);
+}
+
+[data-theme="light"] .titlebar-btn-win:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary, #18181b);
+}
+
+.titlebar-btn-win.close-btn:hover {
+  background-color: #e81123 !important;
+  color: #ffffff !important;
+}
+
+.titlebar-btn-win:active {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.titlebar-btn-win.close-btn:active {
+  background-color: #bf0f1d !important;
+}
+
+/* Utility to ensure interactive child elements inside titlebar are clickable */
+.no-drag,
+.desktop-titlebar button,
+.desktop-titlebar a,
+.desktop-titlebar input {
+  -webkit-app-region: no-drag !important;
+}

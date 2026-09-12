@@ -240,7 +240,7 @@ public class SlackApp implements AppDefinition {
                     )
                 )
         )
-        .altAuthType(AuthType.OAUTH2)
+        .altAuthType(AuthType.APIKEY)
         .credentialSchema(List.of(
             Map.of("key", "botToken", "label", "Bot Token",
                     "type", "password", "required", true,

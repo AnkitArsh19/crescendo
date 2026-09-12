@@ -25,6 +25,37 @@
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hist-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-primary);
+}
+
+.hist-clear-btn {
+  color: var(--text-accent, #3b82f6);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+  padding: 1px 6px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.hist-clear-btn:hover {
+  opacity: 0.8;
 }
 
 /* Filters */

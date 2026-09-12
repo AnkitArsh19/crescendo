@@ -7,6 +7,7 @@ import com.crescendo.execution.agent.AgentClusterConfig;
 import com.crescendo.execution.agent.AgentExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,21 +24,36 @@ public class AgentHandlers {
 
     private final AgentExecutionService agentExecutionService;
 
-    public AgentHandlers(AgentExecutionService agentExecutionService) {
+    public AgentHandlers(@Lazy AgentExecutionService agentExecutionService) {
         this.agentExecutionService = agentExecutionService;
     }
 
     @ActionMapping(appKey = "agent", actionKey = "agent:ai_agent")
     public ActionResult executeAgent(ActionContext ctx) {
+        return handleExecution(ctx);
+    }
+
+    @ActionMapping(appKey = "agent", actionKey = "ai_agent")
+    public ActionResult executeAgentAlias(ActionContext ctx) {
+        return handleExecution(ctx);
+    }
+
+    private ActionResult handleExecution(ActionContext ctx) {
         log.info("Executing Agent Node: stepId={} workflowRunId={}", ctx.stepId(), ctx.workflowRunId());
 
         Map<String, Object> config = ctx.configuration() != null ? ctx.configuration() : Map.of();
         Map<String, Object> creds = ctx.credentials() != null ? ctx.credentials() : Map.of();
 
-        String systemPrompt = String.valueOf(config.getOrDefault(
-                "systemPrompt",
-                "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal."
-        ));
+        Object sysPromptObj = config.get("systemPrompt");
+        if (sysPromptObj == null || sysPromptObj.toString().isBlank()) {
+            sysPromptObj = config.get("goal");
+        }
+        if (sysPromptObj == null || sysPromptObj.toString().isBlank()) {
+            sysPromptObj = config.get("instructions");
+        }
+        String systemPrompt = (sysPromptObj != null && !sysPromptObj.toString().isBlank())
+                ? sysPromptObj.toString()
+                : "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.";
 
         String provider = String.valueOf(config.getOrDefault("provider", "gemini"));
         String model = String.valueOf(config.getOrDefault("model", "gemini-3.5-flash-lite"));
@@ -57,6 +73,18 @@ public class AgentHandlers {
             } catch (NumberFormatException ignored) {}
         }
 
+        java.util.Map<String, Object> effectiveInput = new java.util.HashMap<>();
+        if (ctx.inputData() != null) {
+            effectiveInput.putAll(ctx.inputData());
+        }
+        Object promptObj = config.get("prompt");
+        if (promptObj != null && !promptObj.toString().isBlank() && !effectiveInput.containsKey("prompt")) {
+            effectiveInput.put("prompt", promptObj.toString());
+        }
+        if (effectiveInput.isEmpty()) {
+            effectiveInput.put("input", "Proceed with your instructions.");
+        }
+
         AgentClusterConfig agentClusterConfig = new AgentClusterConfig(
                 List.of(),
                 null,
@@ -72,7 +100,7 @@ public class AgentHandlers {
                 ctx.userId(),
                 agentClusterConfig,
                 systemPrompt,
-                ctx.inputData(),
+                effectiveInput,
                 provider,
                 model,
                 apiKey

@@ -60,7 +60,8 @@ public class CalendlyApp implements AppDefinition {
                 ),
                 List.of()
         ).credentialSchema(List.of(
-                Map.of("key", "accessToken", "label", "OAuth2 Access Token", "type", "password", "required", true)
-        )).category("productivity");
+                Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true,
+                        "placeholder", "calendly_pat_...", "helpText", "Generate in Calendly -> Integrations -> API and Webhooks")
+        )).altAuthType(AuthType.APIKEY).category("productivity");
     }
 }

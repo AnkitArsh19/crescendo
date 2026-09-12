@@ -35,7 +35,7 @@ public class TotpApp implements AppDefinition {
                 **Authentication:** Requires TOTP API Credentials.
                 """,
                 "/icons/totp.png", // Generic icon
-                AuthType.NONE,
+                AuthType.APIKEY,
                 List.of(),
                 List.of(
                         Map.of(

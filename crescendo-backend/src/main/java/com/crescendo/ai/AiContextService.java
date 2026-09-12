@@ -68,6 +68,9 @@ public class AiContextService {
 
         List<Map<String, Object>> resources = new ArrayList<>();
         for (ConnectionsDto.ConnectionResponse connection : connections) {
+            if (connection.status() != null && !"ACTIVE".equalsIgnoreCase(connection.status())) {
+                continue;
+            }
             Optional<ResourceProvider> provider = resourceProviderRegistry.find(connection.appKey());
             if (provider.isEmpty()) continue;
             for (ResourceContextDescriptor descriptor : provider.get().contextResourceDescriptors()) {

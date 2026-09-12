@@ -5,6 +5,7 @@ import {
   markNotificationsRead,
   markAllNotificationsRead,
   deleteNotification,
+  deleteAllNotifications,
 } from '../api/notifications';
 
 const useNotificationStore = create((set, get) => ({
@@ -126,6 +127,18 @@ const useNotificationStore = create((set, get) => ({
       set({
         notifications: get().notifications.filter((n) => n.id !== id),
         unreadCount: wasUnread ? Math.max(0, get().unreadCount - 1) : get().unreadCount,
+      });
+    } catch {
+      // ignore
+    }
+  },
+
+  deleteAllNotificationItems: async () => {
+    try {
+      await deleteAllNotifications();
+      set({
+        notifications: [],
+        unreadCount: 0,
       });
     } catch {
       // ignore

@@ -10,6 +10,8 @@
 
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
 
+Available on Web and as a Native Desktop Client for **[Windows (`.exe`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop-setup.exe)**, **[macOS (`.dmg`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.dmg)**, and **[Linux (`.AppImage` / `.deb`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.AppImage)**.
+
 Project status: ongoing. The platform is actively being built, tested, and hardened.
 
 ## Why this project was built
@@ -59,7 +61,7 @@ This is designed so any developer can add an integration independently and contr
 Crescendo is organized as a full-stack monorepo:
 
 - `crescendo-backend`: Spring Boot automation engine and APIs
-- `crescendo-frontend`: React + Vite workflow builder and management UI
+- `crescendo-frontend`: React + Vite workflow builder, management UI, and Tauri native desktop client
 - `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder via Groq/LLaMA
 - `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
 - Root docs and references: architecture notes, production issues, integration guides
@@ -112,6 +114,15 @@ Engineering focus areas:
 - React Icons
 - XYFlow/React (node/flow style workflow UI)
 - ESLint 9
+
+### Native Desktop Application (`crescendo-desktop`)
+
+- **Tauri v2**: Next-generation lightweight native application runtime powered by Rust.
+- **Rust (2021 edition)**: High-performance, memory-safe OS process management and protocol routing.
+- **`tauri-plugin-single-instance`**: Enforces a single application instance, intercepts secondary launches, and routes deep-link CLI parameters to the primary window.
+- **`tauri-plugin-deep-link`**: System-level custom URL protocol registration (`crescendo://`).
+- **`tauri-plugin-opener`**: Native OS browser and external file invocation.
+- **Frameless Glass Titlebar**: Custom window frame with minimize, maximize, restore, close, and drag controls matching the Crescendo design system.
 
 ### AI/ML Microservice (`crescendo-aiml`)
 
@@ -184,6 +195,46 @@ A first-class workflow node that evaluates incoming payloads against a system pr
 - **Stateless Python Reasoning:** The Java engine maintains loop state, security, and idempotency, calling a stateless Python endpoint (`/v1/agent/next-step`) for reasoning decisions on each turn.
 - **Pre-Execution Budgeting & Context Windows:** Token budgets are enforced *before* any LLM calls, and a sliding context window ensures long-running agent loops never exceed Groq API token limits.
 - **Strict Schema Enforcement:** Dynamically filters tool access so the agent only sees the tools explicitly connected by the user on the canvas, while rigorously validating required arguments.
+
+
+## 🖥️ Crescendo Desktop (Native Application)
+
+Crescendo Desktop provides a focused, high-performance native workflow automation and orchestration experience across Windows, macOS, and Linux without the memory bloat of Electron.
+
+### Official Download Releases
+
+| Operating System | Package Format | Architecture | Direct Download |
+|---|---|---|---|
+| **Windows** | `.exe` (Installer / Setup) | x64 / ARM64 | [Download for Windows (`.exe`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop-setup.exe) |
+| **macOS** | `.dmg` (Disk Image) | Universal (Apple Silicon & Intel) | [Download for macOS (`.dmg`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.dmg) |
+| **Linux (Universal)** | `.AppImage` (Standalone) | x64 | [Download for Linux (`.AppImage`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.AppImage) |
+| **Linux (Debian / Ubuntu)** | `.deb` (Debian Package) | x64 | [Download for Linux (`.deb`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.deb) |
+
+### Why Tauri v2 over Electron?
+- **Ultra-Lean Binary Footprint:** <15 MB total installer size vs. 150+ MB for minimal Electron runtimes.
+- **Native OS WebViews:** Utilizes Microsoft WebView2 on Windows, WebKit on macOS, and WebKitGTK on Linux. Consumes only ~35–45 MB RAM idle compared to 350–500 MB in Electron.
+- **Rust Process Security:** Strict compile-time memory safety, fine-grained capability boundaries (`capabilities/default.json`), and zero exposed Node.js runtime attack surface in production bundles.
+
+### Enterprise Native Security & Authentication (RFC 8252)
+Desktop authentication implements the OAuth 2.0 Best Current Practice for Native Apps ([RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252)):
+1. **System Browser Login (No Embedded Webviews):** The desktop app delegates authentication to the user's default browser (`app.crescendo.run`). This preserves biometric hardware keys (WebAuthn / FIDO2 Passkeys), enables single-click login for existing browser sessions, and guarantees user credentials are never handled directly by native application code.
+2. **Ephemeral 60s Handoff Code:** Upon web authentication, the backend generates an ephemeral 256-bit cryptographically secure code (`POST /auth/desktop-handoff/issue`).
+3. **Zero Token Leakage in Deep Links:** The browser redirects back via the OS protocol scheme: `crescendo://auth/callback?code=<60s-code>`. **No access tokens or refresh tokens ever appear in URLs, browser history, or system command-line logs.**
+4. **Single-Instance Process Interception:** Uses `tauri-plugin-single-instance` to prevent duplicate app windows. When Windows or macOS invokes the custom scheme, the secondary launch is intercepted, the existing running window is focused and brought to front, and the handoff code is transferred over IPC.
+5. **Atomic Code Exchange:** The desktop app exchanges the single-use code for dual JWT tokens (`POST /auth/desktop-handoff/exchange`) over TLS with device fingerprint validation.
+6. **Defensive Fallback Options:** If browser protocol dialogs are blocked by enterprise policies, users can click "Copy sign-in link" (which contains zero secrets or tokens) or manually paste their 60-second code directly into the desktop app.
+
+### Running Desktop Locally
+```bash
+# Prerequisites: Node.js 18+, Rust toolchain (cargo, rustc)
+cd crescendo-frontend
+
+# Run desktop app in development with HMR against local Vite dev server
+npm run tauri dev
+
+# Build native production executables and installers
+npm run tauri build
+```
 
 
 ## Design patterns and architectural patterns implemented

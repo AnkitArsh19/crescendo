@@ -25,6 +25,8 @@ import com.crescendo.user.user_command.user_credential.UserCredentialRepository;
 import com.crescendo.user.user_command.user_identity.UserIdentity;
 import com.crescendo.user.user_command.user_identity.UserIdentityRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class AuthenticationService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
 
     private final User_commandRepository userRepo;
     private final UserCredentialRepository credentialRepo;
@@ -229,19 +233,25 @@ public class AuthenticationService {
      */
     public void forgotPassword(AuthDto.ForgotPasswordRequest req) {
         Optional<User_command> userOpt = userRepo.findByEmailIgnoreCase(req.email());
-        if (userOpt.isEmpty()) return; // don't reveal whether the email is registered
+        if (userOpt.isEmpty()) {
+            log.warn("[AUTH] forgotPassword: Email '{}' not found in database. No reset link generated. (Silently returning 204 to prevent account enumeration). Please register an account first with this email or verify spelling.", req.email());
+            return; // don't reveal whether the email is registered
+        }
 
         User_command user = userOpt.get();
 
         // OAuth-only users have no password to reset
-        if (credentialRepo.findByUser_Id(user.getId()).isEmpty()) return;
+        if (credentialRepo.findByUser_Id(user.getId()).isEmpty()) {
+            log.warn("[AUTH] forgotPassword: User '{}' is an OAuth-only account (signed up with Google/GitHub, no local password to reset). No reset link generated.", req.email());
+            return;
+        }
 
         String plainToken = generateSecureToken();
         String tokenHash = hashToken(plainToken);
         Instant expiresAt = Instant.now().plus(Duration.ofHours(1));
         passwordResetRepo.save(new PasswordResetToken(UUID.randomUUID(), user, tokenHash, expiresAt));
 
-        // Dev mode: print the raw token to the terminal so it can be used without a real email domain.
+        log.info("[AUTH] Password reset token generated for '{}'", user.getEmailId());
         notificationService.sendPasswordResetToken(user.getEmailId(), plainToken);
     }
 
