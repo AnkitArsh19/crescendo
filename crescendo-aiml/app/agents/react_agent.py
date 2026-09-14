@@ -76,6 +76,12 @@ def _resolve_tool_fields(
     for t in tool_defs:
         if t.tool_id == tool_id:
             return t.app_key, t.action_key
+    if "__" in tool_id:
+        parts = tool_id.split("__", 1)
+        return parts[0], parts[1]
+    if ":" in tool_id:
+        parts = tool_id.split(":", 1)
+        return parts[0], parts[1]
     logger.warning("tool_id '%s' not found in tool_definitions — returning unknown", tool_id)
     return "unknown", tool_id
 
@@ -217,15 +223,38 @@ def _call_gemini_sync(
     model: str,
     system_prompt: str,
     history: List[ConversationTurn],
-    input_data: dict
-) -> Tuple[str, int]:
+    input_data: dict,
+    tool_defs: List[ToolDefinition],
+) -> Tuple[str, Optional[dict], int]:
     import urllib.request
     import urllib.error
+    if model.startswith("models/"):
+        model = model[len("models/"):]
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     contents = []
     for turn in history:
-        role = "user" if turn.role == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": turn.content or ""}]})
+        if turn.role == "tool":
+            contents.append({
+                "role": "user",
+                "parts": [{"text": f"Observation from tool [{turn.tool_name or 'tool'}]:\n{turn.content or ''}"}]
+            })
+        elif turn.role == "assistant":
+            if turn.tool_name:
+                args = {}
+                try:
+                    if turn.tool_args_json:
+                        args = json.loads(turn.tool_args_json)
+                except Exception:
+                    pass
+                contents.append({
+                    "role": "model",
+                    "parts": [{"functionCall": {"name": turn.tool_name, "args": args}}]
+                })
+            else:
+                contents.append({"role": "model", "parts": [{"text": turn.content or ""}]})
+        else:
+            contents.append({"role": "user", "parts": [{"text": turn.content or ""}]})
+
     if not contents and input_data:
         contents.append({"role": "user", "parts": [{"text": json.dumps(input_data)}]})
 
@@ -233,18 +262,33 @@ def _call_gemini_sync(
     if system_prompt:
         body["system_instruction"] = {"parts": [{"text": system_prompt}]}
 
+    if tool_defs:
+        func_decls = []
+        for t in tool_defs:
+            func_decls.append({
+                "name": t.tool_id,
+                "description": t.description,
+                "parameters": t.parameters or {"type": "object", "properties": {}},
+            })
+        body["tools"] = [{"function_declarations": func_decls}]
+
     req_data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         resp_data = json.loads(resp.read().decode("utf-8"))
         candidates = resp_data.get("candidates", [])
         text = ""
+        func_call = None
         if candidates:
             parts = candidates[0].get("content", {}).get("parts", [])
             if parts:
-                text = parts[0].get("text", "")
+                first = parts[0]
+                if "functionCall" in first:
+                    func_call = first["functionCall"]
+                elif "text" in first:
+                    text = first["text"]
         tokens = resp_data.get("usageMetadata", {}).get("totalTokenCount", 0)
-        return text, tokens
+        return text, func_call, tokens
 
 
 async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
@@ -256,7 +300,14 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
         import asyncio
         import os
         api_key = request.api_key or os.getenv("GEMINI_API_KEY", "")
-        model = request.model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+        model = (request.model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")).strip()
+        if model.lower().startswith("gemma"):
+            logger.warning("Gemma models do not support function calling in Gemini API. Falling back to gemini-3.5-flash-lite.")
+            model = "gemini-3.5-flash-lite"
+        elif model in ("gemini-2.5-flash", "gemini-1.5-flash", "gemini-flash"):
+            model = "gemini-3.5-flash-lite"
+        elif model in ("gemini-pro", "gemini-pro-latest", "gemini-1.5-pro"):
+            model = "gemini-3.8-flash"
         if not api_key:
             return AgentNextStepResponse(
                 decision="final_answer",
@@ -264,9 +315,29 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
                 tokens_used=0,
             )
         try:
-            text, tokens = await asyncio.to_thread(
-                _call_gemini_sync, api_key, model, request.system_prompt, request.conversation_history, request.input_data
+            text, func_call, tokens = await asyncio.to_thread(
+                _call_gemini_sync,
+                api_key,
+                model,
+                request.system_prompt,
+                request.conversation_history,
+                request.input_data,
+                request.tool_definitions,
             )
+            if func_call:
+                name = func_call.get("name", "")
+                args = func_call.get("args", {})
+                app_key, action_key = _resolve_tool_fields(name, request.tool_definitions)
+                return AgentNextStepResponse(
+                    decision="tool_call",
+                    tool_call=ToolCall(
+                        tool_id=name,
+                        app_key=app_key,
+                        action_key=action_key,
+                        arguments=args if isinstance(args, dict) else {},
+                    ),
+                    tokens_used=tokens,
+                )
             return AgentNextStepResponse(
                 decision="final_answer",
                 final_answer=text,
@@ -279,6 +350,7 @@ async def get_next_step(request: AgentNextStepRequest) -> AgentNextStepResponse:
                 final_answer=f"[Gemini API error: {exc}]",
                 tokens_used=0,
             )
+
 
     if request.api_key:
         from groq import AsyncGroq
