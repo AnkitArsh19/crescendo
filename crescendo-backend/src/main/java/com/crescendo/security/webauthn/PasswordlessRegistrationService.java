@@ -164,7 +164,26 @@ public class PasswordlessRegistrationService {
         return response;
     }
 
-    private String normalizedEmail(String email) { if (email == null || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address"); return email.trim().toLowerCase(); }
+    private static final int MAX_EMAIL_LENGTH = 320;
+
+    private String normalizedEmail(String email) {
+        if (email == null || email.isBlank() || email.length() > MAX_EMAIL_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address");
+        }
+        String normalized = email.trim().toLowerCase();
+        int atIndex = normalized.indexOf('@');
+        if (atIndex <= 0 || atIndex != normalized.lastIndexOf('@') || atIndex >= normalized.length() - 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address");
+        }
+        String localPart = normalized.substring(0, atIndex);
+        String domainPart = normalized.substring(atIndex + 1);
+        if (localPart.isBlank() || domainPart.isBlank() || domainPart.startsWith(".") || domainPart.endsWith(".")
+                || !domainPart.contains(".") || localPart.contains(" ") || domainPart.contains(" ")
+                || domainPart.contains("..")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a valid email address");
+        }
+        return normalized;
+    }
     private String normalizedUsername(String value) { if (value == null || value.isBlank() || value.trim().length() > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter a username"); return value.trim(); }
     private String emailKey(String email) { return hash(email); }
     private String hash(String value) { try { return Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); } catch (Exception e) { throw new IllegalStateException(e); } }

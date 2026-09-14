@@ -46,7 +46,7 @@ public class LocalDiskFileStorageService implements FileStorageService {
         if (!Files.exists(PRIMARY_STORAGE_PATH)) {
             Files.createDirectories(PRIMARY_STORAGE_PATH);
         }
-        Path targetPath = PRIMARY_STORAGE_PATH.resolve(storageKey);
+        Path targetPath = resolveSafePath(PRIMARY_STORAGE_PATH, storageKey);
         try (var in = file.getInputStream(); var out = Files.newOutputStream(targetPath)) {
             in.transferTo(out);
         }
@@ -70,7 +70,7 @@ public class LocalDiskFileStorageService implements FileStorageService {
     @Override
     public String generateReadUrl(String storageKey, int ttlMinutes) {
         Path p = resolvePath(storageKey);
-        return p != null ? p.toUri().toString() : PRIMARY_STORAGE_PATH.resolve(storageKey).toUri().toString();
+        return p != null ? p.toUri().toString() : resolveSafePath(PRIMARY_STORAGE_PATH, storageKey).toUri().toString();
     }
 
     @Override
@@ -85,18 +85,30 @@ public class LocalDiskFileStorageService implements FileStorageService {
     }
 
     private Path resolvePath(String storageKey) {
-        Path primary = PRIMARY_STORAGE_PATH.resolve(storageKey);
+        Path primary = resolveSafePath(PRIMARY_STORAGE_PATH, storageKey);
         if (Files.exists(primary)) {
             return primary;
         }
         for (Path fallback : FALLBACK_PATHS) {
             try {
-                Path fbPath = fallback.resolve(storageKey);
+                Path fbPath = resolveSafePath(fallback, storageKey);
                 if (Files.exists(fbPath)) {
                     return fbPath;
                 }
             } catch (Exception ignored) {}
         }
         return primary;
+    }
+
+    private Path resolveSafePath(Path basePath, String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new IllegalArgumentException("Invalid storage key");
+        }
+        Path normalizedBase = basePath.toAbsolutePath().normalize();
+        Path resolved = normalizedBase.resolve(storageKey).normalize();
+        if (!resolved.startsWith(normalizedBase)) {
+            throw new IllegalArgumentException("Invalid storage key");
+        }
+        return resolved;
     }
 }

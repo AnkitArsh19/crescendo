@@ -4,9 +4,9 @@ import { HiOutlineDownload, HiOutlineExternalLink } from 'react-icons/hi';
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 import './DownloadsSection.css';
 
-const RELEASE_TAG = 'v0.1.0';
-const RELEASE_BASE = 'https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0';
-const RELEASE_PAGE = 'https://github.com/AnkitArsh19/crescendo/releases/tag/v0.1.0';
+const RELEASE_TAG = 'v1.0.0';
+const RELEASE_BASE = 'https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.0';
+const RELEASE_PAGE = 'https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.0';
 
 const platforms = [
   {
@@ -16,9 +16,9 @@ const platforms = [
     arch: 'x64 • Windows 10 / 11',
     desc: 'Native desktop installer with automatic background updates and system tray controls.',
     primaryLabel: 'Download for Windows',
-    primaryUrl: `${RELEASE_BASE}/Crescendo_0.1.0_x64-setup.exe`,
+    primaryUrl: `${RELEASE_BASE}/Crescendo_1.0.0_x64-setup.exe`,
     secondary: [
-      { label: '.msi package', url: `${RELEASE_BASE}/Crescendo_0.1.0_x64_en-US.msi` },
+      { label: '.msi package', url: `${RELEASE_BASE}/Crescendo_1.0.0_x64_en-US.msi` },
     ],
   },
   {
@@ -28,7 +28,7 @@ const platforms = [
     arch: 'Universal • Apple Silicon & Intel',
     desc: 'Optimized universal build with native menu bar integration and deep-link protocol routing.',
     primaryLabel: 'Download for macOS',
-    primaryUrl: `${RELEASE_BASE}/Crescendo_0.1.0_universal.dmg`,
+    primaryUrl: `${RELEASE_BASE}/Crescendo_1.0.0_universal.dmg`,
     secondary: [
       { label: '.tar.gz', url: `${RELEASE_BASE}/Crescendo_universal.app.tar.gz` },
     ],
@@ -40,10 +40,10 @@ const platforms = [
     arch: 'x86_64 • AppImage, deb, rpm',
     desc: 'Portable standalone executable and distribution packages for Ubuntu, Debian, and Fedora.',
     primaryLabel: 'Download .AppImage',
-    primaryUrl: `${RELEASE_BASE}/Crescendo_0.1.0_amd64.AppImage`,
+    primaryUrl: `${RELEASE_BASE}/Crescendo_1.0.0_amd64.AppImage`,
     secondary: [
-      { label: '.deb', url: `${RELEASE_BASE}/Crescendo_0.1.0_amd64.deb` },
-      { label: '.rpm', url: `${RELEASE_BASE}/Crescendo-0.1.0-1.x86_64.rpm` },
+      { label: '.deb', url: `${RELEASE_BASE}/Crescendo_1.0.0_amd64.deb` },
+      { label: '.rpm', url: `${RELEASE_BASE}/Crescendo-1.0.0-1.x86_64.rpm` },
     ],
   },
 ];

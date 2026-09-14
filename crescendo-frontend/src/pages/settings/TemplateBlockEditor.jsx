@@ -12,7 +12,7 @@
  * - Robust Auto-Save to PostgreSQL with non-LOB TEXT columns & live status feedback
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlineChevronRight,
@@ -57,6 +57,100 @@ import {
 import { templatesApi } from '../../api/emailServiceApi';
 import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
 import './TemplateBlockEditor.css';
+
+function sanitizeImageUrl(url) {
+  if (typeof url !== 'string' || !url.trim()) return '';
+  try {
+    const parsed = new URL(url.trim(), window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    // Ignore invalid URLs
+  }
+  return '';
+}
+
+function decodeHtmlEntities(value) {
+  return value
+    .split('&nbsp;').join(' ')
+    .split('&amp;').join('&')
+    .split('&lt;').join('<')
+    .split('&gt;').join('>')
+    .split('&quot;').join('"')
+    .split('&#39;').join("'");
+}
+
+function extractHrefAttribute(rawTag) {
+  const lowerTag = rawTag.toLowerCase();
+  const hrefIndex = lowerTag.indexOf('href=');
+  if (hrefIndex === -1) return '';
+  let valueStart = hrefIndex + 5;
+  while (valueStart < rawTag.length && rawTag[valueStart] === ' ') valueStart += 1;
+  const quote = rawTag[valueStart];
+  if (quote === '"' || quote === "'") {
+    const valueEnd = rawTag.indexOf(quote, valueStart + 1);
+    return valueEnd > valueStart ? rawTag.slice(valueStart + 1, valueEnd).trim() : '';
+  }
+  let valueEnd = valueStart;
+  while (valueEnd < rawTag.length && rawTag[valueEnd] !== ' ' && rawTag[valueEnd] !== '>') valueEnd += 1;
+  return rawTag.slice(valueStart, valueEnd).trim();
+}
+
+function htmlToPlainText(html) {
+  const source = typeof html === 'string' ? html : '';
+  let result = '';
+  let index = 0;
+  let skipTag = null;
+  const anchorHrefStack = [];
+
+  while (index < source.length) {
+    const nextTagStart = source.indexOf('<', index);
+    if (nextTagStart === -1) {
+      if (!skipTag) result += source.slice(index);
+      break;
+    }
+
+    if (!skipTag && nextTagStart > index) {
+      result += source.slice(index, nextTagStart);
+    }
+
+    const nextTagEnd = source.indexOf('>', nextTagStart + 1);
+    if (nextTagEnd === -1) {
+      if (!skipTag) result += source.slice(nextTagStart);
+      break;
+    }
+
+    const rawTag = source.slice(nextTagStart + 1, nextTagEnd).trim();
+    const isClosingTag = rawTag.startsWith('/');
+    const tagBody = isClosingTag ? rawTag.slice(1).trim() : rawTag;
+    const tagName = tagBody.split(/\s+/)[0]?.toLowerCase() || '';
+
+    if (!isClosingTag && (tagName === 'script' || tagName === 'style')) {
+      skipTag = tagName;
+    } else if (isClosingTag && skipTag === tagName) {
+      skipTag = null;
+    } else if (!skipTag) {
+      if (tagName === 'br') {
+        result += '\n';
+      } else if (tagName === 'p' || tagName === '/p' || /^h[1-6]$/.test(tagName)) {
+        result += '\n\n';
+      } else if (!isClosingTag && tagName === 'a') {
+        anchorHrefStack.push(extractHrefAttribute(rawTag));
+      } else if (isClosingTag && tagName === 'a') {
+        const href = anchorHrefStack.pop();
+        if (href) result += ` (${href})`;
+      }
+    }
+
+    index = nextTagEnd + 1;
+  }
+
+  return decodeHtmlEntities(result)
+    .replace(/\u00a0/g, ' ')
+    .replace(/\n\s+\n/g, '\n\n')
+    .trim();
+}
 
 // ─── Font & Token Constants ──────────────────────────────────────────────────
 
@@ -938,6 +1032,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const imageFileInputRef = useRef(null);
+  const safeCustomImageUrl = useMemo(() => sanitizeImageUrl(customImageUrl), [customImageUrl]);
 
   // Test Email Modal
   const [showTestModal, setShowTestModal] = useState(false);
@@ -1268,17 +1363,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   };
 
   const autoGeneratePlainText = () => {
-    const text = htmlBody
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<br\s*[\/]?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<\/h[1-6]>/gi, '\n\n')
-      .replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\n\s+\n/g, '\n\n')
-      .trim();
+    const text = htmlToPlainText(htmlBody);
     setPlainText(text);
     addToast('Plain text generated from HTML', 'success');
   };
@@ -3249,9 +3334,9 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                         }
                       }}
                     />
-                    {customImageUrl ? (
+                    {safeCustomImageUrl ? (
                       <div className="rs-image-dropzone-preview">
-                        <img src={customImageUrl} alt="Preview" />
+                        <img src={safeCustomImageUrl} alt="Preview" />
                         <div className="rs-image-dropzone-overlay">
                           <HiOutlineUpload className="text-xl" />
                           <span>Click or drop new file to replace</span>
@@ -3343,11 +3428,11 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                     />
                   </div>
 
-                  {customImageUrl && (
+                  {safeCustomImageUrl && (
                     <div style={{ marginTop: 12 }}>
                       <label className="re-prop-label" style={{ marginBottom: 6, display: 'block' }}>Preview</label>
                       <div style={{ maxHeight: 180, borderRadius: 8, overflow: 'hidden', border: '1px solid #27272a' }}>
-                        <img src={customImageUrl} alt="" style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+                        <img src={safeCustomImageUrl} alt="" style={{ width: '100%', height: 180, objectFit: 'cover' }} />
                       </div>
                     </div>
                   )}
@@ -3360,12 +3445,12 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
               <button
                 type="button"
                 className="rs-btn-primary"
-                disabled={!customImageUrl || isUploadingImage}
+                disabled={!safeCustomImageUrl || isUploadingImage}
                 onClick={() => {
                   if (selectedBlock?.type === 'image') {
-                    updateBlock(selectedBlock.id, { src: customImageUrl, alt: customImageAlt });
+                    updateBlock(selectedBlock.id, { src: safeCustomImageUrl, alt: customImageAlt });
                   } else {
-                    addBlock('image', { src: customImageUrl, alt: customImageAlt });
+                    addBlock('image', { src: safeCustomImageUrl, alt: customImageAlt });
                   }
                   setShowImageModal(false);
                 }}

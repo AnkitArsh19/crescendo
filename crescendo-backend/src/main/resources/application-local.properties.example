@@ -74,8 +74,43 @@ crescendo.email.smtp.port=587
 crescendo.email.smtp.username=REPLACE_ME
 crescendo.email.smtp.password=REPLACE_ME
 
+# Redis (local connects to Docker container on port 6379)
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.timeout=5000
+spring.data.redis.connect-timeout=3000
+
+# WebAuthn RP configuration
+# Since local development is accessed via https://app.crescendo.run or http://localhost:3000
+app.webauthn.rp-id=localhost
+app.webauthn.rp-name=Crescendo (Local)
+
+# ── Email Provider (Brevo) ──────────────────────────────────────────────────
+# Set to "brevo" to send transactional emails via Brevo API.
+crescendo.email.provider=brevo
+brevo.api.key=${BREVO_API_KEY:}
+crescendo.mail.from=${BREVO_SENDER_EMAIL:noreply@crescendo.run}
+
+# ── Observability & Actuator Telemetry ──────────────────────────────────────────
+management.endpoints.web.exposure.include=health,info,metrics,prometheus
+management.endpoint.health.show-details=always
+management.endpoint.prometheus.enabled=true
+management.prometheus.metrics.export.enabled=true
+management.metrics.distribution.percentiles-histogram.http.server.requests=true
+
+# ── AI Microservice & Google Gemini Configuration ─────────────────────────────
 # Optional provider keys for controlled internal connections
-gemini.api.key=REPLACE_ME_IF_USED
+gemini.api.key=${GEMINI_API_KEY:REPLACE_ME_IF_USED}
+gemini.model=${GEMINI_MODEL:gemini-3.5-flash-lite}
+crescendo.python-ai.base-url=${CRESCENDO_PYTHON_AI_BASE_URL:http://localhost:8000}
+crescendo.python-ai.service-token=${CRESCENDO_PYTHON_AI_SERVICE_TOKEN:}
+
+# ── AI Rate Limiter & Concurrency Queue (Gemini 3.5 Flash Lite: 15 RPM / 500 RPD) ──
+crescendo.ai.ratelimit.user-rpm=${AI_RATE_LIMIT_USER_RPM:5}
+crescendo.ai.ratelimit.platform-rpm=${AI_RATE_LIMIT_PLATFORM_RPM:14}
+crescendo.ai.ratelimit.user-rpd=${AI_RATE_LIMIT_USER_RPD:30}
+crescendo.ai.ratelimit.platform-rpd=${AI_RATE_LIMIT_PLATFORM_RPD:480}
+crescendo.ai.ratelimit.queue-timeout-ms=${AI_RATE_LIMIT_QUEUE_TIMEOUT_MS:30000}
 sarvam.api.key=REPLACE_ME_IF_USED
 
 # Razorpay and PayPal are user-owned connection credentials by default.
@@ -83,3 +118,4 @@ sarvam.api.key=REPLACE_ME_IF_USED
 
 # Optional OAuth provider rows for newly added apps are listed in application.properties.example.
 # Token-based connections work immediately for Trello, Asana, HubSpot, Dropbox, etc.
+

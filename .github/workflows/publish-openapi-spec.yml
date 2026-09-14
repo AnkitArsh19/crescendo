@@ -8,6 +8,9 @@ on:
       - 'crescendo-backend/**'
       - '.github/workflows/publish-openapi-spec.yml'
 
+permissions:
+  contents: read
+
 jobs:
   publish-spec:
     name: Publish Spec & Trigger SDKs

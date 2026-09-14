@@ -1,13 +1,14 @@
 {
   "name": "crescendo-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "tauri": "node scripts/run-tauri.js",
-    "tauri:build": "node scripts/run-tauri.js build",
+    "tauri:assets": "node scripts/generate-nsis-assets.cjs",
+    "tauri:build": "node scripts/generate-nsis-assets.cjs && node scripts/run-tauri.js build",
     "test": "vitest run",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -28,7 +29,7 @@
     "react-hook-form": "^7.82.0",
     "react-icons": "^5.7.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.18.2",
     "react-syntax-highlighter": "^16.1.1",
     "recharts": "^3.9.2",
     "remark-gfm": "^4.0.1",
@@ -51,8 +52,8 @@
     "globals": "^17.7.0",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

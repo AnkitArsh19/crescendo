@@ -37,6 +37,19 @@ function createBmp24(width, height, rgbBuffer) {
 }
 
 async function generate() {
+  let appVersion = 'v1.0.0';
+  try {
+    const tauriConfPath = path.resolve(__dirname, '../src-tauri/tauri.conf.json');
+    if (fs.existsSync(tauriConfPath)) {
+      const conf = JSON.parse(fs.readFileSync(tauriConfPath, 'utf8'));
+      if (conf.version) {
+        appVersion = `v${conf.version}`;
+      }
+    }
+  } catch {
+    // fallback to v1.0.0
+  }
+
   const sidebarSvg = `
     <svg width="164" height="314" viewBox="0 0 164 314" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -67,7 +80,7 @@ async function generate() {
 
       <line x1="32" y1="205" x2="132" y2="205" stroke="#334155" stroke-width="1"/>
       <text x="82" y="224" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" fill="#CBD5E1" text-anchor="middle">Native Desktop Client</text>
-      <text x="82" y="238" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#64748B" text-anchor="middle">v0.1.0 • Tauri v2</text>
+      <text x="82" y="238" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" fill="#64748B" text-anchor="middle">${appVersion}</text>
     </svg>
   `;
 

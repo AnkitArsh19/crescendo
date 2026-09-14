@@ -28,21 +28,9 @@ public class RssTriggerPoller implements TriggerPoller {
         if (feedUrl == null || feedUrl.isBlank()) return events;
 
         try {
-            RestClient client;
+            RestClient client = RestClient.create();
             if ("true".equalsIgnoreCase(String.valueOf(configuration.get("ignoreSSL")))) {
-                javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
-                        new javax.net.ssl.X509TrustManager() {
-                            public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-                            public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
-                            public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {}
-                        }
-                };
-                javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-                sc.init(null, trustAllCerts, new java.security.SecureRandom());
-                java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder().sslContext(sc).build();
-                client = RestClient.builder().requestFactory(new org.springframework.http.client.JdkClientHttpRequestFactory(httpClient)).build();
-            } else {
-                client = RestClient.create();
+                logger.warn("[rss] ignoreSSL=true is not supported for security reasons; using default TLS validation.");
             }
 
             String xmlContent = client.get()
