@@ -35,9 +35,7 @@ async function main() {
   }
 
   let args = process.argv.slice(2);
-  const isWindows = process.platform === 'win32';
-  const tauriCmd = isWindows ? 'tauri.cmd' : 'tauri';
-  const tauriBin = path.join(rootDir, 'node_modules', '.bin', tauriCmd);
+  const tauriBin = path.join(rootDir, 'node_modules', '@tauri-apps', 'cli', 'tauri.js');
 
   // If running "tauri dev" and port 5173 is already up (e.g. from dev.ps1),
   // skip starting a redundant second Vite instance
@@ -49,17 +47,11 @@ async function main() {
     }
   }
 
-  const child = isWindows
-    ? spawn('cmd.exe', ['/c', tauriBin, ...args], {
-        cwd: rootDir,
-        stdio: 'inherit',
-        env
-      })
-    : spawn(tauriBin, args, {
-        cwd: rootDir,
-        stdio: 'inherit',
-        env
-      });
+  const child = spawn(process.execPath, [tauriBin, ...args], {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env
+  });
 
   child.on('exit', (code) => {
     process.exit(code ?? 0);
