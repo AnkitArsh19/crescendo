@@ -12,7 +12,7 @@
  * - Robust Auto-Save to PostgreSQL with non-LOB TEXT columns & live status feedback
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlineChevronRight,
@@ -57,6 +57,38 @@ import {
 import { templatesApi } from '../../api/emailServiceApi';
 import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
 import './TemplateBlockEditor.css';
+
+function sanitizeImageUrl(url) {
+  if (typeof url !== 'string' || !url.trim()) return '';
+  try {
+    const parsed = new URL(url.trim(), window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    // Ignore invalid URLs
+  }
+  return '';
+}
+
+function htmlToPlainText(html) {
+  const parser = new DOMParser();
+  const document = parser.parseFromString(html, 'text/html');
+  document.querySelectorAll('script, style').forEach((el) => el.remove());
+  document.querySelectorAll('a[href]').forEach((a) => {
+    const href = a.getAttribute('href');
+    if (href) {
+      a.textContent = `${a.textContent || ''} (${href})`;
+    }
+  });
+  document.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  document.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach((el) => el.append('\n\n'));
+
+  return (document.body.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\n\s+\n/g, '\n\n')
+    .trim();
+}
 
 // ─── Font & Token Constants ──────────────────────────────────────────────────
 
@@ -938,6 +970,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const imageFileInputRef = useRef(null);
+  const safeCustomImageUrl = useMemo(() => sanitizeImageUrl(customImageUrl), [customImageUrl]);
 
   // Test Email Modal
   const [showTestModal, setShowTestModal] = useState(false);
@@ -1268,17 +1301,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   };
 
   const autoGeneratePlainText = () => {
-    const text = htmlBody
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<br\s*[\/]?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<\/h[1-6]>/gi, '\n\n')
-      .replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\n\s+\n/g, '\n\n')
-      .trim();
+    const text = htmlToPlainText(htmlBody);
     setPlainText(text);
     addToast('Plain text generated from HTML', 'success');
   };
@@ -3249,9 +3272,9 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                         }
                       }}
                     />
-                    {customImageUrl ? (
+                    {safeCustomImageUrl ? (
                       <div className="rs-image-dropzone-preview">
-                        <img src={customImageUrl} alt="Preview" />
+                        <img src={safeCustomImageUrl} alt="Preview" />
                         <div className="rs-image-dropzone-overlay">
                           <HiOutlineUpload className="text-xl" />
                           <span>Click or drop new file to replace</span>
@@ -3343,11 +3366,11 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                     />
                   </div>
 
-                  {customImageUrl && (
+                  {safeCustomImageUrl && (
                     <div style={{ marginTop: 12 }}>
                       <label className="re-prop-label" style={{ marginBottom: 6, display: 'block' }}>Preview</label>
                       <div style={{ maxHeight: 180, borderRadius: 8, overflow: 'hidden', border: '1px solid #27272a' }}>
-                        <img src={customImageUrl} alt="" style={{ width: '100%', height: 180, objectFit: 'cover' }} />
+                        <img src={safeCustomImageUrl} alt="" style={{ width: '100%', height: 180, objectFit: 'cover' }} />
                       </div>
                     </div>
                   )}
@@ -3360,12 +3383,12 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
               <button
                 type="button"
                 className="rs-btn-primary"
-                disabled={!customImageUrl || isUploadingImage}
+                disabled={!safeCustomImageUrl || isUploadingImage}
                 onClick={() => {
                   if (selectedBlock?.type === 'image') {
-                    updateBlock(selectedBlock.id, { src: customImageUrl, alt: customImageAlt });
+                    updateBlock(selectedBlock.id, { src: safeCustomImageUrl, alt: customImageAlt });
                   } else {
-                    addBlock('image', { src: customImageUrl, alt: customImageAlt });
+                    addBlock('image', { src: safeCustomImageUrl, alt: customImageAlt });
                   }
                   setShowImageModal(false);
                 }}
