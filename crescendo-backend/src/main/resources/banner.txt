@@ -1,0 +1,9 @@
+${AnsiColor.BRIGHT_CYAN}   ____                                   _       
+  / ___|_ __ ___  ___  ___ ___ _ __   __| | ___  
+ | |   | '__/ _ \/ __|/ __/ _ \ '_ \ / _` |/ _ \ 
+ | |___| | |  __/\__ \ (_|  __/ | | | (_| | (_) |
+  \____|_|  \___||___/\___\___|_| |_|\__,_|\___/ 
+${AnsiColor.DEFAULT}
+${AnsiStyle.BOLD}${AnsiColor.CYAN} :: Crescendo Enterprise Workflow Platform :: ${AnsiColor.DEFAULT}
+${AnsiColor.BRIGHT_BLACK} :: Spring Boot ${spring-boot.formatted-version} | Java ${java.version} | ${spring.profiles.active} profile
+${AnsiColor.DEFAULT}

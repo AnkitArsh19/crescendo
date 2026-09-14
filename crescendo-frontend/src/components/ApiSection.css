@@ -1,6 +1,7 @@
 .api-section {
     padding: 120px 0;
     position: relative;
+    overflow-x: clip;
 }
 
 .api-inner {
@@ -11,6 +12,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 60px;
     align-items: center;
+    min-width: 0;
 }
 
 .api-content {
@@ -65,6 +67,8 @@
 .api-code-wrapper {
     position: relative;
     perspective: 800px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .api-code-block {
@@ -74,6 +78,8 @@
     overflow: hidden;
     box-shadow: var(--shadow-3d);
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 0;
+    max-width: 100%;
 }
 
 .api-code-block:hover {
@@ -194,6 +200,8 @@
 .api-code-body {
     padding: 20px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
     min-height: 240px;
 }
 
@@ -223,7 +231,33 @@
 
 @media (max-width: 900px) {
     .api-inner {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 40px;
+    }
+}
+
+@media (max-width: 640px) {
+    .api-section {
+        padding: 60px 0;
+        overflow: hidden;
+    }
+
+    .api-inner {
+        padding: 0 16px;
+        max-width: 100%;
+    }
+
+    .api-content {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .api-code-body {
+        padding: 16px 12px;
+        min-height: auto;
+    }
+
+    .api-code-body pre {
+        font-size: 0.74rem;
     }
 }

@@ -17,6 +17,7 @@ import Hero from './components/Hero';
 import Features from './components/Features';
 import AiBuilderSection from './components/AiBuilderSection';
 import ApiSection from './components/ApiSection';
+import DownloadsSection from './components/DownloadsSection';
 import DocsSection from './components/DocsSection';
 import Footer from './components/Footer';
 
@@ -132,6 +133,7 @@ function LandingPage() {
         <Features />
         <AiBuilderSection />
         <ApiSection />
+        <DownloadsSection />
         <DocsSection />
         <Footer />
       </div>

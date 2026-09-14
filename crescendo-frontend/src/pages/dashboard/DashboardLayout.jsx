@@ -14,6 +14,8 @@ import {
     HiOutlineShieldCheck,
     HiSun,
     HiMoon,
+    HiOutlineMenuAlt2,
+    HiOutlineX,
 } from 'react-icons/hi';
 import { useTheme } from '../../components/ThemeContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -43,6 +45,7 @@ export default function DashboardLayout() {
     const location = useLocation();
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     const { user, logout, isGuest, exitGuestMode } = useAuthStore();
     const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
@@ -57,6 +60,11 @@ export default function DashboardLayout() {
         setCollapsed(isCanvas);
     }, [isCanvas]);
 
+    // Close mobile menu on page navigation
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [location.pathname]);
+
     const getTitle = () => {
         const last = location.pathname.split('/').filter(Boolean).pop();
         if (last === 'dashboard') return 'Dashboard';
@@ -70,8 +78,17 @@ export default function DashboardLayout() {
 
     return (
         <div className="dashboard">
+            {/* Mobile backdrop overlay */}
+            {mobileOpen && (
+                <div
+                    className="dash-mobile-overlay"
+                    onClick={() => setMobileOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className={`dash-sidebar ${collapsed ? 'collapsed' : ''} ${isCanvas ? 'canvas-mode' : ''}`}>
+            <aside className={`dash-sidebar ${collapsed ? 'collapsed' : ''} ${isCanvas ? 'canvas-mode' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
                 <div
                     className="dash-sidebar-header"
                     onClick={() => setCollapsed((prev) => !prev)}
@@ -267,6 +284,15 @@ export default function DashboardLayout() {
                 {!isCanvas && (
                     <div className="dash-topbar">
                         <div className="dash-topbar-left">
+                            <button
+                                type="button"
+                                className="dash-mobile-menu-btn"
+                                onClick={() => setMobileOpen((prev) => !prev)}
+                                aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                                title={mobileOpen ? 'Close menu' : 'Open menu'}
+                            >
+                                {mobileOpen ? <HiOutlineX /> : <HiOutlineMenuAlt2 />}
+                            </button>
                             <Breadcrumbs />
                         </div>
                         <div className="dash-topbar-right">

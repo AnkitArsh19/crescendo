@@ -51,8 +51,14 @@ public class DomainConnectService {
         if (privateKeyPath != null && !privateKeyPath.isBlank()) {
             java.nio.file.Path path = Paths.get(privateKeyPath);
             if (!Files.exists(path)) {
-                log.warn("Domain Connect private key file not found at: {}. Domain Connect URLs will not be signed.", privateKeyPath);
-                return;
+                // Check parent directory as fallback when running from submodule directory
+                java.nio.file.Path parentPath = Paths.get("..", privateKeyPath);
+                if (Files.exists(parentPath)) {
+                    path = parentPath;
+                } else {
+                    log.warn("Domain Connect private key file not found at: {}. Domain Connect URLs will not be signed.", privateKeyPath);
+                    return;
+                }
             }
             try {
                 String keyContent = Files.readString(path)

@@ -7,6 +7,7 @@ import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -41,6 +42,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class RedisConfig implements CachingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
+
+    @Value("${crescendo.cache.prefix:crescendo:v1:}")
+    private String cachePrefix;
 
     /**
      * Gracefully handles cache read/write errors caused by stale or incompatible
@@ -143,7 +147,7 @@ public class RedisConfig implements CachingConfigurer {
                 new JacksonJsonRedisSerializer<>(redisObjectMapper(), Object.class);
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .prefixCacheNameWith("crescendo:v1:")
+                .prefixCacheNameWith(cachePrefix)
                 .entryTtl(Duration.ofMinutes(30))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))

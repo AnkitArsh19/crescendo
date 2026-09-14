@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -109,7 +110,10 @@ public class ResourceFetchService {
         }
 
         // 4. Get valid (auto-refreshed) credentials
-        Map<String, Object> credentials = tokenService.getValidCredentials(connection);
+        Map<String, Object> credentials = new HashMap<>(tokenService.getValidCredentials(connection));
+        if (userId != null) {
+            credentials.put("userId", userId.toString());
+        }
 
         // 5. Fetch from external API via provider
         return callProvider(provider, credentials, appKey, resourceType, params);
@@ -170,7 +174,11 @@ public class ResourceFetchService {
         }
 
         logger.debug("[resources] Using PLATFORM credentials for app='{}' resource='{}' (ADMIN_KEY mode)", appKey, resourceType);
-        return callProvider(provider, credentials, appKey, resourceType, params);
+        Map<String, Object> creds = new HashMap<>(credentials);
+        if (userId != null) {
+            creds.put("userId", userId.toString());
+        }
+        return callProvider(provider, creds, appKey, resourceType, params);
     }
 
     private List<ResourceOption> callProvider(ResourceProvider provider, Map<String, Object> credentials,

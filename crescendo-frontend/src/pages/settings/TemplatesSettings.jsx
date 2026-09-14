@@ -555,9 +555,9 @@ export default function TemplatesSettings() {
                   padding: '4px 10px',
                   borderRadius: 20,
                   border: '1px solid',
-                  borderColor: selectedCategory === cat ? 'var(--primary-color, #6366f1)' : 'var(--border-color)',
-                  background: selectedCategory === cat ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                  color: selectedCategory === cat ? 'var(--text-primary, #ffffff)' : 'var(--text-secondary)',
+                  borderColor: selectedCategory === cat ? 'var(--border-hover)' : 'var(--border-primary)',
+                  background: selectedCategory === cat ? 'var(--bg-elevated)' : 'transparent',
+                  color: selectedCategory === cat ? 'var(--text-primary)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -595,8 +595,9 @@ export default function TemplatesSettings() {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: 0.5,
-                    color: starter.badgeColor || '#6366f1',
-                    background: `${starter.badgeColor || '#6366f1'}18`,
+                    color: 'var(--text-primary)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-hover)',
                     padding: '2px 8px',
                     borderRadius: 12
                   }}>
@@ -608,7 +609,7 @@ export default function TemplatesSettings() {
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45 }}>{starter.description}</p>
               </div>
               <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--primary-color, #6366f1)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   Use Starter &rarr;
                 </span>
               </div>

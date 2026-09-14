@@ -302,7 +302,7 @@ export default function NLWorkflowModal({ onClose }) {
                 <div className="nlwf-header">
                     <div className="nlwf-header-text">
                         <h2>
-                            <HiOutlineSparkles style={{ color: 'var(--text-accent, #6366f1)' }} />
+                            <HiOutlineSparkles style={{ color: 'var(--text-accent)' }} />
                             Build with AI
                         </h2>
                         <p>Describe your automation workflow in plain English.</p>
@@ -346,7 +346,7 @@ export default function NLWorkflowModal({ onClose }) {
                                                     className="nlwf-example-chip-chat"
                                                     onClick={() => handleSend(ex)}
                                                 >
-                                                    <HiArrowSmRight style={{ color: 'var(--text-accent, #6366f1)', flexShrink: 0 }} />
+                                                    <HiArrowSmRight style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
                                                     <span>{ex}</span>
                                                 </button>
                                             ))}

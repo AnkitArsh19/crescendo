@@ -749,3 +749,31 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
 
     .hero-stat-number { font-size: 1.1rem; }
 }
+
+@media (max-width: 480px) {
+    .hero {
+        padding: 80px 12px 24px;
+    }
+
+    .hero-cta {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .hero-btn-primary,
+    .hero-btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero-stats {
+        width: 100%;
+        justify-content: space-around;
+        gap: 8px;
+    }
+
+    .hero-stat-number {
+        font-size: 1.15rem;
+    }
+}

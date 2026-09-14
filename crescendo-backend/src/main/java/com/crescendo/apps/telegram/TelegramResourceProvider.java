@@ -1,5 +1,8 @@
 package com.crescendo.apps.telegram;
 
+import com.crescendo.apps.telegram.entity.UserTelegramChat;
+import com.crescendo.apps.telegram.repository.UserTelegramChatRepository;
+import com.crescendo.apps.telegram.service.TelegramLinkService;
 import com.crescendo.execution.resource.ResourceOption;
 import com.crescendo.execution.resource.ResourceProvider;
 import org.slf4j.Logger;
@@ -14,8 +17,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Fetches Telegram bot resources using the Bot API.
- * Lists recent chats (direct chats, groups, supergroups, channels) where the bot is a member.
+ * Fetches Telegram bot resources using the Bot API and Crescendo tenant-isolated database.
+ * Lists chats (direct chats, groups, supergroups, channels) where the bot is a member.
  * Supports: chats
  */
 @Component
@@ -24,8 +27,17 @@ public class TelegramResourceProvider implements ResourceProvider {
     private static final Logger logger = LoggerFactory.getLogger(TelegramResourceProvider.class);
     private static final String TELEGRAM_API = "https://api.telegram.org";
 
-    // Persistent in-memory cache of discovered chats per bot token
+    private final UserTelegramChatRepository userChatRepo;
+    private final TelegramLinkService telegramLinkService;
+
+    // Persistent in-memory cache of discovered chats per bot token (for BYOB tokens)
     private final Map<String, Map<String, ResourceOption>> tokenChatCache = new ConcurrentHashMap<>();
+
+    public TelegramResourceProvider(UserTelegramChatRepository userChatRepo,
+                                    TelegramLinkService telegramLinkService) {
+        this.userChatRepo = userChatRepo;
+        this.telegramLinkService = telegramLinkService;
+    }
 
     @Override
     public String appKey() {
@@ -41,23 +53,66 @@ public class TelegramResourceProvider implements ResourceProvider {
     public List<ResourceOption> listResources(Map<String, Object> credentials,
                                                String resourceType,
                                                Map<String, String> params) {
+        UUID userId = extractUserId(credentials, params);
         String botToken = extractBotToken(credentials);
         if (botToken == null || botToken.isBlank()) {
-            logger.warn("[telegram] No bot token provided in credentials");
-            return List.of();
+            botToken = telegramLinkService.resolvePlatformBotToken();
         }
 
-        // If a specific search/chatId is queried, try resolving it via getChat
-        if (params != null) {
+        Map<String, ResourceOption> optionsMap = new LinkedHashMap<>();
+
+        // 1. If we have userId, load tenant-isolated chats from DB first
+        if (userId != null) {
+            try {
+                List<UserTelegramChat> userChats = userChatRepo.findAllByUserIdOrderByUpdatedAtDesc(userId);
+                for (UserTelegramChat uc : userChats) {
+                    String desc = formatChatType(uc.getChatType());
+                    optionsMap.put(uc.getChatId(), new ResourceOption(uc.getChatId(), uc.getTitle(), desc));
+                }
+            } catch (Exception e) {
+                logger.warn("[telegram] Error loading user telegram chats from DB for user {}: {}", userId, e.getMessage());
+            }
+        }
+
+        // 2. If a specific search/chatId query is given, attempt direct fetch with botToken
+        if (params != null && botToken != null && !botToken.isBlank()) {
             String query = params.get("search");
             if (query == null || query.isBlank()) query = params.get("query");
             if (query == null || query.isBlank()) query = params.get("chatId");
             if (query != null && !query.isBlank()) {
-                fetchChatDirect(botToken, query.trim());
+                ResourceOption direct = fetchChatDirect(botToken, query.trim());
+                if (direct != null) {
+                    optionsMap.put(direct.id(), direct);
+                    if (userId != null) {
+                        saveDirectChatForUser(userId, direct);
+                    }
+                }
             }
         }
 
-        return listChats(botToken);
+        // 3. Fallback for BYOB / custom bot tokens: if optionsMap is empty, inspect getUpdates
+        if (optionsMap.isEmpty() && botToken != null && !botToken.isBlank()) {
+            List<ResourceOption> byobChats = listChats(botToken);
+            for (ResourceOption opt : byobChats) {
+                optionsMap.putIfAbsent(opt.id(), opt);
+            }
+        }
+
+        return new ArrayList<>(optionsMap.values());
+    }
+
+    private UUID extractUserId(Map<String, Object> credentials, Map<String, String> params) {
+        if (credentials != null && credentials.get("userId") != null) {
+            try {
+                return UUID.fromString(credentials.get("userId").toString().trim());
+            } catch (Exception ignored) {}
+        }
+        if (params != null && params.get("userId") != null) {
+            try {
+                return UUID.fromString(params.get("userId").trim());
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     private String extractBotToken(Map<String, Object> credentials) {
@@ -68,12 +123,42 @@ public class TelegramResourceProvider implements ResourceProvider {
         return null;
     }
 
+    private String formatChatType(String type) {
+        if (type == null) return "Chat";
+        return switch (type.toLowerCase()) {
+            case "private" -> "Direct Chat";
+            case "channel" -> "Channel";
+            case "supergroup" -> "Supergroup";
+            case "group" -> "Group";
+            default -> type.substring(0, 1).toUpperCase() + type.substring(1);
+        };
+    }
+
+    private void saveDirectChatForUser(UUID userId, ResourceOption direct) {
+        try {
+            if (userChatRepo.findByUserIdAndChatId(userId, direct.id()).isEmpty()) {
+                UserTelegramChat utc = new UserTelegramChat(
+                        UUID.randomUUID(),
+                        userId,
+                        null,
+                        direct.id(),
+                        direct.label(),
+                        direct.description() != null ? direct.description().toLowerCase() : "channel",
+                        "member"
+                );
+                userChatRepo.save(utc);
+            }
+        } catch (Exception e) {
+            logger.debug("[telegram] Could not persist direct chat {}: {}", direct.id(), e.getMessage());
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private List<ResourceOption> listChats(String botToken) {
         Map<String, ResourceOption> cache = tokenChatCache.computeIfAbsent(botToken, k -> new LinkedHashMap<>());
 
         try {
-            // Include message, channel_post, my_chat_member, chat_member updates so we capture direct chats, groups, and channels
+            // Include message, channel_post, my_chat_member, chat_member updates
             String updateUri = TELEGRAM_API + "/bot" + botToken + "/getUpdates?limit=100&allowed_updates=%5B%22message%22%2C%22edited_message%22%2C%22channel_post%22%2C%22edited_channel_post%22%2C%22my_chat_member%22%2C%22chat_member%22%2C%22callback_query%22%5D";
 
             Map<String, Object> response = RestClient.builder()
@@ -106,7 +191,7 @@ public class TelegramResourceProvider implements ResourceProvider {
     }
 
     @SuppressWarnings("unchecked")
-    private void fetchChatDirect(String botToken, String chatIdOrUsername) {
+    private ResourceOption fetchChatDirect(String botToken, String chatIdOrUsername) {
         try {
             Map<String, Object> response = RestClient.builder()
                     .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -122,12 +207,14 @@ public class TelegramResourceProvider implements ResourceProvider {
                     ResourceOption option = buildResourceOption(chat);
                     if (option != null) {
                         tokenChatCache.computeIfAbsent(botToken, k -> new LinkedHashMap<>()).put(option.id(), option);
+                        return option;
                     }
                 }
             }
         } catch (Exception e) {
             logger.debug("[telegram] Could not fetch chat directly for '{}': {}", chatIdOrUsername, e.getMessage());
         }
+        return null;
     }
 
     private ResourceOption buildResourceOption(Map<String, Object> chat) {

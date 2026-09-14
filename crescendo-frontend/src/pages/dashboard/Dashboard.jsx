@@ -40,7 +40,7 @@ const starters = [
         steps: [
             { name: 'New Pull Request', type: 'TRIGGER', appKey: 'github', actionKey: 'new-pr', configuration: {} },
             { name: 'AI Code & Security Audit', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Analyze the pull request diff for bugs, breaking changes, and security risks. Rate overall risk as LOW, MEDIUM, or HIGH.' } },
-            { name: 'Check If High Risk', type: 'CONDITION', appKey: 'logic', actionKey: 'logic:if', configuration: { operator: 'CONTAINS', field: '{{step_2.finalAnswer}}', value: 'HIGH' } },
+            { name: 'Check If High Risk', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.finalAnswer}}', operator: 'CONTAINS', value: 'HIGH' }] }] } },
             { name: 'Dispatch Slack Alert', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🚨 High-risk Pull Request detected:\n{{step_2.finalAnswer}}' } },
         ],
     },
@@ -80,7 +80,7 @@ const starters = [
             { name: 'Receive Feedback Webhook', type: 'TRIGGER', appKey: 'crescendo-webhook', actionKey: 'incoming', configuration: { method: 'POST', urlPattern: '/feedback' } },
             { name: 'AI Sentiment & Severity Triage', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Classify user feedback into: POSITIVE, NEUTRAL, or CRITICAL_BUG.' } },
             { name: 'Log to Google Sheets', type: 'ACTION', appKey: 'google-sheets', actionKey: 'appendRow', configuration: { spreadsheetId: 'feedback_db' } },
-            { name: 'Check If Critical Bug', type: 'CONDITION', appKey: 'logic', actionKey: 'logic:if', configuration: { operator: 'CONTAINS', field: '{{step_2.finalAnswer}}', value: 'CRITICAL_BUG' } },
+            { name: 'Check If Critical Bug', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.finalAnswer}}', operator: 'CONTAINS', value: 'CRITICAL_BUG' }] }] } },
             { name: 'Alert On-Call Slack Channel', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🔥 Critical Bug reported by user: {{step_1.message}}' } },
         ],
     },
@@ -105,7 +105,7 @@ const starters = [
         steps: [
             { name: '15-Minute Uptime Poller', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '*/15 * * * *' } },
             { name: 'Ping Health Endpoint', type: 'ACTION', appKey: 'http', actionKey: 'request', configuration: { method: 'GET', url: 'https://api.my-app.com/health', authentication: 'none' } },
-            { name: 'Check HTTP Status Code', type: 'CONDITION', appKey: 'logic', actionKey: 'logic:if', configuration: { operator: 'EQUALS', field: '{{step_2.status}}', value: '200' } },
+            { name: 'Check HTTP Status Code', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.status}}', operator: 'EQUALS', value: '200' }] }] } },
             { name: 'Telegram Down Alert', type: 'ACTION', appKey: 'telegram', actionKey: 'sendMessage', configuration: { text: '⚠️ Service alert: API health endpoint returned non-200 status code.' } },
         ],
     },
@@ -130,7 +130,7 @@ const starters = [
         steps: [
             { name: 'Weekday Morning 7:30 AM', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 30 7 * * MON-FRI' } },
             { name: 'Check Local Weather', type: 'ACTION', appKey: 'weather', actionKey: 'get-weather', configuration: { city: 'Bengaluru', units: 'metric' } },
-            { name: 'Check If Rain Forecasted', type: 'CONDITION', appKey: 'condition', actionKey: 'rule', configuration: { operator: 'CONTAINS', field: '{{step_2.condition}}', value: 'Rain' } },
+            { name: 'Check If Rain Forecasted', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.condition}}', operator: 'CONTAINS', value: 'Rain' }] }] } },
             { name: 'Slack Rain Advisory', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🌧️ Rain advisory for today: {{step_2.condition}}, temperature: {{step_2.temperature}}°C. Don\'t forget your umbrella!' } },
         ],
     },
@@ -191,38 +191,80 @@ function formatRelative(dateStr) {
 
 const greetingSets = {
     late: [
-        { label: 'Still up?', prompt: 'Build it once, then let Crescendo carry the repeat work.' },
-        { label: 'Night owl mode', prompt: 'Set one helpful thing in motion before you call it a day.' },
+        { label: 'Still up?', prompt: 'Catch tonight’s idea before it evaporates — automate it while it’s fresh.' },
+        { label: 'Night owl detected', prompt: 'While everyone else sleeps, let’s put one task on autopilot.' },
+        { label: '3 AM genius hour', prompt: 'Your best ideas show up uninvited. Give this one somewhere to land.' },
+        { label: 'The world is asleep', prompt: 'Your workflows don’t have to be. Build one that runs without you.' },
+        { label: 'Insomnia, but useful', prompt: 'Since you’re here anyway, set up something 9-AM-you will thank you for.' },
         { label: 'Quiet hours', prompt: 'The best automations keep working after you log off.' },
+        { label: 'Night owl mode', prompt: 'Set one helpful thing in motion before you call it a day.' },
     ],
     morning: [
-        { label: 'Good morning', prompt: 'What can we take off your plate before the day gets busy?' },
+        { label: 'Good morning', prompt: 'Before the inbox wins, let’s take one thing off your plate.' },
+        { label: 'Rise and automate', prompt: 'Turn today’s first annoying task into a flow that just happens.' },
+        { label: 'Coffee’s brewing', prompt: 'So is your next workflow, if you give it five minutes.' },
+        { label: 'Fresh page, fresh flows', prompt: 'Start today owing your future self a few less favors.' },
+        { label: 'Morning momentum', prompt: 'One small automation now beats three fire-drills by lunch.' },
         { label: 'Fresh start', prompt: 'Give future-you fewer tabs and fewer repetitive clicks.' },
-        { label: 'Rise and automate', prompt: 'Turn today’s first recurring task into a flow.' },
-        { label: 'Morning momentum', prompt: 'A tiny workflow can make the rest of the day feel lighter.' },
     ],
     afternoon: [
-        { label: 'Good afternoon', prompt: 'Turn the next repetitive task into a flow.' },
+        { label: 'Good afternoon', prompt: 'The 2 PM slump is coming. Beat it — automate something first.' },
+        { label: 'Midday lull incoming', prompt: 'Perfect time to hand the busywork to something that won’t get sleepy.' },
+        { label: 'Still going strong', prompt: 'Keep the momentum up top; let a flow handle what’s repeatable.' },
+        { label: 'Lunch is over, chaos resumes', prompt: 'One connected workflow beats a second coffee.' },
+        { label: 'Hello again', prompt: 'Something in here has probably asked for your attention twice already.' },
         { label: 'In the flow', prompt: 'Keep the good work moving; hand the busywork to Crescendo.' },
-        { label: 'Momentum looks good', prompt: 'One connected app can save more time than another coffee.' },
-        { label: 'Hello again', prompt: 'There is probably one task here that does not need your attention twice.' },
     ],
     evening: [
-        { label: 'Good evening', prompt: 'Clear a little busywork before you sign off.' },
-        { label: 'Wind-down win', prompt: 'Set up tomorrow so you can start ahead.' },
+        { label: 'Good evening', prompt: 'Clear a little busywork before the day officially clocks out.' },
+        { label: 'Wind-down win', prompt: 'Set up tomorrow now, so tomorrow-you starts a step ahead.' },
+        { label: 'Almost off the clock', prompt: 'Let a workflow handle the follow-up while you actually relax.' },
+        { label: 'Last task of the day?', prompt: 'Make it the one that stops you from doing this again tomorrow.' },
+        { label: 'Evening encore', prompt: 'One more useful thing before the curtain falls on today.' },
         { label: 'Evening reset', prompt: 'Let a workflow handle the follow-up while you recharge.' },
-        { label: 'One more useful thing', prompt: 'A quick automation now can make tomorrow calmer.' },
     ],
     night: [
-        { label: 'Good night', prompt: 'Set up tomorrow so it can run while you rest.' },
-        { label: 'After-hours ideas', prompt: 'Great workflows do not need anyone awake to keep moving.' },
-        { label: 'Time to ship less busywork', prompt: 'Put the repeatable part on autopilot before bed.' },
+        { label: 'Good night', prompt: 'Set up tomorrow so it can run while you’re dreaming.' },
+        { label: 'Lights out soon', prompt: 'Automations don’t need sleep — let one take the night shift.' },
+        { label: 'Before you go', prompt: 'Put the repeatable part on autopilot. Future-you says thanks.' },
+        { label: 'After-hours ideas', prompt: 'Great workflows keep moving even when nobody’s watching.' },
+        { label: 'One for the road', prompt: 'Ship less busywork tomorrow by fixing it tonight.' },
+    ],
+};
+
+const humorousGreetings = {
+    late: [
+        { label: 'Why are you here', prompt: 'It’s 2 AM. The only thing that should be running right now is a workflow, not your sleep schedule.' },
+        { label: 'Bold choice', prompt: 'Most people are asleep. You’re about to automate a spreadsheet. Respect.' },
+        { label: 'This is fine', prompt: 'Nothing says “healthy relationship with work” like optimizing pipelines at midnight. Let’s do it anyway.' },
+    ],
+    morning: [
+        { label: 'Ugh, morning', prompt: 'Before you copy-paste the same thing for the 400th time, maybe don’t.' },
+        { label: 'Inbox: 47 unread', prompt: 'Most of them are the same email. Let’s make that someone else’s (a robot’s) problem.' },
+        { label: 'Monday-proofing', prompt: 'Automate one task today and technically you’re already winning the week.' },
+    ],
+    afternoon: [
+        { label: 'Post-lunch fog', prompt: 'Your brain has left the building. Good news: workflows don’t need one.' },
+        { label: 'Still doing that manually?', prompt: 'We’re judging you a little. Lovingly. Let’s fix it.' },
+        { label: 'Meeting could’ve been an email', prompt: 'This task could’ve been a workflow. Let’s not repeat that mistake.' },
+    ],
+    evening: [
+        { label: 'Working late again?', prompt: 'Let’s automate something so future-you can leave on time for once.' },
+        { label: 'One more task, they said', prompt: 'Make it the one that means there’s no “one more task” tomorrow.' },
+        { label: 'Dinner’s getting cold', prompt: 'Set up a flow now so you have an excuse to actually eat it hot.' },
+    ],
+    night: [
+        { label: 'Doomscrolling detected', prompt: 'Same energy, better use: build a workflow instead of reading 40 tweets.' },
+        { label: 'Bed is right there', prompt: 'One quick automation and you can go pretend you have a healthy sleep schedule.' },
+        { label: 'Last hurrah', prompt: 'Squeeze one more win in before your brain officially closes for the day.' },
     ],
 };
 
 function getGreeting(hour, name, variation) {
     const period = hour < 5 ? 'late' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 22 ? 'evening' : 'night';
-    const entries = greetingSets[period];
+    const standard = greetingSets[period] || [];
+    const humorous = humorousGreetings[period] || [];
+    const entries = [...standard, ...humorous];
     const dateSeed = new Date().toDateString();
     const seed = `${dateSeed}-${name}-${period}-${variation}`.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
     return entries[seed % entries.length];
@@ -361,9 +403,9 @@ export default function Dashboard() {
                                     padding: '4px 10px',
                                     borderRadius: 20,
                                     border: '1px solid',
-                                    borderColor: selectedWfCategory === cat ? 'var(--primary-color, #6366f1)' : 'var(--border-color)',
-                                    background: selectedWfCategory === cat ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                                    color: selectedWfCategory === cat ? 'var(--text-primary, #ffffff)' : 'var(--text-secondary)',
+                                    borderColor: selectedWfCategory === cat ? 'var(--border-hover)' : 'var(--border-primary)',
+                                    background: selectedWfCategory === cat ? 'var(--bg-elevated)' : 'transparent',
+                                    color: selectedWfCategory === cat ? 'var(--text-primary)' : 'var(--text-secondary)',
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease'
                                 }}

@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
-    "@react-email/components": "^1.0.12",
     "@simplewebauthn/browser": "^13.3.0",
     "@tanstack/react-query": "^5.90.20",
     "@tauri-apps/api": "^2.11.1",
@@ -26,7 +25,6 @@
     "fuse.js": "^7.5.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-email": "^6.9.0",
     "react-hook-form": "^7.82.0",
     "react-icons": "^5.7.0",
     "react-markdown": "^10.1.0",
@@ -34,14 +32,12 @@
     "react-syntax-highlighter": "^16.1.1",
     "recharts": "^3.9.2",
     "remark-gfm": "^4.0.1",
-    "simple-liquid-glass": "^4.1.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
-    "@tanstack/react-query-devtools": "^5.91.1",
     "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

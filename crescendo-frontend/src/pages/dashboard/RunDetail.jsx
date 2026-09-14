@@ -18,11 +18,13 @@ import {
   HiOutlineDownload,
   HiOutlineClipboardCopy,
   HiCheck,
+  HiOutlineCode,
 } from 'react-icons/hi';
 import useLogbookStore from '../../store/logbookStore';
 import { useWorkflowList, useWorkflowDetail } from '../../hooks/useWorkflows';
 import { getCachedApps } from '../../api/appCatalogCache';
 import { downloadFile } from '../../utils/download';
+import AgentTimelineView from './AgentTimelineView';
 import './RunDetail.css';
 
 function formatDateTime(dateStr) {
@@ -30,9 +32,11 @@ function formatDateTime(dateStr) {
   return new Date(dateStr).toLocaleString();
 }
 
-function formatDuration(start, end) {
-  if (!start || !end) return '—';
-  const ms = new Date(end).getTime() - new Date(start).getTime();
+function formatDuration(start, end, isRunning = false) {
+  if (!start) return '—';
+  const endMs = end ? new Date(end).getTime() : (isRunning ? Date.now() : null);
+  if (!endMs) return '—';
+  const ms = Math.max(0, endMs - new Date(start).getTime());
   if (ms < 1000) return `${ms}ms`;
   const secs = (ms / 1000).toFixed(1);
   if (secs < 60) return `${secs}s`;
@@ -64,6 +68,7 @@ export default function RunDetail() {
   const [expandedStep, setExpandedStep] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
+  const [showTriggerPayload, setShowTriggerPayload] = useState(false);
 
   useEffect(() => {
     fetchRunDetail(workflowId, runId);
@@ -161,7 +166,7 @@ export default function RunDetail() {
     const appKey = stepDef?.appKey || stepRun.inputData?._appKey || '';
     const appInfo = catalogApps.find((a) => a.appKey?.toLowerCase() === appKey?.toLowerCase());
     const appName = appInfo?.name || (appKey ? appKey.charAt(0).toUpperCase() + appKey.slice(1) : '');
-    const isTrigger = stepDef?.type === 'TRIGGER' || index === 0;
+    const isTrigger = stepDef?.type === 'TRIGGER' || stepDef?.stepType === 'TRIGGER' || stepRun?.isTrigger === true;
     const rawName = stepDef?.name || stepDef?.actionKey || (isTrigger ? 'Trigger' : 'Action');
 
     // Deduplicate app name if rawName already starts with it (e.g. "Spotify • Search Spotify" with appName "Spotify")
@@ -209,23 +214,81 @@ export default function RunDetail() {
 
   const canCancel = run && (run.status === 'PENDING' || run.status === 'RUNNING');
 
+  // Unified list of steps for display: includes trigger (GitHub) and unexecuted downstream steps
+  const displaySteps = useMemo(() => {
+    if (!run) return [];
+    const stepRuns = run.stepRuns || [];
+    const stepRunsByStepId = new Map(stepRuns.map((sr) => [sr.stepId, sr]));
+    const workflowSteps = workflowDetail?.steps || [];
+
+    if (workflowSteps.length === 0) {
+      return stepRuns;
+    }
+
+    const triggerDef = workflowSteps.find((s) => s.type === 'TRIGGER' || s.stepType === 'TRIGGER');
+    const result = [];
+    const seen = new Set();
+
+    if (triggerDef) {
+      seen.add(triggerDef.id);
+      const existingSr = stepRunsByStepId.get(triggerDef.id);
+      result.push(
+        existingSr || {
+          id: `trigger-${triggerDef.id}`,
+          stepId: triggerDef.id,
+          status: 'SUCCESS',
+          inputData: {},
+          outputData: run.triggerData || {},
+          errorMessage: null,
+          createdAt: run.createdAt,
+          completedAt: run.createdAt,
+          isTrigger: true,
+        }
+      );
+    }
+
+    // Sort actions by step order / definition order
+    const sortedWorkflowSteps = [...workflowSteps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    sortedWorkflowSteps.forEach((stepDef) => {
+      if (seen.has(stepDef.id)) return;
+      seen.add(stepDef.id);
+
+      const existingSr = stepRunsByStepId.get(stepDef.id);
+      if (existingSr) {
+        result.push(existingSr);
+      } else {
+        result.push({
+          id: `unexecuted-${stepDef.id}`,
+          stepId: stepDef.id,
+          status: 'SKIPPED',
+          inputData: {},
+          outputData: {},
+          errorMessage: 'Step was not executed because a previous step failed.',
+          createdAt: null,
+          completedAt: null,
+          isUnexecuted: true,
+        });
+      }
+    });
+
+    return result;
+  }, [run, workflowDetail]);
+
   // Group workflow steps into topological stages (supports both linear chains & multi-branch DAGs)
   const pipelineStages = useMemo(() => {
-    if (!run?.stepRuns || run.stepRuns.length === 0) return [];
+    if (!run) return [];
 
+    const workflowSteps = workflowDetail?.steps || [];
     const edges = workflowDetail?.edges || [];
     const stepRunsByStepId = new Map();
-    run.stepRuns.forEach((sr, idx) => {
+
+    (run.stepRuns || []).forEach((sr, idx) => {
       stepRunsByStepId.set(sr.stepId, { ...sr, runIndex: idx });
     });
 
-    const hasBranching = edges.length > 0 && edges.some((e, i, arr) =>
-      arr.some((other, j) => i !== j && (e.sourceStepId === other.sourceStepId || e.targetStepId === other.targetStepId))
-    );
-
-    // If no branching or no edges, keep simple sequential stages from run.stepRuns
-    if (!hasBranching || edges.length === 0) {
-      return run.stepRuns.map((step, idx) => ({
+    // If workflow definition is missing, fall back to simple sequential map
+    if (workflowSteps.length === 0) {
+      return (run.stepRuns || []).map((step, idx) => ({
         stageIndex: idx,
         isBranchStage: false,
         nodes: [{
@@ -238,13 +301,26 @@ export default function RunDetail() {
       }));
     }
 
-    // For branched workflows, compute topological depth for every step in workflowDetail
-    const steps = workflowDetail?.steps || [];
+    const triggerDef = workflowSteps.find((s) => s.type === 'TRIGGER' || s.stepType === 'TRIGGER');
+    if (triggerDef && !stepRunsByStepId.has(triggerDef.id)) {
+      stepRunsByStepId.set(triggerDef.id, {
+        id: `trigger-${triggerDef.id}`,
+        stepId: triggerDef.id,
+        status: 'SUCCESS',
+        inputData: {},
+        outputData: run.triggerData || {},
+        errorMessage: null,
+        createdAt: run.createdAt,
+        completedAt: run.createdAt,
+        isTrigger: true,
+      });
+    }
+
     const childrenMap = new Map();
     const parentsMap = new Map();
     const handleMap = new Map();
 
-    steps.forEach((s) => {
+    workflowSteps.forEach((s) => {
       childrenMap.set(s.id, []);
       parentsMap.set(s.id, []);
     });
@@ -262,13 +338,13 @@ export default function RunDetail() {
     });
 
     // Roots are nodes with no parents (typically the trigger)
-    const roots = steps.filter((s) => (parentsMap.get(s.id) || []).length === 0);
+    const roots = workflowSteps.filter((s) => (parentsMap.get(s.id) || []).length === 0);
     const depthMap = new Map();
     const queue = roots.map((r) => r.id);
     roots.forEach((r) => depthMap.set(r.id, 0));
 
     let iterations = 0;
-    while (queue.length > 0 && iterations < steps.length * 4) {
+    while (queue.length > 0 && iterations < workflowSteps.length * 4) {
       iterations++;
       const current = queue.shift();
       const currDepth = depthMap.get(current) || 0;
@@ -284,7 +360,7 @@ export default function RunDetail() {
 
     // Group steps by their topological depth
     const stagesByDepth = new Map();
-    steps.forEach((step, sIdx) => {
+    workflowSteps.forEach((step, sIdx) => {
       const depth = depthMap.get(step.id) ?? (step.order != null ? Math.floor(step.order) : sIdx);
       if (!stagesByDepth.has(depth)) {
         stagesByDepth.set(depth, []);
@@ -308,8 +384,8 @@ export default function RunDetail() {
         },
         stepDef: step,
         branchLabel,
-        isExecuted: Boolean(sr),
-        index: step.order != null ? step.order : sIdx + 1,
+        isExecuted: Boolean(sr && sr.status !== 'SKIPPED'),
+        index: step.order != null ? Math.round(step.order) : sIdx + 1,
       });
     });
 
@@ -325,6 +401,12 @@ export default function RunDetail() {
   }, [run, workflowDetail, stepsById]);
 
   const isBranchedWorkflow = pipelineStages.some((stage) => stage.isBranchStage);
+  const triggerStep = displaySteps.find((s) => s.isTrigger);
+  const triggerMeta = triggerStep ? getStepMeta(triggerStep, 0) : null;
+  const failedStep = run?.stepRuns?.find((s) => s.status === 'FAILED');
+  const failedMeta = failedStep ? getStepMeta(failedStep, 0) : null;
+  const totalSteps = displaySteps.length || (run?.stepRuns?.length || 0);
+  const succeededSteps = displaySteps.filter((s) => s.status === 'SUCCESS').length;
 
   return (
     <div className="rd-page">
@@ -377,6 +459,22 @@ export default function RunDetail() {
                 <span className={`rd-status-badge ${sc.className}`}>
                   {sc.icon} {sc.label}
                 </span>
+                {run.triggerData && Object.keys(run.triggerData).length > 0 && (
+                  <button
+                    type="button"
+                    className="rd-trigger-nav-btn"
+                    onClick={() => {
+                      setShowTriggerPayload(true);
+                      setTimeout(() => {
+                        document.getElementById('rd-trigger-payload')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 50);
+                    }}
+                    title="View initial webhook trigger payload"
+                    aria-label="View Trigger Payload"
+                  >
+                    <HiOutlineCode /> Trigger Payload
+                  </button>
+                )}
                 <button
                   className="rd-export-btn"
                   onClick={() => {
@@ -402,51 +500,86 @@ export default function RunDetail() {
               </div>
             </div>
 
-            {/* Meta row */}
+            {/* Meta row - Executive statistics cards */}
             <div className="rd-meta-grid">
-              <div className="rd-meta-item">
-                <span className="rd-meta-label">Started</span>
+              <div className="rd-meta-card">
+                <div className="rd-meta-card-header">
+                  <HiOutlineClock className="rd-meta-card-icon" />
+                  <span className="rd-meta-label">Duration</span>
+                </div>
+                <span className="rd-meta-value duration">{formatDuration(run.createdAt, run.completedAt, run.status === 'RUNNING')}</span>
+              </div>
+
+              <div className="rd-meta-card">
+                <div className="rd-meta-card-header">
+                  <HiOutlineCheckCircle className="rd-meta-card-icon" />
+                  <span className="rd-meta-label">Steps Status</span>
+                </div>
+                <span className="rd-meta-value">
+                  {succeededSteps} of {totalSteps} {totalSteps === 1 ? 'step' : 'steps'} succeeded
+                </span>
+              </div>
+
+              <div className="rd-meta-card">
+                <div className="rd-meta-card-header">
+                  <span className="rd-meta-label">Started</span>
+                </div>
                 <span className="rd-meta-value">{formatDateTime(run.createdAt)}</span>
               </div>
-              <div className="rd-meta-item">
-                <span className="rd-meta-label">Completed</span>
+
+              <div className="rd-meta-card">
+                <div className="rd-meta-card-header">
+                  <span className="rd-meta-label">Completed</span>
+                </div>
                 <span className="rd-meta-value">{formatDateTime(run.completedAt)}</span>
               </div>
-              <div className="rd-meta-item">
-                <span className="rd-meta-label">Duration</span>
-                <span className="rd-meta-value">{formatDuration(run.createdAt, run.completedAt)}</span>
-              </div>
-              <div className="rd-meta-item">
-                <span className="rd-meta-label">Steps</span>
-                <span className="rd-meta-value">{run.stepRuns?.length || 0}</span>
-              </div>
+
+              {triggerMeta && (
+                <div className="rd-meta-card rd-meta-card-trigger">
+                  <div className="rd-meta-card-header">
+                    <HiOutlineLightningBolt className="rd-meta-card-icon" />
+                    <span className="rd-meta-label">Trigger</span>
+                  </div>
+                  <div className="rd-meta-trigger-row">
+                    {triggerMeta.iconUrl && (
+                      <img src={triggerMeta.iconUrl} alt="" className="rd-meta-trigger-icon app-logo-img" />
+                    )}
+                    <span className="rd-meta-value">{triggerMeta.stepName}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Overall failure banner */}
+            {/* Overall failure banner with exact step identification */}
             {run.status === 'FAILED' && (
               <div className="rd-error-msg">
-                <HiOutlineExclamationCircle />
+                <HiOutlineExclamationCircle className="rd-error-msg-icon" />
                 <div className="rd-error-msg-content">
-                  <strong>One or more steps failed during execution</strong>
-                  {run.errorMessage && <span>{run.errorMessage}</span>}
+                  <div className="rd-error-msg-title">
+                    Execution failed {failedStep ? `at Step ${failedMeta?.stepIndex || ''}: ${failedMeta?.stepName || ''}` : ''}
+                  </div>
+                  <div className="rd-error-msg-desc">
+                    {failedStep?.errorMessage && failedStep.errorMessage !== 'One or more steps failed'
+                      ? failedStep.errorMessage
+                      : run.errorMessage && run.errorMessage !== 'One or more steps failed'
+                        ? run.errorMessage
+                        : 'One or more steps encountered an error during workflow execution.'}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Trigger data */}
-            {run.triggerData && Object.keys(run.triggerData).length > 0 && (
-              <div className="rd-trigger-section">
-                <div className="rd-section-header-bar">
-                  <p className="rd-section-label">Trigger Payload</p>
+                {failedStep && (
                   <button
-                    className="rd-small-action-btn"
-                    onClick={() => handleCopy('triggerData', formatJsonPayload(run.triggerData))}
-                    title="Copy trigger payload JSON"
+                    type="button"
+                    className="rd-error-jump-btn"
+                    onClick={() => {
+                      setExpandedStep(failedStep.id);
+                      setTimeout(() => {
+                        document.getElementById(`step-run-${failedStep.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 50);
+                    }}
                   >
-                    {copiedKey === 'triggerData' ? <><HiCheck /> Copied</> : <><HiOutlineClipboardCopy /> Copy</>}
+                    View Error Details →
                   </button>
-                </div>
-                <pre className="rd-json-block">{formatJsonPayload(run.triggerData)}</pre>
+                )}
               </div>
             )}
           </div>
@@ -461,7 +594,7 @@ export default function RunDetail() {
                     <span className="rd-flow-badge-branched">Branched Flow</span>
                   )}
                   <span className="rd-flow-map-summary">
-                    {run.stepRuns.filter((s) => s.status === 'SUCCESS').length} of {run.stepRuns.length} steps succeeded
+                    {displaySteps.filter((s) => s.status === 'SUCCESS').length} of {displaySteps.length} steps succeeded
                   </span>
                 </div>
                 <span className="rd-flow-map-hint">Click a step to view details</span>
@@ -485,11 +618,9 @@ export default function RunDetail() {
                             type="button"
                             className={`rd-flow-node ${stepSc.className} ${isExpanded ? 'active' : ''} ${isFailed ? 'failed' : ''} ${isSkipped ? 'is-skipped' : ''}`}
                             onClick={() => {
-                              if (nodeItem.isExecuted) {
-                                setExpandedStep(step.id);
-                                const el = document.getElementById(`step-run-${step.id}`);
-                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              }
+                              setExpandedStep(step.id);
+                              const el = document.getElementById(`step-run-${step.id}`);
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }}
                             title={nodeItem.isExecuted
                               ? `Step ${nodeItem.index}: ${meta.stepName} (${stepSc.label}) — Click to inspect`
@@ -511,10 +642,9 @@ export default function RunDetail() {
                                 <img
                                   src={meta.iconUrl}
                                   alt={meta.appName}
-                                  className="rd-flow-app-logo"
-                                  referrerPolicy="no-referrer"
-                                  crossOrigin="anonymous"
+                                  className="rd-flow-app-logo app-logo-img"
                                   loading="lazy"
+                                  onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                               ) : meta.isTrigger ? (
                                 <HiOutlineLightningBolt className="rd-flow-fallback-icon" />
@@ -555,16 +685,16 @@ export default function RunDetail() {
           <div className="rd-steps-section">
             <h2 className="rd-steps-title">Step Runs</h2>
 
-            {(!run.stepRuns || run.stepRuns.length === 0) && (
+            {(!displaySteps || displaySteps.length === 0) && (
               <div className="rd-steps-empty">
                 <HiOutlineClock />
                 <span>No step runs recorded yet.</span>
               </div>
             )}
 
-            {run.stepRuns && run.stepRuns.length > 0 && (
+            {displaySteps && displaySteps.length > 0 && (
               <div className="rd-steps-list">
-                {run.stepRuns.map((step, i) => {
+                {displaySteps.map((step, i) => {
                   const meta = getStepMeta(step, i);
                   const stepSc = statusConfig[step.status] || statusConfig.PENDING;
                   const isExpanded = expandedStep === step.id;
@@ -592,10 +722,9 @@ export default function RunDetail() {
                             <img
                               src={meta.iconUrl}
                               alt={meta.appName}
-                              className="rd-step-app-logo"
-                              referrerPolicy="no-referrer"
-                              crossOrigin="anonymous"
+                              className="rd-step-app-logo app-logo-img"
                               loading="lazy"
+                              onError={(e) => { e.target.style.display = 'none'; }}
                             />
                           ) : meta.isTrigger ? (
                             <span className="rd-step-icon-badge trigger"><HiOutlineLightningBolt /></span>
@@ -632,12 +761,14 @@ export default function RunDetail() {
                           animate={{ opacity: 1, height: 'auto' }}
                           transition={{ duration: 0.2 }}
                         >
-                          {/* High-visibility Error Banner */}
+                          {/* High-visibility Error / Notice Banner */}
                           {step.errorMessage && (
-                            <div className="rd-step-error-banner">
+                            <div className={`rd-step-error-banner ${step.status === 'SKIPPED' ? 'skipped' : ''}`}>
                               <HiOutlineExclamationCircle className="rd-error-banner-icon" />
                               <div className="rd-error-banner-body">
-                                <span className="rd-error-banner-title">Step Execution Failed</span>
+                                <span className="rd-error-banner-title">
+                                  {step.status === 'SKIPPED' ? 'Step Skipped' : 'Step Execution Failed'}
+                                </span>
                                 <span className="rd-error-banner-text">{step.errorMessage}</span>
                               </div>
                             </div>
@@ -667,8 +798,23 @@ export default function RunDetail() {
 
                             {step.outputData && Object.keys(step.outputData).length > 0 && (
                               <div>
+                                {Array.isArray(step.outputData.timeline) && step.outputData.timeline.length > 0 && (
+                                  <AgentTimelineView
+                                    timeline={step.outputData.timeline}
+                                    iterations={step.outputData.iterations}
+                                    tokensUsed={step.outputData.tokensUsed}
+                                    status={step.outputData.status || (step.status === 'SUCCESS' ? 'COMPLETED' : 'FAILED')}
+                                  />
+                                )}
+
                                 <div className="rd-section-header-bar">
-                                  <p className="rd-section-label">Output Payload</p>
+                                  <p className="rd-section-label">
+                                    {step.isTrigger
+                                      ? 'Trigger Event Payload'
+                                      : Array.isArray(step.outputData.timeline) && step.outputData.timeline.length > 0
+                                        ? 'Raw Output Payload'
+                                        : 'Output Payload'}
+                                  </p>
                                   <div className="rd-action-group">
                                     <button
                                       className="rd-small-action-btn"
@@ -717,6 +863,60 @@ export default function RunDetail() {
               </div>
             )}
           </div>
+
+          {/* Collapsible Trigger Payload at bottom */}
+          {run.triggerData && Object.keys(run.triggerData).length > 0 && (
+            <div className="rd-trigger-bottom-card" id="rd-trigger-payload">
+              <div
+                className="rd-trigger-bottom-header"
+                onClick={() => setShowTriggerPayload((prev) => !prev)}
+                role="button"
+                tabIndex={0}
+                aria-expanded={showTriggerPayload}
+              >
+                <div className="rd-trigger-bottom-title-group">
+                  <span className="rd-trigger-icon-wrap">
+                    <HiOutlineCode />
+                  </span>
+                  <div>
+                    <h3 className="rd-trigger-bottom-title">Initial Trigger Payload</h3>
+                    <p className="rd-trigger-bottom-sub">
+                      Raw incoming webhook / event data that started this workflow execution
+                    </p>
+                  </div>
+                </div>
+                <div className="rd-trigger-bottom-actions">
+                  <button
+                    type="button"
+                    className="rd-small-action-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopy('triggerData', formatJsonPayload(run.triggerData));
+                    }}
+                    title="Copy trigger payload JSON"
+                  >
+                    {copiedKey === 'triggerData' ? <><HiCheck /> Copied</> : <><HiOutlineClipboardCopy /> Copy JSON</>}
+                  </button>
+                  <button
+                    type="button"
+                    className="rd-trigger-toggle-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTriggerPayload((prev) => !prev);
+                    }}
+                  >
+                    {showTriggerPayload ? <><HiOutlineChevronUp /> Hide Payload</> : <><HiOutlineChevronDown /> View Payload</>}
+                  </button>
+                </div>
+              </div>
+
+              {showTriggerPayload && (
+                <div className="rd-trigger-payload-content">
+                  <pre className="rd-json-block">{formatJsonPayload(run.triggerData)}</pre>
+                </div>
+              )}
+            </div>
+          )}
         </motion.div>
       )}
     </div>

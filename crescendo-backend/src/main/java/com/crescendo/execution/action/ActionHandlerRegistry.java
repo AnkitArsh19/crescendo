@@ -59,7 +59,7 @@ public class ActionHandlerRegistry implements SmartInitializingSingleton {
             }
             String key = toKey(mapping.appKey(), mapping.actionKey());
             handlers.put(key, handler);
-            logger.debug("Registered class-level handler: {} → {}", key, handler.getClass().getSimpleName());
+            logger.trace("Registered class-level handler: {} → {}", key, handler.getClass().getSimpleName());
         }
     }
 
@@ -117,14 +117,12 @@ public class ActionHandlerRegistry implements SmartInitializingSingleton {
                     };
 
                     handlers.put(key, adapter);
-                    logger.debug("Registered method-level handler: {} → {}#{}", key,
+                    logger.trace("Registered method-level handler: {} → {}#{}", key,
                             beanClass.getSimpleName(), method.getName());
                 }
                 inspected = inspected.getSuperclass();
             }
         }
-
-        logger.info("ActionHandlerRegistry initialised with {} handler(s)", handlers.size());
     }
 
     public Optional<ActionHandler> find(String appKey, String actionKey) {

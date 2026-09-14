@@ -70,10 +70,14 @@ public class GeminiTextHandler implements ActionHandler {
         if (model.startsWith("models/")) {
             model = model.substring("models/".length());
         }
+        // Normalize Gemma model names (ensure -it suffix for Google API)
+        if (model.startsWith("gemma-") && !model.endsWith("-it")) {
+            model = model + "-it";
+        }
         // Map legacy/alias names to current flagship models
-        if ("gemini-flash".equalsIgnoreCase(model) || "gemini-flash-latest".equalsIgnoreCase(model)) {
-            model = "gemini-3.5-flash-lite";
-        } else if ("gemini-pro".equalsIgnoreCase(model) || "gemini-pro-latest".equalsIgnoreCase(model)) {
+        if ("gemini-flash".equalsIgnoreCase(model) || "gemini-flash-latest".equalsIgnoreCase(model) || "gemini-2.5-flash".equalsIgnoreCase(model) || "gemini-1.5-flash".equalsIgnoreCase(model)) {
+            model = "gemini-3.6-flash";
+        } else if ("gemini-pro".equalsIgnoreCase(model) || "gemini-pro-latest".equalsIgnoreCase(model) || "gemini-1.5-pro".equalsIgnoreCase(model)) {
             model = "gemini-3.8-flash";
         }
 

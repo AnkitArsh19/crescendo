@@ -493,11 +493,15 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    touch-action: none;
 }
 
-.react-flow {
+.react-flow,
+.react-flow__pane,
+.react-flow__renderer {
     width: 100% !important;
     height: 100% !important;
+    touch-action: none !important;
 }
 
 .react-flow__background {
@@ -546,8 +550,10 @@
     border: 1.5px solid var(--border-primary);
     border-radius: 8px;
     padding: 14px 16px;
-    min-width: 210px;
+    width: 260px;
+    min-width: 260px;
     max-width: 260px;
+    box-sizing: border-box;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     position: relative;
     box-shadow: var(--shadow-sm);
@@ -565,7 +571,7 @@
 }
 
 .wf-node--configured {
-    border-left: 3px solid #22c55e;
+    border-color: var(--border-secondary);
 }
 
 .wf-node--new {
@@ -604,9 +610,9 @@
 }
 
 .wf-node--configured .wf-node__step-badge {
-    background: #22c55e;
-    border-color: #22c55e;
-    color: #fff;
+    background: var(--bg-elevated);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
 }
 
 .wf-node__header {
@@ -631,7 +637,7 @@
 }
 
 .wf-node__icon--configured {
-    border-color: rgba(34, 197, 94, 0.3);
+    border-color: var(--border-secondary);
 }
 
 .wf-node__app-img {
@@ -694,9 +700,9 @@
 }
 
 .wf-node__tag--op {
-    background: rgba(34, 197, 94, 0.08);
-    color: #22c55e;
-    border-color: rgba(34, 197, 94, 0.15);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border-color: var(--border-primary);
 }
 
 .wf-node__hint {
@@ -706,147 +712,15 @@
 
 /* ── Orphaned node — not connected to trigger path ── */
 .wf-node--orphaned {
-    border-left: 3px solid #f59e0b;
-    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), var(--shadow-sm);
+    border-color: var(--border-secondary);
+    box-shadow: 0 0 0 1px var(--border-primary), var(--shadow-sm);
 }
 
 .wf-node--orphaned .wf-node__step-badge {
-    background: #f59e0b;
-    border-color: #f59e0b;
-    color: #fff;
+    background: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    color: var(--text-tertiary);
 }
-
-    /* Step number badge */
-    .wf-node__step-badge {
-        position: absolute;
-        top: -8px;
-        left: -8px;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: var(--bg-secondary);
-        border: 1.5px solid var(--border-secondary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.6rem;
-        font-weight: 700;
-        color: var(--text-tertiary);
-        z-index: 2;
-    }
-
-    .wf-node--configured .wf-node__step-badge {
-        background: #22c55e;
-        border-color: #22c55e;
-        color: #fff;
-    }
-
-    .wf-node__header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 6px;
-    }
-
-    .wf-node__icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.95rem;
-        color: var(--text-accent);
-        flex-shrink: 0;
-    }
-
-    .wf-node__icon--configured {
-        border-color: rgba(34, 197, 94, 0.3);
-    }
-
-    .wf-node__app-img {
-        width: 20px;
-        height: 20px;
-        object-fit: contain;
-    }
-
-    .wf-node__text {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .wf-node__type-badge {
-        display: flex;
-        align-items: center;
-        gap: 3px;
-        font-size: 0.58rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-        color: var(--text-tertiary);
-    }
-
-    .wf-node__check {
-        font-size: 0.55rem;
-    }
-
-    .wf-node__title {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--text-accent);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .wf-node__body {
-        font-size: 0.72rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-    }
-
-    .wf-node__tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 2px;
-    }
-
-    .wf-node__tag {
-        display: inline-flex;
-        padding: 2px 8px;
-        border-radius: var(--radius-full);
-        font-size: 0.58rem;
-        font-weight: 600;
-        background: rgba(128, 128, 128, 0.1);
-        color: var(--text-tertiary);
-        border: 1px solid var(--border-primary);
-    }
-
-    .wf-node__tag--op {
-        background: rgba(34, 197, 94, 0.08);
-        color: #22c55e;
-        border-color: rgba(34, 197, 94, 0.15);
-    }
-
-    .wf-node__hint {
-        color: var(--text-tertiary);
-        font-size: 0.7rem;
-    }
-
-    /* ── Orphaned node — not connected to trigger path ── */
-    .wf-node--orphaned {
-        border-left: 3px solid #f59e0b;
-        box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), var(--shadow-sm);
-    }
-
-    .wf-node--orphaned .wf-node__step-badge {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: #fff;
-    }
 
     .wf-node__orphan-warning {
         display: flex;
@@ -2481,8 +2355,7 @@
 
     .cpb-file-upload.dragging .cpb-file-dropzone {
         border-color: var(--text-accent);
-        background: rgba(59, 130, 246, 0.05);
-        /* slightly blue */
+        background: var(--bg-hover);
     }
 
     .cpb-file-dropzone:hover {
@@ -2622,7 +2495,7 @@
 
     .cpb-file-progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, #6366f1, #818cf8);
+        background: var(--text-primary);
         border-radius: 4px;
         transition: width 0.15s ease-out;
     }
@@ -2667,7 +2540,7 @@
     .cpb-file-uploading-percent {
         font-size: 0.72rem;
         font-weight: 600;
-        color: #818cf8;
+        color: var(--text-primary);
         min-width: 32px;
         text-align: right;
     }
@@ -2701,25 +2574,25 @@
     }
 
     .cpb-gdrive-badge {
-        background: rgba(59, 130, 246, 0.08);
-        border: 1px solid rgba(59, 130, 246, 0.2);
-        color: #93c5fd;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-primary);
+        color: var(--text-secondary);
     }
 
     .cpb-gdrive-icon {
         font-size: 0.95rem;
-        color: #60a5fa;
+        color: var(--text-secondary);
     }
 
     .cpb-var-badge {
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #a7f3d0;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-hover);
+        color: var(--text-primary);
     }
 
     .cpb-var-icon {
         font-size: 0.95rem;
-        color: #34d399;
+        color: var(--text-primary);
     }
 
 
@@ -2792,11 +2665,11 @@
    ══════════════════════════════════════ */
 
     .wf-custom-node.configured {
-        border-left: 3px solid #22c55e;
+        border-color: var(--border-secondary);
     }
 
     .wf-node-icon-wrap.configured {
-        border-color: rgba(34, 197, 94, 0.3);
+        border-color: var(--border-secondary);
     }
 
     .wf-node-app-icon {
@@ -3332,7 +3205,7 @@
     .cr-builder__toggle-json--active {
         background: var(--bg-elevated, #1f2937);
         color: var(--text-primary, #ffffff);
-        border-color: var(--border-accent, #3b82f6);
+        border-color: var(--border-hover);
     }
 
     .cr-builder__raw-container {
@@ -3346,7 +3219,7 @@
         background: var(--bg-elevated, #111827);
         border: 1px solid var(--border-secondary, #374151);
         border-radius: 8px;
-        color: #38bdf8;
+        color: var(--text-primary);
         font-family: monospace;
         font-size: 0.78rem;
         padding: 8px;
@@ -3408,8 +3281,9 @@
     }
 
     .cr-builder__comb-btn.active {
-        background: var(--color-primary, #3b82f6);
-        color: #ffffff;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        box-shadow: var(--shadow-sm);
     }
 
     .cr-builder__rows {
@@ -3490,7 +3364,7 @@
         gap: 4px;
         background: transparent;
         border: 1px dashed var(--border-secondary, #374151);
-        color: var(--color-primary, #3b82f6);
+        color: var(--text-secondary);
         border-radius: 6px;
         padding: 5px;
         font-size: 0.75rem;
@@ -3501,8 +3375,9 @@
 
     .cr-builder__add-btn:hover,
     .cr-builder__add-group-btn:hover {
-        background: rgba(59, 130, 246, 0.08);
-        border-color: var(--color-primary, #3b82f6);
+        background: var(--bg-hover);
+        border-color: var(--border-hover);
+        color: var(--text-primary);
     }
 
     .cr-builder__empty {
@@ -3511,3 +3386,65 @@
         font-style: italic;
         padding: 4px 0;
     }
+
+
+
+
+@media (max-height: 600px) {
+    .canvas-config-modal > .cpb-container {
+        min-height: 0 !important;
+        max-height: 94vh !important;
+        overflow-y: auto !important;
+    }
+
+    .canvas-topbar {
+        height: 44px !important;
+        padding: 0 10px !important;
+    }
+
+    .canvas-topbar-dock {
+        height: 38px !important;
+        padding: 2px 8px !important;
+        gap: 4px !important;
+    }
+
+    .dock-action-text {
+        display: none !important;
+    }
+
+    .canvas-dock-divider {
+        height: 16px !important;
+    }
+
+    .canvas-naming-modal {
+        padding: 20px;
+        max-height: 94vh;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .canvas-topbar {
+        height: 48px;
+        padding: 0 10px;
+    }
+
+    .canvas-name-display {
+        max-width: 130px;
+    }
+
+    .canvas-topbar-dock {
+        height: 40px !important;
+        padding: 2px 8px !important;
+        gap: 4px !important;
+    }
+
+    .dock-action-text {
+        display: none !important;
+    }
+
+    .canvas-config-modal > .cpb-container {
+        width: 95vw !important;
+        max-width: 95vw !important;
+    }
+}

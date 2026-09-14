@@ -84,10 +84,64 @@
     .dash-section-head {
         align-items: flex-start;
         flex-direction: column;
+        gap: 16px;
+    }
+
+    .dash-hero {
+        padding: 24px 20px !important;
+    }
+
+    .dash-hero-text h1 {
+        font-size: 1.35rem !important;
     }
 
     .dash-hero-actions {
-        flex-wrap: wrap;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .dash-hero-cta {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .dash-hero-secondary {
+        text-align: center;
+        display: block;
+        padding: 6px 0;
+    }
+
+    .dash-templates-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dash-resources-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dash-recent-row {
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dash-hero {
+        padding: 20px 16px !important;
+        border-radius: var(--radius-lg) !important;
+    }
+
+    .dash-hero-text h1 {
+        font-size: 1.22rem !important;
+    }
+
+    .dash-template-card {
+        padding: 16px;
+    }
+
+    .dash-app-chip {
+        padding: 8px 12px;
     }
 }
 

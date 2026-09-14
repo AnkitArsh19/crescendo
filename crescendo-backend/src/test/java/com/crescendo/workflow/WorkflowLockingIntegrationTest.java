@@ -8,6 +8,7 @@ import com.crescendo.user.user_command.User_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_command;
 import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_commandService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,12 +48,11 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
     void setUp() {
         stepsRepo.deleteAll();
         commandRepo.deleteAll();
-        userRepo.deleteAll();
 
         testUser = new User_command();
         testUser.setId(UUID.randomUUID());
-        testUser.setEmail(com.crescendo.shared.domain.valueobject.Email.of("locking-test@test.com"));
-        testUser.setUserName("lockingtest");
+        testUser.setEmail(com.crescendo.shared.domain.valueobject.Email.of("locking-test-" + UUID.randomUUID() + "@test.com"));
+        testUser.setUserName("lockingtest_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8));
         testUser.setRole(com.crescendo.enums.UserRole.USER);
         userRepo.save(testUser);
 
@@ -61,6 +61,15 @@ class WorkflowLockingIntegrationTest extends BaseIntegrationTest {
         workflow = new Workflow_command(UUID.randomUUID(), "Locking Test", "Desc", testUser, false);
         workflow.setUpdatedAt(Instant.parse("2026-01-01T10:00:00Z"));
         commandRepo.save(workflow);
+    }
+
+    @AfterEach
+    void tearDown() {
+        stepsRepo.deleteAll();
+        commandRepo.deleteAll();
+        if (testUser != null && testUser.getId() != null) {
+            userRepo.deleteById(testUser.getId());
+        }
     }
 
     @Test

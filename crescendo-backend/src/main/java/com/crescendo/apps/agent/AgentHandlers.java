@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Action mapping handler for AI Agent Cluster Nodes (agent:ai_agent).
@@ -85,8 +86,45 @@ public class AgentHandlers {
             effectiveInput.put("input", "Proceed with your instructions.");
         }
 
+        List<UUID> toolRefs = new java.util.ArrayList<>();
+        List<AgentClusterConfig.ToolConfig> configuredTools = new java.util.ArrayList<>();
+
+        Object agentConfigObj = config.get("agentConfig");
+        if (agentConfigObj instanceof Map<?, ?> acMap) {
+            Object trObj = acMap.get("toolRefs");
+            if (trObj instanceof List<?> trList) {
+                for (Object item : trList) {
+                    try {
+                        if (item != null) toolRefs.add(UUID.fromString(item.toString().trim()));
+                    } catch (Exception ignored) {}
+                }
+            }
+            Object ctObj = acMap.get("configuredTools");
+            if (ctObj instanceof List<?> ctList) {
+                for (Object item : ctList) {
+                    if (item instanceof Map<?, ?> itemMap) {
+                        configuredTools.add(parseToolConfig(itemMap));
+                    }
+                }
+            }
+        }
+
+        // Direct "tools" list in configuration (from canvas config panel)
+        Object toolsObj = config.get("tools");
+        if (toolsObj instanceof List<?> toolsList) {
+            for (Object item : toolsList) {
+                if (item instanceof Map<?, ?> itemMap) {
+                    configuredTools.add(parseToolConfig(itemMap));
+                } else if (item instanceof String s && s.contains(":")) {
+                    String[] parts = s.split(":", 2);
+                    configuredTools.add(new AgentClusterConfig.ToolConfig(parts[0].trim(), parts[1].trim()));
+                }
+            }
+        }
+
         AgentClusterConfig agentClusterConfig = new AgentClusterConfig(
-                List.of(),
+                toolRefs,
+                configuredTools,
                 null,
                 null,
                 null,
@@ -111,5 +149,43 @@ public class AgentHandlers {
         }
 
         return ActionResult.success(result);
+    }
+
+    @SuppressWarnings("unchecked")
+    private AgentClusterConfig.ToolConfig parseToolConfig(Map<?, ?> m) {
+        String appKey = m.get("appKey") != null ? m.get("appKey").toString() : "";
+        String actionKey = m.get("actionKey") != null ? m.get("actionKey").toString() : "";
+        String toolId = m.get("toolId") != null ? m.get("toolId").toString() : null;
+        String customName = m.get("customName") != null ? m.get("customName").toString() : null;
+        String customDescription = m.get("customDescription") != null ? m.get("customDescription").toString() : null;
+
+        UUID connectionId = null;
+        if (m.get("connectionId") != null && !m.get("connectionId").toString().isBlank()) {
+            try {
+                connectionId = UUID.fromString(m.get("connectionId").toString().trim());
+            } catch (Exception ignored) {}
+        }
+
+        UUID subWorkflowId = null;
+        if (m.get("subWorkflowId") != null && !m.get("subWorkflowId").toString().isBlank()) {
+            try {
+                subWorkflowId = UUID.fromString(m.get("subWorkflowId").toString().trim());
+            } catch (Exception ignored) {}
+        }
+
+        Map<String, Object> fixedParams = m.get("fixedParameters") instanceof Map<?, ?> fp
+                ? (Map<String, Object>) fp
+                : Map.of();
+
+        return new AgentClusterConfig.ToolConfig(
+                toolId,
+                appKey,
+                actionKey,
+                customName,
+                customDescription,
+                connectionId,
+                subWorkflowId,
+                fixedParams
+        );
     }
 }

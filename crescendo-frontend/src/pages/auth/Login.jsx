@@ -360,7 +360,7 @@ export default function Login() {
                             alignItems: 'center',
                             gap: 8
                         }}>
-                            <HiOutlineDesktopComputer style={{ color: '#3b82f6', flexShrink: 0 }} size={18} />
+                            <HiOutlineDesktopComputer style={{ color: 'var(--text-accent)', flexShrink: 0 }} size={18} />
                             <span>Authenticating for Crescendo Desktop. Once signed in, you will be redirected back to the desktop application.</span>
                         </div>
                     )}

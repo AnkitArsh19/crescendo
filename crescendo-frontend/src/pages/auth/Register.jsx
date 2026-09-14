@@ -249,7 +249,7 @@ export default function Register() {
                     alignItems: 'center',
                     gap: 8
                 }}>
-                    <HiOutlineDesktopComputer style={{ color: '#3b82f6', flexShrink: 0 }} size={18} />
+                    <HiOutlineDesktopComputer style={{ color: 'var(--text-accent)', flexShrink: 0 }} size={18} />
                     <span>Creating account for Crescendo Desktop. Once registered, your session will connect in the desktop app.</span>
                 </div>
             )}

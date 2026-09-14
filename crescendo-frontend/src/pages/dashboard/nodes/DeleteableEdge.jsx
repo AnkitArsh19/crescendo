@@ -23,12 +23,22 @@ export default function DeleteableEdge({
     selected,
 }) {
     const [isHovered, setIsHovered] = useState(false);
+
+    // In vertical layout, if handles are nearly vertically aligned (within 12px),
+    // align targetX to sourceX so the connecting arrow is rendered as a clean, direct vertical line.
+    // In horizontal layout, align targetY to sourceY if nearly horizontally aligned.
+    const isVertical = (sourcePosition === 'bottom' && targetPosition === 'top') || (sourcePosition === 'top' && targetPosition === 'bottom');
+    const isHorizontal = (sourcePosition === 'right' && targetPosition === 'left') || (sourcePosition === 'left' && targetPosition === 'right');
+
+    const effectiveTargetX = (isVertical && Math.abs(sourceX - targetX) <= 12) ? sourceX : targetX;
+    const effectiveTargetY = (isHorizontal && Math.abs(sourceY - targetY) <= 12) ? sourceY : targetY;
+
     const [edgePath, labelX, labelY] = getSmoothStepPath({
         sourceX,
         sourceY,
         sourcePosition,
-        targetX,
-        targetY,
+        targetX: effectiveTargetX,
+        targetY: effectiveTargetY,
         targetPosition,
         borderRadius: 12,
     });

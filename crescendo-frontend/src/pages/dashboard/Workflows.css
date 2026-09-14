@@ -2,6 +2,8 @@
     padding: 32px;
     max-width: 1100px;
     margin: 0 auto;
+    min-width: 0;
+    width: 100%;
 }
 
 /* Header */
@@ -53,8 +55,8 @@
 
 .wf-select-toggle.active {
     color: var(--text-accent);
-    border-color: var(--text-accent);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: var(--border-hover);
+    background: var(--bg-elevated);
 }
 
 /* Create button */
@@ -150,8 +152,10 @@
 /* Grid */
 .wf-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: 16px;
+    min-width: 0;
+    width: 100%;
 }
 
 /* Card skeleton */
@@ -179,6 +183,10 @@
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     position: relative;
     cursor: default;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
 .wf-card:hover {
@@ -197,6 +205,8 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    min-width: 0;
+    width: 100%;
 }
 
 .wf-card-icon {
@@ -324,6 +334,9 @@
     align-items: center;
     justify-content: space-between;
     margin-top: auto;
+    min-width: 0;
+    width: 100%;
+    gap: 8px;
 }
 
 .wf-status-badge {
@@ -542,18 +555,101 @@
     white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .wf-page {
-        padding: 20px 16px;
+        padding: 16px 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .wf-header {
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .wf-header-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .wf-header-actions button,
+    .wf-header-actions a {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 12px;
+        padding: 8px 12px;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .wf-header-actions .wf-select-toggle {
+        flex: 0 0 auto;
     }
 
     .wf-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .wf-card {
+        padding: 14px;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .wf-card-top {
+        gap: 10px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .wf-card-meta {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .wf-card-name {
+        font-size: 13.5px;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wf-card-desc {
+        font-size: 11.5px;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wf-card-footer {
+        gap: 8px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .wf-toggle-btn {
+        padding: 5px 10px;
+        font-size: 11.5px;
+        flex-shrink: 0;
     }
 
     .wf-bulk-bar {
-        left: 16px;
-        right: 16px;
+        left: 12px;
+        right: 12px;
         transform: none;
         flex-wrap: wrap;
         gap: 10px;

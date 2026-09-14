@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -36,16 +37,17 @@ import java.util.Map;
  * service unchanged.
  */
 @Component
-public class GitHubEmailOAuth2UserService extends DefaultOAuth2UserService {
+public class GitHubEmailOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
 
     private static final String GITHUB_EMAILS_URL = "https://api.github.com/user/emails";
 
+    private final DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         // Delegate to Spring's default user-info loading first.
-        OAuth2User user = super.loadUser(userRequest);
+        OAuth2User user = delegate.loadUser(userRequest);
 
         // Only enrich for GitHub — Google already returns email via standard OIDC.
         if (!"github".equals(userRequest.getClientRegistration().getRegistrationId())) {
