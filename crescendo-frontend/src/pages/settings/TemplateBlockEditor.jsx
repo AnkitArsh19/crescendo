@@ -71,20 +71,82 @@ function sanitizeImageUrl(url) {
   return '';
 }
 
-function htmlToPlainText(html) {
-  const parser = new DOMParser();
-  const document = parser.parseFromString(html, 'text/html');
-  document.querySelectorAll('script, style').forEach((el) => el.remove());
-  document.querySelectorAll('a[href]').forEach((a) => {
-    const href = a.getAttribute('href');
-    if (href) {
-      a.textContent = `${a.textContent || ''} (${href})`;
-    }
-  });
-  document.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
-  document.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach((el) => el.append('\n\n'));
+function decodeHtmlEntities(value) {
+  return value
+    .split('&nbsp;').join(' ')
+    .split('&amp;').join('&')
+    .split('&lt;').join('<')
+    .split('&gt;').join('>')
+    .split('&quot;').join('"')
+    .split('&#39;').join("'");
+}
 
-  return (document.body.textContent || '')
+function extractHrefAttribute(rawTag) {
+  const lowerTag = rawTag.toLowerCase();
+  const hrefIndex = lowerTag.indexOf('href=');
+  if (hrefIndex === -1) return '';
+  let valueStart = hrefIndex + 5;
+  while (valueStart < rawTag.length && rawTag[valueStart] === ' ') valueStart += 1;
+  const quote = rawTag[valueStart];
+  if (quote === '"' || quote === "'") {
+    const valueEnd = rawTag.indexOf(quote, valueStart + 1);
+    return valueEnd > valueStart ? rawTag.slice(valueStart + 1, valueEnd).trim() : '';
+  }
+  let valueEnd = valueStart;
+  while (valueEnd < rawTag.length && rawTag[valueEnd] !== ' ' && rawTag[valueEnd] !== '>') valueEnd += 1;
+  return rawTag.slice(valueStart, valueEnd).trim();
+}
+
+function htmlToPlainText(html) {
+  const source = typeof html === 'string' ? html : '';
+  let result = '';
+  let index = 0;
+  let skipTag = null;
+  const anchorHrefStack = [];
+
+  while (index < source.length) {
+    const nextTagStart = source.indexOf('<', index);
+    if (nextTagStart === -1) {
+      if (!skipTag) result += source.slice(index);
+      break;
+    }
+
+    if (!skipTag && nextTagStart > index) {
+      result += source.slice(index, nextTagStart);
+    }
+
+    const nextTagEnd = source.indexOf('>', nextTagStart + 1);
+    if (nextTagEnd === -1) {
+      if (!skipTag) result += source.slice(nextTagStart);
+      break;
+    }
+
+    const rawTag = source.slice(nextTagStart + 1, nextTagEnd).trim();
+    const isClosingTag = rawTag.startsWith('/');
+    const tagBody = isClosingTag ? rawTag.slice(1).trim() : rawTag;
+    const tagName = tagBody.split(/\s+/)[0]?.toLowerCase() || '';
+
+    if (!isClosingTag && (tagName === 'script' || tagName === 'style')) {
+      skipTag = tagName;
+    } else if (isClosingTag && skipTag === tagName) {
+      skipTag = null;
+    } else if (!skipTag) {
+      if (tagName === 'br') {
+        result += '\n';
+      } else if (tagName === 'p' || tagName === '/p' || /^h[1-6]$/.test(tagName)) {
+        result += '\n\n';
+      } else if (!isClosingTag && tagName === 'a') {
+        anchorHrefStack.push(extractHrefAttribute(rawTag));
+      } else if (isClosingTag && tagName === 'a') {
+        const href = anchorHrefStack.pop();
+        if (href) result += ` (${href})`;
+      }
+    }
+
+    index = nextTagEnd + 1;
+  }
+
+  return decodeHtmlEntities(result)
     .replace(/\u00a0/g, ' ')
     .replace(/\n\s+\n/g, '\n\n')
     .trim();
