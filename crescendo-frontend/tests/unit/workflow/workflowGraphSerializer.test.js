@@ -99,6 +99,22 @@ describe("stepsToGraph", () => {
         expect(edges).toHaveLength(0);
     });
 
+    it("sets horizontal sourcePosition ('right') and targetPosition ('left') by default", () => {
+        const trigger = makeStep({ id: "t1", type: "TRIGGER", stepType: "TRIGGER", order: 0 });
+        const { nodes } = stepsToGraph([trigger], [], false);
+        expect(nodes[0].sourcePosition).toBe("right");
+        expect(nodes[0].targetPosition).toBe("left");
+        expect(nodes[0].data._vertical).toBe(false);
+    });
+
+    it("sets vertical sourcePosition ('bottom') and targetPosition ('top') when vertical=true", () => {
+        const trigger = makeStep({ id: "t1", type: "TRIGGER", stepType: "TRIGGER", order: 0 });
+        const { nodes } = stepsToGraph([trigger], [], true);
+        expect(nodes[0].sourcePosition).toBe("bottom");
+        expect(nodes[0].targetPosition).toBe("top");
+        expect(nodes[0].data._vertical).toBe(true);
+    });
+
     it("trigger + action produces one linear edge out->in when no backendEdges", () => {
         const trigger = makeStep({ id: "t1", type: "TRIGGER", stepType: "TRIGGER", order: 0 });
         const action = makeStep({ id: "a1", type: "ACTION", stepType: "ACTION", order: 1 });

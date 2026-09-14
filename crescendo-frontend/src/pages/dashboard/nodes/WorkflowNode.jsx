@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { memo, useCallback, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { HiOutlineLightningBolt, HiOutlineCog, HiCheck, HiOutlineExclamation } from 'react-icons/hi';
 
 /**
@@ -15,13 +15,18 @@ import { HiOutlineLightningBolt, HiOutlineCog, HiCheck, HiOutlineExclamation } f
  *   - Large invisible hit areas make it easy to grab the handle to start dragging.
  *   - Double-clicking a handle does NOT propagate to the node (no config panel).
  */
-function WorkflowNode({ data, selected, type }) {
+function WorkflowNode({ id, data, selected, type }) {
     const isTrigger = type === 'trigger';
     const isConfigured = !!(data.appKey && (isTrigger ? (data.triggerKey || data.actionKey) : data.actionKey));
     const appName = data.appName || data.appKey || null;
     const operationName = data.triggerName || data.actionName || null;
     const stepNumber = data.stepIndex != null ? data.stepIndex : null;
     const vertical = data._vertical || false;
+    const updateNodeInternals = useUpdateNodeInternals();
+
+    useEffect(() => {
+        updateNodeInternals(id);
+    }, [id, vertical, updateNodeInternals]);
 
     const isOrphaned = !isTrigger && !!data.isOrphaned;
 
@@ -69,8 +74,6 @@ function WorkflowNode({ data, selected, type }) {
                                 src={logoSrc} 
                                 alt="" 
                                 className="wf-node__app-img app-logo-img"
-                                referrerPolicy="no-referrer"
-                                crossOrigin="anonymous"
                                 loading="lazy"
                                 onError={(e) => {
                                     const fallback = data.appKey ? (KNOWN_APP_LOGOS[data.appKey] || `https://icons.duckduckgo.com/ip3/${data.appKey}.com.ico`) : null;
@@ -124,6 +127,7 @@ function WorkflowNode({ data, selected, type }) {
             {/* IN handle — only hidden for the first node (entry point) */}
             {hasInputHandle && (
                 <Handle
+                    key={inPos}
                     type="target"
                     position={inPos}
                     id="in"
@@ -138,6 +142,7 @@ function WorkflowNode({ data, selected, type }) {
 
             {/* OUT handle — always present */}
             <Handle
+                key={outPos}
                 type="source"
                 position={outPos}
                 id="out"

@@ -54,7 +54,8 @@ import java.util.HashMap;
                 "com.crescendo.emailservice.customevent",
                 "com.crescendo.emailservice.dmarc",
                 "com.crescendo.emailservice.outboundwebhook",
-                "com.crescendo.notification"
+                "com.crescendo.notification",
+                "com.crescendo.apps.telegram.repository"
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "commandTransactionManager"
@@ -149,7 +150,8 @@ public class CommandDBConfig {
                                 "com.crescendo.emailservice.customevent",
                                 "com.crescendo.emailservice.dmarc",
                                 "com.crescendo.emailservice.outboundwebhook",
-                                "com.crescendo.notification"
+                                "com.crescendo.notification",
+                                "com.crescendo.apps.telegram.entity"
                         )
                         .properties(props)
                         .build();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
     HiOutlineBookOpen, 
@@ -200,6 +200,10 @@ export default function DocsPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
     const { theme, toggleTheme } = useTheme();
+
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
 
     // Determine current content for TOC
     let currentToc = [];

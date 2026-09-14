@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineSun, HiOutlineMoon, HiOutlineMenu, HiOutlineX, HiOutlineLightningBolt, HiOutlineCode, HiOutlineBookOpen, HiOutlineSparkles, HiOutlineCollection } from 'react-icons/hi';
+import { HiOutlineSun, HiOutlineMoon, HiOutlineMenu, HiOutlineX, HiOutlineLightningBolt, HiOutlineCode, HiOutlineBookOpen, HiOutlineSparkles, HiOutlineCollection, HiOutlineDownload } from 'react-icons/hi';
 import { useTheme } from './ThemeContext';
 import { Dock, DockIcon } from './ui/Dock';
 import './Navbar.css';
@@ -31,6 +31,7 @@ export default function Navbar() {
         { label: 'Integrations', href: '#features', icon: <HiOutlineCollection /> },
         { label: 'AI Builder', href: '#ai-builder', icon: <HiOutlineSparkles /> },
         { label: 'API', href: '#api', icon: <HiOutlineCode /> },
+        { label: 'Download', href: '#downloads', icon: <HiOutlineDownload /> },
         { label: 'Docs', href: '#docs', icon: <HiOutlineBookOpen /> },
     ];
 

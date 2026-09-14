@@ -10,8 +10,6 @@
 
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
 
-Available on Web and as a Native Desktop Client for **[Windows (`.exe`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop-setup.exe)**, **[macOS (`.dmg`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.dmg)**, and **[Linux (`.AppImage` / `.deb`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.AppImage)**.
-
 Project status: ongoing. The platform is actively being built, tested, and hardened.
 
 ## Why this project was built
@@ -62,7 +60,7 @@ Crescendo is organized as a full-stack monorepo:
 
 - `crescendo-backend`: Spring Boot automation engine and APIs
 - `crescendo-frontend`: React + Vite workflow builder, management UI, and Tauri native desktop client
-- `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder via Groq/LLaMA
+- `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder and Agentic AI ReAct Runtime (Google Gemini, Groq, OpenAI)
 - `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
 - Root docs and references: architecture notes, production issues, integration guides
 
@@ -125,12 +123,16 @@ Engineering focus areas:
 - **Frameless Glass Titlebar**: Custom window frame with minimize, maximize, restore, close, and drag controls matching the Crescendo design system.
 
 ### AI/ML Microservice (`crescendo-aiml`)
-
-- **FastAPI & Uvicorn**: Asynchronous web server and API framework.
-- **LangGraph**: Framework for building stateful, multi-agent AI applications.
+ 
+- **FastAPI & Uvicorn**: Asynchronous web server and high-throughput API framework.
+- **Autonomous Agentic AI Node**: Multi-turn ReAct (Reason + Act) loop endpoint (`/v1/agent/next-step`) that dynamically selects, invokes, and observes tool executions from workflow inputs.
+- **Multi-Provider Tool-Calling Engine**:
+  - **Google Gemini**: Native API function-calling (`gemini-3.5-flash-lite` default with 500 RPD quota; `gemini-3.8-flash` and `gemini-3.6-flash` for admin users).
+  - **Groq**: Ultra-low-latency function calling via `llama-3.3-70b-versatile` and `llama-3.1-8b-instant`.
+  - **OpenAI**: Flagship agentic models (`gpt-4o`, `gpt-4o-mini`).
+- **LangGraph**: Framework for building stateful, multi-agent conversational DAG generators.
 - **Redis Checkpointer**: Distributed memory management for multi-turn conversational AI context.
-- **Groq API**: Lightning-fast LLM inference utilizing `llama-3.1-8b-instant` and `llama-3.3-70b-versatile`.
-- **Pydantic**: Strict schema validation to guarantee AI JSON outputs conform to the Java backend contracts.
+- **Pydantic**: Strict schema validation guaranteeing AI JSON outputs and tool definitions conform to the Java backend contracts.
 
 ### Infrastructure and developer tooling
 
@@ -191,24 +193,32 @@ Translates conversational user intents into fully executable workflows via a mul
 - **Deterministic Catalog Validation:** A pure-Python validation layer ensures the generated workflow strictly conforms to the backend's known catalog schemas and dynamic user resources.
 
 **2. The Agentic AI Node (Run-Time)**
-A first-class workflow node that evaluates incoming payloads against a system prompt and dynamically selects tools to call using a ReAct loop:
-- **Stateless Python Reasoning:** The Java engine maintains loop state, security, and idempotency, calling a stateless Python endpoint (`/v1/agent/next-step`) for reasoning decisions on each turn.
-- **Pre-Execution Budgeting & Context Windows:** Token budgets are enforced *before* any LLM calls, and a sliding context window ensures long-running agent loops never exceed Groq API token limits.
-- **Strict Schema Enforcement:** Dynamically filters tool access so the agent only sees the tools explicitly connected by the user on the canvas, while rigorously validating required arguments.
+A first-class autonomous workflow node (`agent:ai_agent`) that evaluates incoming step payloads against a system prompt, dynamically reasons through a ReAct (Reason → Act → Observe) loop, and calls catalog app tools or sub-workflows:
+- **Autonomous Catalog Tool Calling (111+ Apps):** Dynamically synthesizes standard OpenAPI / JSON Schema function parameter objects from Crescendo's catalog `configSchema`s. Sanitizes tool identifiers (`appKey__actionKey`) adhering strictly to LLM provider requirements (`^[a-zA-Z0-9_]{1,64}$`), with bidirectional resolution and snake/camelCase tolerance.
+- **3-Tier Credential Resolution:** Seamlessly resolves credentials through `WorkflowExecutionEngine`, properly decrypting the workflow owner's personal OAuth tokens or API keys with graceful platform-key fallback.
+- **Sub-Workflow Tool Orchestration:** Allows exposing any workspace workflow as a callable tool, executing child workflows synchronously under distributed Redis locks (`workflow-execution:{subWorkflowId}`) and feeding child outputs directly back into the agent's reasoning context.
+- **Dual Execution Engine & Direct REST Fallback:** Connects to the Python AI microservice (`crescendo-aiml`) via `/v1/agent/next-step`, with an automatic, direct native Java REST fallback (Google Gemini `generateContent` with `function_declarations` and OpenAI/Groq `/chat/completions` with `tools`) ensuring high availability even when the Python microservice is unreachable.
+- **Defense in Depth & Prompt Injection Defense:** Wraps tool observations in XML boundary delimiters (`<tool_output_content>`), strips prompt injection patterns, and enforces pre-execution token budget caps and iteration limits before any external side effects occur.
+- **Visual ReAct Timeline Inspector:** Tracks every turn in a structured execution timeline (`input` → `thought` → `tool_call` → `observation` → `final_answer`), rendered natively in the frontend canvas drawer (`TestResultPanel`) and run history (`RunDetail`) via `AgentTimelineView`.
 
 
-## 🖥️ Crescendo Desktop (Native Application)
+## Crescendo Desktop (Native Application)
 
 Crescendo Desktop provides a focused, high-performance native workflow automation and orchestration experience across Windows, macOS, and Linux without the memory bloat of Electron.
 
-### Official Download Releases
+### Official Download Releases (v0.1.0)
 
-| Operating System | Package Format | Architecture | Direct Download |
-|---|---|---|---|
-| **Windows** | `.exe` (Installer / Setup) | x64 / ARM64 | [Download for Windows (`.exe`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop-setup.exe) |
-| **macOS** | `.dmg` (Disk Image) | Universal (Apple Silicon & Intel) | [Download for macOS (`.dmg`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.dmg) |
-| **Linux (Universal)** | `.AppImage` (Standalone) | x64 | [Download for Linux (`.AppImage`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.AppImage) |
-| **Linux (Debian / Ubuntu)** | `.deb` (Debian Package) | x64 | [Download for Linux (`.deb`)](https://github.com/AnkitArsh19/crescendo/releases/latest/download/crescendo-desktop.deb) |
+| Operating System | Package Format | Architecture | Size | Direct Download |
+|---|---|---|---|---|
+| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_x64-setup.exe) |
+| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_x64_en-US.msi) |
+| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_universal.dmg) |
+| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_universal.app.tar.gz) |
+| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_amd64.AppImage) |
+| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_amd64.deb) |
+| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo-0.1.0-1.x86_64.rpm) |
+
+All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v0.1.0)** page.
 
 ### Why Tauri v2 over Electron?
 - **Ultra-Lean Binary Footprint:** <15 MB total installer size vs. 150+ MB for minimal Electron runtimes.

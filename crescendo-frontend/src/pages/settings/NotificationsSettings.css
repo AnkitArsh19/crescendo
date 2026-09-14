@@ -90,11 +90,11 @@
 }
 
 .notif-switch input:checked + .notif-slider {
-  background-color: #6366f1;
+  background-color: var(--text-accent);
 }
 
 .notif-switch input:focus + .notif-slider {
-  box-shadow: 0 0 1px #6366f1;
+  box-shadow: 0 0 1px var(--text-accent);
 }
 
 .notif-switch input:checked + .notif-slider:before {
@@ -116,7 +116,7 @@
 
 .notif-wf-search:focus {
   outline: none;
-  border-color: #6366f1;
+  border-color: var(--border-hover);
 }
 
 .notif-wf-row {
@@ -160,5 +160,5 @@
 
 .notif-wf-select:focus {
   outline: none;
-  border-color: #6366f1;
+  border-color: var(--border-hover);
 }

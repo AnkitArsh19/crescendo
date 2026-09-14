@@ -3,6 +3,14 @@
   "identifier": "default",
   "description": "Default capabilities for Crescendo desktop app",
   "windows": ["main"],
+  "remote": {
+    "urls": [
+      "https://app.crescendo.run",
+      "https://app.crescendo.run/*",
+      "https://*.crescendo.run",
+      "https://*.crescendo.run/*"
+    ]
+  },
   "permissions": [
     "core:default",
     "opener:default",
@@ -18,6 +26,7 @@
     "core:window:allow-is-maximized",
     "core:window:allow-start-dragging",
     "core:window:allow-set-focus",
-    "core:window:allow-unminimize"
+    "core:window:allow-unminimize",
+    "core:webview:allow-set-webview-zoom"
   ]
 }

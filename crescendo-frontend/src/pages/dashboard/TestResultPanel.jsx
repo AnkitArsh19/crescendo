@@ -6,6 +6,7 @@ import {
 } from 'react-icons/hi';
 import { stepTestApi } from '../../api/workflowApi';
 import { downloadFile } from '../../utils/download';
+import AgentTimelineView from './AgentTimelineView';
 import './TestResultPanel.css';
 
 /**
@@ -359,6 +360,14 @@ export default function TestResultPanel({
                     {/* 3. DATA OUT / SAMPLE TAB */}
                     {activeResultTab === 'dataOut' && (
                         <div className="trp-tab-content">
+                            {Array.isArray(result.data?.timeline) && result.data.timeline.length > 0 && (
+                                <AgentTimelineView
+                                    timeline={result.data.timeline}
+                                    iterations={result.data.iterations}
+                                    tokensUsed={result.data.tokensUsed}
+                                    status={result.data.status || 'COMPLETED'}
+                                />
+                            )}
                             {dataOutRows.length > 0 ? (
                                 dataOutRows.length <= 30 ? (
                                     <div className="trp-data">

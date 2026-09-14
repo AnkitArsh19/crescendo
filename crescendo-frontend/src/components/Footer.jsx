@@ -31,6 +31,7 @@ export default function Footer() {
                         <div className="footer-column-title">Product</div>
                         <ul className="footer-links">
                             <li><a href="#features" className="footer-link">Features</a></li>
+                            <li><a href="#downloads" className="footer-link">Desktop App</a></li>
                             <li><a href="#api" className="footer-link">Public API</a></li>
                             <li><Link to="/docs/api/apps" className="footer-link">App Catalog</Link></li>
                             <li><Link to="/dashboard/email" className="footer-link">CrescendoMail</Link></li>

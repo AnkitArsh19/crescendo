@@ -358,15 +358,19 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    border: 1px solid color-mix(in srgb, #38bdf8 42%, var(--border-primary));
+    border: 1px solid var(--border-primary);
     border-radius: var(--radius-sm);
-    color: #7dd3fc;
-    background: rgba(56, 189, 248, 0.07);
+    color: var(--text-primary);
+    background: var(--bg-elevated);
     cursor: pointer;
     font: 600 0.73rem var(--font-sans);
+    transition: all var(--transition-fast);
 }
 
-.trp-read-sample:hover:not(:disabled) { background: rgba(56, 189, 248, 0.13); }
+.trp-read-sample:hover:not(:disabled) { 
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+}
 .trp-read-sample:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .trp-live-confirmation {

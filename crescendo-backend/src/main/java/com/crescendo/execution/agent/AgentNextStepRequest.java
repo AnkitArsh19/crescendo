@@ -50,7 +50,7 @@ public record AgentNextStepRequest(
         String provider,
 
         /**
-         * Model identifier (e.g. gemini-2.5-flash, gpt-4o, llama-3.3-70b-versatile).
+         * Model identifier (e.g. gemini-3.8-flash, gpt-4o, llama-3.3-70b-versatile).
          */
         String model,
 
@@ -86,6 +86,14 @@ public record AgentNextStepRequest(
             String role,
             String content,
             /** Present only when role == "tool". References the tool_call_id from the assistant turn. */
-            String toolCallId
-    ) {}
+            String toolCallId,
+            /** Phase 2: function name in the tool_calls array (assistant turns). */
+            String toolName,
+            /** Phase 2: JSON string of arguments (assistant turns). */
+            String toolArgsJson
+    ) {
+        public ConversationTurn(String role, String content, String toolCallId) {
+            this(role, content, toolCallId, null, null);
+        }
+    }
 }

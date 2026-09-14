@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
     HiSearch,
     HiX,
@@ -30,7 +30,7 @@ import './AppBrowserModal.css';
 
 const markdownComponents = {
     p: ({ ...props }) => <p style={{ margin: '0 0 12px 0', lineHeight: '1.65', color: 'var(--text-secondary)' }} {...props} />,
-    a: ({ ...props }) => <a style={{ color: 'var(--brand-primary, #6366f1)', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer" {...props} />,
+    a: ({ ...props }) => <a style={{ color: 'var(--text-accent)', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer" {...props} />,
     ul: ({ ...props }) => <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', color: 'var(--text-secondary)' }} {...props} />,
     ol: ({ ...props }) => <ol style={{ margin: '0 0 12px 0', paddingLeft: '20px', color: 'var(--text-secondary)' }} {...props} />,
     li: ({ ...props }) => <li style={{ marginBottom: '6px', lineHeight: '1.55' }} {...props} />,
@@ -97,15 +97,128 @@ export default function AppBrowserModal({
             if (found) {
                 setDetailApp(found);
                 setDetailSection('connection');
+                const hasExisting = connections.some(c => c.appKey === found.appKey);
+                if (found.appKey === 'telegram' && !hasExisting) {
+                    setActiveConnectMode('TELEGRAM_LINK');
+                }
             }
         }
-    }, [initialAppKey, visibleApps]);
+    }, [initialAppKey, visibleApps, connections]);
     const [platformKeyApps, setPlatformKeyApps] = useState(new Set());
     const [actionSearch, setActionSearch] = useState('');
     const [isWaitingDesktopOAuth, setIsWaitingDesktopOAuth] = useState(false);
     const [lastAuthUrl, setLastAuthUrl] = useState(null);
     const searchRef = useRef(null);
     const { createConnection } = useConnectionStore();
+
+    // ── Telegram Deep-Linking State ──────────────────────────────────────────
+    const [telegramLinkState, setTelegramLinkState] = useState({
+        status: 'IDLE', // 'IDLE' | 'INITIATING' | 'WAITING' | 'COMPLETED' | 'ERROR'
+        token: null,
+        deepLink: null,
+        botUsername: 'crescendo_app_bot',
+        username: null,
+        error: null,
+    });
+    const tgPollRef = useRef(null);
+
+    const cancelTelegramLink = useCallback(() => {
+        if (tgPollRef.current) {
+            clearInterval(tgPollRef.current);
+            tgPollRef.current = null;
+        }
+        setTelegramLinkState({
+            status: 'IDLE',
+            token: null,
+            deepLink: null,
+            botUsername: 'crescendo_app_bot',
+            username: null,
+            error: null,
+        });
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (tgPollRef.current) {
+                clearInterval(tgPollRef.current);
+                tgPollRef.current = null;
+            }
+        };
+    }, []);
+
+    const openTelegramUrl = async (url) => {
+        if (!url) return;
+        if (isTauri()) {
+            await openExternalBrowser(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
+    const startTelegramLink = async () => {
+        setConnectError(null);
+        setTelegramLinkState((prev) => ({ ...prev, status: 'INITIATING', error: null }));
+        try {
+            const res = await connectionsApi.initiateTelegramLink();
+            const { token, deepLink, botUsername } = res;
+            setTelegramLinkState({
+                status: 'WAITING',
+                token,
+                deepLink,
+                botUsername: botUsername || 'crescendo_app_bot',
+                username: null,
+                error: null,
+            });
+
+            await openTelegramUrl(deepLink);
+
+            if (tgPollRef.current) clearInterval(tgPollRef.current);
+            tgPollRef.current = setInterval(async () => {
+                try {
+                    const statusRes = await connectionsApi.getTelegramLinkStatus(token);
+                    if (statusRes.status === 'COMPLETED') {
+                        clearInterval(tgPollRef.current);
+                        tgPollRef.current = null;
+                        setTelegramLinkState((prev) => ({
+                            ...prev,
+                            status: 'COMPLETED',
+                            username: statusRes.telegramUsername,
+                        }));
+
+                        const conns = await connectionsApi.list().catch(() => []);
+                        const matching = conns.find((c) => c.appKey === 'telegram');
+                        onConnected?.(matching || statusRes);
+
+                        setTimeout(() => {
+                            if (!connectOnly) {
+                                onSelect?.(detailApp, 'PERSONAL', matching?.id || statusRes.connectionId, matching?.name || 'Telegram');
+                                onClose?.();
+                            }
+                            setDetailApp(null);
+                            setActiveConnectMode(null);
+                            cancelTelegramLink();
+                        }, 1200);
+                    } else if (statusRes.status === 'EXPIRED') {
+                        clearInterval(tgPollRef.current);
+                        tgPollRef.current = null;
+                        setTelegramLinkState((prev) => ({
+                            ...prev,
+                            status: 'ERROR',
+                            error: 'Linking token expired. Please try again.',
+                        }));
+                    }
+                } catch {
+                    // Ignore transient network errors
+                }
+            }, 1500);
+        } catch (err) {
+            setTelegramLinkState((prev) => ({
+                ...prev,
+                status: 'ERROR',
+                error: err.response?.data?.message || 'Failed to generate Telegram link',
+            }));
+        }
+    };
 
     useEffect(() => {
         const handleConnectionUpdated = async (ev) => {
@@ -325,6 +438,14 @@ export default function AppBrowserModal({
             return;
         }
 
+        if (app.appKey === 'telegram') {
+            setName(`My Telegram`);
+            setDetailApp(app);
+            setDetailSection('connection');
+            setActiveConnectMode('TELEGRAM_LINK');
+            return;
+        }
+
         if (app.authType === 'OAUTH2' || app.altAuthType === 'OAUTH2') {
             setName(`My ${app.name}`);
             setDetailApp(app);
@@ -487,7 +608,7 @@ export default function AppBrowserModal({
         const hasApiKey = detailApp.authType === 'APIKEY' || detailApp.altAuthType === 'APIKEY' || hasSchema;
         const hasOAuth = detailApp.authType === 'OAUTH2' || detailApp.altAuthType === 'OAUTH2';
         const isNoAuth = detailApp.authType === 'NONE';
-        const hasPlatformKey = Boolean((detailApp.hasPlatformKey || platformKeyApps.has(detailApp.appKey)) && !connectOnly);
+        const hasPlatformKey = Boolean((detailApp.hasPlatformKey || platformKeyApps.has(detailApp.appKey)) && !connectOnly && detailApp.appKey !== 'telegram');
 
         const schema = getActiveSchema(detailApp);
         const actionsList = Array.isArray(detailApp.actions) ? detailApp.actions : [];
@@ -504,6 +625,16 @@ export default function AppBrowserModal({
                 badgeClass: 'badge-managed',
                 description: "Use Crescendo's pre-configured platform credentials. No API key required.",
                 icon: <HiOutlineShieldCheck />,
+            });
+        }
+        if (detailApp.appKey === 'telegram') {
+            methods.push({
+                id: 'TELEGRAM_LINK',
+                title: isConnected ? 'Reconnect or Switch Telegram Account' : 'Connect with Crescendo Bot',
+                badge: 'Official Bot',
+                badgeClass: 'badge-recommended',
+                description: 'Link your Telegram account in 1 click via @crescendo_app_bot. No BotFather required.',
+                icon: <HiOutlineLightningBolt />,
             });
         }
         if (hasOAuth) {
@@ -526,14 +657,19 @@ export default function AppBrowserModal({
         }
         if (hasApiKey) {
             const isDatabase = detailApp.category === 'database';
+            const isTelegram = detailApp.appKey === 'telegram';
             methods.push({
                 id: 'APIKEY',
-                title: isDatabase ? 'Database Credentials' : (hasSchema ? 'API Credentials' : 'API Key / Token'),
-                badge: hasOAuth ? 'Manual' : 'Direct',
-                badgeClass: hasOAuth ? 'badge-manual' : 'badge-direct',
-                description: isDatabase
-                    ? `Authenticate using your ${detailApp.name} host, port, database, and credentials.`
-                    : `Authenticate using your ${detailApp.name} API key or personal access token.`,
+                title: isTelegram
+                    ? 'Connect Custom Bot Token (BYOB / BotFather)'
+                    : (isDatabase ? 'Database Credentials' : (hasSchema ? 'API Credentials' : 'API Key / Token')),
+                badge: isTelegram ? 'Custom Bot' : (hasOAuth ? 'Advanced' : 'Direct'),
+                badgeClass: 'badge-direct',
+                description: isTelegram
+                    ? 'Use your own custom bot token from @BotFather. No webhook configuration required for actions.'
+                    : (isDatabase
+                        ? `Authenticate using your ${detailApp.name} host, port, database, and credentials.`
+                        : `Authenticate using your ${detailApp.name} API key or personal access token.`),
                 icon: <HiOutlineKey />,
             });
         }
@@ -644,8 +780,8 @@ export default function AppBrowserModal({
                         {/* Desktop OAuth Waiting Banner */}
                         {isWaitingDesktopOAuth && (
                             <div style={{
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                border: '1px solid rgba(59, 130, 246, 0.3)',
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border-hover)',
                                 borderRadius: 8,
                                 padding: '14px 18px',
                                 margin: '0 24px 16px',
@@ -944,8 +1080,8 @@ export default function AppBrowserModal({
                                             width: 56,
                                             height: 56,
                                             borderRadius: '50%',
-                                            background: 'rgba(59, 130, 246, 0.1)',
-                                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                                            background: 'var(--bg-elevated)',
+                                            border: '1px solid var(--border-primary)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -958,7 +1094,7 @@ export default function AppBrowserModal({
                                                     position: 'absolute',
                                                     inset: 0,
                                                     borderRadius: '50%',
-                                                    background: 'rgba(59, 130, 246, 0.2)'
+                                                    background: 'rgba(255, 255, 255, 0.05)'
                                                 }}
                                             />
                                             <HiOutlineExternalLink style={{ fontSize: '1.5rem', color: 'var(--text-accent)', zIndex: 1 }} />
@@ -993,6 +1129,118 @@ export default function AppBrowserModal({
                                                 Cancel
                                             </button>
                                         </div>
+                                    </div>
+                                ) : activeConnectMode === 'TELEGRAM_LINK' ? (
+                                    /* Telegram 1-Click Deep-Link Box */
+                                    <div className="abm-telegram-link-box">
+                                        {telegramLinkState.status === 'COMPLETED' ? (
+                                            <div className="abm-telegram-success">
+                                                <div className="abm-telegram-success-icon">
+                                                    <HiCheck style={{ fontSize: '1.75rem', color: '#10b981' }} />
+                                                </div>
+                                                <h4 style={{ margin: '8px 0 4px', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Telegram Connected!</h4>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    Linked as <strong>@{telegramLinkState.username || 'User'}</strong>
+                                                </p>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '8px', display: 'block' }}>
+                                                    Loading your channels and chats…
+                                                </span>
+                                            </div>
+                                        ) : telegramLinkState.status === 'WAITING' ? (
+                                            <div className="abm-telegram-waiting">
+                                                <div className="abm-telegram-pulsing-icon">
+                                                    <motion.div
+                                                        className="abm-tg-pulse-ring"
+                                                        animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                                                        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                                                    />
+                                                    <svg className="abm-tg-svg" viewBox="0 0 24 24" fill="currentColor" width="34" height="34">
+                                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+                                                    </svg>
+                                                </div>
+
+                                                <h4 style={{ margin: '6px 0 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                    Waiting for you to click START
+                                                </h4>
+                                                <p className="abm-tg-instructions">
+                                                    We opened <strong>@{telegramLinkState.botUsername || 'crescendo_app_bot'}</strong> in Telegram. Tap <strong>START</strong> at the bottom of the chat to link your account.
+                                                </p>
+
+                                                <div className="abm-tg-action-row">
+                                                    <button
+                                                        type="button"
+                                                        className="abm-btn-primary"
+                                                        style={{ padding: '8px 16px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                        onClick={() => openTelegramUrl(telegramLinkState.deepLink)}
+                                                        title="Reopen Telegram chat"
+                                                    >
+                                                        <HiOutlineExternalLink /> Open Telegram Again
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="abm-btn-secondary"
+                                                        style={{ padding: '8px 16px', fontSize: '0.84rem' }}
+                                                        onClick={cancelTelegramLink}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+
+                                                <div className="abm-tg-token-notice">
+                                                    <span>Link expires in 10 minutes · Multi-tenant isolated</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="abm-telegram-initial">
+                                                <div className="abm-telegram-banner">
+                                                    <div className="abm-telegram-bot-badge">
+                                                        <span className="tg-dot-online" />
+                                                        Official Bot: @{telegramLinkState.botUsername || 'crescendo_app_bot'}
+                                                    </div>
+                                                    <h3 className="abm-tg-heading">Connect Your Telegram</h3>
+                                                    <p className="abm-tg-subheading">
+                                                        Connect with 1-click. Crescendo automatically discovers your direct chat and any channels or groups where the bot is added as Administrator.
+                                                    </p>
+                                                    <ul className="abm-telegram-steps">
+                                                        <li><span className="tg-step-num">1</span> Click <strong>Open in Telegram to Connect</strong> below</li>
+                                                        <li><span className="tg-step-num">2</span> Tap <strong>START</strong> in the bot chat to authenticate</li>
+                                                        <li><span className="tg-step-num">3</span> Add @{telegramLinkState.botUsername || 'crescendo_app_bot'} as Admin to any channels or groups you want to message</li>
+                                                    </ul>
+                                                </div>
+
+                                                {telegramLinkState.error && (
+                                                    <div className="abm-error-toast" style={{ marginBottom: '12px' }}>
+                                                        {telegramLinkState.error}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    className="abm-oauth-connect-btn tg-connect-btn"
+                                                    onClick={startTelegramLink}
+                                                    disabled={telegramLinkState.status === 'INITIATING'}
+                                                >
+                                                    <svg className="abm-tg-svg-btn" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+                                                    </svg>
+                                                    {telegramLinkState.status === 'INITIATING' ? 'Generating link…' : 'Open in Telegram to Connect'}
+                                                </button>
+
+                                                <div className="abm-security-note">
+                                                    <HiOutlineShieldCheck />
+                                                    <span>Multi-tenant isolation: Only you can see and message your direct chat and invited channels.</span>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    className="abm-byok-toggle"
+                                                    onClick={() => setActiveConnectMode('APIKEY')}
+                                                    title="Use custom Developer Bot Token from @BotFather"
+                                                >
+                                                    Advanced: Connect with your own Bot Token (BYOB / BotFather)
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : activeConnectMode === 'OAUTH2' ? (
                                     /* 1-Click OAuth Box */
@@ -1057,7 +1305,7 @@ export default function AppBrowserModal({
                                                 <div className="abm-info-box">
                                                     Register an OAuth app in the {detailApp.name} developer portal with redirect URI:<br />
                                                     <code style={{ userSelect: 'all', marginTop: '4px', display: 'block' }}>
-                                                        {window.location.origin}/api/connections/oauth/{detailApp.appKey}/callback
+                                                        {(import.meta.env.VITE_API_URL || 'https://api.crescendo.run').replace(/\/+$/, '')}/connections/oauth/{detailApp.appKey}/callback
                                                     </code>
                                                 </div>
                                                 <label className="abm-form-label">
@@ -1106,56 +1354,75 @@ export default function AppBrowserModal({
                                         )}
 
                                         {activeConnectMode === 'APIKEY' && (
-                                            schema.length > 0 ? (
-                                                schema.map((field) => (
-                                                    <label key={field.key} className="abm-form-label">
-                                                        {field.label} {field.required && <span className="abm-required">*</span>}
+                                            <>
+                                                {detailApp.appKey === 'telegram' && (
+                                                    <div style={{
+                                                        background: 'var(--bg-elevated)',
+                                                        border: '1px solid var(--border-primary)',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        padding: '12px 14px',
+                                                        marginBottom: '14px',
+                                                        fontSize: '0.8rem',
+                                                        color: 'var(--text-secondary)',
+                                                        lineHeight: 1.5,
+                                                    }}>
+                                                        <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                                                            Bring Your Own Bot (BYOB)
+                                                        </strong>
+                                                        Paste the bot token generated from <strong>@BotFather</strong>. No webhook setup is required for sending automated messages or workflow actions.
+                                                    </div>
+                                                )}
+                                                {schema.length > 0 ? (
+                                                    schema.map((field) => (
+                                                        <label key={field.key} className="abm-form-label">
+                                                            {field.label} {field.required && <span className="abm-required">*</span>}
+                                                            <div className="abm-password-wrap">
+                                                                <input
+                                                                    type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                                                                    className="abm-form-input"
+                                                                    value={credentials[field.key] || ''}
+                                                                    onChange={(e) => setCredentials((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                                                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                                />
+                                                                {field.type === 'password' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="abm-eye-toggle"
+                                                                        title={showPasswords[field.key] ? 'Hide value' : 'Show value'}
+                                                                        aria-label={showPasswords[field.key] ? 'Hide value' : 'Show value'}
+                                                                        onClick={() => setShowPasswords((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
+                                                                    >
+                                                                        {showPasswords[field.key] ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {field.helpText && <span className="abm-field-help">{field.helpText}</span>}
+                                                        </label>
+                                                    ))
+                                                ) : (
+                                                    <label className="abm-form-label">
+                                                        {detailApp.appKey === 'telegram' ? 'Bot Token (from @BotFather)' : 'API Key / Access Token'} <span className="abm-required">*</span>
                                                         <div className="abm-password-wrap">
                                                             <input
-                                                                type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                                                                type={!showPasswords['apiKey'] ? 'password' : 'text'}
                                                                 className="abm-form-input"
-                                                                value={credentials[field.key] || ''}
-                                                                onChange={(e) => setCredentials((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                                                                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                                                                value={credentials.apiKey || ''}
+                                                                onChange={(e) => setCredentials({ apiKey: e.target.value })}
+                                                                placeholder={detailApp.appKey === 'telegram' ? 'e.g. 123456789:ABCdefGHIjklMNOpqrsTUVwxyz' : 'Paste your API key or personal access token'}
                                                             />
-                                                            {field.type === 'password' && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="abm-eye-toggle"
-                                                                    title={showPasswords[field.key] ? 'Hide value' : 'Show value'}
-                                                                    aria-label={showPasswords[field.key] ? 'Hide value' : 'Show value'}
-                                                                    onClick={() => setShowPasswords((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
-                                                                >
-                                                                    {showPasswords[field.key] ? <HiOutlineEyeOff /> : <HiOutlineEye />}
-                                                                </button>
-                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                className="abm-eye-toggle"
+                                                                title={showPasswords['apiKey'] ? 'Hide API key' : 'Show API key'}
+                                                                aria-label={showPasswords['apiKey'] ? 'Hide API key' : 'Show API key'}
+                                                                onClick={() => setShowPasswords((prev) => ({ ...prev, apiKey: !prev.apiKey }))}
+                                                            >
+                                                                {showPasswords['apiKey'] ? <HiOutlineEyeOff /> : <HiOutlineEye />}
+                                                            </button>
                                                         </div>
-                                                        {field.helpText && <span className="abm-field-help">{field.helpText}</span>}
                                                     </label>
-                                                ))
-                                            ) : (
-                                                <label className="abm-form-label">
-                                                    API Key / Access Token <span className="abm-required">*</span>
-                                                    <div className="abm-password-wrap">
-                                                        <input
-                                                            type={!showPasswords['apiKey'] ? 'password' : 'text'}
-                                                            className="abm-form-input"
-                                                            value={credentials.apiKey || ''}
-                                                            onChange={(e) => setCredentials({ apiKey: e.target.value })}
-                                                            placeholder="Paste your API key or personal access token"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            className="abm-eye-toggle"
-                                                            title={showPasswords['apiKey'] ? 'Hide API key' : 'Show API key'}
-                                                            aria-label={showPasswords['apiKey'] ? 'Hide API key' : 'Show API key'}
-                                                            onClick={() => setShowPasswords((prev) => ({ ...prev, apiKey: !prev.apiKey }))}
-                                                        >
-                                                            {showPasswords['apiKey'] ? <HiOutlineEyeOff /> : <HiOutlineEye />}
-                                                        </button>
-                                                    </div>
-                                                </label>
-                                            )
+                                                )}
+                                            </>
                                         )}
 
                                         {testResult && (
@@ -1190,7 +1457,7 @@ export default function AppBrowserModal({
                                                     <button
                                                         type="button"
                                                         className="abm-btn-secondary"
-                                                        style={{ borderColor: 'var(--brand-primary, #6366f1)', color: 'var(--brand-primary, #6366f1)' }}
+                                                        style={{ borderColor: 'var(--border-hover)', color: 'var(--text-primary)' }}
                                                         onClick={handleTestCredentials}
                                                         disabled={isTesting || isSubmitting}
                                                         title="Test connection with current credentials"
@@ -1209,6 +1476,17 @@ export default function AppBrowserModal({
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {detailApp.appKey === 'telegram' && (
+                                            <button
+                                                type="button"
+                                                className="abm-byok-toggle"
+                                                style={{ marginTop: '12px', alignSelf: 'center', width: '100%', textAlign: 'center' }}
+                                                onClick={() => setActiveConnectMode('TELEGRAM_LINK')}
+                                            >
+                                                Prefer 1-click connect? Switch to Quick Connect with @crescendo_app_bot
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </>

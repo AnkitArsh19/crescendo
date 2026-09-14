@@ -11,6 +11,7 @@ import { useActivateWorkflow, useDeactivateWorkflow, useSaveWorkflowGraph, useWo
 import useToastStore from '../../store/toastStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
+import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
 import {
     stepsToGraph,
     makeEdge,
@@ -22,12 +23,15 @@ import { createDraftStore } from '../../workflow/workflowDraftStore';
 import { createSaveCoordinator } from '../../workflow/workflowSaveCoordinator';
 import {
     ReactFlow,
+    ReactFlowProvider,
     Background,
     Controls,
     MiniMap,
     useNodesState,
     useEdgesState,
+    useUpdateNodeInternals,
     MarkerType,
+    Position,
     BackgroundVariant,
     ConnectionLineType,
 } from '@xyflow/react';
@@ -53,6 +57,7 @@ import {
     HiSun,
     HiMoon,
     HiOutlineChip,
+    HiOutlineDeviceMobile,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
 import BranchNode from './nodes/BranchNode';
@@ -63,34 +68,40 @@ import './WorkflowCanvas.css';
 
 // 'branch' handles logic:if and logic:switch — these nodes render named output ports
 // ('true'/'false' for If; 'output_0'…'output_N' for Switch) so the execution engine
-// can route edges by sourceHandle. All other nodes use the generic WorkflowNode.
-// 'agent' uses WorkflowNode for now — a dedicated AgentClusterNode is planned once
-// the Python reasoning layer is live and the cluster sub-node UI is implemented.
-const nodeTypes = { trigger: WorkflowNode, action: WorkflowNode, branch: BranchNode, agent: WorkflowNode };
+// can route down named branch paths via edge.sourceHandle.
+// 'agent' renders as WorkflowNode today; will swap to AgentClusterNode in Phase 4.
+const nodeTypes = {
+    trigger: WorkflowNode,
+    action: WorkflowNode,
+    agent: WorkflowNode,
+    branch: BranchNode,
+};
 
 // edgeTypes registered after removeEdge is defined (passed via data.onDelete)
 
 const NODE_GAP_X = 330;
-const NODE_GAP_Y = 210;
-const BRANCH_GAP_X = 260;
+const NODE_GAP_Y = 220;
+const BRANCH_GAP_X = 320;
 const BRANCH_GAP_Y = 150;
 
-const makeDefaultNodes = (vertical) => [
+const makeDefaultNodes = (vertical = false) => [
     {
         id: '1',
         type: 'trigger',
         position: { x: vertical ? 250 : 120, y: vertical ? 60 : 200 },
+        sourcePosition: vertical ? Position.Bottom : Position.Right,
+        targetPosition: vertical ? Position.Top : Position.Left,
         data: { label: 'Select Trigger', stepIndex: 1, _vertical: vertical },
     },
     {
         id: '2',
         type: 'action',
         position: { x: vertical ? 250 : 450, y: vertical ? 280 : 200 },
+        sourcePosition: vertical ? Position.Bottom : Position.Right,
+        targetPosition: vertical ? Position.Top : Position.Left,
         data: { label: 'Select Action', stepIndex: 2, _vertical: vertical },
     },
 ];
-
-
 
 const makeDefaultEdge = () => makeEdge('1', '2');
 
@@ -177,6 +188,8 @@ const layoutGraph = (inputNodes, inputEdges, vertical) => {
     return inputNodes.map((node) => ({
         ...node,
         position: positions.get(node.id) || node.position,
+        sourcePosition: vertical ? Position.Bottom : Position.Right,
+        targetPosition: vertical ? Position.Top : Position.Left,
         data: { ...node.data, _vertical: vertical },
     }));
 };
@@ -214,7 +227,8 @@ const reindexNodes = (inputNodes, inputEdges) => {
 
 let nodeId = 3;
 
-export default function WorkflowCanvas() {
+function WorkflowCanvasInner() {
+    const updateNodeInternals = useUpdateNodeInternals();
     const navigate = useNavigate();
     const { workflowId: routeWorkflowId } = useParams();
     const { toggleTheme, theme } = useOutletContext();
@@ -230,6 +244,27 @@ export default function WorkflowCanvas() {
     // ── Naming modal (only for new workflows) ──
     const [showNamingModal, setShowNamingModal] = useState(!routeWorkflowId);
     const [nameInput, setNameInput] = useState('');
+
+    // ── Auto-lock to landscape on mobile (silently fails on unsupported browsers) ──
+    useEffect(() => {
+        const tryLandscapeLock = async () => {
+            try {
+                if (window.screen?.orientation?.lock && window.innerWidth <= 768) {
+                    await window.screen.orientation.lock('landscape');
+                }
+            } catch {
+                // Orientation lock not supported or not allowed — no-op
+            }
+        };
+        tryLandscapeLock();
+        return () => {
+            try {
+                if (window.screen?.orientation?.unlock) {
+                    window.screen.orientation.unlock();
+                }
+            } catch { /* no-op */ }
+        };
+    }, []);
 
     // ── Persisted workflow id (set after first save) ──
     const [workflowId, setWorkflowId] = useState(routeWorkflowId || null);
@@ -260,6 +295,7 @@ export default function WorkflowCanvas() {
     const [edges, setEdges, onEdgesChange] = useEdgesState(routeWorkflowId ? [] : [makeDefaultEdge(false)]);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
     const reactFlowWrapper = useRef(null);
+    const viewportRef = useRef({ x: 200, y: 150, zoom: 0.88 });
 
     // ── Catalog + connections for real app/account/trigger/action selection ──
     const [catalogApps, setCatalogApps] = useState([]);
@@ -289,54 +325,74 @@ export default function WorkflowCanvas() {
         }
     }, []);
 
-    // ── Lock document scroll while Canvas is mounted ──
+    // ── Lock document scroll while Canvas is mounted and block global WebView2 page zoom ──
     useEffect(() => {
         window.scrollTo(0, 0);
         const prevHtmlOverflow = document.documentElement.style.overflow;
         const prevBodyOverflow = document.body.style.overflow;
         document.documentElement.style.overflow = 'hidden';
         document.body.style.overflow = 'hidden';
+
+        // Prevent browser/WebView2 page zoom (Ctrl+wheel) from distorting the app UI
+        const preventPageZoom = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener('wheel', preventPageZoom, { passive: false });
+
         return () => {
             document.documentElement.style.overflow = prevHtmlOverflow;
             document.body.style.overflow = prevBodyOverflow;
+            window.removeEventListener('wheel', preventPageZoom);
         };
     }, []);
 
-    // ── Dedicated Windows touchpad pinch-zoom & ctrl+wheel zoom handler ──
+    // ── Dedicated Windows & Mac precision touchpad pinch-zoom handler ──
     useEffect(() => {
         const wrapper = reactFlowWrapper.current;
         if (!wrapper || !reactFlowInstance) return undefined;
 
+        // Keep viewportRef primed with current instance viewport
+        viewportRef.current = reactFlowInstance.getViewport();
+
         const handleWheel = (e) => {
-            if (e.ctrlKey) {
+            // Trackpad pinch-to-zoom on Windows Precision Touchpads & macOS synthesizes wheel events with ctrlKey/metaKey
+            if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
                 e.stopPropagation();
 
-                const delta = -e.deltaY * (e.deltaMode === 1 ? 20 : 1);
-                const clampedDelta = Math.sign(delta) * Math.min(Math.abs(delta), 15);
-                const zoomFactor = 1 + clampedDelta * 0.025;
+                // Normalize delta: Windows precision touchpads emit small pixel deltas (±1 to ±15),
+                // mouse wheels with Ctrl held emit discrete steps (typically ±100).
+                const rawDelta = -e.deltaY * (e.deltaMode === 1 ? 20 : (e.deltaMode === 2 ? 100 : 1));
+                const clampedDelta = Math.max(-60, Math.min(60, rawDelta));
+                const zoomFactor = Math.exp(clampedDelta * 0.008);
 
                 const rect = wrapper.getBoundingClientRect();
                 const pointerX = e.clientX - rect.left;
                 const pointerY = e.clientY - rect.top;
 
-                const vp = reactFlowInstance.getViewport();
+                const vp = viewportRef.current;
                 const minZ = 0.2;
                 const maxZ = 1.5;
                 const nextZoom = Math.min(Math.max(vp.zoom * zoomFactor, minZ), maxZ);
-                if (nextZoom === vp.zoom) return;
-                const scale = nextZoom / vp.zoom;
+                if (Math.abs(nextZoom - vp.zoom) < 0.0001) return;
 
+                const scale = nextZoom / vp.zoom;
                 const nextX = pointerX - (pointerX - vp.x) * scale;
                 const nextY = pointerY - (pointerY - vp.y) * scale;
 
-                reactFlowInstance.setViewport({ x: nextX, y: nextY, zoom: nextZoom });
+                // Update ref synchronously so rapid sequential wheel ticks compound immediately
+                const nextViewport = { x: nextX, y: nextY, zoom: nextZoom };
+                viewportRef.current = nextViewport;
+                reactFlowInstance.setViewport(nextViewport);
             }
         };
 
-        wrapper.addEventListener('wheel', handleWheel, { passive: false });
+        // Capture phase ensures we intercept the gesture before child elements or D3 can lock it
+        wrapper.addEventListener('wheel', handleWheel, { passive: false, capture: true });
         return () => {
-            wrapper.removeEventListener('wheel', handleWheel);
+            wrapper.removeEventListener('wheel', handleWheel, { capture: true });
         };
     }, [reactFlowInstance]);
 
@@ -573,9 +629,9 @@ export default function WorkflowCanvas() {
     }, [setNodes, setEdges]);
 
 
-    const fitWorkflow = useCallback((targetNodes) => {
+    const fitWorkflow = useCallback((targetNodes, isVerticalOverride) => {
         if (!reactFlowInstance) return;
-        const currentNodes = targetNodes || stateRefs.current?.nodes || nodes;
+        const currentNodes = Array.isArray(targetNodes) ? targetNodes : (stateRefs.current?.nodes || nodes);
         if (!currentNodes || currentNodes.length === 0) return;
 
         // For small workflows (1-3 steps), standard fitView centers them comfortably
@@ -595,9 +651,11 @@ export default function WorkflowCanvas() {
         // allowing natural horizontal/vertical scrolling to view subsequent steps.
         const triggerNode = currentNodes.find((n) => n.type === 'trigger') || currentNodes[0];
         if (triggerNode) {
-            const isVertical = currentNodes.some((n) => n.position.y > 200 && Math.abs(n.position.x - triggerNode.position.x) < 50);
-            const targetX = isVertical ? triggerNode.position.x + 120 : triggerNode.position.x + 360;
-            const targetY = isVertical ? triggerNode.position.y + 240 : triggerNode.position.y + 40;
+            const isVert = typeof isVerticalOverride === 'boolean'
+                ? isVerticalOverride
+                : (vertical || currentNodes.some((n) => n.position.y > 200 && Math.abs(n.position.x - triggerNode.position.x) < 50));
+            const targetX = isVert ? triggerNode.position.x + 130 : triggerNode.position.x + 360;
+            const targetY = isVert ? triggerNode.position.y + 240 : triggerNode.position.y + 40;
 
             reactFlowInstance.setCenter(targetX, targetY, {
                 zoom: 0.88,
@@ -611,7 +669,7 @@ export default function WorkflowCanvas() {
                 duration: 280,
             });
         }
-    }, [reactFlowInstance, nodes]);
+    }, [reactFlowInstance, nodes, vertical]);
 
     // Auto-fit once after workflow finishes loading
     const hasFittedRef = useRef(false);
@@ -812,6 +870,8 @@ export default function WorkflowCanvas() {
                 x: ((source?.position.x || 0) + (target?.position.x || 0)) / 2,
                 y: ((source?.position.y || 0) + (target?.position.y || 0)) / 2,
             },
+            sourcePosition: vertical ? Position.Bottom : Position.Right,
+            targetPosition: vertical ? Position.Top : Position.Left,
             data: {
                 label: 'New Action',
                 stepIndex: nodes.length + 1,
@@ -865,6 +925,8 @@ export default function WorkflowCanvas() {
                     x: parent ? parent.position.x + (vertical ? 0 : NODE_GAP_X) : 250,
                     y: parent ? parent.position.y + (vertical ? NODE_GAP_Y : 0) : 200,
                 },
+                sourcePosition: vertical ? Position.Bottom : Position.Right,
+                targetPosition: vertical ? Position.Top : Position.Left,
                 data: {
                     label: 'New Action',
                     stepIndex: nodes.length + 1,
@@ -899,6 +961,8 @@ export default function WorkflowCanvas() {
                     x: parent ? parent.position.x + (vertical ? 0 : NODE_GAP_X) : 250,
                     y: parent ? parent.position.y + (vertical ? NODE_GAP_Y : 0) : 200,
                 },
+                sourcePosition: vertical ? Position.Bottom : Position.Right,
+                targetPosition: vertical ? Position.Top : Position.Left,
                 data: {
                     label: 'AI Agent',
                     appKey: 'agent',
@@ -957,6 +1021,8 @@ export default function WorkflowCanvas() {
                 position: vertical
                     ? { x: source.position.x + lane * BRANCH_GAP_X, y: source.position.y + NODE_GAP_Y }
                     : { x: source.position.x + NODE_GAP_X, y: source.position.y + lane * BRANCH_GAP_Y },
+                sourcePosition: vertical ? Position.Bottom : Position.Right,
+                targetPosition: vertical ? Position.Top : Position.Left,
                 data: {
                     label: 'New Action',
                     stepIndex: nodes.length + index + 1,
@@ -988,6 +1054,8 @@ export default function WorkflowCanvas() {
                     x: original.position.x + (vertical ? 0 : 40),
                     y: original.position.y + (vertical ? 40 : 40),
                 },
+                sourcePosition: vertical ? Position.Bottom : Position.Right,
+                targetPosition: vertical ? Position.Top : Position.Left,
                 data: {
                     ...original.data,
                     _backendId: undefined,
@@ -1253,7 +1321,14 @@ export default function WorkflowCanvas() {
         setNodes(nextNodes);
         setEdges(nextEdges);
         pushHistory(nextNodes, nextEdges);
-    }, [vertical, nodes, edges, setNodes, setEdges, pushHistory]);
+        // Recalculate handle measurements immediately on layout change and re-center view
+        requestAnimationFrame(() => {
+            updateNodeInternals(nextNodes.map((n) => n.id));
+            setTimeout(() => {
+                fitWorkflow(nextNodes, nextVertical);
+            }, 30);
+        });
+    }, [vertical, nodes, edges, setNodes, setEdges, pushHistory, updateNodeInternals, fitWorkflow]);
 
 
 
@@ -1442,6 +1517,8 @@ export default function WorkflowCanvas() {
 
     return (
         <div className="canvas-page">
+
+
             {/* ── Top bar ── */}
             <div className="canvas-topbar">
                 <div className="canvas-topbar-left">
@@ -1542,7 +1619,7 @@ export default function WorkflowCanvas() {
                     <DockIcon
                         className="canvas-dock-btn"
                         title="Fit workflow to canvas (F)"
-                        onClick={fitWorkflow}
+                        onClick={() => fitWorkflow()}
                         data-tooltip="Fit view"
                     >
                         <HiOutlineArrowsExpand />
@@ -1609,7 +1686,13 @@ export default function WorkflowCanvas() {
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
-                    onInit={setReactFlowInstance}
+                    onInit={(instance) => {
+                        setReactFlowInstance(instance);
+                        viewportRef.current = instance.getViewport();
+                    }}
+                    onMove={(_, vp) => {
+                        viewportRef.current = vp;
+                    }}
                     onNodeDragStop={onNodeDragStop}
                     onNodeClick={onNodeClick}
                     onNodeDoubleClick={onNodeDoubleClick}
@@ -1639,7 +1722,10 @@ export default function WorkflowCanvas() {
                     connectionRadius={40}
                     deleteKeyCode={null}
                     edgesReconnectable={false}
+                    panOnScroll={true}
+                    panOnScrollMode="free"
                     zoomOnPinch={true}
+                    zoomOnScroll={false}
                     preventScrolling={true}
                 >
                     <Background variant={BackgroundVariant.Dots} gap={18} size={1.6} color="var(--dot-color-bright)" />
@@ -1651,7 +1737,18 @@ export default function WorkflowCanvas() {
                         nodeColor="var(--bg-elevated)"
                         maskColor="rgba(15, 23, 42, 0.18)"
                     />
-                    <Controls showInteractive={false} position="bottom-left">
+                    <Controls
+                        showInteractive={false}
+                        onFitView={() => {
+                            reactFlowInstance?.fitView({
+                                padding: 0.2,
+                                minZoom: 0.2,
+                                maxZoom: 1.05,
+                                duration: 280,
+                            });
+                        }}
+                        position="bottom-left"
+                    >
                         <button
                             className="react-flow__controls-button"
                             onClick={handleSave}
@@ -1896,6 +1993,20 @@ export default function WorkflowCanvas() {
                 );
             })()}
         </AnimatePresence>
+
+        <RotateLandscapePrompt
+            pageKey="canvas"
+            title="Rotate for Canvas Editing"
+            message="Workflow canvas nodes and connections are best edited in landscape mode."
+        />
         </div>
+    );
+}
+
+export default function WorkflowCanvas(props) {
+    return (
+        <ReactFlowProvider>
+            <WorkflowCanvasInner {...props} />
+        </ReactFlowProvider>
     );
 }

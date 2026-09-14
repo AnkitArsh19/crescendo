@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { resourceApi } from '../../api/workflowApi';
+import { resourceApi, workflowApi } from '../../api/workflowApi';
 import { webhookApi } from '../../api/webhookApi';
 import { connectionsApi } from '../../api/connectionsApi';
 import { appCatalogApi } from '../../api/appCatalogApi';
@@ -597,6 +597,48 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
     const [aiMismatch, setAiMismatch] = useState(false);
     const prevParamsRef = useRef('');
 
+    // Telegram add chat state
+    const [addingChat, setAddingChat] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const [addChatLoading, setAddChatLoading] = useState(false);
+    const [addChatError, setAddChatError] = useState(null);
+    const [addChatSuccess, setAddChatSuccess] = useState(null);
+
+    const handleAddChat = async (e) => {
+        if (e) e.preventDefault();
+        const trimmed = chatInput.trim();
+        if (!trimmed) return;
+        setAddChatLoading(true);
+        setAddChatError(null);
+        setAddChatSuccess(null);
+        try {
+            const res = await connectionsApi.addTelegramChat(trimmed);
+            if (res && res.id) {
+                const newOpt = {
+                    id: res.id,
+                    label: res.label || res.id,
+                    description: res.description || `ID: ${res.id}`,
+                };
+                setOptions((prev) => {
+                    const exists = prev.some((o) => o.id === newOpt.id);
+                    return exists ? prev.map((o) => (o.id === newOpt.id ? newOpt : o)) : [newOpt, ...prev];
+                });
+                onChange(newOpt.id);
+                setAddChatSuccess(`Added "${newOpt.label}"`);
+                setChatInput('');
+                setTimeout(() => {
+                    setAddingChat(false);
+                    setAddChatSuccess(null);
+                }, 1800);
+            }
+        } catch (err) {
+            const msg = err?.response?.data?.message || err?.message || 'Could not add chat. Verify the bot is an admin in the chat.';
+            setAddChatError(msg);
+        } finally {
+            setAddChatLoading(false);
+        }
+    };
+
     // Safely determine effective connection ID:
     // 1. Explicit connectionId set on step
     // 2. If platform-key app (Telegram, Gemini, Sarvam) and in ADMIN_KEY mode
@@ -772,53 +814,137 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
                 </div>
             )}
             {appKey === 'telegram' && field.resourceType === 'chats' && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', padding: '0 2px', flexWrap: 'wrap', gap: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
-                        Can&apos;t find your chat?
-                    </span>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <a
-                            href="https://t.me/crescendo_app_bot"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.73rem',
-                                textDecoration: 'none',
-                                fontWeight: 500,
-                            }}
-                        >
-                            + Direct Chat
-                        </a>
-                        <span style={{ color: 'var(--border-primary)', fontSize: '0.7rem' }}>•</span>
-                        <a
-                            href="https://t.me/crescendo_app_bot?startgroup=true"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.73rem',
-                                textDecoration: 'none',
-                                fontWeight: 500,
-                            }}
-                        >
-                            + Group
-                        </a>
-                        <span style={{ color: 'var(--border-primary)', fontSize: '0.7rem' }}>•</span>
-                        <a
-                            href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.73rem',
-                                textDecoration: 'none',
-                                fontWeight: 500,
-                            }}
-                        >
-                            + Channel
-                        </a>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', padding: '0 2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                            Can&apos;t find your chat?
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAddingChat(!addingChat);
+                                    setAddChatError(null);
+                                    setAddChatSuccess(null);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.73rem',
+                                    cursor: 'pointer',
+                                    padding: '0',
+                                    fontWeight: 600,
+                                    textDecoration: 'underline',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                }}
+                            >
+                                + Add Channel / Group
+                            </button>
+                            <span style={{ color: 'var(--border-primary)', fontSize: '0.7rem' }}>•</span>
+                            <a
+                                href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={async (e) => {
+                                    if (isTauri()) {
+                                        e.preventDefault();
+                                        await openExternalBrowser('https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages');
+                                    }
+                                }}
+                                style={{
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.73rem',
+                                    textDecoration: 'none',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                Open in Telegram
+                            </a>
+                        </div>
                     </div>
+
+                    {addingChat && (
+                        <div style={{
+                            background: 'var(--bg-secondary, #18181b)',
+                            border: '1px solid var(--border-primary, #27272a)',
+                            borderRadius: '6px',
+                            padding: '8px 10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px'
+                        }}>
+                            <div style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>
+                                Enter Channel username (e.g. <code>@my_channel</code>) or chat ID:
+                            </div>
+                            <form onSubmit={handleAddChat} style={{ display: 'flex', gap: '6px' }}>
+                                <input
+                                    type="text"
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    placeholder="@channel_name or -100..."
+                                    style={{
+                                        flex: 1,
+                                        background: 'var(--bg-tertiary, #09090b)',
+                                        border: '1px solid var(--border-primary, #27272a)',
+                                        borderRadius: '4px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.75rem',
+                                        color: 'var(--text-primary, #ffffff)',
+                                        outline: 'none'
+                                    }}
+                                    autoFocus
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={addChatLoading || !chatInput.trim()}
+                                    style={{
+                                        background: '#ffffff',
+                                        color: '#000000',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '4px 10px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        cursor: addChatLoading || !chatInput.trim() ? 'not-allowed' : 'pointer',
+                                        opacity: addChatLoading || !chatInput.trim() ? 0.6 : 1
+                                    }}
+                                >
+                                    {addChatLoading ? 'Adding…' : 'Add'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddingChat(false);
+                                        setAddChatError(null);
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        color: 'var(--text-tertiary, #a1a1aa)',
+                                        border: '1px solid var(--border-primary, #27272a)',
+                                        borderRadius: '4px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </form>
+                            {addChatError && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #e4e4e7)', marginTop: '2px' }}>
+                                    ⚠ {addChatError}
+                                </div>
+                            )}
+                            {addChatSuccess && (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-primary, #ffffff)', fontWeight: 500, marginTop: '2px' }}>
+                                    ✓ {addChatSuccess}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -1429,6 +1555,501 @@ function DynamicField({ field, appKey, connectionId, credentialSource, config, v
 const TABS = ['Setup', 'Configure', 'Test'];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Agent Tools Section — Allows AI Agent to call Catalog Actions & Sub-Workflows
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AgentToolsSection({
+    configuration,
+    updateConfig,
+    catalogApps,
+    appDetailsByKey,
+    ensureAppDetail,
+    allConnections,
+    workflowId,
+}) {
+    const configuredTools = useMemo(() => {
+        if (Array.isArray(configuration.configuredTools)) return configuration.configuredTools;
+        if (Array.isArray(configuration.tools)) return configuration.tools;
+        if (Array.isArray(configuration.agentConfig?.configuredTools)) return configuration.agentConfig.configuredTools;
+        return [];
+    }, [configuration]);
+
+    const saveTools = (newTools) => {
+        updateConfig('configuredTools', newTools);
+        updateConfig('tools', newTools);
+        updateConfig('agentConfig', {
+            ...(configuration.agentConfig || {}),
+            configuredTools: newTools,
+            maxIterations: configuration.maxIterations || 10,
+            tokenBudget: configuration.tokenBudget || 50000,
+        });
+    };
+
+    const [isAdding, setIsAdding] = useState(false);
+    const [toolType, setToolType] = useState('catalog'); // 'catalog' | 'subworkflow'
+    const [selectedAppKey, setSelectedAppKey] = useState('');
+    const [selectedActionKey, setSelectedActionKey] = useState('');
+    const [selectedConnectionId, setSelectedConnectionId] = useState('');
+    const [customInstructions, setCustomInstructions] = useState('');
+    const [selectedSubWorkflowId, setSelectedSubWorkflowId] = useState('');
+    const [subWorkflows, setSubWorkflows] = useState([]);
+    const [loadingWorkflows, setLoadingWorkflows] = useState(false);
+
+    useEffect(() => {
+        if (toolType === 'subworkflow' && subWorkflows.length === 0) {
+            setLoadingWorkflows(true);
+            workflowApi.list()
+                .then((data) => {
+                    const list = Array.isArray(data) ? data : (data?.items || []);
+                    setSubWorkflows(list.filter((w) => w.id !== workflowId));
+                })
+                .catch(() => {})
+                .finally(() => setLoadingWorkflows(false));
+        }
+    }, [toolType, subWorkflows.length, workflowId]);
+
+    const handleAppChange = (appKey) => {
+        setSelectedAppKey(appKey);
+        setSelectedActionKey('');
+        ensureAppDetail(appKey);
+        const conns = (allConnections || []).filter((c) => c.appKey === appKey);
+        if (conns.length === 1) {
+            setSelectedConnectionId(conns[0].id);
+        } else {
+            setSelectedConnectionId('');
+        }
+    };
+
+    const handleAddTool = () => {
+        if (toolType === 'catalog') {
+            if (!selectedAppKey || !selectedActionKey) return;
+            const app = (catalogApps || []).find((a) => a.appKey === selectedAppKey);
+            const detail = appDetailsByKey[selectedAppKey];
+            const action = (detail?.actions || []).find(
+                (a) => a.actionKey === selectedActionKey || a.key === selectedActionKey
+            );
+            const toolId = `${selectedAppKey}__${selectedActionKey}`.replace(/[^a-zA-Z0-9_]/g, '_');
+            const newTool = {
+                toolId,
+                appKey: selectedAppKey,
+                actionKey: selectedActionKey,
+                customName: `${app?.name || selectedAppKey}: ${action?.name || selectedActionKey}`,
+                customDescription: customInstructions.trim() || action?.description || action?.name || `Executes ${selectedActionKey} on ${selectedAppKey}`,
+                connectionId: selectedConnectionId || null,
+                subWorkflowId: null,
+                fixedParameters: {},
+            };
+            saveTools([...configuredTools, newTool]);
+        } else {
+            if (!selectedSubWorkflowId) return;
+            const wf = subWorkflows.find((w) => w.id === selectedSubWorkflowId);
+            const toolId = `subworkflow_${selectedSubWorkflowId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+            const newTool = {
+                toolId,
+                appKey: 'workflow',
+                actionKey: 'run_subworkflow',
+                customName: `Sub-Workflow: ${wf?.name || selectedSubWorkflowId}`,
+                customDescription: customInstructions.trim() || `Executes sub-workflow "${wf?.name || selectedSubWorkflowId}" and returns results`,
+                connectionId: null,
+                subWorkflowId: selectedSubWorkflowId,
+                fixedParameters: { workflowId: selectedSubWorkflowId },
+            };
+            saveTools([...configuredTools, newTool]);
+        }
+
+        setIsAdding(false);
+        setSelectedAppKey('');
+        setSelectedActionKey('');
+        setSelectedConnectionId('');
+        setSelectedSubWorkflowId('');
+        setCustomInstructions('');
+    };
+
+    const handleRemoveTool = (idx) => {
+        const updated = configuredTools.filter((_, i) => i !== idx);
+        saveTools(updated);
+    };
+
+    const filteredCatalogApps = useMemo(() => {
+        return (catalogApps || []).filter((a) => a.appKey !== 'agent' && !a.internal);
+    }, [catalogApps]);
+
+    const availableActions = useMemo(() => {
+        if (!selectedAppKey) return [];
+        const detail = appDetailsByKey[selectedAppKey];
+        return (detail?.actions || []).map((a) => ({
+            id: a.actionKey || a.key,
+            value: a.actionKey || a.key,
+            label: a.name || a.actionKey || a.key,
+            description: a.description || '',
+        }));
+    }, [selectedAppKey, appDetailsByKey]);
+
+    const appConnections = useMemo(() => {
+        if (!selectedAppKey) return [];
+        return (allConnections || []).filter((c) => c.appKey === selectedAppKey);
+    }, [selectedAppKey, allConnections]);
+
+    const selectedAppDetail = appDetailsByKey[selectedAppKey];
+    const isAuthNone = selectedAppDetail?.authType === 'NONE';
+
+    return (
+        <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-secondary)', paddingTop: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
+                        <HiOutlineBolt size={16} />
+                    </div>
+                    <div>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            Allowed Tools &amp; Sub-Workflows
+                        </h4>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            Tools the agent can dynamically invoke during its ReAct reasoning loop
+                        </span>
+                    </div>
+                </div>
+                <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                    {configuredTools.length} tool{configuredTools.length === 1 ? '' : 's'}
+                </span>
+            </div>
+
+            {/* List of currently configured tools */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {configuredTools.length === 0 ? (
+                    <div style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px dashed var(--border-secondary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                        No tools attached yet. The agent will act as a pure conversational reasoning engine. Add tools below to empower it to interact with your apps and databases.
+                    </div>
+                ) : (
+                    configuredTools.map((tool, idx) => {
+                        const app = (catalogApps || []).find((a) => a.appKey === tool.appKey);
+                        const isSubWf = tool.appKey === 'workflow' || !!tool.subWorkflowId;
+                        const conn = (allConnections || []).find((c) => c.id === tool.connectionId);
+
+                        return (
+                            <div
+                                key={tool.toolId || idx}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-secondary)',
+                                    gap: '12px',
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                    {isSubWf ? (
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', flexShrink: 0 }}>
+                                            <HiOutlineBolt size={16} />
+                                        </div>
+                                    ) : (
+                                        <img
+                                            src={app?.logoUrl || '/icons/generic.svg'}
+                                            alt={tool.appKey}
+                                            className="app-logo-img"
+                                            style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }}
+                                            onError={(e) => { e.target.src = '/icons/generic.svg'; }}
+                                        />
+                                    )}
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {tool.customName || `${tool.appKey}: ${tool.actionKey}`}
+                                            </span>
+                                            {conn && (
+                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80' }}>
+                                                    {conn.name || 'Connected'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {tool.customDescription && (
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                                                {tool.customDescription}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveTool(idx)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#ef4444',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                    title="Remove tool"
+                                >
+                                    <HiOutlineTrash size={16} />
+                                </button>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Add Tool Form or Button */}
+            {!isAdding ? (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        type="button"
+                        onClick={() => { setToolType('catalog'); setIsAdding(true); }}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '8px 12px',
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-hover)',
+                            borderRadius: '6px',
+                            color: 'var(--text-primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <HiPlus size={14} /> Add App Action Tool
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setToolType('subworkflow'); setIsAdding(true); }}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '8px 12px',
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-hover)',
+                            borderRadius: '6px',
+                            color: 'var(--text-primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <HiPlus size={14} /> Add Sub-Workflow Tool
+                    </button>
+                </div>
+            ) : (
+                <div style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--accent-primary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-secondary)', paddingBottom: '8px' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {toolType === 'catalog' ? 'Add App Action Tool' : 'Add Sub-Workflow Tool'}
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                                type="button"
+                                onClick={() => setToolType('catalog')}
+                                style={{
+                                    fontSize: '0.72rem',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    background: toolType === 'catalog' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                App Action
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setToolType('subworkflow')}
+                                style={{
+                                    fontSize: '0.72rem',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    background: toolType === 'subworkflow' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Sub-Workflow
+                            </button>
+                        </div>
+                    </div>
+
+                    {toolType === 'catalog' ? (
+                        <>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                    Select Application *
+                                </label>
+                                <SearchableSelect
+                                    options={filteredCatalogApps.map((a) => ({
+                                        id: a.appKey,
+                                        value: a.appKey,
+                                        label: a.name,
+                                        icon: a.logoUrl,
+                                    }))}
+                                    value={selectedAppKey}
+                                    onChange={handleAppChange}
+                                    placeholder="Choose an app (e.g. Slack, Discord, Google Sheets)..."
+                                />
+                            </div>
+
+                            {selectedAppKey && (
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                        Select Action *
+                                    </label>
+                                    <SearchableSelect
+                                        options={availableActions}
+                                        value={selectedActionKey}
+                                        onChange={setSelectedActionKey}
+                                        placeholder="Choose an action to expose as a tool..."
+                                    />
+                                </div>
+                            )}
+
+                            {selectedAppKey && !isAuthNone && (
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                        Connection / Account
+                                    </label>
+                                    {appConnections.length > 0 ? (
+                                        <select
+                                            value={selectedConnectionId}
+                                            onChange={(e) => setSelectedConnectionId(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '8px 10px',
+                                                borderRadius: '6px',
+                                                background: 'var(--bg-primary)',
+                                                border: '1px solid var(--border-secondary)',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '0.8rem',
+                                            }}
+                                        >
+                                            <option value="">Platform Key / Default</option>
+                                            {appConnections.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name || `${c.appKey} connection`} ({c.id.slice(0, 8)})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div style={{ fontSize: '0.75rem', color: selectedAppDetail?.hasPlatformKey ? '#4ade80' : '#f59e0b', padding: '6px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                                            {selectedAppDetail?.hasPlatformKey ? '✓ Uses Crescendo Platform Key' : '⚠️ No personal connection found. Uses platform key fallback if available.'}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                Select Sub-Workflow *
+                            </label>
+                            {loadingWorkflows ? (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Loading workflows...</div>
+                            ) : subWorkflows.length > 0 ? (
+                                <select
+                                    value={selectedSubWorkflowId}
+                                    onChange={(e) => setSelectedSubWorkflowId(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        borderRadius: '6px',
+                                        background: 'var(--bg-primary)',
+                                        border: '1px solid var(--border-secondary)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.8rem',
+                                    }}
+                                >
+                                    <option value="">Choose a sub-workflow...</option>
+                                    {subWorkflows.map((w) => (
+                                        <option key={w.id} value={w.id}>
+                                            {w.name} ({w.id.slice(0, 8)})
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div style={{ fontSize: '0.75rem', color: '#f59e0b', padding: '6px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                                    No other workflows available in this workspace. Create another workflow first to call it as a tool.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                            Custom Instructions for Agent (Optional)
+                        </label>
+                        <input
+                            type="text"
+                            value={customInstructions}
+                            onChange={(e) => setCustomInstructions(e.target.value)}
+                            placeholder="e.g. Call this tool when the user asks for refund details..."
+                            style={{
+                                width: '100%',
+                                padding: '8px 10px',
+                                borderRadius: '6px',
+                                background: 'var(--bg-primary)',
+                                border: '1px solid var(--border-secondary)',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.8rem',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        <button
+                            type="button"
+                            onClick={handleAddTool}
+                            disabled={toolType === 'catalog' ? (!selectedAppKey || !selectedActionKey) : !selectedSubWorkflowId}
+                            style={{
+                                flex: 1,
+                                padding: '8px',
+                                borderRadius: '6px',
+                                background: 'var(--accent-primary)',
+                                color: '#fff',
+                                border: 'none',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                opacity: (toolType === 'catalog' ? (!selectedAppKey || !selectedActionKey) : !selectedSubWorkflowId) ? 0.5 : 1,
+                            }}
+                        >
+                            Add Tool
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsAdding(false)}
+                            style={{
+                                padding: '8px 14px',
+                                borderRadius: '6px',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                border: '1px solid var(--border-secondary)',
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ConfigPanelBody — 3-tab stepper
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1487,12 +2108,31 @@ export default function ConfigPanelBody({
         if (!data.configuration || Object.keys(data.configuration).length === 0) {
             updates.configuration = {
                 provider: "gemini",
-                model: "gemini-3.8-flash",
+                model: "gemini-3.5-flash-lite",
                 systemPrompt: "You are a helpful AI assistant. Analyze the incoming data and dynamically choose the appropriate tools to accomplish the goal.",
                 prompt: "{{steps.1.data}}",
                 temperature: 0.7,
                 maxIterations: 10,
                 returnIntermediateSteps: true,
+            };
+        } else if (
+            !isAdmin &&
+            (data.configuration.provider || 'gemini') === 'gemini' &&
+            data.configuration.model &&
+            data.configuration.model !== 'gemini-3.5-flash-lite'
+        ) {
+            updates.configuration = {
+                ...data.configuration,
+                model: 'gemini-3.5-flash-lite',
+            };
+        } else if (
+            data.configuration.model === 'gemma-4-31b' ||
+            data.configuration.model === 'gemma-4-26b' ||
+            data.configuration.model === 'gemini-2.5-flash'
+        ) {
+            updates.configuration = {
+                ...data.configuration,
+                model: 'gemini-3.5-flash-lite',
             };
         }
         if (Object.keys(updates).length > 0) {
@@ -1500,7 +2140,7 @@ export default function ConfigPanelBody({
         }
         ensureAppDetail('agent');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAgentNode, configNode.id, data.appKey, data.actionKey]);
+    }, [isAgentNode, configNode.id, data.appKey, data.actionKey, data.configuration?.model, isAdmin]);
 
     // ── Resolve configSchema ──
     const appDetail = appDetailsByKey?.[data.appKey];
@@ -1510,11 +2150,14 @@ export default function ConfigPanelBody({
         if (isAgentNode) {
             const currentProvider = data.configuration?.provider || 'gemini';
             let modelOptions = [
-                { id: 'gemini-3.8-flash', value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Agentic Reasoning)' },
-                { id: 'gemini-3.5-flash-lite', value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Recommended - High Quota 500 RPD)' },
-                { id: 'gemma-4-26b', value: 'gemma-4-26b', label: 'Gemma 4 26B (High Throughput - 14.4K RPD)' },
-                { id: 'gemma-4-31b', value: 'gemma-4-31b', label: 'Gemma 4 31B (Deep Reasoning - 14.4K RPD)' },
+                { id: 'gemini-3.5-flash-lite', value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (Default - High Quota 500 RPD)' },
             ];
+            if (isAdmin) {
+                modelOptions.push(
+                    { id: 'gemini-3.8-flash', value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash (Frontier Agentic Reasoning - Admin)' },
+                    { id: 'gemini-3.6-flash', value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (High-Speed Agent - Admin)' }
+                );
+            }
             if (currentProvider === 'openai') {
                 modelOptions = [
                     { id: 'gpt-4o', value: 'gpt-4o', label: 'GPT-4o (OpenAI)' },
@@ -1547,8 +2190,10 @@ export default function ConfigPanelBody({
                     type: 'dropdown',
                     dependsOn: 'provider',
                     options: modelOptions,
-                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.8-flash'),
-                    helpText: 'The LLM used for multi-step reasoning and function calling.'
+                    default: currentProvider === 'openai' ? 'gpt-4o' : (currentProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.5-flash-lite'),
+                    helpText: isAdmin
+                        ? 'The LLM used for multi-step reasoning and function calling.'
+                        : 'The LLM used for multi-step reasoning and function calling. (Gemini 3.5 Flash Lite is default for all accounts; advanced models are reserved for Admin).'
                 },
                 {
                     key: 'systemPrompt',
@@ -2055,8 +2700,8 @@ export default function ConfigPanelBody({
                             <div className="cpb-field">
                                 <label className="cpb-label">Account <span className="cpb-required">*</span></label>
 
-                                {/* Platform-key apps (Telegram, Gemini, Sarvam, Agent): show managed card by default */}
-                                {(appDetail?.hasPlatformKey || isAgentNode) && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource) ? (
+                                {/* Platform-key apps (Gemini, Sarvam, Agent): show managed card by default (Telegram requires user connection) */}
+                                {((appDetail?.hasPlatformKey && data.appKey !== 'telegram') || isAgentNode) && (data.credentialSource === 'ADMIN_KEY' || !data.credentialSource) ? (
                                     <>
                                         <div className="cpb-account-card">
                                             <div className="cpb-account-left">
@@ -2066,7 +2711,7 @@ export default function ConfigPanelBody({
                                                 </div>
                                                 <div className="cpb-account-info">
                                                     <span className="cpb-account-name">
-                                                        {isAgentNode ? 'Crescendo AI Platform' : data.appKey === 'telegram' ? '@crescendo_app_bot' : `Crescendo ${data.appName || data.appKey}`}
+                                                        {isAgentNode ? 'Crescendo AI Platform' : `Crescendo ${data.appName || data.appKey}`}
                                                     </span>
                                                     <span className="cpb-account-hint">Managed · No setup needed</span>
                                                 </div>
@@ -2081,144 +2726,155 @@ export default function ConfigPanelBody({
                                                                 updateNodeData(configNode.id, { credentialSource: 'PERSONAL', connectionId: null, account: null, accountName: '' });
                                                                 if (onOpenAppBrowser) onOpenAppBrowser(data.appKey);
                                                             }}>
-                                                                Use my own {isAgentNode ? 'API key / BYOK' : data.appKey === 'telegram' ? 'bot token' : 'API key'}
+                                                                Use my own {isAgentNode ? 'API key / BYOK' : 'API key'}
                                                             </button>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Telegram: quick authorization links */}
-                                        {data.appKey === 'telegram' && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                                                <div style={{ fontSize: '0.73rem', color: 'var(--text-tertiary)' }}>
-                                                    Authorize the bot in your chat, group, or channel:
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                    <a
-                                                        href="https://t.me/crescendo_app_bot"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            padding: '5px 10px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid var(--border-primary)',
-                                                            background: 'var(--bg-elevated)',
-                                                            color: 'var(--text-primary)',
-                                                            textDecoration: 'none',
-                                                            fontSize: '0.74rem',
-                                                            fontWeight: 500,
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                        }}
-                                                    >
-                                                        Direct Chat ↗
-                                                    </a>
-                                                    <a
-                                                        href="https://t.me/crescendo_app_bot?startgroup=true"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            padding: '5px 10px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid var(--border-primary)',
-                                                            background: 'var(--bg-elevated)',
-                                                            color: 'var(--text-primary)',
-                                                            textDecoration: 'none',
-                                                            fontSize: '0.74rem',
-                                                            fontWeight: 500,
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                        }}
-                                                    >
-                                                        Add to Group ↗
-                                                    </a>
-                                                    <a
-                                                        href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{
-                                                            padding: '5px 10px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid var(--border-primary)',
-                                                            background: 'var(--bg-elevated)',
-                                                            color: 'var(--text-primary)',
-                                                            textDecoration: 'none',
-                                                            fontSize: '0.74rem',
-                                                            fontWeight: 500,
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                        }}
-                                                    >
-                                                        Add to Channel ↗
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        )}
                                     </>
                                 ) : data.connectionId && selectedConnections.length > 0 ? (() => {
                                     const conn = selectedConnections.find(c => c.id === data.connectionId);
                                     return (
-                                        <div className="cpb-account-card">
-                                            <div className="cpb-account-left">
-                                                <div className="cpb-app-select-icon" style={{ width: '28px', height: '28px' }}>
-                                                    <img src={appDetail?.logoUrl || data.iconUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                                                    <HiOutlineBolt style={{ display: 'none' }} />
+                                        <>
+                                            <div className="cpb-account-card">
+                                                <div className="cpb-account-left">
+                                                    <div className="cpb-app-select-icon" style={{ width: '28px', height: '28px' }}>
+                                                        <img src={appDetail?.logoUrl || data.iconUrl || `/icons/${data.appKey}.svg`} alt="" className="app-logo-img" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                                                        <HiOutlineBolt style={{ display: 'none' }} />
+                                                    </div>
+                                                    <div className="cpb-account-info">
+                                                        <span className="cpb-account-name">{conn?.accountEmail || conn?.accountDisplayName || conn?.name || data.appName}</span>
+                                                        {conn?.name && <span className="cpb-account-hint">{conn.name}</span>}
+                                                    </div>
                                                 </div>
-                                                <div className="cpb-account-info">
-                                                    <span className="cpb-account-name">{conn?.accountEmail || conn?.accountDisplayName || conn?.name || data.appName}</span>
-                                                    {conn?.name && <span className="cpb-account-hint">{conn.name}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="cpb-account-actions">
-                                                <button type="button" className="cpb-account-change" title="Change or switch account" aria-label="Change account" onClick={() => {
-                                                    if (appDetail?.hasPlatformKey || isAgentNode) {
-                                                        updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
-                                                    } else {
-                                                        updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
-                                                    }
-                                                }}>Change</button>
-                                                <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
-                                                    <button type="button" className="cpb-account-dots" title="Connection options" aria-label="Connection options" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
-                                                    {accountMenuOpen && (
-                                                        <div className="cpb-account-menu">
-                                                            <button type="button" onClick={async () => {
-                                                                setAccountMenuOpen(false);
-                                                                const addToast = useToastStore.getState().addToast;
-                                                                addToast('Testing connection…', 'info', 5000);
-                                                                try {
-                                                                    const result = await connectionsApi.test(data.connectionId);
-                                                                    if (result.success) {
-                                                                        addToast(result.message || 'Connection works!', 'success');
-                                                                    } else {
-                                                                        addToast(result.message || 'Connection test failed', 'error', 5000);
-                                                                    }
-                                                                } catch (err) {
-                                                                    addToast('Test failed: ' + (err?.response?.data?.message || err.message), 'error', 5000);
-                                                                }
-                                                            }}>
-                                                                Test connection
-                                                            </button>
-                                                            <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
-                                                                Reconnect
-                                                            </button>
-                                                            {(appDetail?.hasPlatformKey || isAgentNode) && (
-                                                                <button type="button" onClick={() => {
+                                                <div className="cpb-account-actions">
+                                                    <button type="button" className="cpb-account-change" title="Change or switch account" aria-label="Change account" onClick={() => {
+                                                        if ((appDetail?.hasPlatformKey && data.appKey !== 'telegram') || isAgentNode) {
+                                                            updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                        } else {
+                                                            updateNodeData(configNode.id, { connectionId: null, account: null, accountName: '' });
+                                                        }
+                                                    }}>Change</button>
+                                                    <div className="cpb-account-menu-wrap" ref={accountMenuRef}>
+                                                        <button type="button" className="cpb-account-dots" title="Connection options" aria-label="Connection options" onClick={() => setAccountMenuOpen(!accountMenuOpen)}>⋮</button>
+                                                        {accountMenuOpen && (
+                                                            <div className="cpb-account-menu">
+                                                                <button type="button" onClick={async () => {
                                                                     setAccountMenuOpen(false);
-                                                                    updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                                    const addToast = useToastStore.getState().addToast;
+                                                                    addToast('Testing connection…', 'info', 5000);
+                                                                    try {
+                                                                        const result = await connectionsApi.test(data.connectionId);
+                                                                        if (result.success) {
+                                                                            addToast(result.message || 'Connection works!', 'success');
+                                                                        } else {
+                                                                            addToast(result.message || 'Connection test failed', 'error', 5000);
+                                                                        }
+                                                                    } catch (err) {
+                                                                        addToast('Test failed: ' + (err?.response?.data?.message || err.message), 'error', 5000);
+                                                                    }
                                                                 }}>
-                                                                    Switch to managed account
+                                                                    Test connection
                                                                 </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                                <button type="button" onClick={() => { setAccountMenuOpen(false); handleNewConnection(data.connectionId); }}>
+                                                                    Reconnect
+                                                                </button>
+                                                                {data.appKey === 'telegram' && (
+                                                                    <button type="button" onClick={() => {
+                                                                        setAccountMenuOpen(false);
+                                                                        updateNodeData(configNode.id, { credentialSource: 'PERSONAL', connectionId: null, account: null, accountName: '' });
+                                                                        if (onOpenAppBrowser) onOpenAppBrowser(data.appKey);
+                                                                    }}>
+                                                                        Connect another account / BYOB
+                                                                    </button>
+                                                                )}
+                                                                {((appDetail?.hasPlatformKey && data.appKey !== 'telegram') || isAgentNode) && (
+                                                                    <button type="button" onClick={() => {
+                                                                        setAccountMenuOpen(false);
+                                                                        updateNodeData(configNode.id, { credentialSource: 'ADMIN_KEY', connectionId: null, account: null, accountName: '' });
+                                                                    }}>
+                                                                        Switch to managed account
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+
+                                            {/* Telegram: quick authorization links */}
+                                            {data.appKey === 'telegram' && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                                                    <div style={{ fontSize: '0.73rem', color: 'var(--text-tertiary)' }}>
+                                                        Authorize @crescendo_app_bot in your chat, group, or channel:
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                        <a
+                                                            href="https://t.me/crescendo_app_bot"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                padding: '5px 10px',
+                                                                borderRadius: '6px',
+                                                                border: '1px solid var(--border-primary)',
+                                                                background: 'var(--bg-elevated)',
+                                                                color: 'var(--text-primary)',
+                                                                textDecoration: 'none',
+                                                                fontSize: '0.74rem',
+                                                                fontWeight: 500,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                            }}
+                                                        >
+                                                            Direct Chat ↗
+                                                        </a>
+                                                        <a
+                                                            href="https://t.me/crescendo_app_bot?startgroup=true"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                padding: '5px 10px',
+                                                                borderRadius: '6px',
+                                                                border: '1px solid var(--border-primary)',
+                                                                background: 'var(--bg-elevated)',
+                                                                color: 'var(--text-primary)',
+                                                                textDecoration: 'none',
+                                                                fontSize: '0.74rem',
+                                                                fontWeight: 500,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                            }}
+                                                        >
+                                                            Add to Group ↗
+                                                        </a>
+                                                        <a
+                                                            href="https://t.me/crescendo_app_bot?startchannel&admin=post_messages+edit_messages+delete_messages+pin_messages"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                padding: '5px 10px',
+                                                                borderRadius: '6px',
+                                                                border: '1px solid var(--border-primary)',
+                                                                background: 'var(--bg-elevated)',
+                                                                color: 'var(--text-primary)',
+                                                                textDecoration: 'none',
+                                                                fontSize: '0.74rem',
+                                                                fontWeight: 500,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                            }}
+                                                        >
+                                                            Add to Channel ↗
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
                                     );
                                 })() : (
                                     <>
@@ -2335,6 +2991,19 @@ export default function ConfigPanelBody({
                                     )}
                                 </div>
                             ))
+                        )}
+
+                        {/* Agent tools section — allow attaching catalog actions and sub-workflows */}
+                        {isAgentNode && (
+                            <AgentToolsSection
+                                configuration={data.configuration || {}}
+                                updateConfig={updateConfig}
+                                catalogApps={catalogApps}
+                                appDetailsByKey={appDetailsByKey}
+                                ensureAppDetail={ensureAppDetail}
+                                allConnections={allConnections}
+                                workflowId={workflowId}
+                            />
                         )}
 
                         {/* Continue to Test */}

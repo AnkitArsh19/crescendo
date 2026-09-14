@@ -24,9 +24,20 @@ public class SubWorkflowToolRunner {
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
 
     private final DistributedLockService lockService;
+    private final com.crescendo.execution.engine.WorkflowExecutionEngine executionEngine;
+    private final com.crescendo.logbook.workflow_run.WorkflowRunRepository runRepo;
+    private final com.crescendo.workflow.workflow_command.Workflow_commandRepository workflowRepo;
 
-    public SubWorkflowToolRunner(DistributedLockService lockService) {
+    public SubWorkflowToolRunner(
+            DistributedLockService lockService,
+            @org.springframework.context.annotation.Lazy com.crescendo.execution.engine.WorkflowExecutionEngine executionEngine,
+            com.crescendo.logbook.workflow_run.WorkflowRunRepository runRepo,
+            com.crescendo.workflow.workflow_command.Workflow_commandRepository workflowRepo
+    ) {
         this.lockService = lockService;
+        this.executionEngine = executionEngine;
+        this.runRepo = runRepo;
+        this.workflowRepo = workflowRepo;
     }
 
     public Map<String, Object> executeSubWorkflowTool(
@@ -51,20 +62,54 @@ public class SubWorkflowToolRunner {
             log.info("Acquired lock {}. Executing sub-workflow {} as tool with input params={}",
                     lockKey, subWorkflowId, inputParams);
 
-            // TODO (Phase 2 — Sub-workflow tool wiring):
-            // Inject WorkflowExecutionEngine and call executeSubWorkflow(subWorkflowId, ownerUserId, inputParams).
-            // This requires WorkflowExecutionEngine to expose a synchronous executeSubWorkflow() method that
-            // returns the final step output without creating a full async WorkflowRun record, OR
-            // creates a WorkflowRun with RUN_AS_TOOL status and blocks until it completes.
-            //
-            // The lock discipline here (tryLock → execute → unlock) is correct and must be preserved.
-            // Only the inner execution call needs to be wired.
-            //
-            // Until this is implemented, agent nodes that invoke sub-workflows will receive an error
-            // observation, which the LLM can handle gracefully by attempting a different tool.
-            throw new UnsupportedOperationException(
-                    "Sub-workflow tool execution is not yet implemented. " +
-                    "Wire WorkflowExecutionEngine.executeSubWorkflow() here. subWorkflowId=" + subWorkflowId
+            var workflowOpt = workflowRepo.findById(subWorkflowId);
+            if (workflowOpt.isEmpty()) {
+                log.warn("Sub-workflow {} not found for tool execution", subWorkflowId);
+                return Map.of("status", "NOT_FOUND", "error", "Sub-workflow " + subWorkflowId + " not found");
+            }
+
+            var workflow = workflowOpt.get();
+            if (workflow.getUser() != null && !workflow.getUser().getId().equals(ownerUserId)) {
+                log.warn("Access denied for user {} on sub-workflow {}", ownerUserId, subWorkflowId);
+                return Map.of("status", "FORBIDDEN", "error", "Access denied for sub-workflow " + subWorkflowId);
+            }
+
+            UUID runId = UUID.randomUUID();
+            com.crescendo.logbook.workflow_run.WorkflowRun run = new com.crescendo.logbook.workflow_run.WorkflowRun(
+                    runId,
+                    subWorkflowId,
+                    ownerUserId,
+                    inputParams != null ? new java.util.HashMap<>(inputParams) : new java.util.HashMap<>(),
+                    com.crescendo.enums.WorkflowRunStatus.RUNNING
+            );
+            runRepo.save(run);
+
+            // Synchronously execute the sub-workflow in-process on virtual thread
+            executionEngine.execute(run);
+
+            // Fetch final status
+            var refreshed = runRepo.findById(runId).orElse(run);
+            boolean success = refreshed.getStatus() == com.crescendo.enums.WorkflowRunStatus.SUCCESS;
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("status", success ? "SUCCESS" : "FAILURE");
+            result.put("subWorkflowRunId", runId.toString());
+            result.put("subWorkflowId", subWorkflowId.toString());
+            if (refreshed.getExecutionState() != null && !refreshed.getExecutionState().isEmpty()) {
+                result.put("output", refreshed.getExecutionState());
+                result.put("data", refreshed.getExecutionState());
+            } else if (!success) {
+                result.put("error", refreshed.getErrorMessage() != null ? refreshed.getErrorMessage() : "Sub-workflow execution failed");
+            } else {
+                result.put("output", Map.of("message", "Sub-workflow executed successfully"));
+            }
+
+            return result;
+        } catch (Exception e) {
+            log.error("Sub-workflow tool execution failed for {}: {}", subWorkflowId, e.getMessage(), e);
+            return Map.of(
+                    "status", "ERROR",
+                    "error", "Failed to execute sub-workflow: " + e.getMessage()
             );
         } finally {
             lockService.unlock(lockKey, lockToken.get());

@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiOutlinePlus, HiOutlineTrash, HiOutlinePencil, HiOutlineLink,
@@ -301,6 +301,49 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
   const [error, setError] = useState(null);
   const [isWaitingDesktopOAuth, setIsWaitingDesktopOAuth] = useState(false);
   const [lastAuthUrl, setLastAuthUrl] = useState(null);
+  const [isReconnectingTelegram, setIsReconnectingTelegram] = useState(false);
+  const tgReconnectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (tgReconnectTimerRef.current) clearInterval(tgReconnectTimerRef.current);
+    };
+  }, []);
+
+  const handleReconnectTelegram = async () => {
+    setError(null);
+    setIsReconnectingTelegram(true);
+    try {
+      const res = await connectionsApi.initiateTelegramLink();
+      const { token, deepLink } = res;
+      if (isTauri()) {
+        await openExternalBrowser(deepLink);
+      } else {
+        window.open(deepLink, '_blank');
+      }
+
+      if (tgReconnectTimerRef.current) clearInterval(tgReconnectTimerRef.current);
+      tgReconnectTimerRef.current = setInterval(async () => {
+        try {
+          const statusRes = await connectionsApi.getTelegramLinkStatus(token);
+          if (statusRes.status === 'COMPLETED') {
+            clearInterval(tgReconnectTimerRef.current);
+            tgReconnectTimerRef.current = null;
+            setIsReconnectingTelegram(false);
+            onReconnected?.();
+          } else if (statusRes.status === 'EXPIRED') {
+            clearInterval(tgReconnectTimerRef.current);
+            tgReconnectTimerRef.current = null;
+            setIsReconnectingTelegram(false);
+            setError('Telegram linking expired. Please try again.');
+          }
+        } catch {}
+      }, 1500);
+    } catch (e) {
+      setIsReconnectingTelegram(false);
+      setError(e.response?.data?.message || 'Failed to initiate Telegram link');
+    }
+  };
 
   // Listen for desktop OAuth deep-link completion
   useEffect(() => {
@@ -455,8 +498,8 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -514,6 +557,27 @@ function EditConnectionModal({ connection, app, onCancel, onSaved, onReconnected
                   title={`Reconnect with ${app?.name || connection.appKey}`}
                 >
                   <HiOutlineRefresh /> Reconnect
+                </button>
+              </div>
+            </div>
+          )}
+
+          {connection.appKey === 'telegram' && (
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-accent)' }}>Telegram Account Link</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>Re-link your account or refresh channel memberships via @crescendo_app_bot</div>
+                </div>
+                <button
+                  type="button"
+                  className="conn-btn-primary"
+                  style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                  onClick={handleReconnectTelegram}
+                  disabled={isReconnectingTelegram}
+                >
+                  <HiOutlineRefresh className={isReconnectingTelegram ? 'animate-spin' : ''} />
+                  {isReconnectingTelegram ? 'Waiting for START…' : 'Reconnect Telegram'}
                 </button>
               </div>
             </div>

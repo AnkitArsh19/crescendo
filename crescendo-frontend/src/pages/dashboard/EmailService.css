@@ -88,7 +88,24 @@
 }
 
 @media (max-width: 640px) {
-    .email-service-header { margin-bottom: 22px; }
-    .email-service-tabs { margin-left: -4px; margin-right: -4px; margin-bottom: 24px; }
-    .email-tab { padding: 10px 12px; }
+    .email-service-header {
+        margin-bottom: 20px;
+    }
+
+    .email-service-title {
+        font-size: 1.4rem;
+    }
+
+    .email-service-tabs {
+        margin-left: -12px;
+        margin-right: -12px;
+        padding: 0 12px;
+        margin-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .email-tab {
+        padding: 10px 14px;
+        min-height: 42px;
+    }
 }

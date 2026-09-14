@@ -243,7 +243,7 @@ export default function Hero() {
                         <Link to="/register" className="hero-btn-primary">
                             Get Started <HiArrowRight />
                         </Link>
-                        <Link to="/docs" className="hero-btn-secondary">View Documentation</Link>
+                        <a href="#downloads" className="hero-btn-secondary">Download App</a>
                     </motion.div>
 
                     {/* ── Animated stats ── */}

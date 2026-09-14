@@ -2,6 +2,9 @@
 
 .connections-page {
     padding: 0;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
 }
 
 .connections-header {
@@ -67,8 +70,10 @@
 
 .connections-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
     gap: 16px;
+    min-width: 0;
+    width: 100%;
 }
 
 .conn-card {
@@ -77,6 +82,10 @@
     border-radius: var(--radius-lg);
     padding: 20px;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
 .conn-card:hover {
@@ -89,6 +98,8 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 16px;
+    min-width: 0;
+    width: 100%;
 }
 
 .conn-card-app-icon {
@@ -1090,4 +1101,82 @@ select.conn-form-input:focus {
 
 .conn-form-textarea::placeholder {
     color: var(--text-tertiary);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 640px) {
+    .connections-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .connections-title {
+        font-size: 1.3rem;
+    }
+
+    .connections-search-bar {
+        max-width: 100%;
+        margin-bottom: 16px;
+    }
+
+    .connections-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 12px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .conn-card {
+        padding: 16px;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .conn-card-header {
+        min-width: 0;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .conn-status-badge {
+        padding: 3px 8px;
+        font-size: 0.68rem;
+    }
+
+    .conn-modal-backdrop {
+        padding: 12px;
+    }
+
+    .conn-modal {
+        max-width: 100% !important;
+        max-height: 92vh;
+        border-radius: var(--radius-lg);
+    }
+}
+
+@media (max-width: 480px) {
+    .conn-card-actions {
+        flex-wrap: wrap;
+    }
+
+    .conn-btn-oauth {
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .conn-modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .conn-modal-footer button {
+        width: 100%;
+        justify-content: center;
+    }
 }

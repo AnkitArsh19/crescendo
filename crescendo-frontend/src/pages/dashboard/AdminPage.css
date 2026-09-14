@@ -481,16 +481,43 @@
 
 @media (max-width: 640px) {
   .adm-page {
-    padding: 20px 16px;
+    padding: 16px 12px;
   }
 
-  .adm-user-row {
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
+  .adm-title {
+    font-size: 1.3rem;
   }
 
   .adm-user-header {
     display: none;
+  }
+
+  .adm-user-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .adm-email-add {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .adm-email-add-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .adm-pk-form-actions {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .adm-pk-form-actions button {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
   }
 }
 

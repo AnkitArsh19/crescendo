@@ -67,8 +67,8 @@ async function generateShareLink(ids) {
     // Send to backend to get short ID
     const { shareId } = await workflowApi.createSharedTemplate(jsonStr);
     
-    const origin = window.location.origin;
-    return `${origin}/shared/${shareId}`;
+    const appBase = (import.meta.env.VITE_APP_URL || import.meta.env.VITE_BROWSER_URL || 'https://app.crescendo.run').replace(/\/+$/, '');
+    return `${appBase}/shared/${shareId}`;
 }
 
 export default function Workflows() {
@@ -169,10 +169,10 @@ export default function Workflows() {
     const handleShare = async (ids) => {
         try {
             const link = await generateShareLink(ids);
-            navigator.clipboard.writeText(link).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            });
+            await navigator.clipboard.writeText(link);
+            setCopied(true);
+            useToastStore.getState().addToast('Share link copied to clipboard', 'success', 2000);
+            setTimeout(() => setCopied(false), 2000);
         } catch {
             useToastStore.getState().addToast('Failed to generate share link', 'error');
         }

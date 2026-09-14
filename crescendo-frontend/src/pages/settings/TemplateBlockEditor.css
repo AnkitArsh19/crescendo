@@ -533,7 +533,7 @@ input[type="number"] {
 }
 
 .rs-canvas-block-wrap.selected {
-  outline: 2px solid #3b82f6 !important;
+  outline: 2px solid var(--border-hover) !important;
 }
 
 .rs-block-hover-bar {
@@ -1547,8 +1547,8 @@ input[type="number"] {
 
 .rs-image-dropzone:hover,
 .rs-image-dropzone.dragging {
-  border-color: #3b82f6;
-  background-color: rgba(59, 130, 246, 0.05);
+  border-color: var(--border-hover);
+  background-color: var(--bg-hover);
 }
 
 .rs-image-dropzone-empty {
@@ -1660,8 +1660,8 @@ input[type="number"] {
 }
 
 .rs-preset-card.active {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--border-hover);
+  box-shadow: 0 0 0 1px var(--border-hover);
 }
 
 .rs-preset-card img {
@@ -1685,8 +1685,8 @@ input[type="number"] {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: #3b82f6;
-  color: #ffffff;
+  background-color: var(--text-accent);
+  color: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1734,4 +1734,77 @@ input[type="number"] {
   padding: 5px 6px;
   outline: none;
   box-sizing: border-box;
+}
+
+/* ─── Studio Responsive ─── */
+@media (max-width: 768px) {
+  .rs-topbar {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .rs-breadcrumb-item,
+  .rs-breadcrumb-sep {
+    display: none;
+  }
+
+  .rs-title-input {
+    max-width: 120px;
+  }
+
+  .rs-canvas-workspace {
+    padding: 16px 8px 60px;
+  }
+
+  .rs-canvas-container {
+    max-width: 100%;
+  }
+
+  .rs-inspector-container {
+    position: fixed !important;
+    top: 48px;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    max-width: 90vw !important;
+    background-color: #09090b !important;
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.85);
+  }
+
+  .rs-floating-tool-palette {
+    top: 10px;
+    left: 10px;
+  }
+
+  .rs-flyout-menu {
+    max-width: calc(100vw - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .rs-topbar {
+    height: auto;
+    min-height: 48px;
+    padding: 6px 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .rs-topbar-center {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rs-seg-group {
+    width: 100%;
+    display: flex;
+  }
+
+  .rs-seg-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
 }

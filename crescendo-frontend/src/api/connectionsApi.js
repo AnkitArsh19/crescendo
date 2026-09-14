@@ -25,5 +25,14 @@ export const connectionsApi = {
 
   testRaw: (data) =>
     api.post('/connections/test', data).then((r) => r.data),
+
+  initiateTelegramLink: () =>
+    api.post('/api/telegram/link/initiate').then((r) => r.data),
+
+  getTelegramLinkStatus: (token) =>
+    api.get(`/api/telegram/link/status?token=${encodeURIComponent(token)}`).then((r) => r.data),
+
+  addTelegramChat: (chatId) =>
+    api.post('/api/telegram/link/add-chat', { chatId }).then((r) => r.data),
 };
 

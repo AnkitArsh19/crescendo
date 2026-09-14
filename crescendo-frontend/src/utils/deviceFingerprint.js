@@ -33,12 +33,14 @@ export const getDeviceLabel = () => {
   else if (ua.includes('Chrome')) browser = 'Chrome';
   else if (ua.includes('Safari')) browser = 'Safari';
 
-  // Basic OS Detection
-  if (ua.includes('Win')) os = 'Windows';
-  else if (ua.includes('Mac')) os = 'macOS';
+  // Basic OS Detection (check mobile first since Android includes 'Linux' and iOS includes 'Mac')
+  if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad') || ua.includes('iPod') || ua.includes('like Mac')) os = 'iOS';
+  else if (ua.includes('Win')) os = 'Windows';
+  else if (ua.includes('Mac') && !(navigator.maxTouchPoints && navigator.maxTouchPoints > 2)) os = 'macOS';
+  else if (ua.includes('Mac')) os = 'iOS'; // iPadOS requesting desktop site
+  else if (ua.includes('CrOS')) os = 'ChromeOS';
   else if (ua.includes('Linux')) os = 'Linux';
-  else if (ua.includes('Android')) os = 'Android';
-  else if (ua.includes('like Mac')) os = 'iOS';
 
   return `${browser} on ${os}`;
 };

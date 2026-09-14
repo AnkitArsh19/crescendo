@@ -574,7 +574,7 @@ public class WorkflowExecutionEngine {
      * <p>When a connectionId is present, ownership is strictly enforced: a connection
      * owned by another user cannot be used even if the ID is known.
      */
-    private Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
+    public Map<String, Object> loadCredentials(UUID connectionId, String appKey, UUID userId) {
         // ── Tier 0: Check if app requires no authentication (AuthType.NONE) ───
         if (appKey != null) {
             try {

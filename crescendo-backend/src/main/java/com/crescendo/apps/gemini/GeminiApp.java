@@ -45,11 +45,12 @@ public class GeminiApp implements AppDefinition {
                                             "default", "gemini-3.5-flash-lite",
                                             "options", List.of(
                                                     "gemini-3.5-flash-lite",
-                                                    "gemma-4-26b",
-                                                    "gemma-4-31b",
-                                                    "gemini-3.8-flash"
+                                                    "gemini-3.6-flash",
+                                                    "gemini-3.8-flash",
+                                                    "gemma-4-26b-it",
+                                                    "gemma-4-31b-it"
                                             ),
-                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD). High-throughput: gemma-4-26b (14.4K RPD)."
+                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD) or gemini-3.6-flash. Text only: gemma-4-26b-it (14.4K RPD)."
                                     ),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true),
                                     Map.of("key", "temperature", "label", "Temperature", "type", "number", "required", false),
@@ -69,11 +70,10 @@ public class GeminiApp implements AppDefinition {
                                             "default", "gemini-3.5-flash-lite",
                                             "options", List.of(
                                                     "gemini-3.5-flash-lite",
-                                                    "gemma-4-26b",
-                                                    "gemma-4-31b",
+                                                    "gemini-3.6-flash",
                                                     "gemini-3.8-flash"
                                             ),
-                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD). High-throughput: gemma-4-26b (14.4K RPD)."
+                                            "helpText", "Recommended: gemini-3.5-flash-lite (500 RPD) or gemini-3.8-flash for multimodal analysis."
                                     ),
                                     Map.of("key", "imageUrl", "label", "Image URL", "type", "text", "required", true),
                                     Map.of("key", "prompt", "label", "Prompt", "type", "textarea", "required", true)

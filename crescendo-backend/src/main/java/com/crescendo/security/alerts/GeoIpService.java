@@ -105,13 +105,13 @@ public class GeoIpService {
         }
 
         try {
-            URL url = new URL(downloadUrl);
+            URL url = java.net.URI.create(downloadUrl).toURL();
             try (InputStream in = new BufferedInputStream(url.openStream());
                  GzipCompressorInputStream gzIn = new GzipCompressorInputStream(in);
                  TarArchiveInputStream tarIn = new TarArchiveInputStream(gzIn)) {
 
                 TarArchiveEntry entry;
-                while ((entry = (TarArchiveEntry) tarIn.getNextEntry()) != null) {
+                while ((entry = tarIn.getNextTarEntry()) != null) {
                     if (entry.getName().endsWith(".mmdb")) {
                         // Download to a temporary file first
                         Path tempFile = Files.createTempFile("geoip", ".mmdb");

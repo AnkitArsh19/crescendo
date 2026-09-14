@@ -21,7 +21,7 @@ const DeveloperProfile = () => {
               left: '20%',
               width: '400px',
               height: '400px',
-              background: 'radial-gradient(circle, rgba(147,51,234,0.05) 0%, transparent 60%)',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)',
               borderRadius: '50%',
               filter: 'blur(80px)',
               pointerEvents: 'none'
@@ -34,7 +34,7 @@ const DeveloperProfile = () => {
               right: '20%',
               width: '400px',
               height: '400px',
-              background: 'radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 60%)',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)',
               borderRadius: '50%',
               filter: 'blur(80px)',
               pointerEvents: 'none'

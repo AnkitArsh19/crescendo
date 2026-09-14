@@ -8,6 +8,7 @@ import com.crescendo.workflow.workflow_command.Workflow_commandRepository;
 import com.crescendo.workflow.workflow_command.Workflow_commandService;
 import com.crescendo.workflow.workflow_query.Workflow_query;
 import com.crescendo.workflow.workflow_query.Workflow_queryRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,16 +45,24 @@ class WorkflowCqrsIntegrationTest extends BaseIntegrationTest {
     void setUp() {
         queryRepo.deleteAll();
         commandRepo.deleteAll();
-        userRepo.deleteAll();
 
         testUser = new User_command();
         testUser.setId(UUID.randomUUID());
-        testUser.setEmail(com.crescendo.shared.domain.valueobject.Email.of("cqrs-test@test.com"));
-        testUser.setUserName("cqrstest");
+        testUser.setEmail(com.crescendo.shared.domain.valueobject.Email.of("cqrs-test-" + UUID.randomUUID() + "@test.com"));
+        testUser.setUserName("cqrstest_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8));
         testUser.setRole(com.crescendo.enums.UserRole.USER);
         userRepo.save(testUser);
         
         doNothing().when(accessControlService).enforceWorkflowLimit(any());
+    }
+
+    @AfterEach
+    void tearDown() {
+        queryRepo.deleteAll();
+        commandRepo.deleteAll();
+        if (testUser != null && testUser.getId() != null) {
+            userRepo.deleteById(testUser.getId());
+        }
     }
 
     @Test

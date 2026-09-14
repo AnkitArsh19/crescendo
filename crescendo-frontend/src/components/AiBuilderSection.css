@@ -361,9 +361,13 @@
         gap: 28px;
     }
     .ai-card-connector {
-        right: 50%;
-        bottom: -22px;
-        transform: translateX(50%) rotate(90deg);
+        left: 50%;
+        right: auto;
+        bottom: -20px;
+        margin-left: -16px;
+    }
+    .ai-card-connector svg {
+        transform: rotate(90deg);
     }
 }
 

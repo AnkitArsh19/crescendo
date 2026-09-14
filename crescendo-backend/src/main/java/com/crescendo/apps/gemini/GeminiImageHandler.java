@@ -39,7 +39,15 @@ public class GeminiImageHandler implements ActionHandler {
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .build();
 
-        String model = config.getOrDefault("model", "gemini-1.5-pro").toString();
+        String model = config.getOrDefault("model", "gemini-3.5-flash-lite").toString();
+        if (model.startsWith("models/")) {
+            model = model.substring("models/".length());
+        }
+        if ("gemini-pro".equalsIgnoreCase(model) || "gemini-1.5-pro".equalsIgnoreCase(model)) {
+            model = "gemini-3.8-flash";
+        } else if ("gemini-flash".equalsIgnoreCase(model) || "gemini-2.5-flash".equalsIgnoreCase(model) || "gemini-1.5-flash".equalsIgnoreCase(model)) {
+            model = "gemini-3.6-flash";
+        }
         String endpoint = "/" + model + ":generateContent?key=" + apiKey;
 
         // Note: Real implementations would download the image from imageUrl and convert to base64,

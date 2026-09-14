@@ -23,7 +23,7 @@ export default defineConfig({
   // optimizeDeps.include forces Vite to bundle them all in ONE pre-build pass,
   // so every file carries the same browserHash and the same React instance.
   resolve: {
-    dedupe: ['react', 'react-dom', 'zustand']
+    dedupe: ['react', 'react-dom', 'zustand', 'use-sync-external-store']
   },
   optimizeDeps: {
     include: [
@@ -33,6 +33,8 @@ export default defineConfig({
       'react/jsx-runtime',
       'react/jsx-dev-runtime',
       'zustand',
+      'use-sync-external-store',
+      'use-sync-external-store/shim',
       '@xyflow/react'
     ]
   },

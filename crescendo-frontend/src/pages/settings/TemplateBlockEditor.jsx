@@ -55,6 +55,7 @@ import {
   MdFormatColorFill
 } from 'react-icons/md';
 import { templatesApi } from '../../api/emailServiceApi';
+import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
 import './TemplateBlockEditor.css';
 
 // ─── Font & Token Constants ──────────────────────────────────────────────────
@@ -1236,6 +1237,27 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
     return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftFingerprint, savedTemplate?.id, isSaving]);
+
+  // Attempt landscape orientation lock on mobile devices
+  useEffect(() => {
+    const tryLandscape = async () => {
+      try {
+        if (window.screen?.orientation?.lock && window.innerWidth <= 768) {
+          await window.screen.orientation.lock('landscape');
+        }
+      } catch {
+        // Ignored — mobile browsers require user gesture or fullscreen
+      }
+    };
+    tryLandscape();
+    return () => {
+      try {
+        if (window.screen?.orientation?.unlock) {
+          window.screen.orientation.unlock();
+        }
+      } catch { /* ignored */ }
+    };
+  }, []);
 
   const resetThemeSection = (sec) => {
     const defaults = THEME_DEFAULTS.minimal;
@@ -3414,6 +3436,13 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
           </div>
         </div>
       )}
+
+      {/* Rotate to landscape tip for mobile portrait */}
+      <RotateLandscapePrompt
+        pageKey="template_editor"
+        title="Rotate for Template Editing"
+        message="The email template editor is best experienced in landscape mode."
+      />
     </div>,
     document.body
   );

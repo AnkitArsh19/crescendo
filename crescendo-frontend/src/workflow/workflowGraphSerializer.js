@@ -414,6 +414,8 @@ export function stepsToGraph(steps, backendEdges = [], vertical = false, catalog
             position: vertical
                 ? { x: 250, y: 60 + idx * 220 }
                 : { x: 120 + idx * 330, y: 200 },
+            sourcePosition: vertical ? 'bottom' : 'right',
+            targetPosition: vertical ? 'top' : 'left',
             data: {
                 stepIndex: idx + 1,
                 label: s.name,

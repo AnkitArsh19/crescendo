@@ -1,5 +1,5 @@
-import { memo, useCallback } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { memo, useCallback, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { HiOutlineSwitchHorizontal, HiCheck, HiOutlineExclamation } from 'react-icons/hi';
 
 /**
@@ -17,7 +17,7 @@ import { HiOutlineSwitchHorizontal, HiCheck, HiOutlineExclamation } from 'react-
  * Scenario D (Canvas Parity): AI-generated branching workflows use this node type
  * identically to hand-built workflows — no special AI-only rendering path exists.
  */
-function BranchNode({ data, selected }) {
+function BranchNode({ id, data, selected }) {
     const actionKey = data.actionKey || '';
     const isIf = actionKey === 'logic:if';
     const isSwitch = actionKey === 'logic:switch';
@@ -26,6 +26,12 @@ function BranchNode({ data, selected }) {
     const operationName = data.actionName || (isIf ? 'If' : isSwitch ? 'Switch' : 'Branch');
     const stepNumber = data.stepIndex != null ? data.stepIndex : null;
     const vertical = data._vertical || false;
+    const updateNodeInternals = useUpdateNodeInternals();
+
+    useEffect(() => {
+        updateNodeInternals(id);
+    }, [id, vertical, updateNodeInternals]);
+
     const isOrphaned = !!data.isOrphaned;
     const isConfigured = !!(data.appKey && data.actionKey);
 
@@ -104,6 +110,7 @@ function BranchNode({ data, selected }) {
 
             {/* Single IN handle */}
             <Handle
+                key={inPos}
                 type="target"
                 position={inPos}
                 id="in"
@@ -118,13 +125,13 @@ function BranchNode({ data, selected }) {
             {/* Named output handles — one per branch */}
             {outputHandles.map((h) => (
                 <Handle
-                    key={h.id}
+                    key={`${outPos}-${h.id}`}
                     type="source"
                     position={outPos}
                     id={h.id}
                     style={vertical
-                        ? { left: h.offsetPercent + '%', transform: 'translateX(-50%)' }
-                        : { top:  h.offsetPercent + '%', transform: 'translateY(-50%)' }
+                        ? { left: `${h.offsetPercent}%`, transform: 'translate(-50%, 50%)' }
+                        : { top: `${h.offsetPercent}%`, transform: 'translate(50%, -50%)' }
                     }
                     className={`wf-handle wf-handle--out wf-handle--branch-${h.id.replace('_', '-')}`}
                     title={`Branch: ${h.label} (drag to connect)`}
