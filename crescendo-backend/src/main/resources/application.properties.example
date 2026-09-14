@@ -3,6 +3,10 @@ spring.application.name=crescendo
 # Default active profile (can be overridden at startup with -Dspring.profiles.active=prod)
 spring.profiles.active=local
 
+# WebAuthn / Passkeys Configuration
+app.webauthn.rp-id=${APP_WEBAUTHN_RP_ID:crescendo.run}
+app.webauthn.rp-name=${APP_WEBAUTHN_RP_NAME:Crescendo}
+
 # Admin users (comma-separated emails) — promoted to ADMIN role on first startup
 crescendo.admin.emails=your-admin@example.com
 
@@ -70,11 +74,17 @@ app.geoip.license-key=REPLACE_ME
 app.geoip.auto-update.enabled=true
 
 # ─── CORS ────────────────────────────────────────────────────────────────────
-app.security.cors.allowed-origins=http://localhost:5173,https://app.crescendo.run
+app.security.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://app.crescendo.run,http://tauri.localhost,tauri://localhost}
+
+# ─── Cookie Defaults ─────────────────────────────────────────────────────────
+app.cookie.secure=${APP_COOKIE_SECURE:false}
+app.cookie.domain=${APP_COOKIE_DOMAIN:}
+app.cookie.same-site=${APP_COOKIE_SAME_SITE:Lax}
 
 # ─── Redis Cache ─────────────────────────────────────────────────────────────
 spring.cache.type=redis
 spring.data.redis.repositories.enabled=false
+crescendo.cache.prefix=${CRESCENDO_CACHE_PREFIX:crescendo:v1:}
 # spring.data.redis.host=localhost
 # spring.data.redis.port=6379
 
@@ -328,6 +338,8 @@ crescendo.integrations.oauth.providers.spotify.scopes=user-read-playback-state p
 # App registration: https://www.strava.com/settings/api
 # Note: Strava API requires an active paid Strava subscription on the developer account.
 # Strava operates in BYOK (Bring Your Own Key) mode where users provide their own Client ID & Secret.
+crescendo.integrations.oauth.providers.strava.client-id=${STRAVA_CLIENT_ID:}
+crescendo.integrations.oauth.providers.strava.client-secret=${STRAVA_CLIENT_SECRET:}
 crescendo.integrations.oauth.providers.strava.authorize-url=https://www.strava.com/oauth/authorize
 crescendo.integrations.oauth.providers.strava.token-url=https://www.strava.com/oauth/token
 crescendo.integrations.oauth.providers.strava.scopes=read,activity:read_all,activity:write,profile:read_all
@@ -539,21 +551,60 @@ crescendo.jobsearch.jooble-api-key=REPLACE_ME
 # ─── AI Provider API Keys (optional / admin-managed) ─────────────────────────
 # These are optional server-level keys. Users can also provide their own via Connections.
 # In production, manage these via the Admin Panel → Platform Keys, not this file.
-gemini.api.key=REPLACE_ME
-sarvam.api.key=REPLACE_ME
+gemini.api.key=${GEMINI_API_KEY:}
+gemini.model=${GEMINI_MODEL:gemini-3.5-flash-lite}
+
+# AI Rate Limiter & Concurrency Queue (Calibrated for Gemini 3.5 Flash Lite: 15 RPM, 500 RPD)
+crescendo.ai.ratelimit.user-rpm=${AI_RATE_LIMIT_USER_RPM:5}
+crescendo.ai.ratelimit.platform-rpm=${AI_RATE_LIMIT_PLATFORM_RPM:14}
+crescendo.ai.ratelimit.user-rpd=${AI_RATE_LIMIT_USER_RPD:30}
+crescendo.ai.ratelimit.platform-rpd=${AI_RATE_LIMIT_PLATFORM_RPD:480}
+crescendo.ai.ratelimit.queue-timeout-ms=${AI_RATE_LIMIT_QUEUE_TIMEOUT_MS:30000}
+
+sarvam.api.key=${SARVAM_API_KEY:}
 
 # ─── Internal Python AI Service (optional) ────────────────────────────────────
 # Used by /api/v1/ai/workflow-drafts for natural-language workflow draft creation.
 # Spring Boot remains source of truth for auth, validation, persistence, and execution.
-crescendo.python-ai.base-url=https://ai.crescendo.run
-crescendo.python-ai.service-token=
+crescendo.python-ai.base-url=${CRESCENDO_PYTHON_AI_BASE_URL:https://ai.crescendo.run}
+crescendo.python-ai.service-token=${CRESCENDO_PYTHON_AI_SERVICE_TOKEN:}
 
 # ─── Crescendo Email SMTP Relay ──────────────────────────────────────────────
 # Used by the crescendo-email internal app for API configuration for crescendo-email app (Brevo)
 crescendo.email.provider=brevo
-brevo.api.key=xkeysib-REPLACE_ME_WITH_YOUR_API_KEY
+brevo.api.key=${BREVO_API_KEY:}
+crescendo.mail.from=${BREVO_SENDER_EMAIL:noreply@crescendo.run}
 
 # ─── Domain Connect Configuration ─────────────────────────────────────────────
 # Optional path to private key PEM file used for Domain Connect DNS template signing
-domainconnect.private-key-path=
+domainconnect.private-key-path=${DOMAINCONNECT_PRIVATE_KEY_PATH:private_key.pem}
+
+# ─── Telegram Platform Bot Configuration ──────────────────────────────────────
+telegram.bot.token=${TELEGRAM_BOT_TOKEN:}
+telegram.bot.username=${TELEGRAM_BOT_USERNAME:crescendo_app_bot}
+
+# ─── Springdoc OpenAPI Configuration ──────────────────────────────────────────
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+
+# ─── File Storage Configuration ───────────────────────────────────────────────
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=55MB
+
+crescendo.storage.s3.bucket=${S3_BUCKET_NAME:crescendo-platform-storage}
+crescendo.storage.s3.region=${AWS_REGION:us-east-1}
+crescendo.storage.s3.access-key=${AWS_ACCESS_KEY_ID:}
+crescendo.storage.s3.secret-key=${AWS_SECRET_ACCESS_KEY:}
+crescendo.storage.s3.endpoint=${S3_ENDPOINT_OVERRIDE:}
+
+# ─── In-App Notification Configuration ────────────────────────────────────────
+crescendo.notifications.retention-days=${NOTIFICATION_RETENTION_DAYS:90}
+
+# ─── Production Logging Configuration ─────────────────────────────────────────
+logging.level.root=INFO
+logging.level.org.springframework.web=INFO
+logging.level.com.crescendo=INFO
+logging.level.org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer=ERROR
+logging.level.org.hibernate.orm.deprecation=ERROR
+logging.level.org.springdoc.core.events.SpringDocAppInitializer=ERROR
 

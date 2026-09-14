@@ -7,14 +7,19 @@ import com.crescendo.execution.action.ActionResult;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 
 @Component
 @ActionMapping(appKey = "crypto", actionKey = "decrypt")
 public class CryptoDecryptActionHandler implements ActionHandler {
+    private static final int GCM_IV_LENGTH_BYTES = 12;
+    private static final int GCM_TAG_LENGTH_BITS = 128;
+
     @Override
     public ActionResult execute(ActionContext context) {
         String value = String.valueOf(context.configuration().getOrDefault("value", ""));
@@ -31,10 +36,15 @@ public class CryptoDecryptActionHandler implements ActionHandler {
             System.arraycopy(keyBytes, 0, finalKey, 0, Math.min(keyBytes.length, 16));
             
             SecretKeySpec secretKeySpec = new SecretKeySpec(finalKey, "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             
-            byte[] decodedBytes = Base64.getDecoder().decode(value);
+            byte[] payload = Base64.getDecoder().decode(value);
+            if (payload.length <= GCM_IV_LENGTH_BYTES) {
+                return ActionResult.failure("Decryption failed: Invalid encrypted payload");
+            }
+            byte[] iv = Arrays.copyOfRange(payload, 0, GCM_IV_LENGTH_BYTES);
+            byte[] decodedBytes = Arrays.copyOfRange(payload, GCM_IV_LENGTH_BYTES, payload.length);
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
             byte[] decryptedBytes = cipher.doFinal(decodedBytes);
             String decryptedString = new String(decryptedBytes, StandardCharsets.UTF_8);
             

@@ -16,6 +16,16 @@ import { VariableInsertButton } from '../ConfigPanelBody';
 
 const GOOGLE_DRIVE_REGEX = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^&]*&)*id=)([a-zA-Z0-9_-]+)/;
 
+function isGoogleDriveUrl(url) {
+    if (typeof url !== 'string') return false;
+    try {
+        const parsed = new URL(url);
+        return parsed.hostname === 'drive.google.com';
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Format bytes into human-readable string (e.g., 4.2 MB)
  */
@@ -48,7 +58,7 @@ export function FileOrUrlField({ field, value, onChange, availableVariables }) {
 
     // Determine initial active mode (upload vs url)
     const initialMode = useMemo(() => {
-        if (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('{{') || value.includes('drive.google.com'))) {
+        if (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('{{') || isGoogleDriveUrl(value))) {
             return 'url';
         }
         if (value && typeof value === 'object' && value.storageKey) {
