@@ -12,17 +12,18 @@ import java.util.concurrent.*;
 import java.util.regex.Pattern;
 
 /**
- * Lever Job Board API provider: public, free, no authentication required.
+ * Ashby Job Board API provider: public, free, no authentication required.
  * <p>
- * Fetches job listings from companies using Lever as their ATS, querying all
- * boards concurrently using Java Virtual Threads.
+ * Fetches real-time job listings from modern AI research labs and technology companies
+ * that use Ashby as their primary ATS (e.g. OpenAI, Perplexity, Linear, Ramp, Vercel).
+ * All boards are queried concurrently using Java Virtual Threads.
  *
- * @see <a href="https://github.com/lever/postings-api">Lever Postings API</a>
+ * @see <a href="https://developers.ashbyhq.com/reference/jobboardapiobject">Ashby Job Board API</a>
  */
-public class LeverProvider implements JobSearchProvider {
+public class AshbyProvider implements JobSearchProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(LeverProvider.class);
-    private static final String API_BASE = "https://api.lever.co/v0/postings/{company}";
+    private static final Logger log = LoggerFactory.getLogger(AshbyProvider.class);
+    private static final String API_BASE = "https://api.ashbyhq.com/posting-api/job-board/{company}";
 
     private static final Pattern INTERN_PATTERN = Pattern.compile(
             "\\b(intern|internship|co-op|coop|trainee|summer\\s+intern)\\b",
@@ -30,25 +31,27 @@ public class LeverProvider implements JobSearchProvider {
     );
 
     /**
-     * Curated list of companies on Lever hiring in India and globally.
-     * Format: leverSlug -> companyName
+     * Curated list of high-growth tech companies and AI labs using Ashby.
+     * Format: ashbySlug -> companyName
      */
     private static final Map<String, String> DEFAULT_BOARDS = Map.ofEntries(
-            Map.entry("atlan", "Atlan"),
-            Map.entry("incred", "InCred"),
-            Map.entry("moengage", "MoEngage"),
-            Map.entry("gojek", "Gojek"),
-            Map.entry("tokopedia", "Tokopedia"),
-            Map.entry("grab", "Grab"),
-            Map.entry("canva", "Canva"),
-            Map.entry("netflix", "Netflix"),
-            Map.entry("palantir", "Palantir"),
-            Map.entry("datadoghq", "Datadog")
+            Map.entry("openai", "OpenAI"),
+            Map.entry("perplexity", "Perplexity"),
+            Map.entry("linear", "Linear"),
+            Map.entry("ramp", "Ramp"),
+            Map.entry("vercel", "Vercel"),
+            Map.entry("retool", "Retool"),
+            Map.entry("character", "Character.ai"),
+            Map.entry("sentry", "Sentry"),
+            Map.entry("cursor", "Cursor (Anysphere)"),
+            Map.entry("quora", "Quora"),
+            Map.entry("together", "Together AI"),
+            Map.entry("postman", "Postman")
     );
 
     @Override
     public String sourceName() {
-        return "Lever";
+        return "Ashby";
     }
 
     @Override
@@ -62,23 +65,22 @@ public class LeverProvider implements JobSearchProvider {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<JobSearchResult> search(String query, String location, Map<String, Object> config) {
         int limit = parseLimit(config, 20);
         String queryLower = query != null ? query.toLowerCase() : "";
         boolean internshipOnly = isInternshipOnly(config);
 
         Map<String, String> boards = new LinkedHashMap<>(DEFAULT_BOARDS);
-        String custom = config != null ? asStr(config.get("leverBoardSlugs")) : null;
+        String custom = config != null ? asStr(config.get("ashbyBoardSlugs")) : null;
         if (custom != null && !custom.isBlank()) {
             for (String slug : custom.split(",")) {
                 String s = slug.trim();
-                if (!s.isBlank()) {
-                    boards.put(s, s);
-                }
+                if (!s.isBlank()) boards.put(s, s);
             }
         }
 
-        // Query all company boards in parallel using Virtual Threads
+        // Query all boards concurrently using Virtual Threads
         List<CompletableFuture<List<JobSearchResult>>> futures = new ArrayList<>();
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         try {
@@ -86,8 +88,7 @@ public class LeverProvider implements JobSearchProvider {
                 String slug = entry.getKey();
                 String companyName = entry.getValue();
 
-                futures.add(CompletableFuture.supplyAsync(() ->
-                        queryBoard(slug, companyName, queryLower, location, internshipOnly), executor));
+                futures.add(CompletableFuture.supplyAsync(() -> queryBoard(slug, companyName, queryLower, location, internshipOnly), executor));
             }
 
             try {
@@ -121,17 +122,21 @@ public class LeverProvider implements JobSearchProvider {
     @SuppressWarnings("unchecked")
     private List<JobSearchResult> queryBoard(String slug, String companyName, String queryLower, String location, boolean internshipOnly) {
         try {
-            List<Map<String, Object>> jobs = HTTP
+            Map<String, Object> response = HTTP
                     .get()
                     .uri(API_BASE, slug)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 
-            if (jobs == null) return Collections.emptyList();
+            if (response == null || !(response.get("jobs") instanceof List<?> rawJobs)) {
+                return Collections.emptyList();
+            }
 
             List<JobSearchResult> results = new ArrayList<>();
-            for (Map<String, Object> job : jobs) {
-                String title = asStr(job.get("text"));
+            for (Object item : rawJobs) {
+                if (!(item instanceof Map<?, ?> job)) continue;
+
+                String title = asStr(job.get("title"));
                 if (title == null) continue;
 
                 // Keyword match
@@ -144,54 +149,59 @@ public class LeverProvider implements JobSearchProvider {
                     continue;
                 }
 
-                String jobLoc = null;
-                if (job.get("categories") instanceof Map<?, ?> cats) {
-                    jobLoc = asStr(cats.get("location"));
-                }
+                String jobLoc = asStr(job.get("location"));
+                boolean isRemote = Boolean.TRUE.equals(job.get("isRemote"));
 
                 // Location match
-                if (!matchesLocation(location, jobLoc)) {
+                if (!matchesLocation(location, jobLoc, isRemote)) {
                     continue;
                 }
 
+                String url = asStr(job.get("jobUrl"));
                 String desc = asStr(job.get("descriptionPlain"));
+                if (desc != null && desc.length() > 500) {
+                    desc = desc.substring(0, 500) + "...";
+                }
+                String publishedAt = asStr(job.get("publishedAt"));
+                String department = asStr(job.get("department"));
+                String empType = asStr(job.get("employmentType"));
 
                 List<String> tags = new ArrayList<>();
-                if (job.get("categories") instanceof Map<?, ?> cats) {
-                    if (cats.get("team") != null) tags.add(cats.get("team").toString());
-                    if (cats.get("commitment") != null) tags.add(cats.get("commitment").toString());
-                }
-                tags.add("Lever");
+                tags.add("Ashby");
+                if (department != null && !department.isBlank()) tags.add(department);
+                if (isRemote) tags.add("Remote");
 
                 results.add(new JobSearchResult(
                         title,
                         companyName,
-                        jobLoc != null ? jobLoc : "Unspecified",
-                        asStr(job.get("hostedUrl")),
+                        jobLoc != null ? jobLoc : (isRemote ? "Remote" : "Unspecified"),
+                        url,
                         null,
-                        truncate(desc, 500),
-                        asStr(job.get("createdAt")),
+                        desc,
+                        publishedAt,
                         sourceName(),
                         tags,
-                        null
+                        empType
                 ));
             }
             return results;
         } catch (Exception e) {
-            log.debug("[job-search] Lever board '{}' failed: {}", slug, e.getMessage());
+            log.debug("[job-search] Ashby board '{}' failed: {}", slug, e.getMessage());
             return Collections.emptyList();
         }
     }
 
-    private boolean matchesLocation(String requestedLoc, String jobLoc) {
+    private boolean matchesLocation(String requestedLoc, String jobLoc, boolean isRemote) {
         if (requestedLoc == null || requestedLoc.isBlank()
                 || requestedLoc.equalsIgnoreCase("India")
-                || requestedLoc.equalsIgnoreCase("Remote")
                 || requestedLoc.equalsIgnoreCase("Anywhere")
                 || requestedLoc.equalsIgnoreCase("All")) {
             return true;
         }
-        if (jobLoc == null || jobLoc.isBlank()) return true;
+        if (requestedLoc.equalsIgnoreCase("Remote")) {
+            return isRemote || (jobLoc != null && jobLoc.toLowerCase().contains("remote"));
+        }
+        if (jobLoc == null) return true;
         String req = requestedLoc.toLowerCase();
         String actual = jobLoc.toLowerCase();
         return actual.contains(req) || req.contains(actual);
@@ -205,7 +215,6 @@ public class LeverProvider implements JobSearchProvider {
     }
 
     private String asStr(Object v) { return v != null ? v.toString() : null; }
-    private String truncate(String s, int max) { return s != null && s.length() > max ? s.substring(0, max) + "..." : s; }
     private int parseLimit(Map<String, Object> config, int def) {
         try { return Integer.parseInt(config.getOrDefault("maxResults", def).toString()); }
         catch (Exception e) { return def; }
