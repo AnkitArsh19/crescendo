@@ -37,7 +37,7 @@ function createBmp24(width, height, rgbBuffer) {
 }
 
 async function generate() {
-  let appVersion = 'v1.0.0';
+  let appVersion = 'v1.0.1';
   try {
     const tauriConfPath = path.resolve(__dirname, '../src-tauri/tauri.conf.json');
     if (fs.existsSync(tauriConfPath)) {

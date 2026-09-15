@@ -1,7 +1,7 @@
 {
   "name": "crescendo-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "tauri:build": "node scripts/generate-nsis-assets.cjs && node scripts/run-tauri.js build",
     "test": "vitest run",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bump-version": "node scripts/bump-version.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

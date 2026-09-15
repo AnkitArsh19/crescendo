@@ -88,9 +88,9 @@ public class PollingTriggerScheduler {
         try {
             var keys = redisTemplate.keys(LAST_POLL_KEY_PREFIX + "*");
             if (keys != null && !keys.isEmpty()) {
-                logger.info("[poller] {} poll cursor(s) found in Redis — resuming from last known positions", keys.size());
+                logger.info("[poller] {} poll cursor(s) found in Redis: resuming from last known positions", keys.size());
             } else {
-                logger.info("[poller] No poll cursors found — first poll will look back {} min", DEFAULT_LOOKBACK.toMinutes());
+                logger.info("[poller] No poll cursors found: first poll will look back {} min", DEFAULT_LOOKBACK.toMinutes());
             }
         } catch (Exception e) {
             logger.warn("[poller] Could not read poll cursor state on startup: {}", e.getMessage());
@@ -104,10 +104,10 @@ public class PollingTriggerScheduler {
     }
 
     /**
-     * Runs every 2 minutes. Finds active workflows with polling triggers
-     * and checks for new events.
+     * Runs periodically (default every 2 minutes, configurable via crescendo.polling.interval-ms).
+     * Finds active workflows with polling triggers and checks for new events.
      */
-    @Scheduled(fixedRate = 120_000, initialDelay = 30_000)
+    @Scheduled(fixedRateString = "${crescendo.polling.interval-ms:120000}", initialDelay = 30_000)
     @Transactional
     public void pollActiveWorkflows() {
         logger.debug("[poller] Polling cycle started");
@@ -134,9 +134,9 @@ public class PollingTriggerScheduler {
         }
 
         if (triggered > 0) {
-            logger.info("[poller] Polling cycle complete — triggered {} run(s)", triggered);
+            logger.info("[poller] Polling cycle complete: triggered {} run(s)", triggered);
         } else {
-            logger.debug("[poller] Polling cycle complete — no new events found");
+            logger.debug("[poller] Polling cycle complete: no new events found");
         }
     }
 
@@ -165,7 +165,7 @@ public class PollingTriggerScheduler {
                     .orElse(null);
 
             if (poller == null) {
-                // This trigger doesn't support polling (webhook-only) — skip
+                // This trigger doesn't support polling (webhook-only): skip
                 continue;
             }
 
@@ -192,7 +192,7 @@ public class PollingTriggerScheduler {
                 stepConfig.put("appKey", appKey);
                 stepConfig.put("triggerKey", triggerKey);
 
-                logger.info("[poller] Polling {}:{} — stepId={}, connectionId={}, config={}, lastPoll={}",
+                logger.info("[poller] Polling {}:{} : stepId={}, connectionId={}, config={}, lastPoll={}",
                         appKey, triggerKey, triggerStep.getId(), triggerStep.getConnectionId(), stepConfig, lastPollTime);
 
                 List<Map<String, Object>> newEvents = poller.poll(credentials, stepConfig, lastPollTime);
@@ -205,10 +205,10 @@ public class PollingTriggerScheduler {
 
                     // Create a workflow run for each new event
                     for (Map<String, Object> eventData : newEvents) {
-                        // ── Deduplication by message ID ────────────────────────────────
+                        // Deduplication by message ID
                         // Prevent the same message from triggering multiple runs even if the
                         // cursor is reset (e.g. backend restart). We use Redis SETNX (setIfAbsent)
-                        // which is a single atomic command — only the first caller wins.
+                        // which is a single atomic command: only the first caller wins.
                         // This is safe for multi-instance deployments.
                         String messageId = extractMessageId(eventData);
                         String seenKey = null;
@@ -217,7 +217,7 @@ public class PollingTriggerScheduler {
                             // setIfAbsent = Redis SETNX: returns true only if key did NOT exist before.
                             // Atomic: no race condition possible even with multiple backend instances.
                             Boolean claimed = redisTemplate.opsForValue()
-                                    .setIfAbsent(seenKey, "1", java.time.Duration.ofDays(7));
+                                     .setIfAbsent(seenKey, "1", java.time.Duration.ofDays(7));
                             if (!Boolean.TRUE.equals(claimed)) {
                                 logger.info("[poller] Skipping already-processed message '{}' for step {}", messageId, triggerStep.getId());
                                 continue;
@@ -229,7 +229,7 @@ public class PollingTriggerScheduler {
                         } catch (Exception e) {
                             // If run creation fails (e.g. DB down), release the SETNX key so the
                             // message is eligible for retry on the next poll cycle.
-                            // Without this, the email would be permanently lost — marked "seen"
+                            // Without this, the email would be permanently lost: marked "seen"
                             // but never actually executed.
                             logger.error("[poller] Failed to create run for message '{}', releasing dedup key for retry: {}",
                                     messageId, e.getMessage());
@@ -304,7 +304,7 @@ public class PollingTriggerScheduler {
                 logger.warn("[poller] Invalid last poll time for step {}: {}", stepId, value);
             }
         }
-        // First poll — look back DEFAULT_LOOKBACK minutes
+        // First poll: look back DEFAULT_LOOKBACK minutes
         return Instant.now().minus(DEFAULT_LOOKBACK);
     }
 
