@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class JobSearchAggregateHandler implements ActionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(JobSearchAggregateHandler.class);
-    private static final int PROVIDER_TIMEOUT_SECONDS = 8;
+    private static final int PROVIDER_TIMEOUT_SECONDS = 25;
 
     // Platform-managed API keys injected from application.properties
     @Value("${crescendo.jobsearch.serpapi-key:}")
@@ -45,10 +45,11 @@ public class JobSearchAggregateHandler implements ActionHandler {
 
     /** All known providers, instantiated once. */
     private final List<JobSearchProvider> providers = List.of(
-            // -- Free, no-auth (India-focused) --
+            // -- Free, no-auth (India-focused & ATS) --
             new LinkedInGuestProvider(),   // LinkedIn public guest endpoint
-            new GreenhouseProvider(),      // Scans 15+ Indian tech company boards (Razorpay, Swiggy, CRED, etc.)
-            new LeverProvider(),           // Scans Indian companies on Lever (Atlan, MoEngage, GoJek, etc.)
+            new GreenhouseProvider(),      // Scans 45+ company boards (Razorpay, Swiggy, CRED, Anthropic, Citadel, etc.)
+            new AshbyProvider(),           // Scans Ashby boards (OpenAI, Perplexity, Linear, Ramp, Vercel, etc.)
+            new LeverProvider(),           // Scans Lever company boards (Atlan, MoEngage, GoJek, Netflix, etc.)
             // -- Free, no-auth (remote/global) --
             new RemotiveProvider(),
             new ArbeitnowProvider(),
@@ -63,23 +64,13 @@ public class JobSearchAggregateHandler implements ActionHandler {
     public ActionResult execute(ActionContext context) {
         Map<String, Object> config = context.configuration();
 
-        String rawQuery = config.get("query") != null ? config.get("query").toString().trim() : null;
-        if (rawQuery == null || rawQuery.isBlank()) {
-            return ActionResult.failure("'query' is required — enter a job title or keywords");
-        }
-
-        // Support comma-separated roles: "intern, software developer, apprenticeship"
-        String[] keywords = rawQuery.split(",");
-        List<String> queries = new ArrayList<>();
-        for (String kw : keywords) {
-            String trimmed = kw.trim();
-            if (!trimmed.isEmpty()) queries.add(trimmed);
-        }
+        List<String> queries = parseTags(config.get("query"));
         if (queries.isEmpty()) {
-            return ActionResult.failure("'query' is required — enter a job title or keywords");
+            return ActionResult.failure("'query' is required: enter a job title or keywords");
         }
 
-        String location = config.get("location") != null ? config.get("location").toString().trim() : "India";
+        List<String> locTags = parseTags(config.get("location"));
+        String location = locTags.isEmpty() ? "India" : String.join(", ", locTags);
 
         // Inject platform-managed API keys into the config map so providers can find them
         Map<String, Object> enrichedConfig = new HashMap<>(config);
@@ -143,31 +134,57 @@ public class JobSearchAggregateHandler implements ActionHandler {
 
         // Merge, deduplicate, sort
         LinkedHashMap<String, JobSearchResult> deduplicated = new LinkedHashMap<>();
-        List<Map<String, Object>> sourceStats = new ArrayList<>();
 
         for (ProviderResult pr : allProviderResults) {
-            Map<String, Object> stat = new LinkedHashMap<>();
-            stat.put("source", pr.source);
-            stat.put("count", pr.results.size());
-            if (pr.error != null) stat.put("error", pr.error);
-            sourceStats.add(stat);
-
             for (JobSearchResult result : pr.results) {
                 String key = result.deduplicationKey();
                 deduplicated.putIfAbsent(key, result);
             }
         }
 
+        // Aggregate source stats per provider (sum across keywords)
+        Map<String, Map<String, Object>> statsMap = new LinkedHashMap<>();
+        for (ProviderResult pr : allProviderResults) {
+            statsMap.compute(pr.source, (src, existing) -> {
+                if (existing == null) {
+                    Map<String, Object> stat = new LinkedHashMap<>();
+                    stat.put("source", src);
+                    stat.put("count", pr.results.size());
+                    if (pr.error != null) stat.put("error", pr.error);
+                    return stat;
+                } else {
+                    existing.put("count", (int) existing.get("count") + pr.results.size());
+                    if (pr.error != null && !existing.containsKey("error")) {
+                        existing.put("error", pr.error);
+                    }
+                    return existing;
+                }
+            });
+        }
+        List<Map<String, Object>> sourceStats = new ArrayList<>(statsMap.values());
+
         // ── Post-filter pipeline (applied AFTER all providers return) ──────────
         // This enforces ALL frontend filters universally across every provider,
         // so results are always relevant regardless of source API capabilities.
+
+        // 0. Internship-only filter
+        boolean internshipOnly = Boolean.parseBoolean(String.valueOf(config.getOrDefault("internshipOnly", "false")));
+        if (internshipOnly) {
+            int beforeIntern = deduplicated.size();
+            deduplicated.values().removeIf(r -> !matchesInternship(r));
+            int afterIntern = deduplicated.size();
+            if (beforeIntern != afterIntern) {
+                log.info("[job-search] Internship filter removed {} non-internship results ({} -> {})",
+                        beforeIntern - afterIntern, beforeIntern, afterIntern);
+            }
+        }
 
         // 1. Title relevance: at least one query keyword must appear in the title
         int beforeTitle = deduplicated.size();
         deduplicated.values().removeIf(r -> !matchesAnyKeywordInTitle(r.title(), queries));
         int afterTitle = deduplicated.size();
         if (beforeTitle != afterTitle) {
-            log.info("[job-search] Title filter removed {} irrelevant results ({} → {})",
+            log.info("[job-search] Title filter removed {} irrelevant results ({} -> {})",
                     beforeTitle - afterTitle, beforeTitle, afterTitle);
         }
 
@@ -176,7 +193,7 @@ public class JobSearchAggregateHandler implements ActionHandler {
         deduplicated.values().removeIf(r -> !matchesLocation(r.location(), location));
         int afterLoc = deduplicated.size();
         if (beforeLoc != afterLoc) {
-            log.info("[job-search] Location filter '{}' removed {} out-of-area results ({} → {})",
+            log.info("[job-search] Location filter '{}' removed {} out-of-area results ({} -> {})",
                     location, beforeLoc - afterLoc, beforeLoc, afterLoc);
         }
 
@@ -186,7 +203,7 @@ public class JobSearchAggregateHandler implements ActionHandler {
         if (!jobTypeCode.isBlank()) {
             int beforeJT = deduplicated.size();
             deduplicated.values().removeIf(r -> !matchesJobType(r, jobTypeCode));
-            log.info("[job-search] Job type filter '{}' removed {} results ({} → {})",
+            log.info("[job-search] Job type filter '{}' removed {} results ({} -> {})",
                     jobTypeCode, beforeJT - deduplicated.size(), beforeJT, deduplicated.size());
         }
 
@@ -196,7 +213,7 @@ public class JobSearchAggregateHandler implements ActionHandler {
         if (!expCode.isBlank()) {
             int beforeExp = deduplicated.size();
             deduplicated.values().removeIf(r -> !matchesExperience(r, expCode));
-            log.info("[job-search] Experience filter '{}' removed {} results ({} → {})",
+            log.info("[job-search] Experience filter '{}' removed {} results ({} -> {})",
                     expCode, beforeExp - deduplicated.size(), beforeExp, deduplicated.size());
         }
 
@@ -206,8 +223,50 @@ public class JobSearchAggregateHandler implements ActionHandler {
         if (!workTypeCode.isBlank()) {
             int beforeWT = deduplicated.size();
             deduplicated.values().removeIf(r -> !matchesWorkType(r, workTypeCode));
-            log.info("[job-search] Work type filter '{}' removed {} results ({} → {})",
+            log.info("[job-search] Work type filter '{}' removed {} results ({} -> {})",
                     workTypeCode, beforeWT - deduplicated.size(), beforeWT, deduplicated.size());
+        }
+
+        // 6. Target company filter (Curated 150+ Tier-1, Quant, AI, and GCC companies)
+        boolean targetCompaniesOnly = Boolean.parseBoolean(String.valueOf(config.getOrDefault("targetCompaniesOnly", "false")));
+        String customWhitelistRaw = config.get("customTargetCompanies") != null
+                ? config.get("customTargetCompanies").toString().trim() : "";
+        Object rawCategories = config.get("targetCompanyCategories");
+
+        Set<String> selectedCategories = new HashSet<>();
+        if (rawCategories instanceof Collection<?> coll) {
+            for (Object item : coll) {
+                if (item != null) selectedCategories.add(item.toString().trim());
+            }
+        } else if (rawCategories instanceof String s && !s.isBlank()) {
+            for (String part : s.split(",")) {
+                String p = part.trim();
+                if (!p.isEmpty()) selectedCategories.add(p);
+            }
+        }
+
+        Set<String> customWhitelist = new HashSet<>();
+        if (!customWhitelistRaw.isBlank()) {
+            for (String name : customWhitelistRaw.split(",")) {
+                String n = name.trim();
+                if (!n.isEmpty()) customWhitelist.add(n);
+            }
+        }
+
+        boolean applyCompanyFilter = targetCompaniesOnly || !selectedCategories.isEmpty() || !customWhitelist.isEmpty();
+        if (applyCompanyFilter) {
+            int beforeComp = deduplicated.size();
+            deduplicated.values().removeIf(r -> !TargetCompanyRegistry.matches(
+                    r.company(),
+                    r.url(),
+                    selectedCategories,
+                    customWhitelist
+            ));
+            int afterComp = deduplicated.size();
+            if (beforeComp != afterComp) {
+                log.info("[job-search] Target company filter removed {} non-target results ({} -> {})",
+                        beforeComp - afterComp, beforeComp, afterComp);
+            }
         }
 
         // ── End post-filter pipeline ─────────────────────────────────────────────
@@ -230,13 +289,17 @@ public class JobSearchAggregateHandler implements ActionHandler {
         output.put("totalFound", capped.size());
         output.put("totalBeforeDedup", allProviderResults.stream().mapToInt(pr -> pr.results.size()).sum());
         output.put("sources", sourceStats);
-        output.put("query", rawQuery);
+        output.put("query", String.join(", ", queries));
         output.put("keywords", queries);
         output.put("location", location);
 
         // Include applied filters in output for transparency
         Map<String, String> appliedFilters = new LinkedHashMap<>();
         appliedFilters.put("location", location);
+        if (internshipOnly) appliedFilters.put("internshipOnly", "true");
+        if (targetCompaniesOnly) appliedFilters.put("targetCompaniesOnly", "true");
+        if (!selectedCategories.isEmpty()) appliedFilters.put("targetCompanyCategories", String.join(", ", selectedCategories));
+        if (!customWhitelist.isEmpty()) appliedFilters.put("customTargetCompanies", String.join(", ", customWhitelist));
         if (!jobTypeCode.isBlank()) appliedFilters.put("jobType", jobTypeCode);
         if (!expCode.isBlank()) appliedFilters.put("experienceLevel", expCode);
         if (!workTypeCode.isBlank()) appliedFilters.put("workType", workTypeCode);
@@ -284,7 +347,7 @@ public class JobSearchAggregateHandler implements ActionHandler {
         // If no location filter or very broad filter, everything matches
         if (requestedLocation == null || requestedLocation.isBlank()) return true;
         String reqNorm = normalize(requestedLocation);
-        if (reqNorm.isEmpty() || reqNorm.equals("india") || reqNorm.equals("remote") || reqNorm.equals("anywhere")) {
+        if (reqNorm.isEmpty() || reqNorm.equals("remote") || reqNorm.equals("anywhere")) {
             return true;
         }
 
@@ -297,8 +360,22 @@ public class JobSearchAggregateHandler implements ActionHandler {
         if (jobNorm.equals("remote") || jobNorm.contains("remote")) {
             // If the job says "Remote" but also lists a country, check the country
             if (jobNorm.contains(reqNorm)) return true;
-            // Pure "Remote" with no country — allow only if user asked for remote or broad India
+            // Pure "Remote" with no country: allow only if user asked for remote or broad India
             return jobNorm.equals("remote");
+        }
+
+        // For broad country-level filter like "India", accept jobs that:
+        // - contain "india" explicitly, OR
+        // - contain a known Indian city/state, OR
+        // - don't mention any clearly foreign location
+        if (reqNorm.equals("india")) {
+            if (jobNorm.contains("india")) return true;
+            // Check if job location contains a known Indian city or state
+            if (containsIndianLocation(jobNorm)) return true;
+            // Reject jobs with explicitly foreign locations (cities/countries not in India)
+            if (containsForeignLocation(jobNorm)) return false;
+            // Ambiguous location (e.g. just a company name) — give benefit of doubt
+            return true;
         }
 
         // Direct substring match
@@ -342,6 +419,71 @@ public class JobSearchAggregateHandler implements ActionHandler {
                 Map.entry("ncr", List.of("delhi", "new delhi", "noida", "gurgaon", "gurugram"))
         );
         return aliasMap.getOrDefault(normalized, List.of());
+    }
+
+    /** Checks if the normalized location string contains a known Indian city or state. */
+    private boolean containsIndianLocation(String normalized) {
+        List<String> indianLocations = List.of(
+                "bangalore", "bengaluru", "mumbai", "bombay", "delhi", "new delhi",
+                "hyderabad", "chennai", "madras", "pune", "kolkata", "calcutta",
+                "gurugram", "gurgaon", "noida", "greater noida", "ahmedabad",
+                "jaipur", "lucknow", "chandigarh", "kochi", "coimbatore",
+                "thiruvananthapuram", "trivandrum", "indore", "bhopal", "nagpur",
+                "visakhapatnam", "vizag", "mangalore", "mangaluru", "mysore",
+                "mysuru", "surat", "vadodara", "rajkot", "bhubaneswar",
+                "patna", "ranchi", "dehradun", "shimla", "varanasi", "agra",
+                "jabalpur", "sehore", "kanpur",
+                "karnataka", "maharashtra", "telangana", "tamil nadu",
+                "haryana", "uttar pradesh", "madhya pradesh", "rajasthan",
+                "gujarat", "west bengal", "kerala", "andhra pradesh",
+                "odisha", "bihar", "jharkhand", "punjab", "chhattisgarh",
+                "uttarakhand", "goa", "ncr", "blr"
+        );
+        for (String loc : indianLocations) {
+            if (normalized.contains(loc)) return true;
+        }
+        return false;
+    }
+
+    /** Checks if the normalized location string contains a clearly non-Indian location. */
+    private boolean containsForeignLocation(String normalized) {
+        List<String> foreignLocations = List.of(
+                "berlin", "london", "new york", "san francisco", "paris",
+                "tokyo", "singapore", "toronto", "sydney", "melbourne",
+                "amsterdam", "dublin", "zurich", "munich", "seattle",
+                "chicago", "boston", "austin", "los angeles", "denver",
+                "belgrade", "warsaw", "prague", "vienna", "barcelona",
+                "stockholm", "copenhagen", "oslo", "helsinki", "lisbon",
+                "milan", "rome", "madrid", "brussels", "frankfurt",
+                "beijing", "shanghai", "shenzhen", "hong kong", "seoul",
+                "jakarta", "bangkok", "kuala lumpur", "manila", "dubai",
+                "abu dhabi", "riyadh", "tel aviv", "cairo", "nairobi",
+                "cape town", "lagos", "sao paulo", "buenos aires", "mexico city",
+                "vancouver", "montreal", "ottawa", "calgary",
+                // Countries
+                "united states", "united kingdom", "germany", "france",
+                "japan", "australia", "canada", "brazil", "china",
+                "south korea", "indonesia", "thailand", "malaysia",
+                "philippines", "vietnam", "uae", "saudi arabia",
+                "israel", "egypt", "nigeria", "south africa", "mexico",
+                "argentina", "colombia"
+        );
+        for (String loc : foreignLocations) {
+            if (normalized.contains(loc)) return true;
+        }
+        return false;
+    }
+
+    // ── Internship Filter ───────────────────────────────────────────────────
+
+    private static final java.util.regex.Pattern INTERN_PATTERN = java.util.regex.Pattern.compile(
+            "\\b(intern|internship|co-op|coop|trainee|summer\\s+intern)\\b",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+    );
+
+    private boolean matchesInternship(JobSearchResult r) {
+        String searchable = toSearchableText(r);
+        return INTERN_PATTERN.matcher(searchable).find();
     }
 
     // ── Title Relevance Filter ───────────────────────────────────────────────
@@ -389,7 +531,7 @@ public class JobSearchAggregateHandler implements ActionHandler {
 
     /**
      * Checks if a job matches the selected experience level.
-     * Maps LinkedIn codes (1–6) to keywords and checks title/tags.
+     * Maps LinkedIn codes (1 to 6) to keywords and checks title/tags.
      */
     private boolean matchesExperience(JobSearchResult r, String code) {
         List<String> keywords = switch (code) {
@@ -445,6 +587,42 @@ public class JobSearchAggregateHandler implements ActionHandler {
             for (String tag : r.tags()) sb.append(tag).append(' ');
         }
         return sb.toString().toLowerCase();
+    }
+
+    /**
+     * Parses a query or location configuration object into clean individual tags.
+     * Supports Collection (List/Set from multi-select tags), JSON array strings "[a, b]",
+     * and comma/semicolon-separated values. Strips quotes and brackets.
+     */
+    private List<String> parseTags(Object raw) {
+        List<String> result = new ArrayList<>();
+        if (raw == null) return result;
+
+        if (raw instanceof Collection<?> coll) {
+            for (Object item : coll) {
+                if (item != null) {
+                    String s = cleanTag(item.toString());
+                    if (!s.isEmpty()) result.add(s);
+                }
+            }
+            return result;
+        }
+
+        String str = raw.toString().trim();
+        if (str.startsWith("[") && str.endsWith("]")) {
+            str = str.substring(1, str.length() - 1).trim();
+        }
+
+        for (String part : str.split("[,;]")) {
+            String s = cleanTag(part);
+            if (!s.isEmpty()) result.add(s);
+        }
+        return result;
+    }
+
+    private String cleanTag(String s) {
+        if (s == null) return "";
+        return s.replaceAll("[\\[\\]\"']", "").trim();
     }
 
     /** Internal record to collect per-provider results. */

@@ -8,12 +8,14 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.regex.Pattern;
 
 /**
- * Lever Job Board API — public, free, no auth required.
+ * Lever Job Board API provider: public, free, no authentication required.
  * <p>
- * Fetches job listings from companies using Lever as their ATS.
- * Several Indian and India-hiring companies use Lever.
+ * Fetches job listings from companies using Lever as their ATS, querying all
+ * boards concurrently using Java Virtual Threads.
  *
  * @see <a href="https://github.com/lever/postings-api">Lever Postings API</a>
  */
@@ -22,17 +24,27 @@ public class LeverProvider implements JobSearchProvider {
     private static final Logger log = LoggerFactory.getLogger(LeverProvider.class);
     private static final String API_BASE = "https://api.lever.co/v0/postings/{company}";
 
+    private static final Pattern INTERN_PATTERN = Pattern.compile(
+            "\\b(intern|internship|co-op|coop|trainee|summer\\s+intern)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
     /**
-     * Default companies on Lever that hire in India.
+     * Curated list of companies on Lever hiring in India and globally.
      * Format: leverSlug -> companyName
      */
-    private static final Map<String, String> DEFAULT_INDIA_BOARDS = Map.of(
-            "atlan", "Atlan",
-            "incred", "InCred",
-            "moengage", "MoEngage",
-            "gojek", "GoJek",
-            "tokopedia", "Tokopedia",
-            "grab", "Grab");
+    private static final Map<String, String> DEFAULT_BOARDS = Map.ofEntries(
+            Map.entry("atlan", "Atlan"),
+            Map.entry("incred", "InCred"),
+            Map.entry("moengage", "MoEngage"),
+            Map.entry("gojek", "Gojek"),
+            Map.entry("tokopedia", "Tokopedia"),
+            Map.entry("grab", "Grab"),
+            Map.entry("canva", "Canva"),
+            Map.entry("netflix", "Netflix"),
+            Map.entry("palantir", "Palantir"),
+            Map.entry("datadoghq", "Datadog")
+    );
 
     @Override
     public String sourceName() {
@@ -51,99 +63,151 @@ public class LeverProvider implements JobSearchProvider {
 
     @Override
     public List<JobSearchResult> search(String query, String location, Map<String, Object> config) {
-        int limit = parseLimit(config, 10);
-        String queryLower = query.toLowerCase();
+        int limit = parseLimit(config, 20);
+        String queryLower = query != null ? query.toLowerCase() : "";
+        boolean internshipOnly = isInternshipOnly(config);
 
-        Map<String, String> boards = new LinkedHashMap<>(DEFAULT_INDIA_BOARDS);
+        Map<String, String> boards = new LinkedHashMap<>(DEFAULT_BOARDS);
         String custom = config != null ? asStr(config.get("leverBoardSlugs")) : null;
         if (custom != null && !custom.isBlank()) {
             for (String slug : custom.split(",")) {
                 String s = slug.trim();
-                if (!s.isBlank())
+                if (!s.isBlank()) {
                     boards.put(s, s);
+                }
             }
         }
 
-        List<JobSearchResult> allResults = new ArrayList<>();
+        // Query all company boards in parallel using Virtual Threads
+        List<CompletableFuture<List<JobSearchResult>>> futures = new ArrayList<>();
+        ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            for (Map.Entry<String, String> entry : boards.entrySet()) {
+                String slug = entry.getKey();
+                String companyName = entry.getValue();
 
-        for (Map.Entry<String, String> entry : boards.entrySet()) {
-            if (allResults.size() >= limit)
-                break;
-
-            String slug = entry.getKey();
-            String companyName = entry.getValue();
+                futures.add(CompletableFuture.supplyAsync(() ->
+                        queryBoard(slug, companyName, queryLower, location, internshipOnly), executor));
+            }
 
             try {
-                List<Map<String, Object>> jobs = RestClient.create()
-                        .get()
-                        .uri(API_BASE, slug)
-                        .retrieve()
-                        .body(new ParameterizedTypeReference<>() {
-                        });
-
-                if (jobs == null)
-                    continue;
-
-                List<JobSearchResult> matches = jobs.stream()
-                        .filter(job -> {
-                            String title = asStr(job.get("text"));
-                            return title != null && title.toLowerCase().contains(queryLower);
-                        })
-                        .limit(limit - allResults.size())
-                        .map(job -> {
-                            String jobLoc = null;
-                            if (job.get("categories") instanceof Map<?, ?> cats) {
-                                jobLoc = asStr(cats.get("location"));
-                            }
-
-                            String desc = asStr(job.get("descriptionPlain"));
-
-                            List<String> tags = new ArrayList<>();
-                            if (job.get("categories") instanceof Map<?, ?> cats) {
-                                if (cats.get("team") != null)
-                                    tags.add(cats.get("team").toString());
-                                if (cats.get("commitment") != null)
-                                    tags.add(cats.get("commitment").toString());
-                            }
-                            tags.add("Lever");
-
-                            return new JobSearchResult(
-                                    asStr(job.get("text")),
-                                    companyName,
-                                    jobLoc,
-                                    asStr(job.get("hostedUrl")),
-                                    null,
-                                    truncate(desc, 500),
-                                    asStr(job.get("createdAt")),
-                                    sourceName(),
-                                    tags,
-                                    null);
-                        })
-                        .toList();
-
-                allResults.addAll(matches);
-
-            } catch (Exception e) {
-                log.debug("[job-search] Lever board '{}' failed: {}", slug, e.getMessage());
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                        .get(6, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+                // Global 6s timeout: collect all boards that finished
             }
+
+            List<JobSearchResult> allResults = new ArrayList<>();
+            for (var future : futures) {
+                if (future.isDone() && !future.isCompletedExceptionally()) {
+                    try {
+                        allResults.addAll(future.getNow(Collections.emptyList()));
+                        if (allResults.size() >= limit) break;
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (allResults.size() > limit) {
+                return allResults.subList(0, limit);
+            }
+            return allResults;
+        } finally {
+            executor.shutdownNow();
         }
-
-        return allResults;
     }
 
-    private String asStr(Object v) {
-        return v != null ? v.toString() : null;
-    }
+    private static final RestClient HTTP = RestClient.create();
 
-    private String truncate(String s, int max) {
-        return s != null && s.length() > max ? s.substring(0, max) + "…" : s;
-    }
-
-    private int parseLimit(Map<String, Object> config, int def) {
+    @SuppressWarnings("unchecked")
+    private List<JobSearchResult> queryBoard(String slug, String companyName, String queryLower, String location, boolean internshipOnly) {
         try {
-            return Integer.parseInt(config.getOrDefault("maxResults", def).toString());
+            List<Map<String, Object>> jobs = HTTP
+                    .get()
+                    .uri(API_BASE, slug)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+
+            if (jobs == null) return Collections.emptyList();
+
+            List<JobSearchResult> results = new ArrayList<>();
+            for (Map<String, Object> job : jobs) {
+                String title = asStr(job.get("text"));
+                if (title == null) continue;
+
+                // Keyword match
+                if (!queryLower.isBlank() && !title.toLowerCase().contains(queryLower)) {
+                    continue;
+                }
+
+                // Internship-only filter
+                if (internshipOnly && !INTERN_PATTERN.matcher(title).find()) {
+                    continue;
+                }
+
+                String jobLoc = null;
+                if (job.get("categories") instanceof Map<?, ?> cats) {
+                    jobLoc = asStr(cats.get("location"));
+                }
+
+                // Location match
+                if (!matchesLocation(location, jobLoc)) {
+                    continue;
+                }
+
+                String desc = asStr(job.get("descriptionPlain"));
+
+                List<String> tags = new ArrayList<>();
+                if (job.get("categories") instanceof Map<?, ?> cats) {
+                    if (cats.get("team") != null) tags.add(cats.get("team").toString());
+                    if (cats.get("commitment") != null) tags.add(cats.get("commitment").toString());
+                }
+                tags.add("Lever");
+
+                results.add(new JobSearchResult(
+                        title,
+                        companyName,
+                        jobLoc != null ? jobLoc : "Unspecified",
+                        asStr(job.get("hostedUrl")),
+                        null,
+                        truncate(desc, 500),
+                        asStr(job.get("createdAt")),
+                        sourceName(),
+                        tags,
+                        null
+                ));
+            }
+            return results;
         } catch (Exception e) {
-            return def;
+            log.debug("[job-search] Lever board '{}' failed: {}", slug, e.getMessage());
+            return Collections.emptyList();
         }
+    }
+
+    private boolean matchesLocation(String requestedLoc, String jobLoc) {
+        if (requestedLoc == null || requestedLoc.isBlank()
+                || requestedLoc.equalsIgnoreCase("India")
+                || requestedLoc.equalsIgnoreCase("Remote")
+                || requestedLoc.equalsIgnoreCase("Anywhere")
+                || requestedLoc.equalsIgnoreCase("All")) {
+            return true;
+        }
+        if (jobLoc == null || jobLoc.isBlank()) return true;
+        String req = requestedLoc.toLowerCase();
+        String actual = jobLoc.toLowerCase();
+        return actual.contains(req) || req.contains(actual);
+    }
+
+    private boolean isInternshipOnly(Map<String, Object> config) {
+        if (config == null) return false;
+        Object val = config.get("internshipOnly");
+        if (val instanceof Boolean b) return b;
+        return val != null && Boolean.parseBoolean(val.toString());
+    }
+
+    private String asStr(Object v) { return v != null ? v.toString() : null; }
+    private String truncate(String s, int max) { return s != null && s.length() > max ? s.substring(0, max) + "..." : s; }
+    private int parseLimit(Map<String, Object> config, int def) {
+        try { return Integer.parseInt(config.getOrDefault("maxResults", def).toString()); }
+        catch (Exception e) { return def; }
     }
 }

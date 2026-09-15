@@ -2,7 +2,7 @@
  * Desktop Platform & Runtime Detection Helpers
  */
 
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.0.2';
 
 export const isTauri = () => {
   return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);

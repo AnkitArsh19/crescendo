@@ -14,8 +14,9 @@ import java.util.Map;
  * Aggregates jobs from 10+ sources focused on the Indian job market:
  * <ul>
  *   <li><b>Free (no auth):</b> LinkedIn public, Greenhouse boards (Razorpay, Swiggy,
- *       CRED, etc.), Lever boards (Atlan, MoEngage), Remotive, Arbeitnow, Himalayas</li>
- *   <li><b>Platform-managed keys:</b> SerpAPI (Google Jobs), Adzuna India, Jooble —
+ *       CRED, Anthropic, Citadel, etc.), Ashby boards (OpenAI, Perplexity, Linear, Ramp, etc.),
+ *       Lever boards (Atlan, MoEngage), Remotive, Arbeitnow, Himalayas</li>
+ *   <li><b>Platform-managed keys:</b> SerpAPI (Google Jobs), Adzuna India, Jooble:
  *       keys are configured in application.properties, not by users.</li>
  * </ul>
  */
@@ -25,19 +26,19 @@ public class JobSearchApp implements AppDefinition {
     @Override
     public App toApp() {
         return new App("job-search", "Job Search", """
-                Search jobs across 10+ platforms including LinkedIn, Greenhouse, Lever, and more. The Crescendo Job Search app is specifically optimized for the Indian job market, letting you automate job discovery.
+                Search jobs across 11+ platforms including LinkedIn, Greenhouse, Ashby, Lever, and more. The Crescendo Job Search app is specifically optimized for both Indian tech unicorns and global Tier-1 companies, letting you automate job and internship discovery.
 
                 **What you can do with Job Search in Crescendo:**
-                - Run scheduled searches for specific roles (e.g., "Software Engineer in Bangalore")
+                - Run scheduled searches for specific roles (e.g., "Software Engineer in Bangalore" or "Intern")
                 - Export job listings directly to a Google Sheet or Airtable CRM
-                - Send new high-paying or remote job alerts to Telegram or Discord
+                - Send new high-paying, internship, or remote job alerts to Telegram or Discord
                 - Customize searches with advanced LinkedIn filters (experience, job type, work arrangement)
 
                 **Actions available:**
-                - Search Jobs (India) — search across major job boards and ATS systems
-                - Search Remote Jobs — find remote-friendly roles globally
+                - Search Jobs (India): search across major job boards, AI labs, and ATS systems
+                - Search Remote Jobs: find remote-friendly roles globally
 
-                **Who should use this:** Job seekers tracking specific companies or roles, recruiters analyzing the job market, and community managers sharing opportunities.
+                **Who should use this:** Job seekers tracking specific companies or roles, students seeking internships, recruiters analyzing the job market, and community managers sharing opportunities.
 
                 **Authentication:** None required (Crescendo manages the API keys for you).
                 """,
@@ -47,7 +48,7 @@ public class JobSearchApp implements AppDefinition {
                     Map.of(
                         "actionKey", "search-jobs",
                         "name", "Search Jobs (India)",
-                        "description", "Search across LinkedIn, Greenhouse (Razorpay/Swiggy/CRED/…), Lever, Google Jobs, Adzuna, Jooble, Remotive, and more",
+                        "description", "Search across LinkedIn, Greenhouse (45+ companies), Ashby (OpenAI, Perplexity, Linear), Lever, Google Jobs, Adzuna, Jooble, Remotive, and more",
                         "configSchema", List.of(
                             Map.of("key", "query", "label", "Job Title / Keywords",
                                    "type", "multi_select_tags", "required", true,
@@ -58,8 +59,35 @@ public class JobSearchApp implements AppDefinition {
                                        "Full Stack Developer", "Data Scientist", "Data Analyst",
                                        "ML Engineer", "DevOps Engineer", "Product Manager",
                                        "QA Engineer", "Mobile Developer", "Cloud Engineer",
-                                       "UI/UX Designer", "System Administrator", "Intern"
+                                       "UI/UX Designer", "System Administrator", "Intern",
+                                       "Software Engineer Intern", "Research Intern"
                                    )),
+                            Map.of("key", "internshipOnly", "label", "Internships Only",
+                                   "type", "boolean", "required", false,
+                                   "defaultValue", false,
+                                   "helpText", "Filter for internship, co-op, and trainee roles across all boards and aggregators"),
+                            Map.of("key", "targetCompaniesOnly", "label", "Target Companies Only",
+                                   "type", "boolean", "required", false,
+                                   "defaultValue", false,
+                                   "helpText", "Only show jobs from 150+ curated Tier-1 tech, Indian product unicorns, Quant/HFT, AI labs, and global GCC engineering centers (excludes staffing agencies and mass recruiters)"),
+                            Map.of("key", "targetCompanyCategories", "label", "Company Sectors / Categories",
+                                   "type", "multi_select_tags", "required", false,
+                                   "placeholder", "Select one or more sectors",
+                                   "helpText", "Filter by specific company sectors (leave blank to search all curated companies)",
+                                   "options", List.of(
+                                       "Tier-1 Tech & Cloud",
+                                       "Global Tech Hubs & Banks",
+                                       "Fintech & Indian Unicorns",
+                                       "Quant & HFT",
+                                       "Frontier AI & Research",
+                                       "Cloud, SaaS & DevTools",
+                                       "Semiconductor & Systems",
+                                       "Selective Strategy & Consulting"
+                                   )),
+                            Map.of("key", "customTargetCompanies", "label", "Custom Company Whitelist",
+                                   "type", "text", "required", false,
+                                   "placeholder", "e.g. Google, NVIDIA, Citadel, Razorpay",
+                                   "helpText", "Comma-separated list of company names to whitelist. If specified, only jobs matching these companies will be returned."),
                             Map.of("key", "location", "label", "Location",
                                    "type", "multi_select_tags", "required", false,
                                    "placeholder", "Type a city or pick from suggestions",
@@ -126,11 +154,15 @@ public class JobSearchApp implements AppDefinition {
                             Map.of("key", "greenhouseBoardTokens", "label", "Extra Greenhouse Boards",
                                    "type", "text", "required", false,
                                    "placeholder", "e.g. flipkart,phonepe,freshworks",
-                                   "helpText", "Comma-separated Greenhouse board tokens to scan in addition to the 15 built-in Indian companies (Razorpay, Swiggy, CRED, Groww, etc.)"),
+                                   "helpText", "Comma-separated Greenhouse board tokens to scan in addition to the 45+ built-in companies (Razorpay, Swiggy, CRED, Groww, Anthropic, Citadel, etc.)"),
                             Map.of("key", "leverBoardSlugs", "label", "Extra Lever Boards",
                                    "type", "text", "required", false,
                                    "placeholder", "e.g. zerodha,slice,coinswitch",
-                                   "helpText", "Comma-separated Lever company slugs to scan in addition to the built-in list")
+                                   "helpText", "Comma-separated Lever company slugs to scan in addition to the built-in list"),
+                            Map.of("key", "ashbyBoardSlugs", "label", "Extra Ashby Boards",
+                                   "type", "text", "required", false,
+                                   "placeholder", "e.g. cursor,together,ramp",
+                                   "helpText", "Comma-separated Ashby board slugs to scan in addition to built-in AI labs and tech companies (OpenAI, Perplexity, Linear, Ramp, Vercel, Retool, etc.)")
                         )
                     ),
                     Map.of(
