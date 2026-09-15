@@ -35,16 +35,16 @@ public class WorkflowRunService {
     private final WorkflowRunRepository runRepo;
     private final Workflow_commandRepository workflowRepo;
     private final DomainEventPublisher eventPublisher;
-        private final OutboxEventRepository outboxEventRepository;
+    private final OutboxEventRepository outboxEventRepository;
 
     public WorkflowRunService(WorkflowRunRepository runRepo,
                                Workflow_commandRepository workflowRepo,
                                DomainEventPublisher eventPublisher,
-                                                           OutboxEventRepository outboxEventRepository) {
+                               OutboxEventRepository outboxEventRepository) {
         this.runRepo = runRepo;
         this.workflowRepo = workflowRepo;
         this.eventPublisher = eventPublisher;
-                this.outboxEventRepository = outboxEventRepository;
+        this.outboxEventRepository = outboxEventRepository;
     }
 
     /**
@@ -197,6 +197,34 @@ public class WorkflowRunService {
         eventPublisher.publish(
                 new WorkflowRunCompletedEvent(runId, run.getWorkflowId(), userId,
                         WorkflowRunStatus.CANCELLED, null));
+    }
+
+    /**
+     * Retries a FAILED workflow run from its failed step.
+     * Preserves executionState so that previously completed steps are skipped.
+     */
+    public LogbookDto.WorkflowRunSummaryResponse retryRun(UUID userId, UUID workflowId, UUID runId) {
+        findOwnedWorkflow(userId, workflowId);
+        WorkflowRun run = findOwnedRun(userId, runId);
+
+        if (run.getStatus() != WorkflowRunStatus.FAILED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only FAILED runs can be retried, currently " + run.getStatus());
+        }
+
+        run.setStatus(WorkflowRunStatus.PENDING);
+        run.setErrorMessage(null);
+        run.setCompletedAt(null);
+        runRepo.save(run);
+
+        OutboxEvent outboxEvent = new OutboxEvent(
+                UUID.randomUUID(),
+                RedisStreamConfig.STREAM_EXECUTION_QUEUE,
+                buildExecutionPayload(runId, workflowId, userId)
+        );
+        outboxEventRepository.save(outboxEvent);
+
+        return toSummary(run, 0, 0, 0);
     }
 
     // -------------------------------------------------------------------------

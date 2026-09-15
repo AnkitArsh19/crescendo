@@ -243,6 +243,20 @@ public class WorkflowExecutionEngine {
             Steps_command step = stepById.get(stepId);
             if (step == null) continue;
 
+            // If resuming or retrying, skip steps that already completed successfully in a previous run
+            if (allStepOutputs.containsKey(stepId)) {
+                nodeState.put(stepId, ST_COMPLETED);
+                Map<String, Object> cachedOutput = allStepOutputs.get(stepId);
+                String selectedBranchHandle = selectedBranch(cachedOutput);
+                boolean isBranchStep = "logic".equals(step.getAppKey())
+                        && ("logic:if".equals(step.getActionKey()) || "logic:switch".equals(step.getActionKey()));
+                markOutgoingEdges(outgoingEdges.getOrDefault(stepId, List.of()), edgeState,
+                        isBranchStep ? selectedBranchHandle : null);
+                logger.info("[engine] Step '{}' ({}) already completed in prior execution — skipping re-execution",
+                        step.getName(), stepId);
+                continue;
+            }
+
             List<WorkflowEdge_command> parentEdges = incomingEdges.getOrDefault(stepId, List.of());
             List<UUID> parents = parentEdges.stream().map(WorkflowEdge_command::getSourceStepId).toList();
 
@@ -590,6 +604,46 @@ public class WorkflowExecutionEngine {
             }
         }
 
+        // ── Special case for AI Agent orchestrator ────────────────────────────
+        // AI Agent coordinates sub-tools and LLMs. It uses platform LLM credentials
+        // (e.g. Gemini platform key) by default or the user's personal LLM connection if provided.
+        if ("agent".equalsIgnoreCase(appKey)) {
+            if (connectionId != null) {
+                Connections_command conn = connectionsRepo.findByIdAndUser_Id(connectionId, userId).orElse(null);
+                if (conn != null) {
+                    return tokenRefreshService.getValidCredentials(conn);
+                }
+            }
+            // Check fallback personal connection under 'agent' or 'gemini'
+            List<Connections_command> userConns = connectionsRepo.findByUser_IdOrderByCreatedAtDesc(userId);
+            for (Connections_command c : userConns) {
+                if ("agent".equalsIgnoreCase(c.getAppKey()) || "gemini".equalsIgnoreCase(c.getAppKey())) {
+                    return tokenRefreshService.getValidCredentials(c);
+                }
+            }
+            // Check platform key in DB under 'agent' or 'gemini'
+            try {
+                PlatformKey pk = platformKeyRepo.findByAppKeyAndEnabledTrue("agent")
+                        .or(() -> platformKeyRepo.findByAppKeyAndEnabledTrue("gemini"))
+                        .orElse(null);
+                if (pk != null && pk.getEncryptedCredentials() != null) {
+                    Map<String, Object> sealed = objectMapper.readValue(pk.getEncryptedCredentials(), Map.class);
+                    Map<String, Object> opened = credentialsCryptoService.open(sealed);
+                    pk.incrementUsageCount();
+                    platformKeyRepo.save(pk);
+                    return opened;
+                }
+            } catch (Exception e) {
+                logger.warn("[engine] Failed to load platform key for agent: {}", e.getMessage());
+            }
+            // Check application properties geminiApiKey
+            if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+                return Map.of("apiKey", geminiApiKey);
+            }
+            // If neither is present, return empty map so AgentExecutionService handles platform fallback gracefully
+            return Map.of();
+        }
+
         // ── Tier 1: PERSONAL connection (user's own) ──────────────────────────
         if (connectionId != null) {
             Connections_command connection = connectionsRepo
@@ -622,13 +676,15 @@ public class WorkflowExecutionEngine {
             }
         }
 
-        // ── Tier 2: PLATFORM key (admin-configured fallback) ──────────────────
+        // ── Tier 2: PLATFORM key (admin-configured fallback or platform-allowed apps) ──────────
         boolean isAdmin = userQueryRepo.findById(userId)
                 .map(User_query::getRole)
                 .map(role -> role == UserRole.ADMIN)
                 .orElse(false);
 
-        if (isAdmin) {
+        boolean isPlatformAllowed = isAdmin || "gemini".equalsIgnoreCase(appKey);
+
+        if (isPlatformAllowed) {
             try {
                 PlatformKey pk = platformKeyRepo.findByAppKeyAndEnabledTrue(appKey).orElse(null);
                 if (pk != null && pk.getEncryptedCredentials() != null) {
@@ -637,7 +693,7 @@ public class WorkflowExecutionEngine {
                     Map<String, Object> opened = credentialsCryptoService.open(sealed);
                     pk.incrementUsageCount();
                     platformKeyRepo.save(pk);
-                    logger.debug("[engine] Using PLATFORM credentials from DB for app '{}' (source=admin)", appKey);
+                    logger.debug("[engine] Using PLATFORM credentials from DB for app '{}' (source=platform)", appKey);
                     return opened;
                 }
             } catch (Exception e) {
@@ -647,7 +703,7 @@ public class WorkflowExecutionEngine {
             // Fallback to application.properties keys
             Map<String, Object> envCreds = resolveEnvPlatformCredentials(appKey);
             if (envCreds != null && !envCreds.isEmpty()) {
-                logger.debug("[engine] Using PLATFORM credentials from application.properties for app '{}' (source=admin)", appKey);
+                logger.debug("[engine] Using PLATFORM credentials from application.properties for app '{}' (source=platform)", appKey);
                 return envCreds;
             }
         } else {

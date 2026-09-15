@@ -28,6 +28,7 @@ import java.util.UUID;
  *   GET    /workflows/{workflowId}/runs                       — list runs (summary)
  *   GET    /workflows/{workflowId}/runs/{runId}               — run detail with step runs
  *   POST   /workflows/{workflowId}/runs/{runId}/cancel        — cancel a pending/running run
+ *   POST   /workflows/{workflowId}/runs/{runId}/retry         — retry a failed run
  *   GET    /workflows/{workflowId}/runs/stats                 — aggregated run statistics
  *
  * All Runs (cross-workflow):
@@ -91,6 +92,15 @@ public class LogbookController {
             Authentication auth) {
         runCommandService.cancelRun(userId(auth), workflowId, runId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/workflows/{workflowId}/runs/{runId}/retry")
+    public ResponseEntity<LogbookDto.WorkflowRunSummaryResponse> retryRun(
+            @PathVariable UUID workflowId,
+            @PathVariable UUID runId,
+            Authentication auth) {
+        var resp = runCommandService.retryRun(userId(auth), workflowId, runId);
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/workflows/{workflowId}/runs/stats")

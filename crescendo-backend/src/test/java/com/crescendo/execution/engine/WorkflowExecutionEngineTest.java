@@ -320,6 +320,58 @@ class WorkflowExecutionEngineTest {
         verify(workflowRunService).failRun(eq(userId), eq(runId), eq("One or more steps failed"));
     }
 
+    @Test
+    void execute_whenRetrying_skipsAlreadyCompletedStepAndRunsOnlyPendingStep() {
+        UUID workflowId = UUID.randomUUID();
+        UUID runId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID connectionId = UUID.randomUUID();
+
+        var run = mock(com.crescendo.logbook.workflow_run.WorkflowRun.class);
+        when(run.getId()).thenReturn(runId);
+        when(run.getUserId()).thenReturn(userId);
+        when(run.getWorkflowId()).thenReturn(workflowId);
+        when(run.getTriggerData()).thenReturn(Map.of("event", "test"));
+
+        Steps_command trigger = step("trigger", StepType.TRIGGER, "webhook", "receive", 0, null);
+        Steps_command step1 = step("step1", StepType.ACTION, "test", "act1", 1, connectionId);
+        Steps_command step2 = step("step2", StepType.ACTION, "test", "act2", 2, connectionId);
+
+        // Simulate step1 already completed in previous run
+        Map<String, Object> executionState = new java.util.HashMap<>();
+        executionState.put(step1.getId().toString(), Map.of("step1Key", "step1Val"));
+        when(run.getExecutionState()).thenReturn(executionState);
+
+        when(stepsRepo.findActiveByWorkflowIdOrdered(workflowId))
+                .thenReturn(List.of(trigger, step1, step2));
+        when(edgeRepo.findByWorkflowId(workflowId)).thenReturn(List.of(
+                edge(workflowId, trigger, step1, "out"),
+                edge(workflowId, step1, step2, "out")));
+
+        ActionHandler act1Handler = mock(ActionHandler.class);
+        ActionHandler act2Handler = mock(ActionHandler.class);
+        when(handlerRegistry.find("test", "act1")).thenReturn(Optional.of(act1Handler));
+        when(handlerRegistry.find("test", "act2")).thenReturn(Optional.of(act2Handler));
+        when(act2Handler.execute(any())).thenReturn(ActionResult.success(Map.of("result", "ok")));
+
+        engine.execute(run);
+
+        // step1 was already in executionState, so act1Handler should never be re-executed
+        verify(act1Handler, never()).execute(any());
+        // step2 was not completed, so act2Handler should execute
+        verify(act2Handler, times(1)).execute(any());
+        verify(workflowRunService).completeRun(userId, runId);
+    }
+
+    @Test
+    void loadCredentials_forAgentApp_returnsFallbackWithoutThrowing() {
+        UUID userId = UUID.randomUUID();
+        when(connectionsRepo.findByUser_IdOrderByCreatedAtDesc(userId)).thenReturn(List.of());
+
+        Map<String, Object> creds = engine.loadCredentials(null, "agent", userId);
+        org.junit.jupiter.api.Assertions.assertNotNull(creds);
+    }
+
 
     private static Steps_command step(String name, com.crescendo.enums.StepType type,
                                       String appKey, String actionKey, int order, UUID connectionId) {

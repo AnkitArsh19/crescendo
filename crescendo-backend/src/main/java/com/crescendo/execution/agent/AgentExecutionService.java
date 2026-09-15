@@ -10,6 +10,8 @@ import com.crescendo.execution.engine.WorkflowExecutionEngine;
 import com.crescendo.shared.domain.valueobject.AppKey;
 import com.crescendo.steps.steps_command.Steps_command;
 import com.crescendo.steps.steps_command.Steps_commandRepository;
+import com.crescendo.user.user_query.User_queryRepository;
+import com.crescendo.enums.UserRole;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +60,7 @@ public class AgentExecutionService {
     private final WorkflowExecutionEngine workflowExecutionEngine;
     private final AppRepository appRepo;
     private final Steps_commandRepository stepsRepo;
+    private final User_queryRepository userQueryRepo;
     private final ObjectMapper objectMapper;
     private final String pythonBaseUrl;
     private final String pythonServiceToken;
@@ -69,6 +72,7 @@ public class AgentExecutionService {
             @Lazy WorkflowExecutionEngine workflowExecutionEngine,
             AppRepository appRepo,
             Steps_commandRepository stepsRepo,
+            User_queryRepository userQueryRepo,
             ObjectMapper objectMapper,
             @Value("${crescendo.python-ai.base-url:}") String pythonBaseUrl,
             @Value("${crescendo.python-ai.service-token:}") String pythonServiceToken,
@@ -79,6 +83,7 @@ public class AgentExecutionService {
         this.workflowExecutionEngine = workflowExecutionEngine;
         this.appRepo = appRepo;
         this.stepsRepo = stepsRepo;
+        this.userQueryRepo = userQueryRepo;
         this.objectMapper = objectMapper;
         this.pythonBaseUrl = pythonBaseUrl;
         this.pythonServiceToken = pythonServiceToken;
@@ -119,8 +124,29 @@ public class AgentExecutionService {
         }
 
         String effectiveApiKey = (userApiKey != null && !userApiKey.isBlank() && !"null".equalsIgnoreCase(userApiKey)) ? userApiKey.trim() : null;
+        boolean usingPlatformKey = false;
         if (effectiveApiKey == null && "gemini".equals(effectiveProvider)) {
             effectiveApiKey = platformGeminiApiKey;
+            usingPlatformKey = true;
+        }
+
+        boolean isAdmin = false;
+        if (ownerUserId != null && userQueryRepo != null) {
+            isAdmin = userQueryRepo.findById(ownerUserId)
+                    .map(u -> u.getRole() == UserRole.ADMIN)
+                    .orElse(false);
+        }
+
+        // Platform key model authorization:
+        // Admin users have full access to all models.
+        // Non-admin users are restricted to gemini-3.5-flash-lite free tier when using platform keys.
+        if (usingPlatformKey && !isAdmin) {
+            if (!"gemini".equals(effectiveProvider) || !"gemini-3.5-flash-lite".equalsIgnoreCase(effectiveModel)) {
+                log.info("Non-admin user {} attempted to use provider={} model={} with platform key; falling back to gemini:gemini-3.5-flash-lite",
+                        ownerUserId, effectiveProvider, effectiveModel);
+                effectiveProvider = "gemini";
+                effectiveModel = "gemini-3.5-flash-lite";
+            }
         }
 
         if (effectiveApiKey == null || effectiveApiKey.isBlank()) {

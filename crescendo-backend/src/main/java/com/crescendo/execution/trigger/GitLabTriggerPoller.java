@@ -88,10 +88,17 @@ public class GitLabTriggerPoller implements TriggerPoller {
             url.append("&ref_name=").append(encode(branch));
         }
         List<Map<String, Object>> commits = getList(token, url.toString());
-        return commits.stream()
+        List<Map<String, Object>> matching = commits.stream()
                 .filter(item -> isAfter(item.get("created_at"), since))
-                .map(item -> event(item, "created_at", "push"))
                 .toList();
+        if (matching.isEmpty()) {
+            return List.of();
+        }
+        // Group all commits in the push into a single event with HEAD commit
+        Map<String, Object> headCommit = new java.util.HashMap<>(matching.get(0));
+        headCommit.put("commits", matching);
+        headCommit.put("commit_count", matching.size());
+        return List.of(event(headCommit, "created_at", "push"));
     }
 
     private List<Map<String, Object>> pollCommentEvents(String token, String projectId, Instant since) {
