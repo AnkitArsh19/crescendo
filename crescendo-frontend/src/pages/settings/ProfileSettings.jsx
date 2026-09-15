@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { HiCheck, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
+import { HiCheck, HiOutlineTrash, HiOutlineX, HiOutlineRefresh, HiOutlineExternalLink } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
+import { isTauri, isWindows, isMac, APP_VERSION } from '../../utils/platform';
 import './Settings.css';
 
 export default function ProfileSettings() {
@@ -16,6 +17,55 @@ export default function ProfileSettings() {
     const [showDelete, setShowDelete] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [updateStatus, setUpdateStatus] = useState({
+        checking: false,
+        message: '',
+        type: '',
+        releaseUrl: '',
+        newTag: '',
+    });
+
+    const handleCheckUpdates = async () => {
+        setUpdateStatus({ checking: true, message: '', type: '', releaseUrl: '', newTag: '' });
+        try {
+            const res = await fetch('https://api.github.com/repos/AnkitArsh19/crescendo/releases/latest', {
+                headers: { Accept: 'application/vnd.github.v3+json' },
+            });
+            if (!res.ok) {
+                throw new Error('Unable to contact release server');
+            }
+            const data = await res.json();
+            const latestTag = data.tag_name || '';
+            const cleanLatest = latestTag.replace(/^v/i, '');
+            const cleanCurrent = APP_VERSION.replace(/^v/i, '');
+
+            if (cleanLatest && cleanLatest !== cleanCurrent) {
+                setUpdateStatus({
+                    checking: false,
+                    message: `Version ${latestTag} is available!`,
+                    type: 'update-available',
+                    releaseUrl: data.html_url || 'https://github.com/AnkitArsh19/crescendo/releases',
+                    newTag: latestTag,
+                });
+            } else {
+                setUpdateStatus({
+                    checking: false,
+                    message: `Crescendo Desktop is up to date (v${APP_VERSION}).`,
+                    type: 'up-to-date',
+                    releaseUrl: '',
+                    newTag: '',
+                });
+            }
+        } catch {
+            setUpdateStatus({
+                checking: false,
+                message: 'Unable to check for updates. Please verify your internet connection.',
+                type: 'error',
+                releaseUrl: '',
+                newTag: '',
+            });
+        }
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -92,7 +142,7 @@ export default function ProfileSettings() {
                     <div style={{ marginTop: 4 }}>
                         <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Member Since</label>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-primary)' }}>
-                            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+                            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
                         </div>
                     </div>
 
@@ -117,7 +167,81 @@ export default function ProfileSettings() {
 
             <div className="settings-divider" />
 
-            {/* Danger Zone — Account Deletion */}
+            {/* Desktop Client & Update Status (Only rendered in Desktop Mode) */}
+            {isTauri() && (
+                <>
+                    <div className="settings-section">
+                        <h2 className="settings-section-title">About Crescendo Desktop</h2>
+                        <p className="settings-section-desc">
+                            Desktop client build information and system update status.
+                        </p>
+
+                        <div className="settings-about-card">
+                            <div className="settings-about-grid">
+                                <div className="settings-about-item">
+                                    <span className="settings-about-label">Application</span>
+                                    <span className="settings-about-value">Crescendo Desktop</span>
+                                </div>
+                                <div className="settings-about-item">
+                                    <span className="settings-about-label">Version</span>
+                                    <span className="settings-about-value">
+                                        v{APP_VERSION}
+                                        <span className="settings-badge settings-badge-verified" style={{ marginLeft: 8 }}>
+                                            <HiCheck style={{ marginRight: 3 }} /> Active
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className="settings-about-item">
+                                    <span className="settings-about-label">Platform</span>
+                                    <span className="settings-about-value">
+                                        {isWindows() ? 'Windows (x64)' : isMac() ? 'macOS (Universal)' : 'Linux (x86_64)'}
+                                    </span>
+                                </div>
+                                <div className="settings-about-item">
+                                    <span className="settings-about-label">Release Channel</span>
+                                    <span className="settings-about-value">Stable</span>
+                                </div>
+                                <div className="settings-about-item">
+                                    <span className="settings-about-label">Runtime Engine</span>
+                                    <span className="settings-about-value">Tauri v2 / React 19</span>
+                                </div>
+                            </div>
+
+                            <div className="settings-about-actions">
+                                <button
+                                    type="button"
+                                    className="settings-btn settings-btn-secondary"
+                                    onClick={handleCheckUpdates}
+                                    disabled={updateStatus.checking}
+                                >
+                                    <HiOutlineRefresh className={updateStatus.checking ? 'spin-icon' : ''} style={{ marginRight: 6 }} />
+                                    {updateStatus.checking ? 'Checking for updates...' : 'Check for Updates'}
+                                </button>
+
+                                {updateStatus.message && (
+                                    <div className={`settings-about-message ${updateStatus.type}`}>
+                                        <span>{updateStatus.message}</span>
+                                        {updateStatus.releaseUrl && (
+                                            <a
+                                                href={updateStatus.releaseUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="settings-about-link"
+                                            >
+                                                Download {updateStatus.newTag} <HiOutlineExternalLink style={{ marginLeft: 4 }} />
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="settings-divider" />
+                </>
+            )}
+
+            {/* Danger Zone: Account Deletion */}
             <div className="settings-section">
                 <h2 className="settings-section-title" style={{ color: 'rgba(255,255,255,0.5)' }}>Danger Zone</h2>
                 <p className="settings-section-desc">

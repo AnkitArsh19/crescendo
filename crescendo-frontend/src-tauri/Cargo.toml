@@ -1,6 +1,6 @@
 [package]
 name = "crescendo-desktop"
-version = "1.0.0"
+version = "1.0.1"
 description = "Crescendo Workflow Automation Desktop App"
 authors = ["Ankit Arsh <ankitarsh19@gmail.com>"]
 edition = "2021"

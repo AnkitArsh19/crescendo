@@ -56,7 +56,7 @@ public class RedisConfig implements CachingConfigurer {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException ex, Cache cache, Object key) {
-                log.warn("Cache GET failed for key [{}] in cache [{}] — evicting stale entry: {}",
+                log.warn("Cache GET failed for key [{}] in cache [{}] : evicting stale entry: {}",
                         key, cache.getName(), ex.getMessage());
                 try {
                     cache.evict(key);
@@ -87,17 +87,21 @@ public class RedisConfig implements CachingConfigurer {
     /**
      * Jackson 3 JsonMapper configured for Redis serialization with type info embedded in JSON.
      * Polymorphic type info allows deserialization of cached objects back to their concrete types.
-     * Java 8 date/time types are supported natively in Jackson 3 — no module registration needed.
+     * Includes NON_FINAL_AND_RECORDS so record DTOs are serialized with root @class information.
+     * Java 8 date/time types are supported natively in Jackson 3.
      */
     private ObjectMapper redisObjectMapper() {
         return JsonMapper.builder()
                 .activateDefaultTyping(
                         BasicPolymorphicTypeValidator.builder()
+                                .allowIfBaseType(Object.class)
                                 .allowIfSubType("com.crescendo")
-                                .allowIfSubType(java.util.List.class)
-                                .allowIfSubType(java.util.Map.class)
+                                .allowIfSubType("java.util.")
+                                .allowIfSubType("java.time.")
+                                .allowIfSubType("java.math.")
+                                .allowIfSubType("java.lang.")
                                 .build(),
-                        DefaultTyping.OBJECT_AND_NON_CONCRETE,
+                        DefaultTyping.NON_FINAL_AND_RECORDS,
                         JsonTypeInfo.As.PROPERTY
                 )
                 .build();

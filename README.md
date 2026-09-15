@@ -10,7 +10,7 @@
 
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
 
-Project status: ongoing. The platform is actively being built, tested, and hardened.
+**Project status: Version 1.0 (v1.0.1) is released and production-ready.** The initial release milestone is complete, with core workflow orchestration, the AI agent runtime, transactional email infrastructure, and native desktop clients fully built and operational. Future development follows a continuous improvement model for enhancements, optimizations, and new catalog integrations.
 
 ## Why this project was built
 
@@ -27,9 +27,9 @@ This project was built as a learning and engineering challenge to go beyond a ba
 
 The core motivation: learn modern architecture, system design, reliability engineering, and platform-level thinking by building an actual automation system end to end.
 
-## Product vision
+## Product capabilities
 
-Crescendo aims to be a robust automation engine where users can:
+Crescendo provides a robust automation engine that allows users to:
 
 - Connect apps and services (OAuth, API keys, webhooks)
 - Define workflows with triggers and actions
@@ -37,7 +37,7 @@ Crescendo aims to be a robust automation engine where users can:
 - Observe workflow/step logs and status transitions
 - Scale execution safely with locking, retries, and stream-based processing
 
-The long-term goal is platform thinking, not one-off workflow demos:
+The platform architecture is built around platform thinking, not one-off demos:
 
 - Add integrations quickly without rewriting core orchestration logic
 - Keep runtime behavior configuration-driven (not hardcoded)
@@ -105,7 +105,7 @@ Engineering focus areas:
 - Vite 7
 - React Router
 - Zustand (UI state)
-- React Query (`@tanstack/react-query`) — server-state caching, optimistic updates
+- React Query (`@tanstack/react-query`): server-state caching, optimistic updates
 - Axios
 - React Hook Form + Zod
 - Framer Motion
@@ -206,23 +206,23 @@ A first-class autonomous workflow node (`agent:ai_agent`) that evaluates incomin
 
 Crescendo Desktop provides a focused, high-performance native workflow automation and orchestration experience across Windows, macOS, and Linux without the memory bloat of Electron.
 
-### Official Download Releases (v0.1.0)
+### Official Download Releases (v1.0.1)
 
 | Operating System | Package Format | Architecture | Size | Direct Download |
 |---|---|---|---|---|
-| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_x64-setup.exe) |
-| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_x64_en-US.msi) |
-| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_universal.dmg) |
-| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_universal.app.tar.gz) |
-| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_amd64.AppImage) |
-| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo_0.1.0_amd64.deb) |
-| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v0.1.0/Crescendo-0.1.0-1.x86_64.rpm) |
+| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_x64-setup.exe) |
+| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_x64_en-US.msi) |
+| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_universal.dmg) |
+| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_universal.app.tar.gz) |
+| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_amd64.AppImage) |
+| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_amd64.deb) |
+| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo-1.0.1-1.x86_64.rpm) |
 
-All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v0.1.0)** page.
+All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.1)** page.
 
 ### Why Tauri v2 over Electron?
 - **Ultra-Lean Binary Footprint:** <15 MB total installer size vs. 150+ MB for minimal Electron runtimes.
-- **Native OS WebViews:** Utilizes Microsoft WebView2 on Windows, WebKit on macOS, and WebKitGTK on Linux. Consumes only ~35–45 MB RAM idle compared to 350–500 MB in Electron.
+- **Native OS WebViews:** Utilizes Microsoft WebView2 on Windows, WebKit on macOS, and WebKitGTK on Linux. Consumes only ~35-45 MB RAM idle compared to 350-500 MB in Electron.
 - **Rust Process Security:** Strict compile-time memory safety, fine-grained capability boundaries (`capabilities/default.json`), and zero exposed Node.js runtime attack surface in production bundles.
 
 ### Enterprise Native Security & Authentication (RFC 8252)
@@ -340,8 +340,8 @@ Crescendo intentionally uses production-style patterns instead of simple request
 
 ### 16. Layered Client-Side Caching with SSE-driven Invalidation
 
-- **Two-Layer Cache Architecture**: The backend serves Redis-cached responses (per-user TTLs, event-driven eviction via `@TransactionalEventListener`). The frontend adds React Query as a second, independent cache layer — the two solve different costs: backend reduces DB load, frontend eliminates redundant network round-trips on navigation.
-- **Correct staleTime semantics**: The workflow list uses a short `staleTime` (30s) for freshness on re-visits. The open canvas uses `staleTime: Infinity` — no background refetch mid-edit — with `refetchOnWindowFocus: 'always'` as the intentional safety net.
+- **Two-Layer Cache Architecture**: The backend serves Redis-cached responses (per-user TTLs, event-driven eviction via `@TransactionalEventListener`). The frontend adds React Query as a second, independent cache layer (the two solve different costs: backend reduces DB load, frontend eliminates redundant network round-trips on navigation).
+- **Correct staleTime semantics**: The workflow list uses a short `staleTime` (30s) for freshness on re-visits. The open canvas uses `staleTime: Infinity` (no background refetch mid-edit), with `refetchOnWindowFocus: 'always'` as the intentional safety net.
 - **Optimistic Mutations with Rollback**: Activate/deactivate and workflow renames update the React Query cache immediately and roll back on failure via `onMutate`/`onError`/`onSettled` lifecycle, matching the UX standard set by tools like Notion and Linear.
 - **SSE Push Channel + Redis Pub/Sub Fan-out**: `WorkflowSseService` holds per-instance SSE emitters. Mutations publish to a Redis Pub/Sub channel (`workflow-events:{userId}`). Every backend instance subscribes and fans notifications to its own locally registered emitters. This ensures cross-tab and multi-instance invalidation without the per-request blocklist overhead.
 - **Layered Redundancy for Disconnects**: `EventSource` reconnects automatically after network drops. Events missed during a disconnect are caught by `refetchOnWindowFocus`, which fires on laptop wake. The two mechanisms are complementary, not redundant.
@@ -441,7 +441,7 @@ Crescendo is architected for enterprise-scale concurrent traffic and resilient l
 - **Java 21+ Virtual Threads & Custom Schedulers:** Core networking and async thread pools operate on Virtual Threads (`spring.threads.virtual.enabled=true`). Because Spring Boot does not automatically convert manually instantiated executors, background tasks like workflow distributed lock extension heartbeats (`ExecutionQueueConsumer`) and interval schedules (`SchedulerConfig`) explicitly employ `Thread.ofVirtual().factory()`. This ensures thousands of background timers consume virtually zero OS platform thread memory.
 - **HikariCP Sizing & OSIV Boundary:** By explicitly disabling Open-in-View (`spring.jpa.open-in-view=false`), database connections are borrowed strictly during `@Transactional` queries and released immediately before network proxying or JSON rendering. Coupled with conservative local pool formulas (`Pool Size = ((Cores * 2) + Spindles)`), Crescendo handles high concurrency without causing Docker RAM starvation or OS memory swapping.
 - **Live Telemetry & Observability:** Integrated Spring Boot Actuator and Micrometer metrics stream real-time operational state to Prometheus and Grafana. Running `docker-compose up -d prometheus grafana` launches a pre-configured dashboard at `http://localhost:3001` showing live HikariCP pool usage, active HTTP sockets, requests per second (RPS), and JVM garbage collection intervals.
-- **Race-Condition & Double-Execution Defense:** To guarantee protection against silent double-execution defects—where two simultaneous workers both assume lock acquisition and silently return HTTP 200 without raising server exceptions—Crescendo implements a dual-layer verification strategy:
+- **Race-Condition & Double-Execution Defense:** To guarantee protection against silent double-execution defects (where two simultaneous workers both assume lock acquisition and silently return HTTP 200 without raising server exceptions), Crescendo implements a dual-layer verification strategy:
   - **In-Memory JVM Concurrency Suite:** Automated integration tests (`DistributedLockServiceIntegrationTest`) fire 100 synchronized Virtual Threads directly in RAM across a `CountDownLatch` starting barrier, asserting exactly 1 worker acquires the lock and 99 fail cleanly.
   - **3-Tier Container Benchmark Suite (`performance-tests/`):** Standalone k6 configurations test peak Read queries, transactional Write bursts, and simultaneous race conditions via simple Docker execution commands without local software installation.
 
@@ -455,7 +455,7 @@ Crescendo is architected for enterprise-scale concurrent traffic and resilient l
 
 ## Open source and contributions
 
-This project is being shaped to be developer-extensible and open-source friendly.
+Crescendo is designed and built to be developer-extensible and open-source friendly.
 
 - New app integrations should be addable without rewriting the engine
 - Configuration/schema-driven UI and handler mapping reduce contributor friction
@@ -479,6 +479,6 @@ This project demonstrates:
 - Balancing product velocity with reliability and security foundations
 - Making deliberate, reasoned tradeoffs (e.g. two-layer cache over a single approach, SSE + Redis Pub/Sub over per-request blocklists)
 
-## Current direction
+## Current status & continuous improvement
 
-Crescendo is being shaped as a practical automation and transactional communication platform with strong engineering foundations, where learning and real-world product quality are both first-class goals.
+Crescendo is completed and running in production as a robust automation and transactional communication platform. With the version 1.0 foundation established, ongoing work focuses on continuous improvements: adding new catalog integrations and triggers, tuning system performance, and shipping incremental feature updates.

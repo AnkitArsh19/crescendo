@@ -7,9 +7,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  * <p>Java receives this, checks the decision, and either:</p>
  * <ul>
- *   <li>{@code tool_call} — dispatches the named tool through {@link ActionHandlerRegistry},
+ *   <li>{@code tool_call}: dispatches the named tool through {@link ActionHandlerRegistry},
  *       sanitises the output, appends it to conversation history, then loops.</li>
- *   <li>{@code final_answer} — exits the loop and returns the answer as the step output.</li>
+ *   <li>{@code final_answer}: exits the loop and returns the answer as the step output.</li>
  * </ul>
  *
  * <p>Python writes this via the {@code AgentNextStepResponse} Pydantic model in
@@ -18,38 +18,43 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record AgentNextStepResponse(
 
         /**
-         * "tool_call" — agent wants to invoke a tool.
-         * "final_answer" — agent has finished reasoning.
+         * "tool_call": agent wants to invoke a tool.
+         * "final_answer": agent has finished reasoning.
          */
+        @JsonProperty("decision")
         String decision,
 
         /**
          * Populated when decision == "tool_call".
-         * Null otherwise — always null-check before use.
+         * Null otherwise: always null-check before use.
          */
+        @JsonProperty("tool_call")
         ToolCallDecision toolCall,
 
         /**
          * Populated when decision == "final_answer".
          * The agent's final output string.
          */
+        @JsonProperty("final_answer")
         String finalAnswer,
 
         /**
          * Chain-of-thought reasoning text from the LLM (optional).
          * Logged for observability; never executed or forwarded to tools.
          */
+        @JsonProperty("reasoning")
         String reasoning,
 
         /**
          * Token count for this single turn, reported by the LLM API.
          * Accumulated in AgentExecutionService against tokenBudget.
          */
-        @JsonProperty("tokens_used") int tokensUsed
+        @JsonProperty("tokens_used")
+        int tokensUsed
 
 ) {
 
-    // ── Nested type ───────────────────────────────────────────────────────
+    // Nested type
 
     /**
      * The tool the agent decided to call.
@@ -57,14 +62,21 @@ public record AgentNextStepResponse(
      */
     public record ToolCallDecision(
             /** Matches AgentNextStepRequest.ToolDefinition.toolId (the step UUID string). */
+            @JsonProperty("tool_id")
             String toolId,
+
+            @JsonProperty("app_key")
             String appKey,
+
+            @JsonProperty("action_key")
             String actionKey,
+
             /** Key-value map of resolved parameter values for the chosen action. */
+            @JsonProperty("arguments")
             java.util.Map<String, Object> arguments
     ) {}
 
-    // ── Convenience helpers ───────────────────────────────────────────────
+    // Convenience helpers
 
     public boolean isToolCall() {
         return "tool_call".equals(decision) && toolCall != null;
@@ -74,3 +86,4 @@ public record AgentNextStepResponse(
         return "final_answer".equals(decision);
     }
 }
+
