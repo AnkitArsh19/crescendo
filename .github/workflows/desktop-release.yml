@@ -11,7 +11,7 @@ on:
       tag_name:
         description: 'Release tag name (e.g. v0.1.0)'
         required: false
-        default: 'v1.0.1'
+        default: 'v1.0.2'
 
 permissions:
   contents: write
@@ -77,7 +77,7 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
-            echo "tag=${{ inputs.tag_name || 'v1.0.1' }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ inputs.tag_name || 'v1.0.2' }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Build Tauri App & Create/Update Release

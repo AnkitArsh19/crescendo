@@ -607,4 +607,6 @@ logging.level.com.crescendo=INFO
 logging.level.org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer=ERROR
 logging.level.org.hibernate.orm.deprecation=ERROR
 logging.level.org.springdoc.core.events.SpringDocAppInitializer=ERROR
+# Suppress noisy Apache HTTP Client socket retry logs from job search providers
+logging.level.org.apache.hc.client5.http.impl.classic.HttpRequestRetryExec=WARN
 

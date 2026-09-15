@@ -67,33 +67,22 @@ pub fn run() {
                 let _ = app.deep_link().register("crescendo");
             }
 
-            // Hybrid Model (Instant OTA with local fallback):
-            // In release builds, verify network reachability to app.crescendo.run.
-            // If online, navigate to the remote web app for instant OTA updates.
-            // If offline, seamlessly fall back to bundled local assets.
+            // In release builds, serve bundled local assets (../dist) by default.
+            // If the user explicitly sets CRESCENDO_REMOTE_URL, navigate to that remote endpoint.
             #[cfg(not(debug_assertions))]
             {
-                let handle = app.handle().clone();
-                std::thread::spawn(move || {
-                    use std::net::ToSocketAddrs;
-                    let target_host = std::env::var("CRESCENDO_REMOTE_URL")
-                        .unwrap_or_else(|_| "https://app.crescendo.run".to_string());
-
-                    if target_host != "local" {
-                        let is_online = "app.crescendo.run:443"
-                            .to_socket_addrs()
-                            .map(|mut addrs| addrs.next().is_some())
-                            .unwrap_or(false);
-
-                        if is_online {
+                if let Ok(target_host) = std::env::var("CRESCENDO_REMOTE_URL") {
+                    if !target_host.is_empty() && target_host != "local" {
+                        let handle = app.handle().clone();
+                        std::thread::spawn(move || {
                             if let Some(window) = handle.get_webview_window("main") {
                                 if let Ok(url) = target_host.parse() {
                                     let _ = window.navigate(url);
                                 }
                             }
-                        }
+                        });
                     }
-                });
+                }
             }
 
             Ok(())

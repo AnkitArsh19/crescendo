@@ -206,19 +206,19 @@ A first-class autonomous workflow node (`agent:ai_agent`) that evaluates incomin
 
 Crescendo Desktop provides a focused, high-performance native workflow automation and orchestration experience across Windows, macOS, and Linux without the memory bloat of Electron.
 
-### Official Download Releases (v1.0.1)
+### Official Download Releases (v1.0.2)
 
 | Operating System | Package Format | Architecture | Size | Direct Download |
 |---|---|---|---|---|
-| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_x64-setup.exe) |
-| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_x64_en-US.msi) |
-| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_universal.dmg) |
-| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_universal.app.tar.gz) |
-| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_amd64.AppImage) |
-| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo_1.0.1_amd64.deb) |
-| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.1/Crescendo-1.0.1-1.x86_64.rpm) |
+| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_x64-setup.exe) |
+| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_x64_en-US.msi) |
+| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_universal.dmg) |
+| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_universal.app.tar.gz) |
+| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_amd64.AppImage) |
+| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_amd64.deb) |
+| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo-1.0.2-1.x86_64.rpm) |
 
-All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.1)** page.
+All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.2)** page.
 
 ### Why Tauri v2 over Electron?
 - **Ultra-Lean Binary Footprint:** <15 MB total installer size vs. 150+ MB for minimal Electron runtimes.
