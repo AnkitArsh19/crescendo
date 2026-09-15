@@ -17,6 +17,9 @@ export const workflowRunApi = {
   cancel: (workflowId, runId) =>
     api.post(`/workflows/${workflowId}/runs/${runId}/cancel`),
 
+  retry: (workflowId, runId) =>
+    api.post(`/workflows/${workflowId}/runs/${runId}/retry`).then((r) => r.data),
+
   stats: (workflowId) =>
     api.get(`/workflows/${workflowId}/runs/stats`).then((r) => r.data),
 };

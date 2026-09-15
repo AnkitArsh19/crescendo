@@ -59,7 +59,7 @@ export default function RunDetail() {
 
   const {
     runDetail, isLoadingDetail, detailError,
-    fetchRunDetail, clearRunDetail, cancelRun,
+    fetchRunDetail, clearRunDetail, cancelRun, retryRun,
   } = useLogbookStore();
 
   const { data: workflows = [] } = useWorkflowList();
@@ -67,6 +67,7 @@ export default function RunDetail() {
   const [catalogApps, setCatalogApps] = useState([]);
   const [expandedStep, setExpandedStep] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
   const [showTriggerPayload, setShowTriggerPayload] = useState(false);
 
@@ -74,6 +75,16 @@ export default function RunDetail() {
     fetchRunDetail(workflowId, runId);
     return () => clearRunDetail();
   }, [workflowId, runId, fetchRunDetail, clearRunDetail]);
+
+  // Auto-refresh when run is currently running or pending
+  useEffect(() => {
+    if (runDetail && (runDetail.status === 'PENDING' || runDetail.status === 'RUNNING')) {
+      const timer = setInterval(() => {
+        fetchRunDetail(workflowId, runId);
+      }, 2000);
+      return () => clearInterval(timer);
+    }
+  }, [runDetail?.status, workflowId, runId, fetchRunDetail]);
 
   useEffect(() => {
     getCachedApps().then(setCatalogApps).catch(() => {});
@@ -209,6 +220,18 @@ export default function RunDetail() {
       // handled in store
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    try {
+      await retryRun(workflowId, runId);
+      await fetchRunDetail(workflowId, runId);
+    } catch {
+      // handled in store
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -485,6 +508,18 @@ export default function RunDetail() {
                 >
                   <HiOutlineDownload /> Export Log
                 </button>
+                {run.status === 'FAILED' && (
+                  <button
+                    className="rd-retry-btn"
+                    onClick={handleRetry}
+                    disabled={retrying}
+                    title="Retry execution from the failed step"
+                    aria-label="Retry Run"
+                  >
+                    <HiOutlineRefresh className={retrying ? 'spin' : ''} />
+                    {retrying ? 'Retrying...' : 'Retry Run'}
+                  </button>
+                )}
                 {canCancel && (
                   <button
                     className="rd-cancel-btn"
@@ -494,7 +529,7 @@ export default function RunDetail() {
                     aria-label="Cancel Run"
                   >
                     <HiOutlineBan />
-                    {cancelling ? 'Cancelling…' : 'Cancel Run'}
+                    {cancelling ? 'Cancelling...' : 'Cancel Run'}
                   </button>
                 )}
               </div>

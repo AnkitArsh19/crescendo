@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, useParams } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastProvider from './components/ToastProvider';
@@ -88,7 +88,7 @@ function LandingPage() {
   }, [isAuthenticated, isLoading, navigate]);
 
   usePageMeta(
-    'Crescendo — Workflow Automation',
+    'Crescendo: Workflow Automation Platform',
     'Build, orchestrate, and monitor complex workflows with Crescendo\'s visual builder. Connect Gmail, Slack, Google Sheets, Discord, and more.',
   );
 
@@ -142,6 +142,11 @@ function LandingPage() {
 }
 
 
+
+function SettingsRedirect() {
+  const { "*": subPath } = useParams();
+  return <Navigate to={subPath ? `/dashboard/settings/${subPath}` : '/dashboard/settings'} replace />;
+}
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -222,7 +227,7 @@ function App() {
       {/* Dashboard (Protected) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/oauth/authorize" element={<OAuthAuthorizePage />} />
-        {/* Shared workflow import — inside ProtectedRoute but outside DashboardLayout */}
+        {/* Shared workflow import: inside ProtectedRoute but outside DashboardLayout */}
         <Route path="/shared" element={<DashboardLayout />}>
           <Route index element={<SharedWorkflows />} />
         </Route>
@@ -264,7 +269,11 @@ function App() {
       </Route>
       </Route>
 
-      {/* Catch-all — unknown routes → 404 */}
+      {/* Settings compatibility redirects */}
+      <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
+      <Route path="/settings/*" element={<SettingsRedirect />} />
+
+      {/* Catch-all: unknown routes -> 404 */}
       <Route path="*" element={<ErrorPage code={404} />} />
     </Routes>
     </>

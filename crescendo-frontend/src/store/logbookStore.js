@@ -78,6 +78,19 @@ const useLogbookStore = create((set) => ({
     }));
   },
 
+  retryRun: async (workflowId, runId) => {
+    const data = await workflowRunApi.retry(workflowId, runId);
+    set((state) => ({
+      runs: state.runs.map((r) =>
+        r.id === runId ? { ...r, status: 'PENDING', errorMessage: null } : r
+      ),
+      runDetail: state.runDetail?.id === runId
+        ? { ...state.runDetail, status: 'PENDING', errorMessage: null }
+        : state.runDetail,
+    }));
+    return data;
+  },
+
   // ─── Stats ─────────────────────────────────────────────────────────────────
 
   fetchStats: async (workflowId) => {

@@ -92,10 +92,18 @@ public class GitHubTriggerPoller implements TriggerPoller {
             url.append("&sha=").append(encode(branch));
         }
         List<Map<String, Object>> commits = getList(token, url.toString(), "application/vnd.github+json");
-        return commits.stream()
+        List<Map<String, Object>> matching = commits.stream()
                 .filter(item -> isAfter(commitDate(item), since))
-                .map(item -> event(item, "commit.author.date", "github", "push"))
                 .toList();
+        if (matching.isEmpty()) {
+            return List.of();
+        }
+        // GitHub returns commits newest-first. The first item is HEAD of the push.
+        // Group all commits in the push into a single event to prevent duplicate workflow runs.
+        Map<String, Object> headCommit = new java.util.HashMap<>(matching.get(0));
+        headCommit.put("commits", matching);
+        headCommit.put("commit_count", matching.size());
+        return List.of(event(headCommit, "commit.author.date", "github", "push"));
     }
 
     private List<Map<String, Object>> pollReleases(String token, String repo, Instant since) {
