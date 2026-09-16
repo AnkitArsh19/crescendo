@@ -21,6 +21,10 @@ RUN ./mvnw dependency:go-offline -B || true
 # Copy application source code
 COPY src src
 
+# Ensure properties templates are present in the build if omitted by .gitignore
+RUN [ -f src/main/resources/application-docker.properties ] || cp src/main/resources/application-docker.properties.example src/main/resources/application-docker.properties
+RUN [ -f src/main/resources/application.properties ] || cp src/main/resources/application.properties.example src/main/resources/application.properties
+
 # Build executable production JAR without running unit tests during Docker image build
 RUN ./mvnw clean package -DskipTests -B
 
