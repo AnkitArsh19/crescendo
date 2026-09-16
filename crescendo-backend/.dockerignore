@@ -1,6 +1,5 @@
-# Ignore build outputs (except the compiled JAR which is explicitly copied)
+# Ignore build outputs
 target/
-!target/*.jar
 
 # Ignore IDE config files
 .idea/

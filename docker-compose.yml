@@ -1,7 +1,7 @@
 # ==============================================================================
 # Crescendo Automation Engine - Production Docker Compose
 # ==============================================================================
-# Target Host: AWS EC2 c7i-flex.large (2 vCPU, 4 GiB RAM)
+# Architecture: Microservices on isolated Docker bridge network (crescendo-network)
 # Ingress: Cloudflare Tunnel (cloudflared) -> Internal Docker Network
 # Target Domains:
 #   - Frontend SPA: https://app.crescendo.run
