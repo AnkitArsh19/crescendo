@@ -1,5 +1,6 @@
 package com.crescendo.auth.service;
 
+import com.crescendo.admin.AdminEmailRepository;
 import com.crescendo.auth.domain_event.OAuthProviderLinkedEvent;
 import com.crescendo.auth.domain_event.UserLoggedInEvent;
 import com.crescendo.auth.domain_event.UserPasswordChangedEvent;
@@ -62,6 +63,7 @@ public class AuthenticationService {
     private final UserIdentityRepository identityRepo;
     private final PasswordResetTokenRepository passwordResetRepo;
     private final EmailVerificationTokenRepository emailVerificationRepo;
+    private final AdminEmailRepository adminEmailRepo;
     private final JWTService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final NotificationService notificationService;
@@ -74,6 +76,7 @@ public class AuthenticationService {
             UserIdentityRepository identityRepo,
             PasswordResetTokenRepository passwordResetRepo,
             EmailVerificationTokenRepository emailVerificationRepo,
+            AdminEmailRepository adminEmailRepo,
             JWTService jwtService,
             BCryptPasswordEncoder passwordEncoder,
             NotificationService notificationService,
@@ -83,6 +86,7 @@ public class AuthenticationService {
         this.identityRepo = identityRepo;
         this.passwordResetRepo = passwordResetRepo;
         this.emailVerificationRepo = emailVerificationRepo;
+        this.adminEmailRepo = adminEmailRepo;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.notificationService = notificationService;
@@ -126,12 +130,11 @@ public class AuthenticationService {
 
     // OAUTH LOGIN  (called from the OAuth2 success handler after redirect)
     /**
-     * Handles login or registration via an OAuth provider.
-     * Account linking: if the OAuth email already exists as a local user, the provider
-     * is linked to that account instead of creating a duplicate.
+     * Completes an OAuth2 login flow (called by OAuth2LoginSuccessHandler).
+     * Creates the user account on first login; links the OAuth provider on subsequent logins.
      *
-     * @param provider         the OAuth provider (GOOGLE / GITHUB)
-     * @param providerUserId   the user ID as assigned by the provider
+     * @param provider         the OAuth provider (GOOGLE or GITHUB)
+     * @param providerUserId   the provider-assigned immutable user ID
      * @param email            the verified email returned by the provider
      * @param suggestedUsername a display name suggested by the provider (maybe adjusted for uniqueness)
      * @param userAgent        HTTP User-Agent for session tracking
@@ -143,6 +146,7 @@ public class AuthenticationService {
         Optional<UserIdentity> identityOpt = identityRepo.findByProviderAndProviderUserId(provider, providerUserId);
 
         User_command user;
+        boolean isNewUser = false;
         if (identityOpt.isPresent()) {
             // Returning OAuth user — identity row already exists, just get the linked account.
             user = identityOpt.get().getUser();
@@ -154,19 +158,39 @@ public class AuthenticationService {
 
             if (user == null) {
                 // Step 3: brand-new user — create the canonical account first.
-                user = new User_command(UUID.randomUUID(), suggestedUsername, email, UserRole.USER);
+                UserRole initialRole = (email != null && adminEmailRepo.existsByEmail(email.trim().toLowerCase()))
+                        ? UserRole.ADMIN : UserRole.USER;
+                user = new User_command(UUID.randomUUID(), suggestedUsername, email, initialRole);
                 userRepo.save(user);
+                isNewUser = true;
             }
 
             // OAuth providers verify the user's email before returning it to us,
             // so we can treat the account as email-verified immediately.
-            if (!user.isEmailVerified()) {
+            boolean wasUnverified = !user.isEmailVerified();
+            if (wasUnverified) {
                 user.setEmailVerified(true);
+                userRepo.save(user);
             }
 
             // Link this OAuth provider to the account (whether new or pre-existing).
             identityRepo.save(new UserIdentity(UUID.randomUUID(), user, provider, providerUserId, email));
             eventPublisher.publish(new OAuthProviderLinkedEvent(user.getId(), provider));
+
+            if (isNewUser) {
+                eventPublisher.publish(new UserRegisteredEvent(user.getId(), user.getEmailId(), user.getUserName()));
+                eventPublisher.publish(new UserEmailVerifiedEvent(user.getId(), user.getEmailId()));
+            } else if (wasUnverified) {
+                eventPublisher.publish(new UserEmailVerifiedEvent(user.getId(), user.getEmailId()));
+            }
+        }
+
+        // Even for existing/returning users, ensure admin status if on whitelist:
+        if (user.getRole() != UserRole.ADMIN && user.getEmailId() != null &&
+                adminEmailRepo.existsByEmail(user.getEmailId().trim().toLowerCase())) {
+            user.setRole(UserRole.ADMIN);
+            userRepo.save(user);
+            log.info("[admin] Auto-promoted user {} to ADMIN on OAuth login", user.getEmailId());
         }
 
         eventPublisher.publish(new UserLoggedInEvent(user.getId(), user.getEmailId(), provider));

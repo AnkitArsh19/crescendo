@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HiCheck, HiOutlineTrash, HiOutlineX, HiOutlineRefresh, HiOutlineExternalLink } from 'react-icons/hi';
+import { HiCheck, HiOutlineTrash, HiOutlineX, HiOutlineRefresh, HiOutlineExternalLink, HiOutlineExclamationCircle } from 'react-icons/hi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../components/ui/Input';
@@ -125,7 +125,7 @@ export default function ProfileSettings() {
                         {user?.limits?.tier && user.limits.tier !== 'UNVERIFIED' && user.limits.tier !== 'GUEST' ? (
                             <span className="settings-badge settings-badge-verified"><HiCheck style={{ marginRight: '4px' }}/> Verified</span>
                         ) : (
-                            <span className="settings-badge settings-badge-disabled">⚠ Unverified</span>
+                            <span className="settings-badge settings-badge-disabled"><HiOutlineExclamationCircle style={{ marginRight: '4px' }}/> Unverified</span>
                         )}
                         {user?.linkedAccounts?.some(a => a.provider === 'GOOGLE') && (
                             <span className="settings-badge settings-badge-verified">

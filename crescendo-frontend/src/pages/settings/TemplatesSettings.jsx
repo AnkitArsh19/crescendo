@@ -17,41 +17,38 @@ const STARTER_TEMPLATES = [
     name: 'Welcome & Getting Started',
     category: 'Transactional',
     badge: 'Onboarding',
-    badgeColor: '#6366f1',
+    badgeColor: '#a1a1aa',
     subject: 'Welcome to Crescendo, {{FIRST_NAME}}',
     description: 'Modern product welcome with quick-start checklist, primary CTA, and help center links.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
-        <!-- Top accent banner -->
-        <tr><td style="background:linear-gradient(90deg, #6366f1, #a855f7);height:4px;"></td></tr>
-        <tr><td style="padding:40px 36px 20px 36px;">
-          <span style="display:inline-block;padding:4px 10px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px;">Welcome</span>
-          <h1 style="color:#ffffff;font-size:26px;font-weight:700;line-height:1.25;margin:0 0 16px 0;">Welcome aboard, {{FIRST_NAME}}!</h1>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 24px 0;">We're thrilled to have you join our automation community. Crescendo gives you the superpower to connect apps, schedule workflows, and orchestrate AI agents seamlessly.</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:44px 40px 24px 40px;">
+          <span style="display:inline-block;padding:4px 12px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:20px;">Welcome</span>
+          <h1 style="color:#ffffff;font-size:28px;font-weight:700;line-height:1.2;margin:0 0 16px 0;letter-spacing:-0.3px;">Welcome aboard, {{FIRST_NAME}}</h1>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 28px 0;">We're thrilled to have you join our automation community. Crescendo gives you the power to connect apps, schedule workflows, and orchestrate AI agents &mdash; all from one place.</p>
           
-          <!-- Checklist Card -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:20px;margin-bottom:28px;">
-            <tr><td style="color:#ffffff;font-weight:600;font-size:14px;padding-bottom:12px;">3 steps to get started:</td></tr>
-            <tr><td style="color:#d4d4d8;font-size:14px;padding:4px 0;">✦ <strong>Connect your apps</strong> — Authenticate GitHub, Slack, Discord or Gemini in 1 click.</td></tr>
-            <tr><td style="color:#d4d4d8;font-size:14px;padding:4px 0;">✦ <strong>Pick a workflow starter</strong> — Launch automated pipelines with pre-built DAGs.</td></tr>
-            <tr><td style="color:#d4d4d8;font-size:14px;padding:4px 0;">✦ <strong>Activate your automation</strong> — Let Crescendo handle the repeat busywork 24/7.</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:20px 24px;margin-bottom:32px;">
+            <tr><td style="color:#ffffff;font-weight:600;font-size:13px;padding-bottom:14px;letter-spacing:0.3px;text-transform:uppercase;">3 steps to get started</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:14px;padding:5px 0;line-height:1.6;">1. <strong>Connect your apps</strong> &mdash; Authenticate GitHub, Slack, Discord or Gemini in 1 click.</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:14px;padding:5px 0;line-height:1.6;">2. <strong>Pick a workflow starter</strong> &mdash; Launch automated pipelines with pre-built DAGs.</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:14px;padding:5px 0;line-height:1.6;">3. <strong>Activate your automation</strong> &mdash; Let Crescendo handle the repeat busywork 24/7.</td></tr>
           </table>
 
-          <!-- Button -->
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
-            <tr><td align="center" style="background:linear-gradient(135deg, #6366f1, #4f46e5);border-radius:8px;padding:12px 28px;">
-              <a href="{{DASHBOARD_URL}}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;display:inline-block;">Open Your Dashboard &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 32px auto;">
+            <tr><td align="center" style="background:#ffffff;border-radius:8px;padding:13px 32px;">
+              <a href="{{DASHBOARD_URL}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;letter-spacing:0.2px;">Open Your Dashboard &rarr;</a>
             </td></tr>
           </table>
 
           <p style="color:#71717a;font-size:13px;line-height:1.5;margin:0;">Have questions? Reply directly to this email or visit our documentation anytime.</p>
         </td></tr>
-        <tr><td style="background:#121215;padding:20px 36px;border-top:1px solid #27272a;text-align:center;">
+        <tr><td style="background:#111113;padding:20px 40px;border-top:1px solid #27272a;text-align:center;">
           <p style="color:#52525b;font-size:12px;margin:0 0 6px 0;">&copy; {{CURRENT_YEAR}} {{COMPANY_NAME}}. All rights reserved.</p>
           <a href="{{CRESCENDO_UNSUBSCRIBE_URL}}" style="color:#71717a;font-size:12px;text-decoration:underline;">Unsubscribe preferences</a>
         </td></tr>
@@ -62,10 +59,10 @@ const STARTER_TEMPLATES = [
 </html>`,
     blocks: [
       { id: 'b1', type: 'badge', text: 'Welcome', color: '#a1a1aa', bgColor: '#27272a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
-      { id: 'b2', type: 'heading', content: 'Welcome aboard, {{FIRST_NAME}}!', level: 'h1', align: 'left', color: '#ffffff', fontSize: 26, fontWeight: '700', lineHeight: 125, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'b3', type: 'text', content: "We're thrilled to have you join our automation community. Crescendo gives you the superpower to connect apps, schedule workflows, and orchestrate AI agents seamlessly.", align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'b4', type: 'text', content: "✦ Connect your apps in 1 click\n✦ Pick a workflow starter\n✦ Activate your automation to run 24/7", align: 'left', color: '#d4d4d8', fontSize: 14, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 24, left: 0 } },
-      { id: 'b5', type: 'button', text: 'Open Your Dashboard →', url: '{{DASHBOARD_URL}}', align: 'center', bgColor: '#6366f1', textColor: '#ffffff', fontSize: 15, fontWeight: '600', paddingX: 28, paddingY: 12, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 24, left: 0 } },
+      { id: 'b2', type: 'heading', content: 'Welcome aboard, {{FIRST_NAME}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 28, fontWeight: '700', lineHeight: 120, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
+      { id: 'b3', type: 'text', content: "We're thrilled to have you join our automation community. Crescendo gives you the power to connect apps, schedule workflows, and orchestrate AI agents — all from one place.", align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 170, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'b4', type: 'text', content: "1. Connect your apps in 1 click\n2. Pick a workflow starter\n3. Activate your automation to run 24/7", align: 'left', color: '#d4d4d8', fontSize: 14, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 24, left: 0 } },
+      { id: 'b5', type: 'button', text: 'Open Your Dashboard →', url: '{{DASHBOARD_URL}}', align: 'center', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 32, paddingY: 13, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 24, left: 0 } },
       { id: 'b6', type: 'divider', color: '#27272a', thickness: 1, style: 'solid', margin: { top: 16, right: 0, bottom: 16, left: 0 } },
       { id: 'b7', type: 'unsubscribe', text: 'You received this email because you signed up for Crescendo.', linkText: 'Unsubscribe here', url: '{{CRESCENDO_UNSUBSCRIBE_URL}}', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 16, right: 0, bottom: 8, left: 0 } }
     ]
@@ -75,37 +72,36 @@ const STARTER_TEMPLATES = [
     name: 'CI/CD & Server Outage Alert',
     category: 'Developer',
     badge: 'Critical Alert',
-    badgeColor: '#ef4444',
-    subject: '🚨 Build Failure: {{WORKFLOW_NAME}} on {{BRANCH_NAME}}',
+    badgeColor: '#a1a1aa',
+    subject: 'Build Failure: {{WORKFLOW_NAME}} on {{BRANCH_NAME}}',
     description: 'Terminal-style diagnostic alert with branch, commit SHA, and direct log link.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #3f1818;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
-        <tr><td style="background:#ef4444;height:4px;"></td></tr>
-        <tr><td style="padding:36px 36px 20px 36px;">
-          <span style="display:inline-block;padding:4px 10px;background:#451a1a;color:#fca5a5;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px;">● Pipeline Failed</span>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <span style="display:inline-block;padding:4px 12px;background:#27272a;color:#d4d4d8;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:20px;">Pipeline Failed</span>
           <h1 style="color:#ffffff;font-size:24px;font-weight:700;line-height:1.3;margin:0 0 14px 0;">Execution error in {{WORKFLOW_NAME}}</h1>
-          <p style="color:#a1a1aa;font-size:14px;line-height:1.5;margin:0 0 20px 0;">A step in your automated pipeline exited with a non-zero status code on branch <code style="color:#fca5a5;background:#27272a;padding:2px 6px;border-radius:4px;">{{BRANCH_NAME}}</code>.</p>
+          <p style="color:#a1a1aa;font-size:14px;line-height:1.6;margin:0 0 24px 0;">A step in your automated pipeline exited with a non-zero status code on branch <code style="color:#e4e4e7;background:#27272a;padding:2px 6px;border-radius:4px;">{{BRANCH_NAME}}</code>.</p>
           
-          <!-- Terminal / Diagnostic Box -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;border:1px solid #27272a;border-radius:8px;padding:16px;margin-bottom:24px;font-family:'Commit Mono',monospace;">
-            <tr><td style="color:#71717a;font-size:12px;padding-bottom:8px;">// Commit: {{COMMIT_SHA}} &bull; Runner ID: {{RUN_ID}}</td></tr>
-            <tr><td style="color:#f87171;font-size:13px;line-height:1.4;white-space:pre-wrap;">{{ERROR_MESSAGE}}</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#09090b;border:1px solid #27272a;border-radius:8px;padding:16px 20px;margin-bottom:28px;font-family:'Commit Mono',monospace;">
+            <tr><td style="color:#52525b;font-size:12px;padding-bottom:8px;">// Commit: {{COMMIT_SHA}} &bull; Runner ID: {{RUN_ID}}</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:13px;line-height:1.5;white-space:pre-wrap;">{{ERROR_MESSAGE}}</td></tr>
           </table>
 
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
-            <tr><td style="background:#ef4444;border-radius:6px;padding:10px 22px;">
-              <a href="{{LOGS_URL}}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Inspect Full Logs &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px 0;">
+            <tr><td style="background:#ffffff;border-radius:6px;padding:11px 24px;">
+              <a href="{{LOGS_URL}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;">Inspect Full Logs &rarr;</a>
             </td></tr>
           </table>
-          <p style="color:#71717a;font-size:12px;margin:0;">Automatic retries remaining: 0. Downstream dependent nodes have been paused.</p>
+          <p style="color:#52525b;font-size:12px;margin:0;">Automatic retries remaining: 0. Downstream dependent nodes have been paused.</p>
         </td></tr>
-        <tr><td style="background:#121215;padding:16px 36px;border-top:1px solid #27272a;text-align:center;">
-          <p style="color:#52525b;font-size:12px;margin:0;">Alert dispatched by Crescendo Monitoring &bull; <a href="{{ALERT_SETTINGS_URL}}" style="color:#71717a;">Mute alert</a></p>
+        <tr><td style="background:#111113;padding:18px 40px;border-top:1px solid #27272a;text-align:center;">
+          <p style="color:#52525b;font-size:12px;margin:0;">Alert dispatched by Crescendo Monitoring &bull; <a href="{{ALERT_SETTINGS_URL}}" style="color:#71717a;text-decoration:underline;">Mute alert</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -113,11 +109,11 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'd1', type: 'badge', text: 'Pipeline Failed', color: '#fca5a5', bgColor: '#451a1a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 'd1', type: 'badge', text: 'Pipeline Failed', color: '#d4d4d8', bgColor: '#27272a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
       { id: 'd2', type: 'heading', content: 'Execution error in {{WORKFLOW_NAME}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 14, left: 0 } },
       { id: 'd3', type: 'text', content: 'A step in your pipeline exited with an error on branch {{BRANCH_NAME}} (Commit: {{COMMIT_SHA}}).', align: 'left', color: '#a1a1aa', fontSize: 14, fontWeight: '400', lineHeight: 155, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'd4', type: 'quote', content: 'Error diagnostic:\n{{ERROR_MESSAGE}}', align: 'left', color: '#f87171', fontSize: 13, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'd5', type: 'button', text: 'Inspect Full Logs →', url: '{{LOGS_URL}}', align: 'left', bgColor: '#ef4444', textColor: '#ffffff', fontSize: 14, fontWeight: '600', paddingX: 20, paddingY: 10, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'd4', type: 'quote', content: 'Error diagnostic:\n{{ERROR_MESSAGE}}', align: 'left', color: '#d4d4d8', fontSize: 13, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'd5', type: 'button', text: 'Inspect Full Logs →', url: '{{LOGS_URL}}', align: 'left', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 24, paddingY: 11, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
       { id: 'd6', type: 'divider', color: '#27272a', thickness: 1, style: 'solid', margin: { top: 12, right: 0, bottom: 12, left: 0 } },
       { id: 'd7', type: 'unsubscribe', text: 'Alert dispatched by Crescendo Monitoring.', linkText: 'Configure alerts', url: '{{ALERT_SETTINGS_URL}}', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 8, right: 0, bottom: 8, left: 0 } }
     ]
@@ -127,33 +123,33 @@ const STARTER_TEMPLATES = [
     name: 'Student Project & Hackathon Invite',
     category: 'Student',
     badge: 'Collaboration',
-    badgeColor: '#10b981',
+    badgeColor: '#a1a1aa',
     subject: "You're invited to join {{PROJECT_NAME}} on Crescendo",
-    description: 'Vibrant study group or hackathon team invitation with deadline badge and join CTA.',
+    description: 'Elegant team invitation with deadline details and join CTA.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:linear-gradient(90deg, #10b981, #06b6d4);height:4px;"></td></tr>
-        <tr><td style="padding:36px;">
-          <span style="display:inline-block;padding:4px 10px;background:#064e3b;color:#6ee7b7;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;">🎓 Team Workspace</span>
-          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px 0;">{{INVITER_NAME}} invited you to {{PROJECT_NAME}}</h1>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px 0;">Hi {{FIRST_NAME}}, you have been invited to collaborate on <strong>{{PROJECT_NAME}}</strong>. Join your teammates to build automated data pipelines, review LeetCode algorithms, and build AI projects together.</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <span style="display:inline-block;padding:4px 12px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:20px;">Team Workspace</span>
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 14px 0;letter-spacing:-0.2px;">{{INVITER_NAME}} invited you to {{PROJECT_NAME}}</h1>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 24px 0;">Hi {{FIRST_NAME}}, you have been invited to collaborate on <strong style="color:#e4e4e7;">{{PROJECT_NAME}}</strong>. Join your teammates to build automated data pipelines, review algorithms, and build AI projects together.</p>
           
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px;margin-bottom:24px;">
-            <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">📅 <strong>Target Date / Milestone:</strong> {{DEADLINE_DATE}}</td></tr>
-            <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">👥 <strong>Role:</strong> Contributor &bull; Full Pipeline Access</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px 20px;margin-bottom:28px;">
+            <tr><td style="color:#d4d4d8;font-size:13px;padding:5px 0;line-height:1.6;"><strong style="color:#e4e4e7;">Target Date:</strong> {{DEADLINE_DATE}}</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:13px;padding:5px 0;line-height:1.6;"><strong style="color:#e4e4e7;">Role:</strong> Contributor &bull; Full Pipeline Access</td></tr>
           </table>
 
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
-            <tr><td style="background:#10b981;border-radius:8px;padding:12px 28px;">
-              <a href="{{JOIN_URL}}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Join Team Workspace &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
+            <tr><td style="background:#ffffff;border-radius:8px;padding:13px 32px;">
+              <a href="{{JOIN_URL}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;">Join Team Workspace &rarr;</a>
             </td></tr>
           </table>
-          <p style="color:#71717a;font-size:12px;text-align:center;margin:0;">This invitation was sent by {{INVITER_NAME}} ({{INVITER_EMAIL}}).</p>
+          <p style="color:#52525b;font-size:12px;text-align:center;margin:0;">This invitation was sent by {{INVITER_NAME}} ({{INVITER_EMAIL}}).</p>
         </td></tr>
       </table>
     </td></tr>
@@ -161,10 +157,10 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 's1', type: 'badge', text: 'Team Workspace', color: '#6ee7b7', bgColor: '#064e3b', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 's1', type: 'badge', text: 'Team Workspace', color: '#a1a1aa', bgColor: '#27272a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
       { id: 's2', type: 'heading', content: '{{INVITER_NAME}} invited you to {{PROJECT_NAME}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 14, left: 0 } },
-      { id: 's3', type: 'text', content: 'Hi {{FIRST_NAME}}, join your teammates to collaborate on automated data pipelines, daily coding challenges, and AI workflows.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 's4', type: 'button', text: 'Join Team Workspace →', url: '{{JOIN_URL}}', align: 'center', bgColor: '#10b981', textColor: '#ffffff', fontSize: 15, fontWeight: '600', paddingX: 28, paddingY: 12, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 's3', type: 'text', content: 'Hi {{FIRST_NAME}}, join your teammates to collaborate on automated data pipelines, daily coding challenges, and AI workflows.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 170, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 's4', type: 'button', text: 'Join Team Workspace →', url: '{{JOIN_URL}}', align: 'center', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 32, paddingY: 13, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
       { id: 's5', type: 'divider', color: '#27272a', thickness: 1, style: 'solid', margin: { top: 12, right: 0, bottom: 12, left: 0 } },
       { id: 's6', type: 'unsubscribe', text: 'Invitation sent via Crescendo Workspace.', linkText: 'Decline invitation', url: '{{DECLINE_URL}}', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 8, right: 0, bottom: 8, left: 0 } }
     ]
@@ -174,39 +170,38 @@ const STARTER_TEMPLATES = [
     name: 'AI Tech Radar & Weekly Newsletter',
     category: 'Marketing',
     badge: 'Newsletter',
-    badgeColor: '#8b5cf6',
+    badgeColor: '#a1a1aa',
     subject: 'Tech Pulse #{{ISSUE_NUMBER}}: {{NEWSLETTER_HEADLINE}}',
     description: 'Clean editorial layout with AI summaries, topic tags, and article deep dives.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:linear-gradient(90deg, #8b5cf6, #ec4899);height:4px;"></td></tr>
-        <tr><td style="padding:36px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <span style="font-size:12px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:1px;">TECH RADAR &bull; ISSUE #{{ISSUE_NUMBER}}</span>
-            <span style="font-size:12px;color:#71717a;">{{READ_TIME}} min read</span>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <span style="font-size:11px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:1.2px;">Tech Radar &bull; Issue #{{ISSUE_NUMBER}}</span>
+            <span style="font-size:11px;color:#52525b;">{{READ_TIME}} min read</span>
           </div>
-          <h1 style="color:#ffffff;font-size:26px;font-weight:700;margin:0 0 16px 0;">{{NEWSLETTER_HEADLINE}}</h1>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 24px 0;">Hi {{FIRST_NAME}}, here are the biggest breakthroughs in AI agent orchestration, developer tooling, and distributed automation this week.</p>
+          <h1 style="color:#ffffff;font-size:28px;font-weight:700;margin:0 0 16px 0;letter-spacing:-0.3px;">{{NEWSLETTER_HEADLINE}}</h1>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 28px 0;">Hi {{FIRST_NAME}}, here are the biggest breakthroughs in AI agent orchestration, developer tooling, and distributed automation this week.</p>
           
-          <!-- AI Executive Summary Callout -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#20182b;border-left:4px solid #8b5cf6;border-radius:4px;padding:16px;margin-bottom:24px;">
-            <tr><td style="color:#e9d5ff;font-weight:600;font-size:13px;padding-bottom:6px;">✨ AI Executive Summary:</td></tr>
-            <tr><td style="color:#d8b4fe;font-size:14px;line-height:1.5;">{{AI_SUMMARY_TEXT}}</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-left:3px solid #71717a;border-radius:0 6px 6px 0;padding:18px 20px;margin-bottom:28px;">
+            <tr><td style="color:#e4e4e7;font-weight:600;font-size:12px;padding-bottom:8px;letter-spacing:0.5px;text-transform:uppercase;">AI Executive Summary</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:14px;line-height:1.6;">{{AI_SUMMARY_TEXT}}</td></tr>
           </table>
 
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
-            <tr><td style="background:#8b5cf6;border-radius:6px;padding:10px 24px;">
-              <a href="{{ARTICLE_LINK}}" style="color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;">Read Full Analysis &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 28px 0;">
+            <tr><td style="background:#ffffff;border-radius:6px;padding:11px 24px;">
+              <a href="{{ARTICLE_LINK}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;">Read Full Analysis &rarr;</a>
             </td></tr>
           </table>
         </td></tr>
-        <tr><td style="background:#121215;padding:20px 36px;border-top:1px solid #27272a;text-align:center;">
-          <p style="color:#52525b;font-size:12px;margin:0 0 6px 0;">Curated weekly with ❤️ by Crescendo.</p>
+        <tr><td style="background:#111113;padding:20px 40px;border-top:1px solid #27272a;text-align:center;">
+          <p style="color:#52525b;font-size:12px;margin:0 0 6px 0;">Curated weekly by the Crescendo team.</p>
           <a href="{{CRESCENDO_UNSUBSCRIBE_URL}}" style="color:#71717a;font-size:12px;text-decoration:underline;">Unsubscribe from this newsletter</a>
         </td></tr>
       </table>
@@ -215,13 +210,13 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'n1', type: 'badge', text: 'Issue #{{ISSUE_NUMBER}}', color: '#c084fc', bgColor: '#2e1065', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
-      { id: 'n2', type: 'heading', content: '{{NEWSLETTER_HEADLINE}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 26, fontWeight: '700', lineHeight: 125, margin: { top: 0, right: 0, bottom: 14, left: 0 } },
-      { id: 'n3', type: 'text', content: 'Hi {{FIRST_NAME}}, here are the biggest breakthroughs in AI agent orchestration and distributed automation this week.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'n4', type: 'quote', content: '✨ AI Executive Summary:\n{{AI_SUMMARY_TEXT}}', align: 'left', color: '#d8b4fe', fontSize: 14, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'n5', type: 'button', text: 'Read Full Analysis →', url: '{{ARTICLE_LINK}}', align: 'left', bgColor: '#8b5cf6', textColor: '#ffffff', fontSize: 14, fontWeight: '600', paddingX: 22, paddingY: 10, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'n1', type: 'badge', text: 'Issue #{{ISSUE_NUMBER}}', color: '#a1a1aa', bgColor: '#27272a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 'n2', type: 'heading', content: '{{NEWSLETTER_HEADLINE}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 28, fontWeight: '700', lineHeight: 125, margin: { top: 0, right: 0, bottom: 14, left: 0 } },
+      { id: 'n3', type: 'text', content: 'Hi {{FIRST_NAME}}, here are the biggest breakthroughs in AI agent orchestration and distributed automation this week.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 170, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
+      { id: 'n4', type: 'quote', content: 'AI Executive Summary:\n{{AI_SUMMARY_TEXT}}', align: 'left', color: '#d4d4d8', fontSize: 14, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'n5', type: 'button', text: 'Read Full Analysis →', url: '{{ARTICLE_LINK}}', align: 'left', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 24, paddingY: 11, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
       { id: 'n6', type: 'divider', color: '#27272a', thickness: 1, style: 'solid', margin: { top: 12, right: 0, bottom: 12, left: 0 } },
-      { id: 'n7', type: 'unsubscribe', text: 'Curated weekly with ❤️ by Crescendo.', linkText: 'Unsubscribe', url: '{{CRESCENDO_UNSUBSCRIBE_URL}}', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 8, right: 0, bottom: 8, left: 0 } }
+      { id: 'n7', type: 'unsubscribe', text: 'Curated weekly by the Crescendo team.', linkText: 'Unsubscribe', url: '{{CRESCENDO_UNSUBSCRIBE_URL}}', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 8, right: 0, bottom: 8, left: 0 } }
     ]
   },
   {
@@ -229,34 +224,34 @@ const STARTER_TEMPLATES = [
     name: 'Itemized Billing & Order Receipt',
     category: 'Transactional',
     badge: 'Receipt',
-    badgeColor: '#3b82f6',
+    badgeColor: '#a1a1aa',
     subject: 'Receipt for order #{{ORDER_ID}}',
     description: 'Clean minimalist receipt with itemized breakdown, tax info, and PDF invoice link.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:#3b82f6;height:4px;"></td></tr>
-        <tr><td style="padding:36px;">
-          <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px 0;">Payment Receipt</h1>
-          <p style="color:#a1a1aa;font-size:14px;margin:0 0 24px 0;">Invoice <strong>#{{ORDER_ID}}</strong> &bull; Billed on {{BILLING_DATE}}</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 8px 0;letter-spacing:-0.2px;">Payment Receipt</h1>
+          <p style="color:#71717a;font-size:14px;margin:0 0 28px 0;">Invoice <strong style="color:#a1a1aa;">#{{ORDER_ID}}</strong> &bull; Billed on {{BILLING_DATE}}</p>
           
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;">
-            <tr style="border-bottom:1px solid #27272a;"><td style="padding:10px 0;color:#71717a;font-size:12px;text-transform:uppercase;">Description</td><td style="padding:10px 0;color:#71717a;font-size:12px;text-transform:uppercase;text-align:right;">Amount</td></tr>
-            <tr style="border-bottom:1px solid #27272a;"><td style="padding:14px 0;color:#e4e4e7;font-size:14px;">{{PLAN_NAME}} (Monthly Subscription)</td><td style="padding:14px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;">\${{AMOUNT_PAID}}</td></tr>
-            <tr><td style="padding:16px 0 0 0;color:#a1a1aa;font-size:14px;"><strong>Total Paid:</strong></td><td style="padding:16px 0 0 0;color:#3b82f6;font-size:18px;font-weight:700;text-align:right;">\${{AMOUNT_PAID}}</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;">
+            <tr style="border-bottom:1px solid #27272a;"><td style="padding:12px 0;color:#52525b;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">Description</td><td style="padding:12px 0;color:#52525b;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;text-align:right;">Amount</td></tr>
+            <tr style="border-bottom:1px solid #27272a;"><td style="padding:16px 0;color:#e4e4e7;font-size:14px;">{{PLAN_NAME}} (Monthly Subscription)</td><td style="padding:16px 0;color:#ffffff;font-size:14px;font-weight:600;text-align:right;">\\${{AMOUNT_PAID}}</td></tr>
+            <tr><td style="padding:18px 0 0 0;color:#a1a1aa;font-size:14px;"><strong>Total Paid:</strong></td><td style="padding:18px 0 0 0;color:#ffffff;font-size:20px;font-weight:700;text-align:right;">\\${{AMOUNT_PAID}}</td></tr>
           </table>
 
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
-            <tr><td style="background:#27272a;border-radius:6px;padding:8px 18px;">
+            <tr><td style="background:#27272a;border-radius:6px;padding:9px 20px;">
               <a href="{{INVOICE_URL}}" style="color:#e4e4e7;text-decoration:none;font-size:13px;font-weight:600;">Download PDF Invoice &rarr;</a>
             </td></tr>
           </table>
         </td></tr>
-        <tr><td style="background:#121215;padding:16px 36px;border-top:1px solid #27272a;text-align:center;">
+        <tr><td style="background:#111113;padding:18px 40px;border-top:1px solid #27272a;text-align:center;">
           <p style="color:#52525b;font-size:12px;margin:0;">Billed to {{EMAIL}}. Need help? Contact billing@crescendo.run.</p>
         </td></tr>
       </table>
@@ -265,10 +260,10 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'r1', type: 'heading', content: 'Payment Receipt #{{ORDER_ID}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 22, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 8, left: 0 } },
+      { id: 'r1', type: 'heading', content: 'Payment Receipt #{{ORDER_ID}}', level: 'h1', align: 'left', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 8, left: 0 } },
       { id: 'r2', type: 'text', content: 'Hi {{FIRST_NAME}}, thank you for your payment on {{BILLING_DATE}}. Your invoice is processed.', align: 'left', color: '#a1a1aa', fontSize: 14, fontWeight: '400', lineHeight: 155, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'r3', type: 'quote', content: 'Plan: {{PLAN_NAME}}\nAmount: ${{AMOUNT_PAID}} USD\nStatus: Paid ✓', align: 'left', color: '#60a5fa', fontSize: 14, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'r4', type: 'button', text: 'Download PDF Invoice →', url: '{{INVOICE_URL}}', align: 'left', bgColor: '#27272a', textColor: '#ffffff', fontSize: 13, fontWeight: '600', paddingX: 18, paddingY: 8, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
+      { id: 'r3', type: 'quote', content: 'Plan: {{PLAN_NAME}}\nAmount: ${{AMOUNT_PAID}} USD\nStatus: Paid', align: 'left', color: '#d4d4d8', fontSize: 14, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'r4', type: 'button', text: 'Download PDF Invoice →', url: '{{INVOICE_URL}}', align: 'left', bgColor: '#27272a', textColor: '#ffffff', fontSize: 13, fontWeight: '600', paddingX: 20, paddingY: 9, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
       { id: 'r5', type: 'unsubscribe', text: 'Billed to {{EMAIL}}.', linkText: 'Billing settings', url: 'https://app.crescendo.run/settings/billing', align: 'center', color: '#52525b', fontSize: 12, margin: { top: 8, right: 0, bottom: 8, left: 0 } }
     ]
   },
@@ -277,28 +272,28 @@ const STARTER_TEMPLATES = [
     name: 'Security Alert & Passkey / OTP Code',
     category: 'Developer',
     badge: 'Security',
-    badgeColor: '#f59e0b',
+    badgeColor: '#a1a1aa',
     subject: '{{OTP_CODE}} is your Crescendo verification code',
     description: 'High-visibility monospace security token with device/IP login context and 10m expiry.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:#f59e0b;height:4px;"></td></tr>
-        <tr><td style="padding:36px;text-align:center;">
-          <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 12px 0;">Your Verification Code</h1>
-          <p style="color:#a1a1aa;font-size:14px;margin:0 0 24px 0;">Use the code below to complete your authentication. Never share this code with anyone.</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:44px 40px;text-align:center;">
+          <span style="display:inline-block;padding:4px 12px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:20px;">Verification Code</span>
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 14px 0;">Your Authentication Code</h1>
+          <p style="color:#a1a1aa;font-size:14px;margin:0 0 28px 0;line-height:1.6;">Use the code below to complete your authentication. Never share this code with anyone.</p>
           
-          <!-- Big Monospace OTP Box -->
-          <div style="background:#09090b;border:1px solid #3f3f46;border-radius:8px;padding:16px 28px;display:inline-block;margin-bottom:24px;">
-            <span style="font-family:'Commit Mono',monospace;font-size:32px;font-weight:700;letter-spacing:6px;color:#fbbf24;">{{OTP_CODE}}</span>
+          <div style="background:#09090b;border:1px solid #3f3f46;border-radius:10px;padding:20px 32px;display:inline-block;margin-bottom:28px;">
+            <span style="font-family:'Commit Mono',monospace;font-size:36px;font-weight:700;letter-spacing:8px;color:#ffffff;">{{OTP_CODE}}</span>
           </div>
 
-          <p style="color:#71717a;font-size:13px;line-height:1.5;margin:0 0 16px 0;">⏰ Valid for 10 minutes &bull; Requested from {{DEVICE_NAME}} ({{LOCATION}}).</p>
-          <p style="color:#ef4444;font-size:12px;margin:0;"><a href="{{SECURITY_URL}}" style="color:#f87171;">Didn't request this? Revoke session immediately &rarr;</a></p>
+          <p style="color:#52525b;font-size:13px;line-height:1.5;margin:0 0 20px 0;">Valid for 10 minutes &bull; Requested from {{DEVICE_NAME}} ({{LOCATION}}).</p>
+          <p style="color:#71717a;font-size:12px;margin:0;"><a href="{{SECURITY_URL}}" style="color:#a1a1aa;text-decoration:underline;">Didn't request this? Revoke session immediately &rarr;</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -306,11 +301,11 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'o1', type: 'badge', text: 'Authentication Code', color: '#fcd34d', bgColor: '#451a03', align: 'center', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
-      { id: 'o2', type: 'heading', content: 'Your One-Time Code', level: 'h1', align: 'center', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 8, left: 0 } },
-      { id: 'o3', type: 'quote', content: '{{OTP_CODE}}', align: 'center', color: '#fbbf24', fontSize: 28, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'o4', type: 'text', content: 'Valid for 10 minutes. Requested from {{DEVICE_NAME}} in {{LOCATION}}.', align: 'center', color: '#a1a1aa', fontSize: 13, fontWeight: '400', lineHeight: 155, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
-      { id: 'o5', type: 'button', text: 'Secure My Account →', url: '{{SECURITY_URL}}', align: 'center', bgColor: '#27272a', textColor: '#f87171', fontSize: 13, fontWeight: '600', paddingX: 18, paddingY: 8, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 16, left: 0 } }
+      { id: 'o1', type: 'badge', text: 'Verification Code', color: '#a1a1aa', bgColor: '#27272a', align: 'center', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 'o2', type: 'heading', content: 'Your Authentication Code', level: 'h1', align: 'center', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 8, left: 0 } },
+      { id: 'o3', type: 'quote', content: '{{OTP_CODE}}', align: 'center', color: '#ffffff', fontSize: 28, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
+      { id: 'o4', type: 'text', content: 'Valid for 10 minutes. Requested from {{DEVICE_NAME}} in {{LOCATION}}.', align: 'center', color: '#71717a', fontSize: 13, fontWeight: '400', lineHeight: 155, margin: { top: 0, right: 0, bottom: 16, left: 0 } },
+      { id: 'o5', type: 'button', text: 'Secure My Account →', url: '{{SECURITY_URL}}', align: 'center', bgColor: '#27272a', textColor: '#a1a1aa', fontSize: 13, fontWeight: '600', paddingX: 20, paddingY: 9, borderRadius: 6, fullWidth: false, margin: { top: 0, right: 0, bottom: 16, left: 0 } }
     ]
   },
   {
@@ -318,30 +313,30 @@ const STARTER_TEMPLATES = [
     name: 'Workshop & Webinar Confirmation',
     category: 'Student',
     badge: 'Event Pass',
-    badgeColor: '#06b6d4',
+    badgeColor: '#a1a1aa',
     subject: 'Confirmed: Your seat for {{EVENT_NAME}} is reserved!',
     description: 'Speaker spotlight, calendar date badge, interactive add-to-calendar and Zoom links.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:linear-gradient(90deg, #06b6d4, #3b82f6);height:4px;"></td></tr>
-        <tr><td style="padding:36px;">
-          <span style="display:inline-block;padding:4px 10px;background:#083344;color:#67e8f9;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:14px;">🎟 Registration Confirmed</span>
-          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 12px 0;">You're attending {{EVENT_NAME}}</h1>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px 0;">Hi {{FIRST_NAME}}, your registration is locked in! Join industry leaders and fellow developers for this hands-on workshop.</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <span style="display:inline-block;padding:4px 12px;background:#27272a;color:#a1a1aa;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:20px;">Registration Confirmed</span>
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 14px 0;letter-spacing:-0.2px;">You're attending {{EVENT_NAME}}</h1>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 24px 0;">Hi {{FIRST_NAME}}, your registration is confirmed. Join industry leaders and fellow developers for this hands-on workshop.</p>
           
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px;margin-bottom:24px;">
-            <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">📅 <strong>Date & Time:</strong> {{EVENT_DATE_TIME}}</td></tr>
-            <tr><td style="color:#e4e4e7;font-size:13px;padding:4px 0;">🎙 <strong>Speaker:</strong> {{SPEAKER_NAME}}</td></tr>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#27272a;border-radius:8px;padding:16px 20px;margin-bottom:28px;">
+            <tr><td style="color:#d4d4d8;font-size:13px;padding:5px 0;line-height:1.6;"><strong style="color:#e4e4e7;">Date & Time:</strong> {{EVENT_DATE_TIME}}</td></tr>
+            <tr><td style="color:#d4d4d8;font-size:13px;padding:5px 0;line-height:1.6;"><strong style="color:#e4e4e7;">Speaker:</strong> {{SPEAKER_NAME}}</td></tr>
           </table>
 
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px auto;">
-            <tr><td style="background:#06b6d4;border-radius:8px;padding:12px 28px;">
-              <a href="{{MEETING_URL}}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Join Live Stream / Meeting &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+            <tr><td style="background:#ffffff;border-radius:8px;padding:13px 32px;">
+              <a href="{{MEETING_URL}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;">Join Live Stream &rarr;</a>
             </td></tr>
           </table>
         </td></tr>
@@ -351,10 +346,10 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'w1', type: 'badge', text: 'Registration Confirmed', color: '#67e8f9', bgColor: '#083344', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 'w1', type: 'badge', text: 'Registration Confirmed', color: '#a1a1aa', bgColor: '#27272a', align: 'left', margin: { top: 0, right: 0, bottom: 12, left: 0 } },
       { id: 'w2', type: 'heading', content: "You're attending {{EVENT_NAME}}", level: 'h1', align: 'left', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 12, left: 0 } },
-      { id: 'w3', type: 'text', content: 'Hi {{FIRST_NAME}}, your seat is reserved. Hosted by {{SPEAKER_NAME}} on {{EVENT_DATE_TIME}}.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'w4', type: 'button', text: 'Join Live Stream →', url: '{{MEETING_URL}}', align: 'center', bgColor: '#06b6d4', textColor: '#ffffff', fontSize: 15, fontWeight: '600', paddingX: 28, paddingY: 12, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } }
+      { id: 'w3', type: 'text', content: 'Hi {{FIRST_NAME}}, your seat is reserved. Hosted by {{SPEAKER_NAME}} on {{EVENT_DATE_TIME}}.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 170, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'w4', type: 'button', text: 'Join Live Stream →', url: '{{MEETING_URL}}', align: 'center', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 32, paddingY: 13, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } }
     ]
   },
   {
@@ -362,28 +357,28 @@ const STARTER_TEMPLATES = [
     name: 'Customer Feedback & NPS Survey',
     category: 'Marketing',
     badge: 'Feedback',
-    badgeColor: '#ec4899',
+    badgeColor: '#a1a1aa',
     subject: 'How was your experience, {{FIRST_NAME}}? (2-min survey)',
     description: 'Personal note from founder with rating scale and feedback question.',
     contentHtml: `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background-color:#09090b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f4f4f5;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#09090b;padding:48px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;">
-        <tr><td style="background:#ec4899;height:4px;"></td></tr>
-        <tr><td style="padding:36px;">
-          <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 14px 0;">Help us build a better Crescendo</h1>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 20px 0;">Hi {{FIRST_NAME}},</p>
-          <p style="color:#a1a1aa;font-size:15px;line-height:1.6;margin:0 0 24px 0;">How likely are you to recommend Crescendo to a friend or teammate?</p>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <tr><td style="background:#ffffff;height:3px;"></td></tr>
+        <tr><td style="padding:40px;">
+          <h1 style="color:#ffffff;font-size:24px;font-weight:700;margin:0 0 16px 0;letter-spacing:-0.2px;">Help us build a better Crescendo</h1>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 8px 0;">Hi {{FIRST_NAME}},</p>
+          <p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 28px 0;">How likely are you to recommend Crescendo to a friend or teammate? We would love 2 minutes of your candid thoughts.</p>
           
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
-            <tr><td style="background:#ec4899;border-radius:8px;padding:12px 28px;">
-              <a href="{{SURVEY_URL}}" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Take 2-Minute Survey &rarr;</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px auto;">
+            <tr><td style="background:#ffffff;border-radius:8px;padding:13px 32px;">
+              <a href="{{SURVEY_URL}}" style="color:#09090b;text-decoration:none;font-size:14px;font-weight:600;">Take 2-Minute Survey &rarr;</a>
             </td></tr>
           </table>
-          <p style="color:#71717a;font-size:13px;line-height:1.5;margin:0;">Every response is read directly by our founding engineering team.</p>
+          <p style="color:#52525b;font-size:13px;line-height:1.5;margin:0;">Every response is read directly by our founding engineering team.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -391,9 +386,9 @@ const STARTER_TEMPLATES = [
 </body>
 </html>`,
     blocks: [
-      { id: 'f1', type: 'heading', content: 'Help us build a better Crescendo', level: 'h1', align: 'left', color: '#ffffff', fontSize: 22, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 12, left: 0 } },
-      { id: 'f2', type: 'text', content: 'Hi {{FIRST_NAME}},\n\nHow has your experience with Crescendo been? We would love 2 minutes of your candid thoughts.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 160, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
-      { id: 'f3', type: 'button', text: 'Take 2-Minute Survey →', url: '{{SURVEY_URL}}', align: 'center', bgColor: '#ec4899', textColor: '#ffffff', fontSize: 15, fontWeight: '600', paddingX: 28, paddingY: 12, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } }
+      { id: 'f1', type: 'heading', content: 'Help us build a better Crescendo', level: 'h1', align: 'left', color: '#ffffff', fontSize: 24, fontWeight: '700', lineHeight: 130, margin: { top: 0, right: 0, bottom: 12, left: 0 } },
+      { id: 'f2', type: 'text', content: 'Hi {{FIRST_NAME}},\n\nHow has your experience with Crescendo been? We would love 2 minutes of your candid thoughts.', align: 'left', color: '#a1a1aa', fontSize: 15, fontWeight: '400', lineHeight: 170, margin: { top: 0, right: 0, bottom: 20, left: 0 } },
+      { id: 'f3', type: 'button', text: 'Take 2-Minute Survey →', url: '{{SURVEY_URL}}', align: 'center', bgColor: '#ffffff', textColor: '#09090b', fontSize: 14, fontWeight: '600', paddingX: 32, paddingY: 13, borderRadius: 8, fullWidth: false, margin: { top: 0, right: 0, bottom: 20, left: 0 } }
     ]
   }
 ];

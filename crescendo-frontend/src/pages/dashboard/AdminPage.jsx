@@ -228,7 +228,7 @@ export default function AdminPage() {
       {error && (
         <div className="adm-error">
           <HiOutlineExclamationCircle /> {error}
-          <button className="adm-error-dismiss" onClick={() => setError(null)}>✕</button>
+          <button className="adm-error-dismiss" onClick={() => setError(null)}><HiOutlineX /></button>
         </div>
       )}
 

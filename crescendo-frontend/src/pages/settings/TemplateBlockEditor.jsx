@@ -52,7 +52,12 @@ import {
   MdLink,
   MdLinkOff,
   MdFormatColorText,
-  MdFormatColorFill
+  MdFormatColorFill,
+  MdFormatQuote,
+  MdViewColumn,
+  MdViewWeek,
+  MdSmartButton,
+  MdCropSquare
 } from 'react-icons/md';
 import { templatesApi } from '../../api/emailServiceApi';
 import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
@@ -751,7 +756,7 @@ function RichTextBlock({
                 autoFocus
               />
               <button type="button" className="rs-btn-primary" onClick={applyLink}>Apply</button>
-              <button type="button" className="rs-btn-outline" onClick={() => setLinkInputOpen(false)}>✕</button>
+              <button type="button" className="rs-btn-outline" onClick={() => setLinkInputOpen(false)}><HiOutlineX /></button>
             </div>
           )}
         </div>
@@ -1553,11 +1558,11 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                       <span>Heading 3</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('text')}>
-                      <span className="rs-flyout-icon">¶</span>
+                      <span className="rs-flyout-icon"><MdFormatAlignLeft /></span>
                       <span>Paragraph</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('quote')}>
-                      <span className="rs-flyout-icon">❝</span>
+                      <span className="rs-flyout-icon"><MdFormatQuote /></span>
                       <span>Blockquote</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('badge')}>
@@ -1633,23 +1638,23 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
                 {activeDockTool === 'components' && (
                   <div className="rs-flyout-menu">
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('button')}>
-                      <span className="rs-flyout-icon">▶</span>
+                      <span className="rs-flyout-icon"><MdSmartButton /></span>
                       <span>Button</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('columns')}>
-                      <span className="rs-flyout-icon">⊞</span>
+                      <span className="rs-flyout-icon"><HiOutlineViewGrid /></span>
                       <span>2 Columns</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('3columns')}>
-                      <span className="rs-flyout-icon">☰</span>
+                      <span className="rs-flyout-icon"><MdViewColumn /></span>
                       <span>3 Columns</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('4columns')}>
-                      <span className="rs-flyout-icon">☷</span>
+                      <span className="rs-flyout-icon"><MdViewWeek /></span>
                       <span>4 Columns</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('section')}>
-                      <span className="rs-flyout-icon">▢</span>
+                      <span className="rs-flyout-icon"><MdCropSquare /></span>
                       <span>Section Card</span>
                     </button>
                     <button type="button" className="rs-flyout-item" onClick={() => addBlock('social')}>

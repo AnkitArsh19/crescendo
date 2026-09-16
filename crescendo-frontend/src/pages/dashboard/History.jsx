@@ -101,7 +101,7 @@ export default function History() {
               <span className="hist-filter-pill">
                 Filtered to <strong>{workflowNames[workflowId] || 'this workflow'}</strong>
                 <Link to="/dashboard/history" className="hist-clear-btn" title="View runs for all workflows">
-                  ✕ Clear
+                  <HiOutlineXCircle style={{ verticalAlign: 'middle', marginRight: 2 }} /> Clear
                 </Link>
                 {' • '}
               </span>

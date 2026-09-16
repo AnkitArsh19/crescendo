@@ -688,8 +688,8 @@ export default function SecuritySettings() {
                                             transition={{ duration: 0.25 }}
                                         >
                                             <div className="mfa-qr-container">
-                                                <div className="mfa-qr-placeholder" style={{ border: 'none', background: 'white', padding: 10 }}>
-                                                    <img src={qrData.qrImageDataUri} alt="MFA QR Code" width="160" height="160" style={{ display: 'block' }} />
+                                                <div className="mfa-qr-placeholder">
+                                                    <img src={qrData.qrImageDataUri} alt="MFA QR Code" className="mfa-qr-img" />
                                                 </div>
                                                 <span className="mfa-qr-label">
                                                     Scan this QR code with your authenticator app

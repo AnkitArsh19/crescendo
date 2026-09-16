@@ -59,20 +59,23 @@
   display: inline-block;
   width: 38px;
   height: 22px;
+  flex-shrink: 0;
 }
 
 .notif-switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 
 .notif-slider {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: var(--border-primary, rgba(255, 255, 255, 0.15));
-  transition: 0.25s;
+  background-color: #27272a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 22px;
 }
 
@@ -82,23 +85,67 @@
   height: 16px;
   width: 16px;
   left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.25s;
+  top: 3px;
+  background-color: #ffffff;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.notif-switch:hover .notif-slider {
+  background-color: #3f3f46;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 .notif-switch input:checked + .notif-slider {
-  background-color: var(--text-accent);
+  background-color: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
 }
 
-.notif-switch input:focus + .notif-slider {
-  box-shadow: 0 0 1px var(--text-accent);
+.notif-switch:hover input:checked + .notif-slider {
+  background-color: #f4f4f5;
 }
 
 .notif-switch input:checked + .notif-slider:before {
   transform: translateX(16px);
+  background-color: #09090b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.notif-switch input:focus-visible + .notif-slider {
+  outline: 2px solid var(--text-accent, #ffffff);
+  outline-offset: 2px;
+}
+
+/* Light mode overrides */
+[data-theme="light"] .notif-slider {
+  background-color: #e4e4e7;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .notif-slider:before {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .notif-switch:hover .notif-slider {
+  background-color: #d4d4d8;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .notif-switch input:checked + .notif-slider {
+  background-color: #09090b;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .notif-switch:hover input:checked + .notif-slider {
+  background-color: #18181b;
+}
+
+[data-theme="light"] .notif-switch input:checked + .notif-slider:before {
+  transform: translateX(16px);
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Workflow settings table */

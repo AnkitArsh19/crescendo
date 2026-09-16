@@ -162,14 +162,16 @@ public class MFAService {
         return "otpauth://totp/" + url(issuer) + ":" + url(accountLabel) + "?secret=" + secret + "&issuer=" + url(issuer) + "&digits=6&period=30";
     }
 
-    /// Encodes the otpauth:// URL into a 240×240 QR code PNG, then returns it as a
+    /// Encodes the otpauth:// URL into a 400×400 high-resolution QR code PNG, then returns it as a
     /// base64 data URI ("data:image/png;base64,...") so the frontend can render it
     /// directly in an <img> tag without a separate image endpoint.
-    /// Uses the ZXing (Zebra Crossing) library for QR code generation.
+    /// Uses the ZXing (Zebra Crossing) library for QR code generation with minimal margin
+    /// for maximum scannable area.
     private String buildQrDataUri(String otpauth) {
         try {
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(otpauth, BarcodeFormat.QR_CODE, 240, 240);
+            Map<com.google.zxing.EncodeHintType, Object> hints = Map.of(com.google.zxing.EncodeHintType.MARGIN, 1);
+            BitMatrix matrix = writer.encode(otpauth, BarcodeFormat.QR_CODE, 400, 400, hints);
             ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "PNG", outputStream);
             String b64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());

@@ -102,4 +102,15 @@ public class RedisSerializationTest {
         Object deserialized = mapper.readValue(json, Object.class);
         assertNotNull(deserialized);
     }
+
+    @Test
+    public void testEmptyListSerialization() throws Exception {
+        ObjectMapper mapper = redisObjectMapper();
+
+        List<WorkflowDto.WorkflowSummaryResponse> emptyArrayList = new ArrayList<>();
+        String json2 = mapper.writeValueAsString(emptyArrayList);
+        System.out.println("SERIALIZED EMPTY ARRAYLIST: " + json2);
+        Object des2 = mapper.readValue(json2, Object.class);
+        assertNotNull(des2);
+    }
 }

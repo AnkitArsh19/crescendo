@@ -13,13 +13,13 @@
   <a href="https://app.crescendo.run/docs"><strong>Documentation Portal</strong></a> &nbsp;•&nbsp;
   <a href="https://app.crescendo.run/docs/public-api"><strong>API Reference</strong></a> &nbsp;•&nbsp;
   <a href="https://github.com/AnkitArsh19/crescendo-sdk"><strong>SDK Ecosystem</strong></a> &nbsp;•&nbsp;
-  <a href="https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3"><strong>Desktop App (v1.0.2)</strong></a>
+  <a href="https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3"><strong>Desktop App (v1.0.3)</strong></a>
 </p>
 
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
 
 **Live Web Application:** [https://app.crescendo.run](https://app.crescendo.run)  
-**Project status: Version 1.0 (v1.0.1) is released and production-ready.** The initial release milestone is complete, with core workflow orchestration, the AI agent runtime, transactional email infrastructure, and native desktop clients fully built and operational. Future development follows a continuous improvement model for enhancements, optimizations, and new catalog integrations.
+**Project status: Version 1.0 (v1.0.3) is released and production-ready.** The initial release milestone is complete, with core workflow orchestration, the AI agent runtime, transactional email infrastructure, and native desktop clients fully built and operational. Future development follows a continuous improvement model for enhancements, optimizations, and new catalog integrations.
 
 ## Why this project was built
 
@@ -505,6 +505,6 @@ Crescendo is completed and running in production as a robust automation and tran
 | **Python SDK** | [https://app.crescendo.run/docs/sdk-python](https://app.crescendo.run/docs/sdk-python) | Official `crescendo-sdk-python` documentation |
 | **Multi-Language SDKs** | [https://app.crescendo.run/docs/sdk-multi-language](https://app.crescendo.run/docs/sdk-multi-language) | Java, Go, Rust, C#, PHP, Ruby & CLI documentation |
 | **Universal SDK Repository** | [https://github.com/AnkitArsh19/crescendo-sdk](https://github.com/AnkitArsh19/crescendo-sdk) | Dedicated GitHub repository for client libraries |
-| **Desktop Releases (v1.0.2)** | [GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3) | Native packages for Windows (`.exe`, `.msi`), macOS (`.dmg`), and Linux (`.AppImage`, `.deb`, `.rpm`) |
+| **Desktop Releases (v1.0.3)** | [GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3) | Native packages for Windows (`.exe`, `.msi`), macOS (`.dmg`), and Linux (`.AppImage`, `.deb`, `.rpm`) |
 | **Privacy Policy** | [https://app.crescendo.run/privacy](https://app.crescendo.run/privacy) | Data privacy, cookies, retention, and security |
 | **Terms of Service** | [https://app.crescendo.run/terms](https://app.crescendo.run/terms) | Platform usage terms and service agreements |
