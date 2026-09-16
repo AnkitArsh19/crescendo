@@ -102,7 +102,7 @@ public class RedisConfig implements CachingConfigurer {
                                 .allowIfSubType("java.lang.")
                                 .build(),
                         DefaultTyping.NON_FINAL_AND_RECORDS,
-                        JsonTypeInfo.As.PROPERTY
+                        JsonTypeInfo.As.WRAPPER_ARRAY
                 )
                 .build();
     }

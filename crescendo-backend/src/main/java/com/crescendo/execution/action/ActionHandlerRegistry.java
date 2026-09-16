@@ -126,11 +126,20 @@ public class ActionHandlerRegistry implements SmartInitializingSingleton {
     }
 
     public Optional<ActionHandler> find(String appKey, String actionKey) {
-        return Optional.ofNullable(handlers.get(toKey(appKey, actionKey)));
+        ActionHandler handler = handlers.get(toKey(appKey, actionKey));
+        if (handler == null) {
+            String normApp = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeAppKey(appKey);
+            String normAction = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeActionKey(normApp, actionKey);
+            handler = handlers.get(toKey(normApp, normAction));
+        }
+        return Optional.ofNullable(handler);
     }
 
     public boolean hasHandler(String appKey, String actionKey) {
-        return handlers.containsKey(toKey(appKey, actionKey));
+        if (handlers.containsKey(toKey(appKey, actionKey))) return true;
+        String normApp = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeAppKey(appKey);
+        String normAction = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeActionKey(normApp, actionKey);
+        return handlers.containsKey(toKey(normApp, normAction));
     }
 
     private static String toKey(String appKey, String actionKey) {

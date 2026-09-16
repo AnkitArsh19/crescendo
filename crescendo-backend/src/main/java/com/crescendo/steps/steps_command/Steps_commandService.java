@@ -264,14 +264,16 @@ public class Steps_commandService {
 
         UUID userId = workflow.getUser() != null ? workflow.getUser().getId() : null;
         UUID connectionUuid = req.parsedConnectionId();
-        stepValidator.validateStepDefinition(userId, req.type(), req.appKey(), req.actionKey(), connectionUuid, req.configuration());
+        String normalizedAppKey = StepDefinitionValidator.normalizeAppKey(req.appKey());
+        String normalizedActionKey = StepDefinitionValidator.normalizeActionKey(normalizedAppKey, req.actionKey());
+        stepValidator.validateStepDefinition(userId, req.type(), normalizedAppKey, normalizedActionKey, connectionUuid, req.configuration());
 
         StepOrder order = calculateNextOrder(workflowId);
 
         UUID stepId = UUID.randomUUID();
         Steps_command step = new Steps_command(
                 stepId, workflow, req.name(), req.type(), order.value(),
-                req.actionKey(), req.appKey(), connectionUuid, req.configuration());
+                normalizedActionKey, normalizedAppKey, connectionUuid, req.configuration());
         stepRepo.save(step);
 
         projectStepToQuery(step, workflowId);
@@ -285,15 +287,20 @@ public class Steps_commandService {
     private void applyStepUpdate(Steps_command step, WorkflowDto.UpdateStepRequest req) {
         UUID userId = step.getWorkflow().getUser() != null ? step.getWorkflow().getUser().getId() : null;
         UUID connectionUuid = req.connectionId() != null ? req.parsedConnectionId() : step.getConnectionId();
+        String candidateAppKey = req.appKey() != null ? req.appKey() : step.getAppKey();
+        String candidateActionKey = req.actionKey() != null ? req.actionKey() : step.getActionKey();
+        String normalizedAppKey = StepDefinitionValidator.normalizeAppKey(candidateAppKey);
+        String normalizedActionKey = StepDefinitionValidator.normalizeActionKey(normalizedAppKey, candidateActionKey);
+
         stepValidator.validateStepDefinition(userId, step.getType(), 
-                req.appKey() != null ? req.appKey() : step.getAppKey(), 
-                req.actionKey() != null ? req.actionKey() : step.getActionKey(), 
+                normalizedAppKey, 
+                normalizedActionKey, 
                 connectionUuid, 
                 req.configuration() != null ? req.configuration() : step.getConfiguration());
 
         if (req.name() != null) step.setName(req.name());
-        if (req.actionKey() != null) step.setActionKey(req.actionKey());
-        if (req.appKey() != null) step.setAppKey(req.appKey());
+        if (req.actionKey() != null) step.setActionKey(normalizedActionKey);
+        if (req.appKey() != null) step.setAppKey(normalizedAppKey);
         if (req.connectionId() != null) step.setConnectionId(connectionUuid);
         if (req.configuration() != null) step.setConfiguration(req.configuration());
         eventPublisher.publish(new StepUpdatedEvent(step.getId(), step.getWorkflow().getId()));

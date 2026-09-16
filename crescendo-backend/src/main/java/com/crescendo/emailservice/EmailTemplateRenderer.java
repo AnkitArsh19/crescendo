@@ -4,24 +4,17 @@ package com.crescendo.emailservice;
  * Renders transactional HTML email templates for Crescendo.
  *
  * Design principles:
- *  - Dual-mode: works beautifully in both dark and light mode email clients.
- *  - Inline SVG logo: no image hosting required, renders everywhere.
- *  - Google Fonts (Inter): same font as the frontend, loaded with a @import fallback.
- *  - Table-based layout: maximum compatibility with legacy email clients (Outlook, Yahoo).
- *  - All styles inlined or in a single <style> block; no external CSS files.
+ *  - Landing Page Identity: adheres to the Funnel Display + Inter typography,
+ *    zinc palette (#09090b, #141416, #fafafa), and sleek micro-borders of crescendo.run.
+ *  - Dual-mode: flawless rendering in both light mode and dark mode email clients
+ *    via @media (prefers-color-scheme: dark).
+ *  - Hosted PNG logo: hosted at https://app.crescendo.run/logo-white.png for 100%
+ *    rendering reliability across Gmail, Outlook, Apple Mail, and Yahoo (which strip raw SVGs).
+ *  - Table-compatible structure with fluid container: maximum cross-client compatibility.
+ *  - Compliant transactional footer with direct access to Notification Preferences,
+ *    Security Settings, Privacy Policy, and Terms.
  */
 public class EmailTemplateRenderer {
-
-    // Inline SVG logo paths — neutral color filled dynamically per mode via CSS class
-    private static final String LOGO_SVG_PATHS =
-        "<path d=\"M60.5 98.1878L134.5 132.688V93.6878L60.5 59.1878V98.1878Z\"/>" +
-        "<path d=\"M86.5 193.688L51.5 217.188L4.5 187.188V143.188L86.5 193.688Z\"/>" +
-        "<path d=\"M24 144.688L7 134.688L56 104.688L75.5 114.188L24 144.688Z\"/>" +
-        "<path d=\"M140 86.1879L63 51.6878L114 30.6878L187.5 59.1878L140 86.1879Z\"/>" +
-        "<path d=\"M56 267.688L157 285.188L128 221.188L92 244.438L56 267.688Z\"/>" +
-        "<path d=\"M119.5 25.1878L191.5 53.1879L182.5 0.687897L119.5 25.1878Z\"/>" +
-        "<path d=\"M124 178.188L53 225.688V257.688L124 211.688V178.188Z\"/>" +
-        "<path d=\"M122 170.188L94.5 187.188L31.5 149.188L58 134.188L122 170.188Z\"/>";
 
     private static final String BASE_LAYOUT = """
         <!DOCTYPE html>
@@ -33,7 +26,8 @@ public class EmailTemplateRenderer {
             <meta name="supported-color-schemes" content="light dark">
             <title>Crescendo</title>
             <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
                 /* ── Reset ── */
                 * { box-sizing: border-box; }
@@ -41,34 +35,37 @@ public class EmailTemplateRenderer {
                     -webkit-text-size-adjust: 100%;
                     -ms-text-size-adjust: 100%;
                 }
-                table, td { border-collapse: collapse; }
+                table, td { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
                 img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
 
                 /* ── Base (light mode default) ── */
                 body {
-                    margin: 0; padding: 0;
-                    background-color: #f0f2f5;
-                    color: #1a1a2e;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f5;
+                    color: #18181b;
                     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                     -webkit-font-smoothing: antialiased;
                 }
                 .email-wrapper {
-                    background-color: #f0f2f5;
-                    padding: 40px 16px;
+                    background-color: #f4f4f5;
+                    padding: 44px 16px;
+                    width: 100%;
                 }
                 .email-card {
-                    max-width: 600px;
+                    max-width: 580px;
                     margin: 0 auto;
                     background-color: #ffffff;
                     border-radius: 16px;
-                    border: 1px solid #e2e8f0;
+                    border: 1px solid #e4e4e7;
                     overflow: hidden;
-                    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+                    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
                 }
                 .email-header {
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-                    padding: 36px 40px;
+                    background-color: #ffffff;
+                    padding: 32px 40px;
                     text-align: center;
+                    border-bottom: 1px solid #e4e4e7;
                 }
                 .logo-container {
                     display: inline-flex;
@@ -76,108 +73,106 @@ public class EmailTemplateRenderer {
                     gap: 12px;
                     text-decoration: none;
                 }
-                .logo-svg {
+                .logo-img {
                     width: 32px;
-                    height: auto;
-                    fill: #ffffff;
+                    height: 32px;
+                    display: inline-block;
+                    vertical-align: middle;
+                    border: 0;
+                    outline: none;
                 }
                 .logo-text {
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Funnel Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                     font-size: 22px;
                     font-weight: 700;
                     letter-spacing: -0.5px;
-                    color: #ffffff;
+                    color: #09090b;
                     vertical-align: middle;
                 }
-                .logo-text span {
+                .logo-dot {
                     color: #60a5fa;
                 }
                 .email-body {
-                    padding: 40px;
+                    padding: 38px 40px;
                 }
                 .email-body h2 {
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Funnel Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                     font-size: 22px;
                     font-weight: 700;
-                    color: #0f172a;
+                    color: #09090b;
                     margin: 0 0 16px;
-                    letter-spacing: -0.3px;
+                    letter-spacing: -0.02em;
                     line-height: 1.3;
                 }
                 .email-body p {
                     font-size: 15px;
-                    line-height: 1.7;
-                    color: #475569;
+                    line-height: 1.65;
+                    color: #52525b;
                     margin: 0 0 16px;
                 }
                 .email-body p:last-child { margin-bottom: 0; }
                 .email-body a {
-                    color: #3b82f6;
+                    color: #09090b;
+                    font-weight: 500;
                     text-decoration: underline;
+                    text-underline-offset: 3px;
                 }
                 .email-body ul {
                     padding-left: 20px;
-                    color: #475569;
+                    color: #52525b;
                     font-size: 15px;
-                    line-height: 1.7;
+                    line-height: 1.65;
+                    margin: 0 0 16px;
                 }
                 .email-body ul li { margin-bottom: 6px; }
-                .email-body ul li strong { color: #0f172a; }
+                .email-body ul li strong { color: #18181b; }
                 .btn-container {
                     text-align: center;
                     margin: 32px 0;
                 }
                 .btn {
                     display: inline-block;
-                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    background-color: #09090b;
                     color: #ffffff !important;
                     text-decoration: none !important;
-                    padding: 14px 32px;
+                    padding: 13px 30px;
                     border-radius: 10px;
-                    font-family: 'Inter', sans-serif;
-                    font-size: 15px;
+                    font-family: 'Funnel Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    font-size: 14px;
                     font-weight: 600;
-                    letter-spacing: 0.2px;
-                    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+                    letter-spacing: -0.01em;
+                    border: 1px solid #27272a;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+                }
+                .btn-danger {
+                    background-color: #dc2626 !important;
+                    border-color: #b91c1c !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25) !important;
                 }
                 .code-block {
-                    background: #f8fafc;
-                    border: 1.5px solid #e2e8f0;
+                    background: #f4f4f5;
+                    border: 1px solid #e4e4e7;
                     border-radius: 10px;
-                    padding: 20px;
+                    padding: 18px 24px;
                     text-align: center;
-                    font-family: 'Courier New', Courier, monospace;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
                     font-size: 28px;
                     font-weight: 700;
                     letter-spacing: 8px;
-                    color: #1a1a2e;
+                    color: #09090b;
                     margin: 24px 0;
                 }
                 .divider {
                     border: none;
-                    border-top: 1px solid #e2e8f0;
-                    margin: 32px 0;
-                }
-                .email-footer {
-                    background-color: #f8fafc;
-                    border-top: 1px solid #e2e8f0;
-                    padding: 24px 40px;
-                    text-align: center;
-                }
-                .email-footer p {
-                    font-size: 12px;
-                    color: #94a3b8;
-                    margin: 0 0 4px;
-                    line-height: 1.6;
-                }
-                .email-footer a {
-                    color: #94a3b8;
-                    text-decoration: underline;
+                    border-top: 1px solid #e4e4e7;
+                    margin: 28px 0;
                 }
                 .info-box {
-                    background: #eff6ff;
-                    border-left: 4px solid #3b82f6;
-                    border-radius: 0 8px 8px 0;
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-left: 3px solid #3b82f6;
+                    border-radius: 8px;
                     padding: 14px 18px;
                     margin: 20px 0;
                 }
@@ -187,65 +182,117 @@ public class EmailTemplateRenderer {
                     margin: 0;
                     line-height: 1.5;
                 }
+                .info-box p strong {
+                    color: #1e3a8a;
+                }
                 .warning-box {
                     background: #fefce8;
-                    border-left: 4px solid #eab308;
-                    border-radius: 0 8px 8px 0;
+                    border: 1px solid #fef08a;
+                    border-left: 3px solid #eab308;
+                    border-radius: 8px;
                     padding: 14px 18px;
                     margin: 20px 0;
                 }
                 .warning-box p {
                     font-size: 13px;
-                    color: #713f12;
+                    color: #854d0e;
                     margin: 0;
                     line-height: 1.5;
+                }
+                .warning-box p strong {
+                    color: #713f12;
+                }
+                .email-footer {
+                    background-color: #fafafa;
+                    border-top: 1px solid #e4e4e7;
+                    padding: 28px 40px;
+                    text-align: center;
+                }
+                .email-footer p {
+                    font-size: 12px;
+                    color: #71717a;
+                    margin: 0 0 8px;
+                    line-height: 1.6;
+                }
+                .email-footer p:last-child { margin-bottom: 0; }
+                .email-footer a {
+                    color: #71717a;
+                    text-decoration: underline;
+                    text-underline-offset: 2px;
+                }
+                .footer-links a {
+                    margin: 0 4px;
                 }
 
                 /* ── Dark mode overrides ── */
                 @media (prefers-color-scheme: dark) {
-                    body, .email-wrapper { background-color: #0d0d0d !important; }
+                    body, .email-wrapper { background-color: #09090b !important; }
                     .email-card {
-                        background-color: #141414 !important;
-                        border-color: rgba(255,255,255,0.08) !important;
-                        box-shadow: 0 4px 32px rgba(0,0,0,0.6) !important;
+                        background-color: #141416 !important;
+                        border-color: rgba(255, 255, 255, 0.08) !important;
+                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
                     }
                     .email-header {
-                        background: linear-gradient(135deg, #0d0d0d 0%, #111827 60%, #1a2744 100%) !important;
+                        background-color: #09090b !important;
+                        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
                     }
-                    .email-body h2 { color: #f1f5f9 !important; }
-                    .email-body p { color: #94a3b8 !important; }
-                    .email-body ul { color: #94a3b8 !important; }
-                    .email-body ul li strong { color: #f1f5f9 !important; }
-                    .email-body a { color: #60a5fa !important; }
+                    .logo-img {
+                        filter: brightness(0) invert(1) !important;
+                    }
+                    .logo-text {
+                        color: #fafafa !important;
+                    }
+                    .email-body h2 { color: #fafafa !important; }
+                    .email-body p { color: #a1a1aa !important; }
+                    .email-body ul { color: #a1a1aa !important; }
+                    .email-body ul li strong { color: #fafafa !important; }
+                    .email-body a { color: #ffffff !important; }
+                    .btn {
+                        background-color: #ffffff !important;
+                        color: #09090b !important;
+                        border-color: #ffffff !important;
+                        box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15) !important;
+                    }
+                    .btn-danger {
+                        background-color: #ef4444 !important;
+                        border-color: #dc2626 !important;
+                        color: #ffffff !important;
+                        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
+                    }
                     .code-block {
-                        background: rgba(255,255,255,0.05) !important;
-                        border-color: rgba(255,255,255,0.12) !important;
-                        color: #f1f5f9 !important;
+                        background: #18181b !important;
+                        border-color: rgba(255, 255, 255, 0.12) !important;
+                        color: #fafafa !important;
                     }
-                    .divider { border-color: rgba(255,255,255,0.08) !important; }
-                    .email-footer {
-                        background-color: #0a0a0a !important;
-                        border-color: rgba(255,255,255,0.06) !important;
-                    }
-                    .email-footer p, .email-footer a { color: #475569 !important; }
+                    .divider { border-top-color: rgba(255, 255, 255, 0.08) !important; }
                     .info-box {
-                        background: rgba(59,130,246,0.1) !important;
-                        border-color: #3b82f6 !important;
+                        background: rgba(59, 130, 246, 0.08) !important;
+                        border-color: rgba(59, 130, 246, 0.2) !important;
+                        border-left-color: #3b82f6 !important;
                     }
                     .info-box p { color: #93c5fd !important; }
+                    .info-box p strong { color: #bfdbfe !important; }
                     .warning-box {
-                        background: rgba(234,179,8,0.1) !important;
-                        border-color: #eab308 !important;
+                        background: rgba(234, 179, 8, 0.08) !important;
+                        border-color: rgba(234, 179, 8, 0.2) !important;
+                        border-left-color: #eab308 !important;
                     }
-                    .warning-box p { color: #fde68a !important; }
+                    .warning-box p { color: #fde047 !important; }
+                    .warning-box p strong { color: #fef08a !important; }
+                    .email-footer {
+                        background-color: #0f0f11 !important;
+                        border-top-color: rgba(255, 255, 255, 0.06) !important;
+                    }
+                    .email-footer p, .email-footer a { color: #71717a !important; }
+                    .email-footer a:hover { color: #a1a1aa !important; }
                 }
 
                 /* ── Responsive ── */
                 @media only screen and (max-width: 620px) {
-                    .email-header { padding: 28px 24px !important; }
-                    .email-body { padding: 28px 24px !important; }
-                    .email-footer { padding: 20px 24px !important; }
-                    .email-body h2 { font-size: 19px !important; }
+                    .email-header { padding: 24px 20px !important; }
+                    .email-body { padding: 28px 20px !important; }
+                    .email-footer { padding: 22px 20px !important; }
+                    .email-body h2 { font-size: 20px !important; }
                     .btn { padding: 12px 24px !important; font-size: 14px !important; }
                 }
             </style>
@@ -255,11 +302,9 @@ public class EmailTemplateRenderer {
                 <div class="email-card">
                     <!-- Header -->
                     <div class="email-header">
-                        <a href="https://app.crescendo.run" class="logo-container">
-                            <svg class="logo-svg" viewBox="0 0 197 294" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                %s
-                            </svg>
-                            <span class="logo-text">Crescendo<span>.</span></span>
+                        <a href="https://app.crescendo.run" target="_blank" class="logo-container">
+                            <img src="https://app.crescendo.run/logo-app-light.png" width="32" height="32" alt="Crescendo" class="logo-img" />
+                            <span class="logo-text">Crescendo<span class="logo-dot">.</span></span>
                         </a>
                     </div>
 
@@ -270,14 +315,20 @@ public class EmailTemplateRenderer {
 
                     <!-- Footer -->
                     <div class="email-footer">
+                        <p>You received this mandatory security and account notification because you have a Crescendo account.</p>
+                        <p class="footer-links">
+                            <a href="https://app.crescendo.run/settings/notifications">Notification Preferences</a> &bull;
+                            <a href="https://app.crescendo.run/settings/security">Security Settings</a> &bull;
+                            <a href="https://app.crescendo.run/privacy">Privacy Policy</a> &bull;
+                            <a href="https://app.crescendo.run/terms">Terms</a>
+                        </p>
                         <p>&copy; 2026 Crescendo Inc. All rights reserved.</p>
-                        <p>If you didn't request this email, you can safely ignore it — no changes have been made to your account.</p>
                     </div>
                 </div>
             </div>
         </body>
         </html>
-        """.replace("%s", LOGO_SVG_PATHS);
+        """;
 
     private static String render(String content) {
         return BASE_LAYOUT.replace("{{CONTENT}}", content);
@@ -379,11 +430,11 @@ public class EmailTemplateRenderer {
             <p>Your account is set up and ready to go. You can now start automating your workflows
                and connecting your favourite apps — all in one place.</p>
             <div class="btn-container">
-                <a href="https://app.crescendo.run/dashboard" class="btn">Go to Dashboard</a>
+                <a href="https://app.crescendo.run/dashboard" class="btn">Open Workflow Studio</a>
             </div>
             <div class="divider"></div>
-            <p>Need help getting started? Visit our
-               <a href="https://docs.crescendo.run">documentation</a> or reach out to us at
+            <p>Need help getting started? Explore our
+               <a href="https://app.crescendo.run/docs">Documentation Portal</a> or reach out to us at
                <a href="mailto:hello@crescendo.run">hello@crescendo.run</a>.</p>
             """.formatted(safeName);
         return render(content);
@@ -504,7 +555,7 @@ public class EmailTemplateRenderer {
                 <p>&#9888;&#65039; If you don't recognise this sign-in, revoke access immediately using the button below, then change your password.</p>
             </div>
             <div class="btn-container" style="margin-top: 24px;">
-                <a href="%s" class="btn" style="background-color: #dc2626; border-color: #dc2626;">Revoke Access</a>
+                <a href="%s" class="btn btn-danger">Revoke Access</a>
             </div>
             """.formatted(device, locationDisplay, revokeUrl);
         return render(content);
@@ -527,7 +578,7 @@ public class EmailTemplateRenderer {
                 <p>&#9888;&#65039; If you have not changed locations or enabled a VPN, revoke access immediately using the button below.</p>
             </div>
             <div class="btn-container" style="margin-top: 24px;">
-                <a href="%s" class="btn" style="background-color: #dc2626; border-color: #dc2626;">Revoke Session</a>
+                <a href="%s" class="btn btn-danger">Revoke Session</a>
             </div>
             """.formatted(originalIp, newIp, revokeUrl);
         return render(content);

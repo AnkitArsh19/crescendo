@@ -80,7 +80,14 @@ public class SpotifyApp implements AppDefinition {
                         "description", "Get details of a Spotify playlist",
                         "configSchema", List.of(
                             Map.of("key", "playlistId", "label", "Playlist URL, URI, or ID", "type", "text", "required", true,
-                                   "placeholder", "e.g. 'https://open.spotify.com/playlist/...' or ID", "helpText", "Playlist URL, URI, or ID")))
+                                   "placeholder", "e.g. 'https://open.spotify.com/playlist/...' or ID", "helpText", "Playlist URL, URI, or ID"))),
+                    Map.of("actionKey", "get-new-releases", "name", "Get New Releases",
+                        "description", "Get a list of new album releases featured in Spotify",
+                        "configSchema", List.of(
+                            Map.of("key", "country", "label", "Country Code", "type", "text", "required", false,
+                                   "placeholder", "US", "helpText", "An ISO 3166-1 alpha-2 country code"),
+                            Map.of("key", "limit", "label", "Limit", "type", "text", "required", false,
+                                   "placeholder", "5", "helpText", "Number of releases to return (max 50)")))
                 ))
                 .altAuthType(AuthType.APIKEY)
                 .credentialSchema(List.of(

@@ -52,7 +52,7 @@ const starters = [
         desc: 'Fetch the daily LeetCode challenge every morning, generate progressive hints with AI, and post to your study group.',
         steps: [
             { name: 'Morning 8:00 AM Alarm', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 8 * * *' } },
-            { name: 'Fetch Daily LeetCode', type: 'ACTION', appKey: 'leetcode', actionKey: 'daily-problem', configuration: {} },
+            { name: 'Fetch Daily LeetCode', type: 'ACTION', appKey: 'leetcode', actionKey: 'get-daily-problem', configuration: {} },
             { name: 'AI Problem Explainer & Hints', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Provide 2 progressive algorithmic hints and time/space complexity targets without spoiling the full solution code.' } },
             { name: 'Post to Discord Study Room', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: '🎯 Daily LeetCode Challenge is live! Study hints:\n{{step_3.finalAnswer}}' } },
         ],
@@ -65,9 +65,9 @@ const starters = [
         desc: 'Pulls top trending tech stories every weekday, synthesizes key takeaways using AI, and saves notes into Notion.',
         steps: [
             { name: 'Weekday 9:00 AM Cron', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 9 * * MON-FRI' } },
-            { name: 'Top Hacker News Stories', type: 'ACTION', appKey: 'hackernews', actionKey: 'top-stories', configuration: { limit: 5 } },
+            { name: 'Top Hacker News Stories', type: 'ACTION', appKey: 'hackernews', actionKey: 'get-top-stories', configuration: { limit: 5 } },
             { name: 'AI Executive Summary', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Extract the top 3 architectural and tech takeaways from these articles.' } },
-            { name: 'Append to Notion Journal', type: 'ACTION', appKey: 'notion', actionKey: 'append-block', configuration: { content: '{{step_3.finalAnswer}}' } },
+            { name: 'Append to Notion Journal', type: 'ACTION', appKey: 'notion', actionKey: 'notion:block:append', configuration: { content: '{{step_3.finalAnswer}}' } },
         ],
     },
     {
@@ -93,7 +93,7 @@ const starters = [
         steps: [
             { name: 'Receive RSVP Form', type: 'TRIGGER', appKey: 'crescendo-webhook', actionKey: 'incoming', configuration: { method: 'POST', urlPattern: '/campus-rsvp' } },
             { name: 'Record Attendee in Sheets', type: 'ACTION', appKey: 'google-sheets', actionKey: 'appendRow', configuration: {} },
-            { name: 'Send Confirmation Email', type: 'ACTION', appKey: 'crescendo-mail', actionKey: 'sendEmail', configuration: { subject: 'Confirmed: Your Hackathon Ticket!', htmlBody: '<p>Hi {{step_1.name}}, your registration for the Campus Hackathon is confirmed!</p>' } },
+            { name: 'Send Confirmation Email', type: 'ACTION', appKey: 'crescendomail', actionKey: 'send', configuration: { to: '{{step_1.email}}', from: 'noreply@crescendo.run', subject: 'Confirmed: Your Hackathon Ticket!', htmlBody: '<p>Hi {{step_1.name}}, your registration for the Campus Hackathon is confirmed!</p>' } },
         ],
     },
     {
@@ -118,7 +118,7 @@ const starters = [
         steps: [
             { name: 'New GitHub Issue', type: 'TRIGGER', appKey: 'github', actionKey: 'new-issue', configuration: {} },
             { name: 'AI Severity & Domain Classifier', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Classify this issue into frontend, backend, or DevOps and assign priority (Low/Medium/High).' } },
-            { name: 'Create Linear Task', type: 'ACTION', appKey: 'linear', actionKey: 'create-issue', configuration: { title: '{{step_1.title}}', description: '{{step_2.finalAnswer}}' } },
+            { name: 'Create Linear Task', type: 'ACTION', appKey: 'linear', actionKey: 'linear:issue:create', configuration: { title: '{{step_1.title}}', description: '{{step_2.finalAnswer}}' } },
         ],
     },
     {

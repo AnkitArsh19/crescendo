@@ -15,10 +15,10 @@
 
 services:
   # ----------------------------------------------------------------------------
-  # 1. PostgreSQL 16 (CQRS Dual Database: Command + Query)
+  # 1. PostgreSQL (CQRS Dual Database: Command + Query)
   # ----------------------------------------------------------------------------
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: crescendo-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-crescendo_user}
@@ -44,10 +44,10 @@ services:
         max-file: "3"
 
   # ----------------------------------------------------------------------------
-  # 2. Redis 8 (WAL AOF Persistence + Stream Queues + Checkpoints)
+  # 2. Redis (WAL AOF Persistence + Stream Queues + Checkpoints)
   # ----------------------------------------------------------------------------
   redis:
-    image: redis:8-alpine
+    image: redis:latest
     container_name: crescendo-redis
     # Security: No public host port publishing. Accessible ONLY within crescendo-network.
     volumes:
@@ -99,6 +99,7 @@ services:
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      CRESCENDO_ADMIN_EMAILS: ${CRESCENDO_ADMIN_EMAILS:-ankitarsh19@gmail.com}
     networks:
       - crescendo-network
     restart: unless-stopped

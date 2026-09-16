@@ -68,7 +68,7 @@ public class DomainConnectTemplateController {
         t.put("serviceId", SERVICE_ID);
         t.put("serviceName", "Crescendo Email Service");
         t.put("version", 2);
-        t.put("logoUrl", "https://crescendo.run/logo.svg");
+        t.put("logoUrl", "https://app.crescendo.run/logo.svg");
         t.put("description", "Configures domain ownership verification, SPF, DKIM, and DMARC for Crescendo email delivery.");
         t.put("variableDescription", "%token%: verification token for domain ownership; %dkim_pub_key%: Public key for DKIM signature");
         t.put("syncBlock", false);

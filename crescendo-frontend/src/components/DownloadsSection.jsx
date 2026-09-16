@@ -4,7 +4,7 @@ import { HiOutlineDownload, HiOutlineExternalLink } from 'react-icons/hi';
 import { FaWindows, FaApple, FaLinux } from 'react-icons/fa';
 import './DownloadsSection.css';
 
-const RELEASE_VERSION = '1.0.2';
+const RELEASE_VERSION = '1.0.3';
 const RELEASE_TAG = `v${RELEASE_VERSION}`;
 const RELEASE_BASE = `https://github.com/AnkitArsh19/crescendo/releases/download/${RELEASE_TAG}`;
 const RELEASE_PAGE = `https://github.com/AnkitArsh19/crescendo/releases/tag/${RELEASE_TAG}`;

@@ -90,39 +90,50 @@ public class WorkflowActivationValidator {
     }
 
     private void validateStep(Steps_command step, int index) {
-        String appKey = step.getAppKey();
-        if (appKey == null || appKey.isBlank()) {
+        String rawAppKey = step.getAppKey();
+        if (rawAppKey == null || rawAppKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     String.format("Step %d: select an app.", index + 1));
         }
+
+        String appKey = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeAppKey(rawAppKey);
 
         AppDto.AppDetailResponse appDef;
         try {
             appDef = appService.getApp(appKey);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    String.format("Step %d: Invalid appKey: %s", index + 1, appKey));
+                    String.format("Step %d: Invalid appKey: %s", index + 1, rawAppKey));
         }
 
-        boolean needsAuth = !"NONE".equals(appDef.authType());
+        boolean needsAuth = !"NONE".equals(appDef.authType()) && !"agent".equals(appKey);
         if (needsAuth && step.getConnectionId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     String.format("Step %d: select a connected account.", index + 1));
         }
 
-        String opKey = step.getActionKey();
-        if (opKey == null || opKey.isBlank()) {
+        String rawOpKey = step.getActionKey();
+        if (rawOpKey == null || rawOpKey.isBlank()) {
             String opType = step.getType() == StepType.TRIGGER ? "trigger event" : "action";
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     String.format("Step %d: select a %s.", index + 1, opType));
         }
 
+        String opKey = com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeActionKey(appKey, rawOpKey);
+
         List<Map<String, Object>> defs = step.getType() == StepType.TRIGGER ? appDef.triggers() : appDef.actions();
         Map<String, Object> def = defs.stream()
-                .filter(d -> opKey.equals(d.get(step.getType() == StepType.TRIGGER ? "triggerKey" : "actionKey")))
+                .filter(d -> {
+                    Object keyInDef = d.get(step.getType() == StepType.TRIGGER ? "triggerKey" : "actionKey");
+                    if (keyInDef == null) return false;
+                    String keyStr = String.valueOf(keyInDef);
+                    return opKey.equals(keyStr)
+                            || rawOpKey.equals(keyStr)
+                            || opKey.equals(com.crescendo.steps.steps_command.StepDefinitionValidator.normalizeActionKey(appKey, keyStr));
+                })
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        String.format("Step %d: Invalid operation key for app: %s", index + 1, opKey)));
+                        String.format("Step %d: Invalid operation key for app: %s", index + 1, rawOpKey)));
 
         Object schemaObj = def.get("configSchema");
         validateConfiguration(step.getConfiguration(), schemaObj, index);
