@@ -36,8 +36,11 @@ public class DomainConnectService {
     // We will redirect users back to the frontend domains settings page
     private static final String REDIRECT_URI = "https://app.crescendo.run/dashboard/email/domains";
 
-    @Value("${domainconnect.private-key-path:${DOMAIN_CONNECT_PRIVATE_KEY_PATH:}}")
+    @Value("${domainconnect.private-key-path:${DOMAIN_CONNECT_PRIVATE_KEY_PATH:${DOMAINCONNECT_PRIVATE_KEY_PATH:}}}")
     private String privateKeyPath;
+
+    @Value("${domainconnect.private-key-pem:${DOMAIN_CONNECT_PRIVATE_KEY_PEM:${DOMAINCONNECT_PRIVATE_KEY_PEM:}}}")
+    private String privateKeyPem;
 
     private PrivateKey privateKey;
     private final RestTemplate restTemplate;
@@ -48,37 +51,56 @@ public class DomainConnectService {
 
     @PostConstruct
     public void init() {
-        if (privateKeyPath != null && !privateKeyPath.isBlank()) {
+        String keyContent = null;
+
+        // 1. Try reading directly from environment variable / property
+        if (privateKeyPem != null && !privateKeyPem.isBlank()) {
+            keyContent = privateKeyPem;
+            log.info("Domain Connect private key configured via environment variable/property");
+        } 
+        // 2. Otherwise try reading from file path
+        else if (privateKeyPath != null && !privateKeyPath.isBlank()) {
             java.nio.file.Path path = Paths.get(privateKeyPath);
             if (!Files.exists(path)) {
                 // Check parent directory as fallback when running from submodule directory
                 java.nio.file.Path parentPath = Paths.get("..", privateKeyPath);
                 if (Files.exists(parentPath)) {
                     path = parentPath;
-                } else {
-                    log.warn("Domain Connect private key file not found at: {}. Domain Connect URLs will not be signed.", privateKeyPath);
-                    return;
                 }
             }
+            if (Files.exists(path)) {
+                try {
+                    keyContent = Files.readString(path);
+                    log.info("Domain Connect private key file found at: {}", path);
+                } catch (Exception e) {
+                    log.error("Failed to read Domain Connect private key file at: {}", path, e);
+                }
+            } else {
+                log.warn("Domain Connect private key file not found at: {}. Domain Connect URLs will not be signed.", privateKeyPath);
+            }
+        }
+
+        if (keyContent != null && !keyContent.isBlank()) {
             try {
-                String keyContent = Files.readString(path)
+                String cleanContent = keyContent
                         .replaceAll("[\\r\\n]", "") // strip real newlines (CRLF and LF)
+                        .replace("\\n", "")         // strip escaped newlines from env strings
                         .replace("-----BEGIN PRIVATE KEY-----", "")
                         .replace("-----END PRIVATE KEY-----", "")
                         .replace("-----BEGIN RSA PRIVATE KEY-----", "")
                         .replace("-----END RSA PRIVATE KEY-----", "")
                         .trim();
-                
-                byte[] keyBytes = Base64.getDecoder().decode(keyContent);
+
+                byte[] keyBytes = Base64.getDecoder().decode(cleanContent);
                 PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
                 KeyFactory kf = KeyFactory.getInstance("RSA");
                 this.privateKey = kf.generatePrivate(spec);
-                log.info("Domain Connect private key loaded successfully from {}", privateKeyPath);
+                log.info("Domain Connect private key loaded successfully");
             } catch (Exception e) {
-                log.error("Failed to load Domain Connect private key from path: {}", privateKeyPath, e);
+                log.error("Failed to decode/parse Domain Connect private key", e);
             }
         } else {
-            log.warn("DOMAIN_CONNECT_PRIVATE_KEY_PATH is not set. Domain Connect URLs will not be signed.");
+            log.warn("Neither DOMAINCONNECT_PRIVATE_KEY_PEM nor DOMAINCONNECT_PRIVATE_KEY_PATH is available. Domain Connect URLs will not be signed.");
         }
     }
 

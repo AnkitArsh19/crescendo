@@ -124,6 +124,22 @@ public class SpotifyTrackHandlers {
                 .execute();
     }
 
+    @ActionMapping(appKey = "spotify", actionKey = "get-new-releases")
+    public Object getNewReleases(ActionContext context) throws Exception {
+        String country = context.configuration().getOrDefault("country", "US").toString();
+        int limit = 5;
+        if (context.configuration().get("limit") != null) {
+            try {
+                limit = Math.min(50, Math.max(1, Integer.parseInt(context.configuration().get("limit").toString())));
+            } catch (NumberFormatException ignored) {}
+        }
+        return RestClient.builder()
+                .url("https://api.spotify.com/v1/browse/new-releases?country=" + country + "&limit=" + limit)
+                .header("Authorization", getAuth(context))
+                .get()
+                .execute();
+    }
+
     /**
      * Resolves a track ID from a Spotify URL, Spotify URI, raw 22-char ID, or searches for it by name.
      */

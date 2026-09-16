@@ -60,6 +60,7 @@ crescendo.storage.s3.endpoint=${S3_ENDPOINT_OVERRIDE:}
 # ── Transactional Email Provider ──────────────────────────────────────────────
 crescendo.email.provider=${CRESCENDO_EMAIL_PROVIDER:brevo}
 brevo.api.key=${BREVO_API_KEY:}
+crescendo.mail.from=${BREVO_SENDER_EMAIL:noreply@crescendo.run}
 
 # ── Core OAuth2 Login (Google / GitHub) ────────────────────────────────────────
 spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:}
@@ -67,3 +68,13 @@ spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_
 spring.security.oauth2.client.registration.github.client-id=${GITHUB_CLIENT_ID:}
 spring.security.oauth2.client.registration.github.client-secret=${GITHUB_CLIENT_SECRET:}
 spring.security.oauth2.client.registration.github.scope=read:user, user:email
+
+# ── Core Security & Admin Whitelist ───────────────────────────────────────────
+crescendo.admin.emails=${CRESCENDO_ADMIN_EMAILS:ankitarsh19@gmail.com}
+credentials.crypto.key=${CREDENTIALS_CRYPTO_KEY:}
+jwt.secret=${JWT_SECRET:}
+
+# ── Domain Connect Configuration ─────────────────────────────────────────────
+domainconnect.private-key-path=${DOMAINCONNECT_PRIVATE_KEY_PATH:private_key.pem}
+domainconnect.private-key-pem=${DOMAINCONNECT_PRIVATE_KEY_PEM:}
+

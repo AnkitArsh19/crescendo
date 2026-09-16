@@ -28,7 +28,7 @@ public class RedisSerializationTest {
                                 .allowIfSubType("java.lang.")
                                 .build(),
                         DefaultTyping.NON_FINAL_AND_RECORDS,
-                        JsonTypeInfo.As.PROPERTY
+                        JsonTypeInfo.As.WRAPPER_ARRAY
                 )
                 .build();
     }
@@ -73,6 +73,31 @@ public class RedisSerializationTest {
 
         String json = mapper.writeValueAsString(detail);
         System.out.println("SERIALIZED JSON: " + json);
+
+        Object deserialized = mapper.readValue(json, Object.class);
+        assertNotNull(deserialized);
+    }
+
+    @Test
+    public void testWorkflowListSerialization() throws Exception {
+        ObjectMapper mapper = redisObjectMapper();
+
+        WorkflowDto.WorkflowSummaryResponse summary = new WorkflowDto.WorkflowSummaryResponse(
+                UUID.randomUUID().toString(),
+                "My Workflow",
+                "desc",
+                true,
+                "ACTIVE",
+                3,
+                1L,
+                Instant.now(),
+                Instant.now(),
+                Instant.now()
+        );
+
+        List<WorkflowDto.WorkflowSummaryResponse> list = new ArrayList<>(List.of(summary));
+        String json = mapper.writeValueAsString(list);
+        System.out.println("SERIALIZED LIST JSON: " + json);
 
         Object deserialized = mapper.readValue(json, Object.class);
         assertNotNull(deserialized);

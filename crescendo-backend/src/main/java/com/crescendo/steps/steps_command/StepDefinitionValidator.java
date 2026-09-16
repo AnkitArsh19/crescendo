@@ -36,28 +36,49 @@ public class StepDefinitionValidator {
         this.connectionsRepo = connectionsRepo;
     }
 
+    public static String normalizeAppKey(String appKey) {
+        if (appKey == null) return null;
+        if ("crescendo-mail".equalsIgnoreCase(appKey)) return "crescendomail";
+        return appKey;
+    }
+
+    public static String normalizeActionKey(String appKey, String actionKey) {
+        if (actionKey == null) return null;
+        String normalizedApp = normalizeAppKey(appKey);
+        if ("leetcode".equalsIgnoreCase(normalizedApp) && "daily-problem".equalsIgnoreCase(actionKey)) return "get-daily-problem";
+        if ("hackernews".equalsIgnoreCase(normalizedApp) && "top-stories".equalsIgnoreCase(actionKey)) return "get-top-stories";
+        if ("notion".equalsIgnoreCase(normalizedApp) && "append-block".equalsIgnoreCase(actionKey)) return "notion:block:append";
+        if ("linear".equalsIgnoreCase(normalizedApp) && "create-issue".equalsIgnoreCase(actionKey)) return "linear:issue:create";
+        if ("crescendomail".equalsIgnoreCase(normalizedApp) && "sendEmail".equalsIgnoreCase(actionKey)) return "send";
+        if ("agent".equalsIgnoreCase(normalizedApp) && "ai_agent".equalsIgnoreCase(actionKey)) return "agent:ai_agent";
+        return actionKey;
+    }
+
     public void validateStepDefinition(UUID userId, StepType type, String appKey, String actionKey, UUID connectionId, Map<String, Object> configuration) {
         if (appKey == null || appKey.isBlank()) return;
 
+        String resolvedAppKey = normalizeAppKey(appKey);
+        String resolvedActionKey = normalizeActionKey(resolvedAppKey, actionKey);
+
         AppDto.AppDetailResponse appDef;
         try {
-            appDef = appService.getApp(appKey);
+            appDef = appService.getApp(resolvedAppKey);
         } catch (ResponseStatusException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid appKey: " + appKey);
         }
 
-        if (actionKey == null || actionKey.isBlank()) return;
+        if (resolvedActionKey == null || resolvedActionKey.isBlank()) return;
 
         if (type == StepType.TRIGGER) {
             boolean validTrigger = appDef.triggers().stream()
-                    .anyMatch(t -> actionKey.equals(t.get("triggerKey")));
+                    .anyMatch(t -> resolvedActionKey.equals(t.get("triggerKey")));
             if (!validTrigger) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid trigger key for app: " + actionKey);
             }
         } else if (type == StepType.ACTION) {
             boolean validAction = appDef.actions().stream()
-                    .anyMatch(a -> actionKey.equals(a.get("actionKey")))
-                    || ("agent".equals(appKey) && ("agent:ai_agent".equals(actionKey) || "ai_agent".equals(actionKey)));
+                    .anyMatch(a -> resolvedActionKey.equals(a.get("actionKey")))
+                    || ("agent".equals(resolvedAppKey) && ("agent:ai_agent".equals(resolvedActionKey) || "ai_agent".equals(resolvedActionKey)));
             if (!validAction) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid action key for app: " + actionKey);
             }

@@ -69,4 +69,28 @@ class EmailTemplateRendererTest {
         assertTrue(html.contains("Chrome / macOS"), "HTML should contain device name");
         assertTrue(html.contains("London, UK"), "HTML should contain location");
     }
+
+    @Test
+    @DisplayName("Base layout incorporates Funnel Display, hosted logo, dark mode styles, and transactional footer")
+    void baseLayoutFeatures() {
+        String html = EmailTemplateRenderer.renderWelcome("Alice");
+
+        // Landing page font alignment
+        assertTrue(html.contains("Funnel+Display"), "HTML should link to Funnel Display Google Font");
+        assertTrue(html.contains("Inter"), "HTML should link to Inter Google Font");
+
+        // Hosted PNG logo for 100% email client compatibility
+        assertTrue(html.contains("https://app.crescendo.run/logo-app-light.png"), "HTML should include hosted logo image URL");
+        assertTrue(html.contains("class=\"logo-img\""), "HTML should style logo img");
+
+        // Light & dark mode support
+        assertTrue(html.contains("@media (prefers-color-scheme: dark)"), "HTML should include dark mode styles");
+        assertTrue(html.contains("#09090b"), "HTML should use Crescendo zinc brand dark color");
+
+        // Transactional compliance footer
+        assertTrue(html.contains("https://app.crescendo.run/settings/notifications"), "Footer should link to notification preferences");
+        assertTrue(html.contains("https://app.crescendo.run/settings/security"), "Footer should link to security settings");
+        assertTrue(html.contains("https://app.crescendo.run/privacy"), "Footer should link to privacy policy");
+        assertTrue(html.contains("https://app.crescendo.run/terms"), "Footer should link to terms of service");
+    }
 }

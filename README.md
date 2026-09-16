@@ -8,8 +8,17 @@
 
 # Crescendo
 
+<p align="center">
+  <a href="https://app.crescendo.run"><strong>Live Web Platform</strong></a> &nbsp;•&nbsp;
+  <a href="https://app.crescendo.run/docs"><strong>Documentation Portal</strong></a> &nbsp;•&nbsp;
+  <a href="https://app.crescendo.run/docs/public-api"><strong>API Reference</strong></a> &nbsp;•&nbsp;
+  <a href="https://github.com/AnkitArsh19/crescendo-sdk"><strong>SDK Ecosystem</strong></a> &nbsp;•&nbsp;
+  <a href="https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3"><strong>Desktop App (v1.0.2)</strong></a>
+</p>
+
 Crescendo is a workflow automation platform built to orchestrate real-world multi-step automations across apps, APIs, and user-defined triggers.
 
+**Live Web Application:** [https://app.crescendo.run](https://app.crescendo.run)  
 **Project status: Version 1.0 (v1.0.1) is released and production-ready.** The initial release milestone is complete, with core workflow orchestration, the AI agent runtime, transactional email infrastructure, and native desktop clients fully built and operational. Future development follows a continuous improvement model for enhancements, optimizations, and new catalog integrations.
 
 ## Why this project was built
@@ -59,10 +68,10 @@ This is designed so any developer can add an integration independently and contr
 Crescendo is organized as a full-stack monorepo:
 
 - `crescendo-backend`: Spring Boot automation engine and APIs
-- `crescendo-frontend`: React + Vite workflow builder, management UI, and Tauri native desktop client
+- `crescendo-frontend`: React + Vite workflow builder, management UI ([app.crescendo.run](https://app.crescendo.run)), and Tauri native desktop client
 - `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder and Agentic AI ReAct Runtime (Google Gemini, Groq, OpenAI)
 - `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
-- Root docs and references: architecture notes, production issues, integration guides
+- Root docs and references: interactive documentation portal at [app.crescendo.run/docs](https://app.crescendo.run/docs), architecture notes, and integration guides
 
 Execution flow (simplified):
 
@@ -159,14 +168,14 @@ Crescendo includes a production-grade transactional email subsystem designed to 
 4. **The Send Decision Gate & Content Heuristics:** A centralized chokepoint (`SendEligibilityService`) that validates domain readiness, daily caps, and usage-type bindings. Additionally, a **draft-time heuristic engine** checks marketing emails for spam triggers (low text-to-image ratio, missing plain text, spam phrases) to protect users before they send.
 5. **Provider Abstraction & Idempotency:** An `EmailProvider` interface allows swapping delivery backends. It passes internal idempotency keys to the provider to prevent duplicate sends on network timeouts. It also automatically injects RFC 8058 compliant `List-Unsubscribe` headers and footers to all marketing emails to ensure absolute legal compliance.
 6. **Feedback Ingestion & Suppression Portability:** Integrated webhooks capture delivery, bounce, and spam complaint payloads, translating opaque provider errors into plain-language feedback. The platform distinguishes between *hard bounces* and *soft bounces*, and supports multipart CSV and JSON bulk imports so users can migrate suppression lists without friction.
-7. **Developer Experience & Tooling:** Crescendo offers zero-dependency native SDKs for Node.js (`@crescendo/email`) and Python (`crescendo`), along with auto-generated SDKs across six languages (Java, PHP, Go, Rust, Ruby, .NET) via an automated OpenAPI CI pipeline. It features a full CLI (`crescendo-cli`), an advanced React Email-powered `TemplateBlockEditor` for creating beautiful emails in the browser, and an MCP (Model Context Protocol) server for native AI-agent integration.
+7. **Developer Experience & Tooling:** Crescendo offers zero-dependency native SDKs for Node.js ([`@crescendo/email`](https://app.crescendo.run/docs/sdk-node)) and Python ([`crescendo`](https://app.crescendo.run/docs/sdk-python)), along with auto-generated SDKs across six languages ([Java, PHP, Go, Rust, Ruby, .NET](https://app.crescendo.run/docs/sdk-multi-language)) via an automated OpenAPI CI pipeline. It features a full CLI (`crescendo-cli`), an advanced React Email-powered `TemplateBlockEditor` for creating beautiful emails in the browser, and an MCP (Model Context Protocol) server for native AI-agent integration.
 8. **Domain Management & Claiming:** Robust domain control including tracking toggles, custom unsubscribe branding, BIMI record generation, and a secure Domain Claim mechanism to transfer ownership of verified domains between users without complex organizational structures.
 
 This email system is part of the core platform roadmap, not an afterthought.
 
 ### 7. Public API Governance & Contract Stability
 
-To provide true Resend/Stripe-level parity, Crescendo exposes its email orchestration (Domains, Audiences, Suppressions) via a public REST API. The design deliberately prioritizes external developer experience and backwards compatibility:
+To provide true Resend/Stripe-level parity, Crescendo exposes its email orchestration (Domains, Audiences, Suppressions) via a public REST API ([API Reference](https://app.crescendo.run/docs/public-api) & [Governance Guide](https://app.crescendo.run/docs/api-governance)). The design deliberately prioritizes external developer experience and backwards compatibility:
 
 - **Isolated API Surface:** Public endpoints (`/api/v1/*`) are entirely decoupled from internal dashboard routes (`/settings/*`). This ensures internal UI changes never inadvertently break the public contract.
 - **Strict Idempotency:** A custom `IdempotencyFilter` caches `POST` responses for 24 hours. Crucially, if a client reuses an `Idempotency-Key` but changes the request payload, the API explicitly returns a `409 Conflict` (like Stripe) rather than silently serving the wrong cached response.
@@ -175,7 +184,7 @@ To provide true Resend/Stripe-level parity, Crescendo exposes its email orchestr
 
 ### 8. Universal SDK Ecosystem & Multi-Repo Architecture
 
-Great APIs require great client libraries. We provide an ecosystem of 8 officially supported SDKs, which are hosted in a separate dedicated repository: **[Crescendo SDKs (crescendo-sdk)](https://github.com/AnkitArsh19/crescendo-sdk)**.
+Great APIs require great client libraries. We provide an ecosystem of 8 officially supported SDKs, which are hosted in a separate dedicated repository: **[Crescendo SDKs (crescendo-sdk)](https://github.com/AnkitArsh19/crescendo-sdk)** with step-by-step documentation for [Node.js / TypeScript](https://app.crescendo.run/docs/sdk-node), [Python](https://app.crescendo.run/docs/sdk-python), and [Multi-Language Runtimes](https://app.crescendo.run/docs/sdk-multi-language).
 
 - **Hand-written DX:** For our most critical ecosystems (Node.js/TypeScript and Python), the SDKs are meticulously hand-crafted to provide a zero-dependency, highly idiomatic developer experience.
 - **Automated Generation at Scale:** For Java, Go, Rust, PHP, Ruby, and .NET, we utilize a fully automated `openapi-generator-cli` pipeline.
@@ -206,19 +215,19 @@ A first-class autonomous workflow node (`agent:ai_agent`) that evaluates incomin
 
 Crescendo Desktop provides a focused, high-performance native workflow automation and orchestration experience across Windows, macOS, and Linux without the memory bloat of Electron.
 
-### Official Download Releases (v1.0.2)
+### Official Download Releases (v1.0.3)
 
 | Operating System | Package Format | Architecture | Size | Direct Download |
 |---|---|---|---|---|
-| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_x64-setup.exe) |
-| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_x64_en-US.msi) |
-| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_universal.dmg) |
-| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_universal.app.tar.gz) |
-| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_amd64.AppImage) |
-| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo_1.0.2_amd64.deb) |
-| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.2/Crescendo-1.0.2-1.x86_64.rpm) |
+| **Windows** | `.exe` (NSIS Setup) | x64 | 4.13 MB | [Download `.exe`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_1.0.3_x64-setup.exe) |
+| **Windows** | `.msi` (Windows Installer) | x64 | 5.09 MB | [Download `.msi`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_1.0.3_x64_en-US.msi) |
+| **macOS** | `.dmg` (Universal Disk Image) | Apple Silicon & Intel | 10.1 MB | [Download `.dmg`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_1.0.3_universal.dmg) |
+| **macOS** | `.app.tar.gz` (App Archive) | Apple Silicon & Intel | 10.1 MB | [Download `.tar.gz`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_universal.app.tar.gz) |
+| **Linux** | `.AppImage` (Standalone) | x86_64 / amd64 | 80.4 MB | [Download `.AppImage`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_1.0.3_amd64.AppImage) |
+| **Linux** | `.deb` (Debian / Ubuntu) | amd64 | 6.42 MB | [Download `.deb`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo_1.0.3_amd64.deb) |
+| **Linux** | `.rpm` (Fedora / RHEL) | x86_64 | 6.42 MB | [Download `.rpm`](https://github.com/AnkitArsh19/crescendo/releases/download/v1.0.3/Crescendo-1.0.3-1.x86_64.rpm) |
 
-All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.2)** page.
+All official release artifacts are cryptographically signed and available on the **[GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3)** page.
 
 ### Why Tauri v2 over Electron?
 - **Ultra-Lean Binary Footprint:** <15 MB total installer size vs. 150+ MB for minimal Electron runtimes.
@@ -227,7 +236,7 @@ All official release artifacts are cryptographically signed and available on the
 
 ### Enterprise Native Security & Authentication (RFC 8252)
 Desktop authentication implements the OAuth 2.0 Best Current Practice for Native Apps ([RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252)):
-1. **System Browser Login (No Embedded Webviews):** The desktop app delegates authentication to the user's default browser (`app.crescendo.run`). This preserves biometric hardware keys (WebAuthn / FIDO2 Passkeys), enables single-click login for existing browser sessions, and guarantees user credentials are never handled directly by native application code.
+1. **System Browser Login (No Embedded Webviews):** The desktop app delegates authentication to the user's default browser ([`app.crescendo.run`](https://app.crescendo.run)). This preserves biometric hardware keys (WebAuthn / FIDO2 Passkeys), enables single-click login for existing browser sessions, and guarantees user credentials are never handled directly by native application code.
 2. **Ephemeral 60s Handoff Code:** Upon web authentication, the backend generates an ephemeral 256-bit cryptographically secure code (`POST /auth/desktop-handoff/issue`).
 3. **Zero Token Leakage in Deep Links:** The browser redirects back via the OS protocol scheme: `crescendo://auth/callback?code=<60s-code>`. **No access tokens or refresh tokens ever appear in URLs, browser history, or system command-line logs.**
 4. **Single-Instance Process Interception:** Uses `tauri-plugin-single-instance` to prevent duplicate app windows. When Windows or macOS invokes the custom scheme, the secondary launch is intercepted, the existing running window is focused and brought to front, and the handoff code is transferred over IPC.
@@ -482,3 +491,20 @@ This project demonstrates:
 ## Current status & continuous improvement
 
 Crescendo is completed and running in production as a robust automation and transactional communication platform. With the version 1.0 foundation established, ongoing work focuses on continuous improvements: adding new catalog integrations and triggers, tuning system performance, and shipping incremental feature updates.
+
+## Official Links & Resources
+
+| Resource | URL | Description |
+|---|---|---|
+| **Live Web Platform** | [https://app.crescendo.run](https://app.crescendo.run) | Primary web application and workflow builder |
+| **Documentation Portal** | [https://app.crescendo.run/docs](https://app.crescendo.run/docs) | Complete user and developer documentation guides |
+| **Public API Reference** | [https://app.crescendo.run/docs/public-api](https://app.crescendo.run/docs/public-api) | REST endpoints, authentication, and headers |
+| **API Governance & Idempotency** | [https://app.crescendo.run/docs/api-governance](https://app.crescendo.run/docs/api-governance) | Idempotency keys, rate limits, and error envelopes |
+| **Interactive OpenAPI Specs** | [https://app.crescendo.run/docs/api/workflows](https://app.crescendo.run/docs/api/workflows) | In-browser OpenAPI v3 testing suite |
+| **Node.js / TypeScript SDK** | [https://app.crescendo.run/docs/sdk-node](https://app.crescendo.run/docs/sdk-node) | Official `@crescendo/email` SDK documentation |
+| **Python SDK** | [https://app.crescendo.run/docs/sdk-python](https://app.crescendo.run/docs/sdk-python) | Official `crescendo-sdk-python` documentation |
+| **Multi-Language SDKs** | [https://app.crescendo.run/docs/sdk-multi-language](https://app.crescendo.run/docs/sdk-multi-language) | Java, Go, Rust, C#, PHP, Ruby & CLI documentation |
+| **Universal SDK Repository** | [https://github.com/AnkitArsh19/crescendo-sdk](https://github.com/AnkitArsh19/crescendo-sdk) | Dedicated GitHub repository for client libraries |
+| **Desktop Releases (v1.0.2)** | [GitHub Releases](https://github.com/AnkitArsh19/crescendo/releases/tag/v1.0.3) | Native packages for Windows (`.exe`, `.msi`), macOS (`.dmg`), and Linux (`.AppImage`, `.deb`, `.rpm`) |
+| **Privacy Policy** | [https://app.crescendo.run/privacy](https://app.crescendo.run/privacy) | Data privacy, cookies, retention, and security |
+| **Terms of Service** | [https://app.crescendo.run/terms](https://app.crescendo.run/terms) | Platform usage terms and service agreements |
