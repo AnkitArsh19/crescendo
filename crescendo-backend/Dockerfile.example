@@ -1,3 +1,27 @@
-FROM eclipse-temurin:latest
-ADD crescendo-backend/target/crescendo-backend.jar crescendo-backend.jar
-ENTRYPOINT ["java", "-jar", "/crescendo-backend.jar"]
+# ==============================================================================
+# Multi-Stage Build Example Template
+# ==============================================================================
+FROM amazoncorretto:25 AS builder
+
+WORKDIR /build
+
+# Install build utilities
+RUN dnf install -y tar gzip unzip findutils && dnf clean all
+
+# Copy Maven wrapper and dependencies
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B || true
+
+# Copy source and build JAR
+COPY src src
+RUN ./mvnw clean package -DskipTests -B
+
+# Runtime Image
+FROM amazoncorretto:25 AS runtime
+RUN dnf install -y curl && dnf clean all || true
+WORKDIR /app
+COPY --from=builder /build/target/crescendo-backend.jar /app/crescendo-backend.jar
+EXPOSE 8080
+ENV JAVA_OPTS="-Xms256m -Xmx768m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar crescendo-backend.jar"]
