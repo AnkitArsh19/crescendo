@@ -47,8 +47,13 @@ function readCurrentVersions() {
   }
   if (fs.existsSync(files.readme)) {
     const content = fs.readFileSync(files.readme, 'utf8');
-    const match = content.match(/### Official Download Releases \((v[^)]+)\)/);
-    console.log(`README.md:                        ${match ? match[1] : 'not found'}`);
+    const headerMatch = content.match(/<strong>Desktop App \((v[^)]+)\)<\/strong>/);
+    const tableMatch = content.match(/### Official Download Releases \((v[^)]+)\)/);
+    const footerMatch = content.match(/\|\s*\*\*Desktop Releases \((v[^)]+)\)\*\*/);
+    const allMatches = [headerMatch?.[1], tableMatch?.[1], footerMatch?.[1]].filter(Boolean);
+    const unique = [...new Set(allMatches)];
+    const status = unique.length === 1 ? unique[0] : (unique.length > 1 ? `MISMATCH (${unique.join(', ')})` : 'not found');
+    console.log(`README.md:                        ${status}`);
   }
   if (fs.existsSync(files.desktopReleaseYml)) {
     const content = fs.readFileSync(files.desktopReleaseYml, 'utf8');
@@ -196,10 +201,28 @@ if (fs.existsSync(files.generateNsis)) {
 if (fs.existsSync(files.readme)) {
   let content = fs.readFileSync(files.readme, 'utf8');
   
+  // Header top navigation: <strong>Desktop App (v...)</strong>
+  content = content.replace(
+    /<strong>Desktop App \(v[0-9.]+\)<\/strong>/g,
+    `<strong>Desktop App (${tag})</strong>`
+  );
+
+  // Project status badge: Version 1.0 (v...)
+  content = content.replace(
+    /(\*\*Project status:\s*Version\s*[0-9.]+\s*\(v)[0-9.]+(\)\s*is released)/g,
+    `$1${cleanVersion}$2`
+  );
+
   // Section header: ### Official Download Releases (v...)
   content = content.replace(
-    /### Official Download Releases \(v[^)]+\)/,
+    /### Official Download Releases \(v[^)]+\)/g,
     `### Official Download Releases (${tag})`
+  );
+
+  // Footer resources table: | **Desktop Releases (v...)** |
+  content = content.replace(
+    /\|\s*\*\*Desktop Releases \(v[0-9.]+\)\*\*/g,
+    `| **Desktop Releases (${tag})**`
   );
   
   // Download URLs in table

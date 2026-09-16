@@ -16,6 +16,8 @@ import {
     HiMoon,
     HiOutlineMenuAlt2,
     HiOutlineX,
+    HiOutlineLockClosed,
+    HiOutlineExclamationCircle,
 } from 'react-icons/hi';
 import { useTheme } from '../../components/ThemeContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -182,7 +184,10 @@ export default function DashboardLayout() {
                 <div className="dash-plan-section">
                     {isGuest ? (
                         <div className="dash-plan-card dash-plan-guest">
-                            <div className="dash-plan-label">🔒 Guest Mode</div>
+                            <div className="dash-plan-label">
+                                <HiOutlineLockClosed className="dash-plan-icon" />
+                                <span>Guest Mode</span>
+                            </div>
                             <div className="dash-plan-limits">
                                 <span>1 workflow</span>
                                 <span>5 steps max</span>
@@ -192,7 +197,10 @@ export default function DashboardLayout() {
                         </div>
                     ) : user?.limits?.limited && user?.hasLocalCredential ? (
                         <div className="dash-plan-card dash-plan-limited">
-                            <div className="dash-plan-label">⚠ Unverified Account</div>
+                            <div className="dash-plan-label">
+                                <HiOutlineExclamationCircle className="dash-plan-icon" />
+                                <span>Unverified Account</span>
+                            </div>
                             <div className="dash-plan-sub">Verify email to unlock full access</div>
                             <div className="dash-plan-limits">
                                 <span>Workflows: {user.limits.maxWorkflows}</span>
@@ -306,7 +314,10 @@ export default function DashboardLayout() {
                     {/* Guest Mode Banner */}
                     {isGuest && !isCanvas && (
                         <div className="dash-banner dash-banner-guest">
-                            <span>🔒 Guest Mode — 1 workflow, 5 steps, 12hr trial.</span>
+                            <span className="dash-banner-guest-text">
+                                <HiOutlineLockClosed className="dash-banner-icon" />
+                                <span>Guest Mode — 1 workflow, 5 steps, 12hr trial.</span>
+                            </span>
                             <Link to="/register" onClick={() => exitGuestMode()} className="dash-banner-cta">Sign up to unlock more</Link>
                         </div>
                     )}
@@ -314,7 +325,7 @@ export default function DashboardLayout() {
                     {/* Email Verification Banner — only for LOCAL-credential users who haven't verified */}
                     {!isGuest && user?.hasLocalCredential && user?.limits?.limited && !verifyBannerDismissed && !isCanvas && (
                         <div className="dash-banner dash-banner-verify">
-                            <HiOutlineMail />
+                            <HiOutlineMail className="dash-banner-icon" />
                             <span>Verify your email to unlock all features.</span>
                             <button
                                 className="dash-banner-cta"
@@ -327,7 +338,9 @@ export default function DashboardLayout() {
                             >
                                 {resending ? 'Sending...' : 'Resend email'}
                             </button>
-                            <button className="dash-banner-close" onClick={() => setVerifyBannerDismissed(true)}>✕</button>
+                            <button className="dash-banner-close" onClick={() => setVerifyBannerDismissed(true)} aria-label="Dismiss banner">
+                                <HiOutlineX />
+                            </button>
                         </div>
                     )}
 

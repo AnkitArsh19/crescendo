@@ -41,7 +41,7 @@ const starters = [
             { name: 'New Pull Request', type: 'TRIGGER', appKey: 'github', actionKey: 'new-pr', configuration: {} },
             { name: 'AI Code & Security Audit', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Analyze the pull request diff for bugs, breaking changes, and security risks. Rate overall risk as LOW, MEDIUM, or HIGH.' } },
             { name: 'Check If High Risk', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.finalAnswer}}', operator: 'CONTAINS', value: 'HIGH' }] }] } },
-            { name: 'Dispatch Slack Alert', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🚨 High-risk Pull Request detected:\n{{step_2.finalAnswer}}' } },
+            { name: 'Dispatch Slack Alert', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: 'High-risk Pull Request detected:\n{{step_2.finalAnswer}}' } },
         ],
     },
     {
@@ -54,7 +54,7 @@ const starters = [
             { name: 'Morning 8:00 AM Alarm', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 8 * * *' } },
             { name: 'Fetch Daily LeetCode', type: 'ACTION', appKey: 'leetcode', actionKey: 'get-daily-problem', configuration: {} },
             { name: 'AI Problem Explainer & Hints', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Provide 2 progressive algorithmic hints and time/space complexity targets without spoiling the full solution code.' } },
-            { name: 'Post to Discord Study Room', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: '🎯 Daily LeetCode Challenge is live! Study hints:\n{{step_3.finalAnswer}}' } },
+            { name: 'Post to Discord Study Room', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: 'Daily LeetCode Challenge is live! Study hints:\n{{step_3.finalAnswer}}' } },
         ],
     },
     {
@@ -81,7 +81,7 @@ const starters = [
             { name: 'AI Sentiment & Severity Triage', type: 'ACTION', appKey: 'agent', actionKey: 'agent:ai_agent', configuration: { provider: 'gemini', model: 'gemini-3.8-flash', goal: 'Classify user feedback into: POSITIVE, NEUTRAL, or CRITICAL_BUG.' } },
             { name: 'Log to Google Sheets', type: 'ACTION', appKey: 'google-sheets', actionKey: 'appendRow', configuration: { spreadsheetId: 'feedback_db' } },
             { name: 'Check If Critical Bug', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.finalAnswer}}', operator: 'CONTAINS', value: 'CRITICAL_BUG' }] }] } },
-            { name: 'Alert On-Call Slack Channel', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🔥 Critical Bug reported by user: {{step_1.message}}' } },
+            { name: 'Alert On-Call Slack Channel', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: 'Critical Bug reported by user: {{step_1.message}}' } },
         ],
     },
     {
@@ -106,7 +106,7 @@ const starters = [
             { name: '15-Minute Uptime Poller', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '*/15 * * * *' } },
             { name: 'Ping Health Endpoint', type: 'ACTION', appKey: 'http', actionKey: 'request', configuration: { method: 'GET', url: 'https://api.my-app.com/health', authentication: 'none' } },
             { name: 'Check HTTP Status Code', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.status}}', operator: 'EQUALS', value: '200' }] }] } },
-            { name: 'Telegram Down Alert', type: 'ACTION', appKey: 'telegram', actionKey: 'sendMessage', configuration: { text: '⚠️ Service alert: API health endpoint returned non-200 status code.' } },
+            { name: 'Telegram Down Alert', type: 'ACTION', appKey: 'telegram', actionKey: 'sendMessage', configuration: { text: 'Service alert: API health endpoint returned non-200 status code.' } },
         ],
     },
     {
@@ -131,7 +131,7 @@ const starters = [
             { name: 'Weekday Morning 7:30 AM', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 30 7 * * MON-FRI' } },
             { name: 'Check Local Weather', type: 'ACTION', appKey: 'weather', actionKey: 'get-weather', configuration: { city: 'Bengaluru', units: 'metric' } },
             { name: 'Check If Rain Forecasted', type: 'ACTION', appKey: 'logic', actionKey: 'logic:if', configuration: { conditions: [{ combinator: 'AND', conditions: [{ field: '{{step_2.condition}}', operator: 'CONTAINS', value: 'Rain' }] }] } },
-            { name: 'Slack Rain Advisory', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: '🌧️ Rain advisory for today: {{step_2.condition}}, temperature: {{step_2.temperature}}°C. Don\'t forget your umbrella!' } },
+            { name: 'Slack Rain Advisory', type: 'ACTION', appKey: 'slack', actionKey: 'sendMessage', configuration: { text: 'Rain advisory for today: {{step_2.condition}}, temperature: {{step_2.temperature}}°C. Don\'t forget your umbrella!' } },
         ],
     },
     {
@@ -143,7 +143,7 @@ const starters = [
         steps: [
             { name: 'Friday Afternoon 4:00 PM', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 0 16 * * FRI' } },
             { name: 'Fetch New Music Releases', type: 'ACTION', appKey: 'spotify', actionKey: 'get-new-releases', configuration: { country: 'US', limit: 5 } },
-            { name: 'Post Playlist to Discord', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: '🎵 Friday Vibes! Check out this week\'s new music releases to wrap up the sprint.' } },
+            { name: 'Post Playlist to Discord', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: 'Friday Vibes! Check out this week\'s new music releases to wrap up the sprint.' } },
         ],
     },
     {
@@ -155,7 +155,7 @@ const starters = [
         steps: [
             { name: 'Morning 8:30 AM Cron', type: 'TRIGGER', appKey: 'schedule', actionKey: 'cron', configuration: { cronExpression: '0 30 8 * * *' } },
             { name: 'Get Motivational Quote', type: 'ACTION', appKey: 'quotes', actionKey: 'get-by-category', configuration: { category: 'motivational' } },
-            { name: 'Send to Discord', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: '✨ Daily Inspiration:\n"{{step_2.quote}}" — {{step_2.author}}' } },
+            { name: 'Send to Discord', type: 'ACTION', appKey: 'discord', actionKey: 'sendMessage', configuration: { content: 'Daily Inspiration:\n"{{step_2.quote}}" — {{step_2.author}}' } },
         ],
     },
 ];

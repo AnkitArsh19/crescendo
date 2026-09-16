@@ -9,6 +9,7 @@ import { connectionsApi } from '../../api/connectionsApi';
 import { workflowClient } from '../../api/workflowClient';
 import { useActivateWorkflow, useDeactivateWorkflow, useSaveWorkflowGraph, useWorkflowDetail } from '../../hooks/useWorkflows';
 import useToastStore from '../../store/toastStore';
+import useAuthStore from '../../store/authStore';
 import ConfigPanelBody from './ConfigPanelBody';
 import AppBrowserModal from './nodes/AppBrowserModal';
 import RotateLandscapePrompt from '../../components/RotateLandscapePrompt';
@@ -58,6 +59,7 @@ import {
     HiMoon,
     HiOutlineChip,
     HiOutlineDeviceMobile,
+    HiOutlineExclamationCircle,
 } from 'react-icons/hi';
 import WorkflowNode from './nodes/WorkflowNode';
 import BranchNode from './nodes/BranchNode';
@@ -228,6 +230,7 @@ const reindexNodes = (inputNodes, inputEdges) => {
 let nodeId = 3;
 
 function WorkflowCanvasInner() {
+    const isGuest = useAuthStore((s) => s.isGuest);
     const updateNodeInternals = useUpdateNodeInternals();
     const navigate = useNavigate();
     const { workflowId: routeWorkflowId } = useParams();
@@ -448,16 +451,30 @@ function WorkflowCanvasInner() {
     }, []);
 
     useEffect(() => {
-        Promise.all([appCatalogApi.list(), connectionsApi.list()])
-            .then(([apps, conns]) => {
+        // Fetch app catalog independently so it succeeds for both guests and authenticated users
+        appCatalogApi.list()
+            .then((apps) => {
                 setCatalogApps(Array.isArray(apps) ? apps : []);
-                setConnections(Array.isArray(conns) ? conns : []);
             })
-            .catch(() => {
+            .catch((err) => {
+                console.warn('Failed to load app catalog:', err);
                 setCatalogApps([]);
-                setConnections([]);
             });
-    }, []);
+
+        // Only authenticated users can list personal connections
+        if (!isGuest) {
+            connectionsApi.list()
+                .then((conns) => {
+                    setConnections(Array.isArray(conns) ? conns : []);
+                })
+                .catch((err) => {
+                    console.warn('Failed to load connections:', err);
+                    setConnections([]);
+                });
+        } else {
+            setConnections([]);
+        }
+    }, [isGuest]);
 
     useEffect(() => {
         if (configNode?.data?.appKey) {
@@ -1640,7 +1657,9 @@ function WorkflowCanvasInner() {
                         </div>
                     </DockIcon>
                     {saveError && (
-                        <span className="canvas-save-error" title={saveError}>⚠</span>
+                        <span className="canvas-save-error" title={saveError}>
+                            <HiOutlineExclamationCircle />
+                        </span>
                     )}
                     {isWorkflowActive && !isDirty ? (
                         <DockIcon

@@ -231,7 +231,7 @@ export default function SharedWorkflows() {
             {/* Imported count */}
             {imported.length > 0 && (
                 <div className="sw-imported-count">
-                    ✓ {imported.length} imported so far
+                    <HiOutlineCheck style={{ verticalAlign: 'middle', marginRight: 4 }} /> {imported.length} imported so far
                 </div>
             )}
         </div>

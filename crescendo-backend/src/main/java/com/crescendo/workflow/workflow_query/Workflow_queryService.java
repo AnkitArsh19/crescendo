@@ -47,10 +47,12 @@ public class Workflow_queryService {
      */
     @Cacheable(value = "workflowLists", key = "#userId")
     public List<WorkflowDto.WorkflowSummaryResponse> listWorkflows(UUID userId) {
-        return workflowQueryRepo.findAllByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::toSummary)
-                .toList();
+        return new java.util.ArrayList<>(
+                workflowQueryRepo.findAllByUserIdOrderByCreatedAtDesc(userId)
+                        .stream()
+                        .map(this::toSummary)
+                        .toList()
+        );
     }
 
     /**

@@ -75,9 +75,21 @@ export default function AppBrowserModal({
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState(null);
 
+    // Fallback: if no apps were passed (e.g. guest mode timing), self-fetch
+    const [fallbackApps, setFallbackApps] = useState([]);
+    useEffect(() => {
+        if ((!apps || apps.length === 0) && fallbackApps.length === 0) {
+            appCatalogApi.list()
+                .then((list) => setFallbackApps(Array.isArray(list) ? list : []))
+                .catch(() => {});
+        }
+    }, [apps, fallbackApps.length]);
+
+    const resolvedApps = (apps && apps.length > 0) ? apps : fallbackApps;
+
     const visibleApps = useMemo(() => {
-        if (!apps || !Array.isArray(apps)) return [];
-        return apps.filter((app) => {
+        if (!resolvedApps || !Array.isArray(resolvedApps)) return [];
+        return resolvedApps.filter((app) => {
             const key = (app.appKey || '').toLowerCase();
             if (targetType === 'trigger') {
                 if (app.hasTriggers !== undefined) return app.hasTriggers;
@@ -89,7 +101,7 @@ export default function AppBrowserModal({
             }
             return true;
         });
-    }, [apps, targetType]);
+    }, [resolvedApps, targetType]);
 
     useEffect(() => {
         if (initialAppKey && visibleApps.length > 0) {

@@ -11,13 +11,24 @@
     width: 44px;
     height: 24px;
     border-radius: 12px;
-    background: var(--border-secondary);
-    transition: background var(--transition-fast);
+    background: #27272a;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
 }
 
+.ui-toggle:hover .ui-toggle-track {
+    background: #3f3f46;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
 .ui-toggle-track.active {
-    background: var(--text-secondary);
+    background: #ffffff;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+.ui-toggle:hover .ui-toggle-track.active {
+    background: #f4f4f5;
 }
 
 .ui-toggle-thumb {
@@ -27,13 +38,45 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: var(--bg-primary);
-    transition: transform var(--transition-fast);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    background: #ffffff;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .ui-toggle-track.active .ui-toggle-thumb {
     transform: translateX(20px);
+    background: #09090b;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Light mode support */
+[data-theme="light"] .ui-toggle-track {
+    background: #e4e4e7;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .ui-toggle:hover .ui-toggle-track {
+    background: #d4d4d8;
+}
+
+[data-theme="light"] .ui-toggle-track.active {
+    background: #09090b;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .ui-toggle:hover .ui-toggle-track.active {
+    background: #18181b;
+}
+
+[data-theme="light"] .ui-toggle-thumb {
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .ui-toggle-track.active .ui-toggle-thumb {
+    transform: translateX(20px);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .ui-toggle-label {

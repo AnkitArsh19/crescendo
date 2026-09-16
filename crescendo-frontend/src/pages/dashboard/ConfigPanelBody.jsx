@@ -10,7 +10,7 @@ import TestResultPanel from './TestResultPanel';
 import useToastStore from '../../store/toastStore';
 import useAuthStore from '../../store/authStore';
 import { parseConfigSchema } from '../../workflow/workflowGraphSerializer';
-import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload } from 'react-icons/hi';
+import { HiCheck, HiPlus, HiLightningBolt, HiChevronRight, HiX, HiOutlinePencil, HiOutlineTrash, HiUpload, HiOutlineExclamationCircle, HiOutlineCheckCircle } from 'react-icons/hi';
 import { HiOutlineBolt } from 'react-icons/hi2';
 import ConditionRuleBuilder from './nodes/ConditionRuleBuilder';
 import { DateTimePickerField } from './fields/DateTimePickerField';
@@ -74,7 +74,7 @@ const WEBHOOK_SETUP_GUIDE = {
             'Choose events: "Just the push event" (or select individual events).',
             'Make sure "Active" is checked, then click Add webhook.',
         ],
-        note: 'GitHub sends a ping event right away. You should see ✓ in GitHub settings once connected.',
+        note: 'GitHub sends a ping event right away. You should see a checkmark in GitHub settings once connected.',
     },
 
     // ── GitLab ────────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ const WEBHOOK_SETUP_GUIDE = {
             'Go to api.slack.com/apps → select your Slack app (or create one).',
             'In the left sidebar click Event Subscriptions → toggle Enable Events ON.',
             'Paste the Crescendo URL in the "Request URL" field.',
-            'Wait for Slack to show ✓ Verified (Crescendo responds to the challenge automatically).',
+            'Wait for Slack to show Verified (Crescendo responds to the challenge automatically).',
             'Scroll down → Subscribe to bot events → add events like message.channels, app_mention.',
             'Click Save Changes, then reinstall the app to your workspace.',
         ],
@@ -141,7 +141,7 @@ const WEBHOOK_SETUP_GUIDE = {
             'Inbound Webhook (optional): Register webhook with curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" -d "url=<CRESCENDO_URL>"',
         ],
         codeSnippet: (url) => `curl -X POST "https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook" \\\n  -d "url=${url}"`,
-        note: '💡 For groups: If your bot needs to read all messages without being tagged, open @BotFather → /setprivacy → select @crescendo_app_bot → choose "Disable".',
+        note: 'For groups: If your bot needs to read all messages without being tagged, open @BotFather → /setprivacy → select @crescendo_app_bot → choose "Disable".',
     },
 
     // ── Typeform ──────────────────────────────────────────────────────────────
@@ -269,7 +269,8 @@ const WEBHOOK_SETUP_GUIDE = {
             'If you have access, go to developer.linkedin.com → Your App → Products → Webhooks.',
             'Register the Crescendo URL as the endpoint and subscribe to available events.',
         ],
-        note: '⚠️ Real-time webhook triggers for LinkedIn are not available on the free/standard API tier. Polling is used instead.',
+        note: 'Real-time webhook triggers for LinkedIn are not available on the free/standard API tier. Polling is used instead.',
+        warning: true,
     },
 
     // ── Twitter / X ───────────────────────────────────────────────────────────
@@ -283,7 +284,8 @@ const WEBHOOK_SETUP_GUIDE = {
             'If you have access, go to developer.twitter.com → Your App → Webhooks.',
             'Register the Crescendo URL and subscribe to account activities.',
         ],
-        note: '⚠️ Real-time webhook triggers for Twitter/X require an Enterprise plan. Crescendo uses polling on free/standard tiers.',
+        note: 'Real-time webhook triggers for Twitter/X require an Enterprise plan. Crescendo uses polling on free/standard tiers.',
+        warning: true,
     },
 };
 
@@ -450,7 +452,7 @@ function WebhookSetupPanel({ appKey, iconUrl, configuration, webhookInfo, workfl
                             transition: 'background 0.2s',
                         }}
                     >
-                        {copied ? '✓ Copied!' : 'Copy URL'}
+                        {copied ? 'Copied!' : 'Copy URL'}
                     </button>
                 </div>
 
@@ -513,10 +515,10 @@ function WebhookSetupPanel({ appKey, iconUrl, configuration, webhookInfo, workfl
                         {guide.note && (
                             <div style={{
                                 fontSize: '0.72rem',
-                                color: guide.note.startsWith('⚠️') ? '#f59e0b' : 'var(--text-secondary)',
-                                background: guide.note.startsWith('⚠️') ? 'rgba(245,158,11,0.08)' : 'transparent',
+                                color: guide.warning ? '#f59e0b' : 'var(--text-secondary)',
+                                background: guide.warning ? 'rgba(245,158,11,0.08)' : 'transparent',
                                 borderRadius: '5px',
-                                padding: guide.note.startsWith('⚠️') ? '6px 8px' : '0',
+                                padding: guide.warning ? '6px 8px' : '0',
                                 lineHeight: 1.5,
                                 marginTop: '4px',
                             }}>
@@ -749,7 +751,7 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {aiMismatch && (
                 <div className="ai-mismatch-warning" role="alert">
-                    <span className="ai-mismatch-warning__icon">⚠</span>
+                    <span className="ai-mismatch-warning__icon"><HiOutlineExclamationCircle /></span>
                     <span>
                         AI picked <strong>&ldquo;{value}&rdquo;</strong> but it wasn&apos;t found.
                         Please select the correct {field.label.toLowerCase()} below.
@@ -761,7 +763,7 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
                 value={aiMismatch ? '' : (value || '')}
                 valueLabel={options.find(o => String(o.id) === String(value))?.label || ''}
                 onChange={(v) => { setAiMismatch(false); onChange(v); }}
-                placeholder={aiMismatch ? `⚠ Select ${field.label}…` : `Select ${field.label}…`}
+                placeholder={aiMismatch ? `Select ${field.label}…` : `Select ${field.label}…`}
                 loading={loading}
                 error={error}
                 allowCustom={true}
@@ -934,13 +936,13 @@ function DynamicDropdownField({ field, appKey, connectionId, credentialSource, c
                                 </button>
                             </form>
                             {addChatError && (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #e4e4e7)', marginTop: '2px' }}>
-                                    ⚠ {addChatError}
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #e4e4e7)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <HiOutlineExclamationCircle /> {addChatError}
                                 </div>
                             )}
                             {addChatSuccess && (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-primary, #ffffff)', fontWeight: 500, marginTop: '2px' }}>
-                                    ✓ {addChatSuccess}
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-primary, #ffffff)', fontWeight: 500, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <HiOutlineCheckCircle /> {addChatSuccess}
                                 </div>
                             )}
                         </div>
@@ -1115,9 +1117,9 @@ const LOGIC_OPERATORS = [
     { value: 'greaterThanOrEqual', label: '≥ Greater than or equal' },
     { value: 'lessThanOrEqual', label: '≤ Less than or equal' },
     { value: 'isEmpty', label: '∅ Is empty / null' },
-    { value: 'isNotEmpty', label: '✓ Is not empty' },
-    { value: 'isTrue', label: '✓ Is true (Boolean)' },
-    { value: 'isFalse', label: '✗ Is false (Boolean)' },
+    { value: 'isNotEmpty', label: 'Is not empty' },
+    { value: 'isTrue', label: 'Is true (Boolean)' },
+    { value: 'isFalse', label: 'Is false (Boolean)' },
     { value: 'regex', label: '* Matches regex' }
 ];
 
@@ -1943,7 +1945,7 @@ function AgentToolsSection({
                                         </select>
                                     ) : (
                                         <div style={{ fontSize: '0.75rem', color: selectedAppDetail?.hasPlatformKey ? '#4ade80' : '#f59e0b', padding: '6px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
-                                            {selectedAppDetail?.hasPlatformKey ? '✓ Uses Crescendo Platform Key' : '⚠️ No personal connection found. Uses platform key fallback if available.'}
+                                            {selectedAppDetail?.hasPlatformKey ? 'Uses Crescendo Platform Key' : 'No personal connection found. Uses platform key fallback if available.'}
                                         </div>
                                     )}
                                 </div>
