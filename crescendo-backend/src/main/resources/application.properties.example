@@ -90,11 +90,11 @@ crescendo.cache.prefix=${CRESCENDO_CACHE_PREFIX:crescendo:v1:}
 
 # ─── Spring Security OAuth2 (login flows) ────────────────────────────────────
 # These are for the Crescendo user login via Google/GitHub — NOT for integration connections.
-spring.security.oauth2.client.registration.google.client-id=REPLACE_ME
-spring.security.oauth2.client.registration.google.client-secret=REPLACE_ME
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET:}
 
-spring.security.oauth2.client.registration.github.client-id=REPLACE_ME
-spring.security.oauth2.client.registration.github.client-secret=REPLACE_ME
+spring.security.oauth2.client.registration.github.client-id=${GITHUB_CLIENT_ID:}
+spring.security.oauth2.client.registration.github.client-secret=${GITHUB_CLIENT_SECRET:}
 spring.security.oauth2.client.registration.github.scope=read:user, user:email
 
 # ═══════════════════════════════════════════════════════════════════════════════
