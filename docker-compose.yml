@@ -85,6 +85,15 @@ services:
       SPRING_PROFILES_ACTIVE: docker,prod
       TZ: UTC
       JAVA_OPTS: "-Xms256m -Xmx768m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Duser.timezone=UTC"
+      # Database Connections (Relaxed binding overrides properties files)
+      SPRING_DATASOURCE_COMMAND_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_COMMAND_DB:-crescendo_command}
+      SPRING_DATASOURCE_COMMAND_USERNAME: ${POSTGRES_USER:-crescendo_user}
+      SPRING_DATASOURCE_COMMAND_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_COMMAND_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_QUERY_URL: jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_QUERY_DB:-crescendo_query}
+      SPRING_DATASOURCE_QUERY_USERNAME: ${POSTGRES_USER:-crescendo_user}
+      SPRING_DATASOURCE_QUERY_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATASOURCE_QUERY_DRIVER_CLASS_NAME: org.postgresql.Driver
     networks:
       - crescendo-network
     restart: unless-stopped
