@@ -210,6 +210,26 @@ services:
         max-size: "50m"
         max-file: "3"
 
+  # ----------------------------------------------------------------------------
+  # 8. Domain Connect Public Key Server (keys.crescendo.run)
+  # ----------------------------------------------------------------------------
+  crescendo-keys:
+    image: nginx:alpine
+    container_name: crescendo-keys
+    volumes:
+      - ./keys-server:/usr/share/nginx/html:ro
+    command: /bin/sh -c "echo 'server { listen 80; location / { root /usr/share/nginx/html; default_type text/plain; } }' > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+    expose:
+      - "80"
+    networks:
+      - crescendo-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
 # ------------------------------------------------------------------------------
 # Persistent Storage Volumes
 # ------------------------------------------------------------------------------
