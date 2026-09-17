@@ -183,13 +183,10 @@ public class AuthenticationController {
         String cookieToken = extractRefreshCookie(servReq);
         String rawToken = (bodyToken != null) ? bodyToken : cookieToken;
 
-        if (rawToken != null) {
-            try {
-                authService.logout(rawToken);
-            } catch (Exception ignored) {
-                // Best-effort session revocation
-            }
-        }
+        if (rawToken == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No refresh token provided");
+
+        authService.logout(rawToken);
         // Clear the cookie regardless of whether the token was found — ensures the browser drops it.
         cookieService.clear(servRes, secureCookie);
         return ResponseEntity.noContent().build();
