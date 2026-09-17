@@ -37,8 +37,9 @@ public class ScheduleApp implements AppDefinition {
                         "configSchema", List.of(
                             Map.of("key", "cronExpression", "label", "Cron Expression", "type", "text", "required", true,
                                    "placeholder", "0 30 9 * * MON-FRI", "helpText", "Six fields: second minute hour day-of-month month day-of-week. Example: 0 30 9 * * MON-FRI runs at 9:30 AM on weekdays."),
-                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", true,
-                                   "helpText", "Use the time zone in which the cron time should be interpreted, for example Asia/Kolkata or America/New_York.")
+                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", false,
+                                   "defaultValue", "UTC",
+                                   "helpText", "Use the time zone in which the cron time should be interpreted, for example Asia/Kolkata or America/New_York (defaults to UTC).")
                         )),
                     Map.of("triggerKey", "interval", "name", "Interval",
                         "description", "Triggers repeatedly at a fixed interval",
@@ -53,8 +54,9 @@ public class ScheduleApp implements AppDefinition {
                                        Map.of("value", "weeks", "label", "Weeks"),
                                        Map.of("value", "months", "label", "Months")
                                    ), "helpText", "Unit of time"),
-                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", true,
-                                   "helpText", "Used in the run payload and for consistent date-based intervals.")
+                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", false,
+                                   "defaultValue", "UTC",
+                                   "helpText", "Used in the run payload and for consistent date-based intervals (defaults to UTC).")
                         )),
                     Map.of("triggerKey", "once", "name", "Run Once",
                         "description", "Triggers the workflow once at a specific future date and time",

@@ -92,6 +92,22 @@ class StepSetupValidationServiceTest {
         verifyNoInteractions(connectionRepository, tokenService, resourceFetchService);
     }
 
+    @Test
+    void scheduleTriggerWithCronAndOptionalTimezonePassesValidation() {
+        App app = new com.crescendo.apps.schedule.ScheduleApp().toApp();
+        when(appRepository.findById(AppKey.of("schedule"))).thenReturn(Optional.of(app));
+
+        StepSetupValidationService.SetupValidationResult resultWithoutTimezone = service.validate(
+                "schedule", "cron", true, null, Map.of("cronExpression", "0 0 * * * *"), Map.of(), UUID.randomUUID());
+        assertTrue(resultWithoutTimezone.success());
+        assertTrue(resultWithoutTimezone.checks().stream().anyMatch(c -> "schedule-cron".equals(c.id()) && "PASS".equals(c.status())));
+
+        StepSetupValidationService.SetupValidationResult resultWithTimezone = service.validate(
+                "schedule", "cron", true, null, Map.of("cronExpression", "0 0 * * * *", "timezone", "America/New_York"), Map.of(), UUID.randomUUID());
+        assertTrue(resultWithTimezone.success());
+        assertTrue(resultWithTimezone.checks().stream().anyMatch(c -> "schedule-timezone".equals(c.id()) && "PASS".equals(c.status())));
+    }
+
     private void assertEqualsContract(StepSetupValidationService.SetupValidationResult result,
                                       String policy, boolean liveAllowed) {
         org.junit.jupiter.api.Assertions.assertEquals(policy, result.testContract().get("setupPolicy"));
