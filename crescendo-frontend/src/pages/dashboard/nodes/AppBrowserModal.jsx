@@ -523,7 +523,14 @@ export default function AppBrowserModal({
                 window.addEventListener('message', messageHandler);
 
                 const pollTimer = setInterval(() => {
-                    if (popup.closed) {
+                    let isClosed = false;
+                    try {
+                        isClosed = Boolean(popup && popup.closed);
+                    } catch {
+                        // COOP policy may temporarily block access while on a foreign OAuth origin
+                        isClosed = false;
+                    }
+                    if (isClosed) {
                         clearInterval(pollTimer);
                         window.removeEventListener('message', messageHandler);
                         onConnected?.();

@@ -68,19 +68,27 @@ public class PlatformS3StorageService implements FileStorageService {
         log.info("Initialized PlatformS3StorageService for bucket: {}", bucket);
     }
 
+    private final LocalDiskFileStorageService localFallback = new LocalDiskFileStorageService();
+
     @Override
     public String upload(MultipartFile file, String storageKey) throws IOException {
-        PutObjectRequest req = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(storageKey)
-                .contentType(file.getContentType())
-                .build();
-        s3Client.putObject(req, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-        return storageKey;
+        try {
+            PutObjectRequest req = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(storageKey)
+                    .contentType(file.getContentType())
+                    .build();
+            s3Client.putObject(req, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            return storageKey;
+        } catch (Exception e) {
+            log.warn("AWS S3 upload to bucket '{}' failed: {}. Falling back to local disk storage.", bucket, e.getMessage());
+            return localFallback.upload(file, storageKey);
+        }
     }
 
     @Override
     public void delete(String storageKey) {
+        localFallback.delete(storageKey);
         try {
             s3Client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(storageKey).build());
             log.info("Deleted S3 object: {}/{}", bucket, storageKey);
@@ -91,21 +99,33 @@ public class PlatformS3StorageService implements FileStorageService {
 
     @Override
     public String generateReadUrl(String storageKey, int ttlMinutes) {
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(ttlMinutes))
-                .getObjectRequest(getObjectRequest)
-                .build();
-        return s3Presigner.presignGetObject(presignRequest).url().toString();
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(ttlMinutes))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+            return s3Presigner.presignGetObject(presignRequest).url().toString();
+        } catch (Exception e) {
+            log.warn("Failed to generate presigned S3 URL for '{}': {}. Falling back to local read URL.", storageKey, e.getMessage());
+            return localFallback.generateReadUrl(storageKey, ttlMinutes);
+        }
     }
 
     @Override
     public void streamContent(String storageKey, OutputStream out) throws IOException {
+        try {
+            localFallback.streamContent(storageKey, out);
+            return;
+        } catch (Exception ignored) {
+            // Not on local disk, attempt S3
+        }
+
         GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
         try (var in = s3Client.getObject(getObjectRequest)) {
             in.transferTo(out);
         } catch (Exception e) {
-            throw new IOException("Failed to read from S3: " + storageKey, e);
+            throw new IOException("Failed to read from S3 or local disk: " + storageKey, e);
         }
     }
 }
