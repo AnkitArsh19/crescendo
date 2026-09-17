@@ -161,10 +161,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         // Standard web browser redirect: access token in URL fragment (never sent to servers),
-        // refresh token lives in the HttpOnly cookie set above.
+        // refresh token also passed in fragment for persistent session restoration across tab closes.
         String redirectUrl = frontendUrl + "/oauth/callback"
                 + "#access_token=" + loginResp.accessToken()
-                + "&expires_at=" + URLEncoder.encode(loginResp.accessExpiresAt().toString(), StandardCharsets.UTF_8);
+                + "&expires_at=" + URLEncoder.encode(loginResp.accessExpiresAt().toString(), StandardCharsets.UTF_8)
+                + (loginResp.refreshToken() != null ? "&refresh_token=" + URLEncoder.encode(loginResp.refreshToken(), StandardCharsets.UTF_8) : "")
+                + (loginResp.refreshExpiresAt() != null ? "&refresh_expires_at=" + URLEncoder.encode(loginResp.refreshExpiresAt().toString(), StandardCharsets.UTF_8) : "");
         response.sendRedirect(redirectUrl);
     }
 
