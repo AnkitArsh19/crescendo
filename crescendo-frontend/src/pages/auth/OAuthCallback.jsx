@@ -18,6 +18,8 @@ export default function OAuthCallback() {
     const params = new URLSearchParams(hash);
     const accessToken = params.get('access_token');
     const expiresAt = params.get('expires_at');
+    const refreshToken = params.get('refresh_token');
+    const refreshExpiresAt = params.get('refresh_expires_at');
 
     if (accessToken) {
       // Check if this flow originated from the desktop app (via param, sessionStorage, or cookie)
@@ -28,23 +30,14 @@ export default function OAuthCallback() {
                           sessionStorage.getItem('crescendo_from_desktop') === 'true' ||
                           hasDesktopCookie;
 
-      // Maintain valid web session in zustand as well
-      useAuthStore.setState({
-        accessToken,
-        accessExpiresAt: expiresAt,
-      });
+      // Maintain valid web session in zustand and localStorage
+      useAuthStore.getState().setTokens(accessToken, expiresAt, refreshToken, refreshExpiresAt);
 
       if (fromDesktop) {
         checkAuth().catch(() => {});
         redirectToDesktopHandoff(navigate, accessToken);
         return;
       }
-
-      // Store the access token in zustand for web browser
-      useAuthStore.setState({
-        accessToken,
-        accessExpiresAt: expiresAt,
-      });
 
       // Now fetch user profile using the token, then redirect to web dashboard
       checkAuth().then(() => {

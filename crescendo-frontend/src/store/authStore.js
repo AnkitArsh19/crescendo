@@ -113,12 +113,9 @@ const useAuthStore = create((set, get) => ({
         return { success: true, mfaRequired: true };
       }
 
-      // Complete success
-      const { accessToken, accessExpiresAt } = response.data;
-      set({ 
-        accessToken, 
-        accessExpiresAt 
-      });
+      // Complete success - persist tokens to memory and localStorage
+      const { accessToken, accessExpiresAt, refreshToken, refreshExpiresAt } = response.data;
+      get().setTokens(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
 
       try {
         const userResp = await api.get('/users/me');
@@ -150,10 +147,8 @@ const useAuthStore = create((set, get) => ({
       const response = await api.post('/mfa/challenge', { email, code, deviceId, deviceLabel });
       
       if (response.data.success) {
-         const { accessToken } = response.data;
-         const { refreshToken: _rt } = response.data;
-         
-         set({ accessToken });
+         const { accessToken, accessExpiresAt, refreshToken, refreshExpiresAt } = response.data;
+         get().setTokens(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
          // Fetch user details immediately after solving challenge
          const userResp = await api.get('/users/me');
          set({ user: userResp.data, isAuthenticated: true });
@@ -171,8 +166,8 @@ const useAuthStore = create((set, get) => ({
       const { deviceId, deviceLabel } = getDeviceMetadata();
       const response = await api.post('/mfa/backup-code', { email, backupCode, deviceId, deviceLabel });
       if (response.data.success) {
-        const { accessToken } = response.data;
-        set({ accessToken });
+        const { accessToken, accessExpiresAt, refreshToken, refreshExpiresAt } = response.data;
+        get().setTokens(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
         const userResp = await api.get('/users/me');
         set({ user: userResp.data, isAuthenticated: true });
         return { success: true, remaining: response.data.remaining };
@@ -189,12 +184,9 @@ const useAuthStore = create((set, get) => ({
       const { deviceId, deviceLabel } = getDeviceMetadata();
       const response = await api.post('/auth/register', { email, username, password, deviceId, deviceLabel });
       
-      // Response includes tokens
-      const { accessToken, accessExpiresAt } = response.data;
-      set({ 
-        accessToken, 
-        accessExpiresAt 
-      });
+      // Response includes tokens - persist to memory and localStorage
+      const { accessToken, accessExpiresAt, refreshToken, refreshExpiresAt } = response.data;
+      get().setTokens(accessToken, accessExpiresAt, refreshToken, refreshExpiresAt);
 
       try {
         const userResp = await api.get('/users/me');
