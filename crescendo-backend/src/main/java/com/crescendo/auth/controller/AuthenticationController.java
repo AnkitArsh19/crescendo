@@ -133,12 +133,32 @@ public class AuthenticationController {
             HttpServletRequest servReq,
             HttpServletResponse servRes) {
 
-        String rawToken = extractRefreshCookie(servReq);
-        if (rawToken == null && body != null) rawToken = body.refreshToken();
+        String bodyToken = (body != null && body.refreshToken() != null && !body.refreshToken().isBlank())
+                ? body.refreshToken().trim()
+                : null;
+        String cookieToken = extractRefreshCookie(servReq);
+
+        // Prioritize explicit body token if provided, fallback to HttpOnly cookie
+        String rawToken = (bodyToken != null) ? bodyToken : cookieToken;
         if (rawToken == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No refresh token provided");
 
-        AuthDto.AccessTokenResponse resp = authService.refreshTokens(rawToken, userAgent(servReq), clientIp(servReq));
+        AuthDto.AccessTokenResponse resp;
+        try {
+            resp = authService.refreshTokens(rawToken, userAgent(servReq), clientIp(servReq));
+        } catch (ResponseStatusException e) {
+            // If primary token failed (e.g. stale body or stale cookie) and the other is available, attempt fallback
+            String fallbackToken = rawToken.equals(bodyToken) ? cookieToken : bodyToken;
+            if (fallbackToken != null && !fallbackToken.equals(rawToken)) {
+                try {
+                    resp = authService.refreshTokens(fallbackToken, userAgent(servReq), clientIp(servReq));
+                } catch (ResponseStatusException ignored) {
+                    throw e; // rethrow the original exception if fallback also fails
+                }
+            } else {
+                throw e;
+            }
+        }
 
         // If a new refresh token was rotated in, update the cookie too.
         if (resp.refreshToken() != null) {
@@ -151,15 +171,25 @@ public class AuthenticationController {
     /**
      * POST /auth/logout
      * Revokes the session (deletes UserSession row) and clears the refresh-token cookie.
-     * Authenticated endpoint — the JWT filter ensures the caller is logged in.
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest servReq, HttpServletResponse servRes) {
-        String rawToken = extractRefreshCookie(servReq);
-        if (rawToken == null)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No refresh token cookie present");
+    public ResponseEntity<Void> logout(
+            @RequestBody(required = false) AuthDto.RefreshTokenRequest body,
+            HttpServletRequest servReq,
+            HttpServletResponse servRes) {
+        String bodyToken = (body != null && body.refreshToken() != null && !body.refreshToken().isBlank())
+                ? body.refreshToken().trim()
+                : null;
+        String cookieToken = extractRefreshCookie(servReq);
+        String rawToken = (bodyToken != null) ? bodyToken : cookieToken;
 
-        authService.logout(rawToken);
+        if (rawToken != null) {
+            try {
+                authService.logout(rawToken);
+            } catch (Exception ignored) {
+                // Best-effort session revocation
+            }
+        }
         // Clear the cookie regardless of whether the token was found — ensures the browser drops it.
         cookieService.clear(servRes, secureCookie);
         return ResponseEntity.noContent().build();
