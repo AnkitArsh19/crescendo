@@ -5,6 +5,7 @@ import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -46,7 +47,8 @@ public class GoogleDriveFileHandlers {
         this(new com.crescendo.storage.MediaStreamResolver());
     }
 
-    public GoogleDriveFileHandlers(@org.springframework.beans.factory.annotation.Autowired com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
+    @Autowired
+    public GoogleDriveFileHandlers(com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
         this.mediaStreamResolver = mediaStreamResolver;
         this.restClient = RestClient.builder()
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)

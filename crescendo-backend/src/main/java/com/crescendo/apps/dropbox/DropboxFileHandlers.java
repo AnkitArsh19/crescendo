@@ -3,6 +3,7 @@ package com.crescendo.apps.dropbox;
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -18,7 +19,8 @@ public class DropboxFileHandlers {
         this(new com.crescendo.storage.MediaStreamResolver());
     }
 
-    public DropboxFileHandlers(@org.springframework.beans.factory.annotation.Autowired com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
+    @Autowired
+    public DropboxFileHandlers(com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
         this.mediaStreamResolver = mediaStreamResolver;
     }
 
