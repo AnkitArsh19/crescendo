@@ -65,10 +65,17 @@ const useAuthStore = create((set, get) => ({
             body: JSON.stringify(tokenToUse ? { refreshToken: tokenToUse } : {}),
           });
           if (!refreshResp.ok) {
-            try {
-              localStorage.removeItem('crescendo_refresh_token');
-            } catch { /* ignore */ }
-            // No valid refresh token — user is not logged in
+            const errBody = await refreshResp.text().catch(() => '');
+            console.warn('[AUTH] /auth/refresh failed:', refreshResp.status, errBody);
+
+            // Only remove stored token on definitive auth errors (400, 401).
+            // Do NOT remove on 5xx or network errors so temporary hiccups do not destroy the session.
+            if (refreshResp.status === 401 || refreshResp.status === 400) {
+              try {
+                localStorage.removeItem('crescendo_refresh_token');
+              } catch { /* ignore */ }
+            }
+            // User is not logged in for this active session
             set({ user: null, isAuthenticated: false, isLoading: false, accessToken: null, refreshToken: null });
             return;
           }
@@ -213,7 +220,13 @@ const useAuthStore = create((set, get) => ({
   logout: async (forceLocalOnly = false) => {
     if (!forceLocalOnly) {
       try {
-        await api.post('/auth/logout');
+        let tokenToUse = get().refreshToken;
+        if (!tokenToUse) {
+          try {
+            tokenToUse = localStorage.getItem('crescendo_refresh_token');
+          } catch { /* ignore */ }
+        }
+        await api.post('/auth/logout', tokenToUse ? { refreshToken: tokenToUse } : {});
       } catch (error) {
         console.error('Logout error against server', error);
       }
