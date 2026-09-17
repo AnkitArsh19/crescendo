@@ -13,7 +13,14 @@ public class CalendlyHandlers {
     }
 
     private String getAuth(ActionContext context) {
-        return "Bearer " + context.getCredential("personalToken");
+        String token = context.getCredential("accessToken");
+        if (token == null || token.isBlank()) {
+            token = context.getCredential("personalToken");
+        }
+        if (token == null || token.isBlank()) {
+            token = context.getCredential("token");
+        }
+        return "Bearer " + token;
     }
 
     @ActionMapping(appKey = "calendly", actionKey = "calendly:event:getMany")

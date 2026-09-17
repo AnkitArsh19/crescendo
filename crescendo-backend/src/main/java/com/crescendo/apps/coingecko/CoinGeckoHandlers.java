@@ -3,6 +3,7 @@ package com.crescendo.apps.coingecko;
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -12,6 +13,30 @@ import java.util.Map;
 public class CoinGeckoHandlers {
 
     private static final String API_BASE = "https://api.coingecko.com/api/v3";
+
+    @Value("${crescendo.platform.coingecko-api-key:}")
+    private String defaultApiKey;
+
+    private RestClient buildClient(ActionContext context) {
+        String key = null;
+        if (context.credentials() != null && context.credentials().get("apiKey") != null) {
+            key = context.credentials().get("apiKey").toString().trim();
+        }
+        if (key == null || key.isBlank()) {
+            key = defaultApiKey;
+        }
+
+        RestClient.Builder builder = RestClient.builder().baseUrl(API_BASE);
+        if (key != null && !key.isBlank()) {
+            if (key.startsWith("CG-")) {
+                builder.defaultHeader("x-cg-demo-api-key", key);
+            } else {
+                builder.defaultHeader("x-cg-pro-api-key", key);
+            }
+        }
+        builder.defaultHeader("User-Agent", "Mozilla/5.0");
+        return builder.build();
+    }
 
     @ActionMapping(appKey = "coingecko", actionKey = "simple-price")
     public Object getSimplePrice(ActionContext context) throws Exception {
@@ -23,7 +48,7 @@ public class CoinGeckoHandlers {
         }
 
         try {
-            String response = RestClient.create(API_BASE)
+            String response = buildClient(context)
                     .get()
                     .uri("/simple/price?ids={ids}&vs_currencies={vsCurrencies}", ids, vsCurrencies)
                     .retrieve()
@@ -43,7 +68,7 @@ public class CoinGeckoHandlers {
         }
 
         try {
-            String response = RestClient.create(API_BASE)
+            String response = buildClient(context)
                     .get()
                     .uri("/coins/{id}", id)
                     .retrieve()
@@ -63,7 +88,7 @@ public class CoinGeckoHandlers {
         }
 
         try {
-            String response = RestClient.create(API_BASE)
+            String response = buildClient(context)
                     .get()
                     .uri("/search?query={query}", query)
                     .retrieve()

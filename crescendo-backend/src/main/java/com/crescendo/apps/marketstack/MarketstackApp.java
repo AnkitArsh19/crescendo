@@ -43,6 +43,6 @@ public class MarketstackApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "accessKey", "label", "Access Key", "type", "password", "required", true,
                         "placeholder", "e.g. 1a2b3c4d5e...", "helpText", "Obtain your API access_key from the Marketstack dashboard")
-        )).category("finance").helpUrl("https://marketstack.com/documentation");
+        )).hasPlatformKey(true).category("finance").helpUrl("https://marketstack.com/documentation");
     }
 }

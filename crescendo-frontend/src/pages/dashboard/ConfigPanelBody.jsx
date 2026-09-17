@@ -1568,6 +1568,7 @@ function AgentToolsSection({
     ensureAppDetail,
     allConnections,
     workflowId,
+    onConnectApp,
 }) {
     const configuredTools = useMemo(() => {
         if (Array.isArray(configuration.configuredTools)) return configuration.configuredTools;
@@ -1588,6 +1589,7 @@ function AgentToolsSection({
     };
 
     const [isAdding, setIsAdding] = useState(false);
+    const [editingIndex, setEditingIndex] = useState(null);
     const [toolType, setToolType] = useState('catalog'); // 'catalog' | 'subworkflow'
     const [selectedAppKey, setSelectedAppKey] = useState('');
     const [selectedActionKey, setSelectedActionKey] = useState('');
@@ -1596,6 +1598,8 @@ function AgentToolsSection({
     const [selectedSubWorkflowId, setSelectedSubWorkflowId] = useState('');
     const [subWorkflows, setSubWorkflows] = useState([]);
     const [loadingWorkflows, setLoadingWorkflows] = useState(false);
+    const [fixedParameters, setFixedParameters] = useState({});
+    const [paramModes, setParamModes] = useState({}); // { [key]: 'fixed' | 'dynamic' }
 
     useEffect(() => {
         if (toolType === 'subworkflow' && subWorkflows.length === 0) {
@@ -1610,71 +1614,27 @@ function AgentToolsSection({
         }
     }, [toolType, subWorkflows.length, workflowId]);
 
-    const handleAppChange = (appKey) => {
-        setSelectedAppKey(appKey);
-        setSelectedActionKey('');
-        ensureAppDetail(appKey);
-        const conns = (allConnections || []).filter((c) => c.appKey === appKey);
-        if (conns.length === 1) {
-            setSelectedConnectionId(conns[0].id);
-        } else {
-            setSelectedConnectionId('');
-        }
-    };
+    const selectedAppDetail = appDetailsByKey[selectedAppKey];
+    const isAuthNone = selectedAppDetail?.authType === 'NONE';
+    const hasPlatformKey = Boolean(selectedAppDetail?.hasPlatformKey);
+    const requiresPersonalAuth = Boolean(selectedAppKey) && !isAuthNone && !hasPlatformKey;
 
-    const handleAddTool = () => {
-        if (toolType === 'catalog') {
-            if (!selectedAppKey || !selectedActionKey) return;
-            const app = (catalogApps || []).find((a) => a.appKey === selectedAppKey);
-            const detail = appDetailsByKey[selectedAppKey];
-            const action = (detail?.actions || []).find(
-                (a) => a.actionKey === selectedActionKey || a.key === selectedActionKey
-            );
-            const toolId = `${selectedAppKey}__${selectedActionKey}`.replace(/[^a-zA-Z0-9_]/g, '_');
-            const newTool = {
-                toolId,
-                appKey: selectedAppKey,
-                actionKey: selectedActionKey,
-                customName: `${app?.name || selectedAppKey}: ${action?.name || selectedActionKey}`,
-                customDescription: customInstructions.trim() || action?.description || action?.name || `Executes ${selectedActionKey} on ${selectedAppKey}`,
-                connectionId: selectedConnectionId || null,
-                subWorkflowId: null,
-                fixedParameters: {},
-            };
-            saveTools([...configuredTools, newTool]);
-        } else {
-            if (!selectedSubWorkflowId) return;
-            const wf = subWorkflows.find((w) => w.id === selectedSubWorkflowId);
-            const toolId = `subworkflow_${selectedSubWorkflowId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-            const newTool = {
-                toolId,
-                appKey: 'workflow',
-                actionKey: 'run_subworkflow',
-                customName: `Sub-Workflow: ${wf?.name || selectedSubWorkflowId}`,
-                customDescription: customInstructions.trim() || `Executes sub-workflow "${wf?.name || selectedSubWorkflowId}" and returns results`,
-                connectionId: null,
-                subWorkflowId: selectedSubWorkflowId,
-                fixedParameters: { workflowId: selectedSubWorkflowId },
-            };
-            saveTools([...configuredTools, newTool]);
-        }
+    const appConnections = useMemo(() => {
+        if (!selectedAppKey) return [];
+        return (allConnections || []).filter((c) => c.appKey === selectedAppKey);
+    }, [selectedAppKey, allConnections]);
 
-        setIsAdding(false);
-        setSelectedAppKey('');
-        setSelectedActionKey('');
-        setSelectedConnectionId('');
-        setSelectedSubWorkflowId('');
-        setCustomInstructions('');
-    };
-
-    const handleRemoveTool = (idx) => {
-        const updated = configuredTools.filter((_, i) => i !== idx);
-        saveTools(updated);
-    };
-
-    const filteredCatalogApps = useMemo(() => {
-        return (catalogApps || []).filter((a) => a.appKey !== 'agent' && !a.internal);
-    }, [catalogApps]);
+    // Listen for desktop OAuth deep-link or connection updates to auto-select
+    useEffect(() => {
+        const handleConnUpdated = (e) => {
+            const { connectionId, appKey } = e.detail || {};
+            if (connectionId && appKey === selectedAppKey) {
+                setSelectedConnectionId(connectionId);
+            }
+        };
+        window.addEventListener('crescendo-connection-updated', handleConnUpdated);
+        return () => window.removeEventListener('crescendo-connection-updated', handleConnUpdated);
+    }, [selectedAppKey]);
 
     const availableActions = useMemo(() => {
         if (!selectedAppKey) return [];
@@ -1687,31 +1647,192 @@ function AgentToolsSection({
         }));
     }, [selectedAppKey, appDetailsByKey]);
 
-    const appConnections = useMemo(() => {
-        if (!selectedAppKey) return [];
-        return (allConnections || []).filter((c) => c.appKey === selectedAppKey);
-    }, [selectedAppKey, allConnections]);
+    const selectedActionObj = useMemo(() => {
+        if (!selectedAppKey || !selectedActionKey) return null;
+        const detail = appDetailsByKey[selectedAppKey];
+        return (detail?.actions || []).find(
+            (a) => a.actionKey === selectedActionKey || a.key === selectedActionKey
+        );
+    }, [selectedAppKey, selectedActionKey, appDetailsByKey]);
 
-    const selectedAppDetail = appDetailsByKey[selectedAppKey];
-    const isAuthNone = selectedAppDetail?.authType === 'NONE';
+    const actionSchema = useMemo(() => {
+        return selectedActionObj?.configSchema || [];
+    }, [selectedActionObj]);
+
+    // When action changes during new tool creation, initialize parameter modes
+    useEffect(() => {
+        if (editingIndex !== null) return;
+        if (!actionSchema.length) {
+            setFixedParameters({});
+            setParamModes({});
+            return;
+        }
+        const initialModes = {};
+        const initialFixed = {};
+        actionSchema.forEach((field) => {
+            const key = field.key;
+            const isStructural = /^(channel|spreadsheet|sheet|repo|repository|owner|database|table|folder|project|board|workspace|drive|calendar|mailbox|list_id|audience_id)$/i.test(key) || field.type === 'dropdown' || field.type === 'select';
+            const defaultMode = isStructural ? 'fixed' : 'dynamic';
+            initialModes[key] = defaultMode;
+            if (defaultMode === 'fixed' && field.default !== undefined) {
+                initialFixed[key] = field.default;
+            }
+        });
+        setParamModes(initialModes);
+        setFixedParameters(initialFixed);
+    }, [selectedActionKey, actionSchema, editingIndex]);
+
+    const handleAppChange = (appKey) => {
+        setSelectedAppKey(appKey);
+        setSelectedActionKey('');
+        setFixedParameters({});
+        setParamModes({});
+        ensureAppDetail(appKey);
+        const conns = (allConnections || []).filter((c) => c.appKey === appKey);
+        if (conns.length > 0) {
+            setSelectedConnectionId(conns[0].id);
+        } else {
+            setSelectedConnectionId('');
+        }
+    };
+
+    const handleEditTool = (idx) => {
+        const tool = configuredTools[idx];
+        if (!tool) return;
+        setEditingIndex(idx);
+        if (tool.subWorkflowId || tool.appKey === 'workflow') {
+            setToolType('subworkflow');
+            setSelectedSubWorkflowId(tool.subWorkflowId || '');
+            setCustomInstructions(tool.customDescription || '');
+        } else {
+            setToolType('catalog');
+            setSelectedAppKey(tool.appKey);
+            setSelectedActionKey(tool.actionKey);
+            ensureAppDetail(tool.appKey);
+            setSelectedConnectionId(tool.connectionId || '');
+            setCustomInstructions(tool.customDescription || '');
+            const existingFixed = tool.fixedParameters || {};
+            setFixedParameters({ ...existingFixed });
+            const modes = {};
+            Object.keys(existingFixed).forEach((k) => {
+                modes[k] = 'fixed';
+            });
+            setParamModes(modes);
+        }
+        setIsAdding(true);
+    };
+
+    const handleCancel = () => {
+        setIsAdding(false);
+        setEditingIndex(null);
+        setSelectedAppKey('');
+        setSelectedActionKey('');
+        setSelectedConnectionId('');
+        setSelectedSubWorkflowId('');
+        setCustomInstructions('');
+        setFixedParameters({});
+        setParamModes({});
+    };
+
+    const handleSaveTool = () => {
+        if (toolType === 'catalog') {
+            if (!selectedAppKey || !selectedActionKey) return;
+            if (requiresPersonalAuth && !selectedConnectionId) return;
+
+            const app = (catalogApps || []).find((a) => a.appKey === selectedAppKey);
+            const detail = appDetailsByKey[selectedAppKey];
+            const action = (detail?.actions || []).find(
+                (a) => a.actionKey === selectedActionKey || a.key === selectedActionKey
+            );
+            const toolId = editingIndex !== null && configuredTools[editingIndex]?.toolId
+                ? configuredTools[editingIndex].toolId
+                : `${selectedAppKey}__${selectedActionKey}`.replace(/[^a-zA-Z0-9_]/g, '_');
+
+            const sanitizedFixedParams = {};
+            Object.entries(fixedParameters).forEach(([k, v]) => {
+                if (paramModes[k] === 'fixed' && v !== undefined && v !== null && String(v).trim() !== '') {
+                    sanitizedFixedParams[k] = v;
+                }
+            });
+
+            const toolData = {
+                toolId,
+                appKey: selectedAppKey,
+                actionKey: selectedActionKey,
+                customName: `${app?.name || selectedAppKey}: ${action?.name || selectedActionKey}`,
+                customDescription: customInstructions.trim() || action?.description || action?.name || `Executes ${selectedActionKey} on ${selectedAppKey}`,
+                connectionId: selectedConnectionId || null,
+                subWorkflowId: null,
+                fixedParameters: sanitizedFixedParams,
+            };
+
+            if (editingIndex !== null) {
+                const updated = [...configuredTools];
+                updated[editingIndex] = toolData;
+                saveTools(updated);
+            } else {
+                saveTools([...configuredTools, toolData]);
+            }
+        } else {
+            if (!selectedSubWorkflowId) return;
+            const wf = subWorkflows.find((w) => w.id === selectedSubWorkflowId);
+            const toolId = editingIndex !== null && configuredTools[editingIndex]?.toolId
+                ? configuredTools[editingIndex].toolId
+                : `subworkflow_${selectedSubWorkflowId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+
+            const toolData = {
+                toolId,
+                appKey: 'workflow',
+                actionKey: 'run_subworkflow',
+                customName: `Sub-Workflow: ${wf?.name || selectedSubWorkflowId}`,
+                customDescription: customInstructions.trim() || `Executes sub-workflow "${wf?.name || selectedSubWorkflowId}" and returns results`,
+                connectionId: null,
+                subWorkflowId: selectedSubWorkflowId,
+                fixedParameters: { workflowId: selectedSubWorkflowId },
+            };
+
+            if (editingIndex !== null) {
+                const updated = [...configuredTools];
+                updated[editingIndex] = toolData;
+                saveTools(updated);
+            } else {
+                saveTools([...configuredTools, toolData]);
+            }
+        }
+
+        handleCancel();
+    };
+
+    const handleRemoveTool = (idx) => {
+        const updated = configuredTools.filter((_, i) => i !== idx);
+        saveTools(updated);
+    };
+
+    const filteredCatalogApps = useMemo(() => {
+        return (catalogApps || []).filter((a) => a.appKey !== 'agent' && !a.internal);
+    }, [catalogApps]);
+
+    const isSaveDisabled = toolType === 'catalog'
+        ? (!selectedAppKey || !selectedActionKey || (requiresPersonalAuth && !selectedConnectionId))
+        : !selectedSubWorkflowId;
 
     return (
         <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-secondary)', paddingTop: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)' }}>
-                        <HiOutlineBolt size={16} />
+                        <HiOutlineBolt size={15} />
                     </div>
                     <div>
-                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                             Allowed Tools &amp; Sub-Workflows
                         </h4>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                             Tools the agent can dynamically invoke during its ReAct reasoning loop
                         </span>
                     </div>
                 </div>
-                <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
                     {configuredTools.length} tool{configuredTools.length === 1 ? '' : 's'}
                 </span>
             </div>
@@ -1719,7 +1840,7 @@ function AgentToolsSection({
             {/* List of currently configured tools */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
                 {configuredTools.length === 0 ? (
-                    <div style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px dashed var(--border-secondary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                    <div style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px dashed var(--border-secondary)', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
                         No tools attached yet. The agent will act as a pure conversational reasoning engine. Add tools below to empower it to interact with your apps and databases.
                     </div>
                 ) : (
@@ -1727,83 +1848,141 @@ function AgentToolsSection({
                         const app = (catalogApps || []).find((a) => a.appKey === tool.appKey);
                         const isSubWf = tool.appKey === 'workflow' || !!tool.subWorkflowId;
                         const conn = (allConnections || []).find((c) => c.id === tool.connectionId);
+                        const appDetail = appDetailsByKey[tool.appKey];
+                        const toolRequiresAuth = tool.appKey && appDetail?.authType && appDetail.authType !== 'NONE' && !appDetail?.hasPlatformKey;
+                        const isMissingAuth = toolRequiresAuth && !tool.connectionId;
 
                         return (
                             <div
                                 key={tool.toolId || idx}
                                 style={{
                                     display: 'flex',
-                                    alignItems: 'center',
+                                    alignItems: 'flex-start',
                                     justifyContent: 'space-between',
                                     padding: '10px 12px',
-                                    borderRadius: '8px',
+                                    borderRadius: '6px',
                                     background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border-secondary)',
+                                    border: isMissingAuth ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-secondary)',
                                     gap: '12px',
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', minWidth: 0, flex: 1 }}>
                                     {isSubWf ? (
-                                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', flexShrink: 0 }}>
-                                            <HiOutlineBolt size={16} />
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', flexShrink: 0, marginTop: '2px' }}>
+                                            <HiOutlineBolt size={15} />
                                         </div>
                                     ) : (
                                         <img
                                             src={app?.logoUrl || '/icons/generic.svg'}
                                             alt={tool.appKey}
                                             className="app-logo-img"
-                                            style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: 'rgba(255,255,255,0.05)', flexShrink: 0 }}
+                                            style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: 'rgba(255,255,255,0.04)', flexShrink: 0, marginTop: '2px' }}
                                             onError={(e) => { e.target.src = '/icons/generic.svg'; }}
                                         />
                                     )}
-                                    <div style={{ minWidth: 0 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                            <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                                 {tool.customName || `${tool.appKey}: ${tool.actionKey}`}
                                             </span>
-                                            {conn && (
-                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80' }}>
-                                                    {conn.name || 'Connected'}
+                                            {conn ? (
+                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-secondary)' }}>
+                                                    {conn.name || `${tool.appKey} connection`}
                                                 </span>
-                                            )}
+                                            ) : appDetail?.hasPlatformKey ? (
+                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                                                    Platform Key
+                                                </span>
+                                            ) : appDetail?.authType === 'NONE' ? (
+                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-secondary)' }}>
+                                                    Public
+                                                </span>
+                                            ) : isMissingAuth ? (
+                                                <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                                    Missing Connection
+                                                </span>
+                                            ) : null}
                                         </div>
+
                                         {tool.customDescription && (
-                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '3px', lineHeight: 1.4 }}>
                                                 {tool.customDescription}
+                                            </div>
+                                        )}
+
+                                        {/* Pre-configured fixed parameters pills */}
+                                        {tool.fixedParameters && Object.keys(tool.fixedParameters).length > 0 && (
+                                            <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                {Object.entries(tool.fixedParameters).map(([k, v]) => (
+                                                    <span
+                                                        key={k}
+                                                        style={{
+                                                            fontSize: '0.68rem',
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            background: 'var(--bg-elevated)',
+                                                            border: '1px solid var(--border-secondary)',
+                                                            color: 'var(--text-secondary)',
+                                                        }}
+                                                    >
+                                                        <strong style={{ color: 'var(--text-primary)' }}>{k}:</strong> {String(v).length > 24 ? String(v).slice(0, 22) + '…' : String(v)}
+                                                    </span>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveTool(idx)}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: '#ef4444',
-                                        cursor: 'pointer',
-                                        padding: '4px',
-                                        borderRadius: '4px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                    }}
-                                    title="Remove tool"
-                                >
-                                    <HiOutlineTrash size={16} />
-                                </button>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleEditTool(idx)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            borderRadius: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                        title="Edit tool configuration"
+                                    >
+                                        <HiOutlinePencil size={15} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveTool(idx)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            borderRadius: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                        title="Remove tool"
+                                    >
+                                        <HiOutlineTrash size={15} />
+                                    </button>
+                                </div>
                             </div>
                         );
                     })
                 )}
             </div>
 
-            {/* Add Tool Form or Button */}
+            {/* Add / Edit Tool Form */}
             {!isAdding ? (
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         type="button"
-                        onClick={() => { setToolType('catalog'); setIsAdding(true); }}
+                        onClick={() => { setToolType('catalog'); setEditingIndex(null); setIsAdding(true); }}
                         style={{
                             flex: 1,
                             display: 'flex',
@@ -1812,7 +1991,7 @@ function AgentToolsSection({
                             gap: '6px',
                             padding: '8px 12px',
                             background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-hover)',
+                            border: '1px solid var(--border-secondary)',
                             borderRadius: '6px',
                             color: 'var(--text-primary)',
                             fontSize: '0.8rem',
@@ -1824,7 +2003,7 @@ function AgentToolsSection({
                     </button>
                     <button
                         type="button"
-                        onClick={() => { setToolType('subworkflow'); setIsAdding(true); }}
+                        onClick={() => { setToolType('subworkflow'); setEditingIndex(null); setIsAdding(true); }}
                         style={{
                             flex: 1,
                             display: 'flex',
@@ -1833,7 +2012,7 @@ function AgentToolsSection({
                             gap: '6px',
                             padding: '8px 12px',
                             background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-hover)',
+                            border: '1px solid var(--border-secondary)',
                             borderRadius: '6px',
                             color: 'var(--text-primary)',
                             fontSize: '0.8rem',
@@ -1845,43 +2024,47 @@ function AgentToolsSection({
                     </button>
                 </div>
             ) : (
-                <div style={{ padding: '14px', borderRadius: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--accent-primary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ padding: '14px', borderRadius: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-secondary)', paddingBottom: '8px' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {toolType === 'catalog' ? 'Add App Action Tool' : 'Add Sub-Workflow Tool'}
+                        <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {editingIndex !== null ? 'Edit Tool' : (toolType === 'catalog' ? 'Add App Action Tool' : 'Add Sub-Workflow Tool')}
                         </span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            <button
-                                type="button"
-                                onClick={() => setToolType('catalog')}
-                                style={{
-                                    fontSize: '0.72rem',
-                                    padding: '3px 8px',
-                                    borderRadius: '4px',
-                                    border: 'none',
-                                    background: toolType === 'catalog' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                App Action
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setToolType('subworkflow')}
-                                style={{
-                                    fontSize: '0.72rem',
-                                    padding: '3px 8px',
-                                    borderRadius: '4px',
-                                    border: 'none',
-                                    background: toolType === 'subworkflow' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                Sub-Workflow
-                            </button>
-                        </div>
+                        {editingIndex === null && (
+                            <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '2px', borderRadius: '4px', border: '1px solid var(--border-secondary)' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setToolType('catalog')}
+                                    style={{
+                                        fontSize: '0.7rem',
+                                        padding: '3px 8px',
+                                        borderRadius: '3px',
+                                        border: 'none',
+                                        background: toolType === 'catalog' ? 'var(--text-primary)' : 'transparent',
+                                        color: toolType === 'catalog' ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        fontWeight: toolType === 'catalog' ? 600 : 400,
+                                    }}
+                                >
+                                    App Action
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setToolType('subworkflow')}
+                                    style={{
+                                        fontSize: '0.7rem',
+                                        padding: '3px 8px',
+                                        borderRadius: '3px',
+                                        border: 'none',
+                                        background: toolType === 'subworkflow' ? 'var(--text-primary)' : 'transparent',
+                                        color: toolType === 'subworkflow' ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        fontWeight: toolType === 'subworkflow' ? 600 : 400,
+                                    }}
+                                >
+                                    Sub-Workflow
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {toolType === 'catalog' ? (
@@ -1917,12 +2100,78 @@ function AgentToolsSection({
                                 </div>
                             )}
 
+                            {/* Connection / Account Section */}
                             {selectedAppKey && !isAuthNone && (
                                 <div>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                        Connection / Account
-                                    </label>
-                                    {appConnections.length > 0 ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            Connection / Account {requiresPersonalAuth && <span style={{ color: '#ef4444' }}>*</span>}
+                                        </label>
+                                        {onConnectApp && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onConnectApp(selectedAppKey)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.72rem',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '2px',
+                                                    textDecoration: 'underline',
+                                                }}
+                                            >
+                                                <HiPlus size={12} /> Connect new
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {requiresPersonalAuth && appConnections.length === 0 ? (
+                                        <div
+                                            style={{
+                                                padding: '10px 12px',
+                                                borderRadius: '6px',
+                                                background: 'var(--bg-elevated)',
+                                                border: '1px solid var(--border-secondary)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '8px',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', fontSize: '0.78rem', fontWeight: 600 }}>
+                                                <HiOutlineExclamationCircle size={15} style={{ color: '#ef4444' }} />
+                                                <span>Account Connection Required</span>
+                                            </div>
+                                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.74rem', lineHeight: 1.4 }}>
+                                                {selectedAppDetail?.name || selectedAppKey} requires an authenticated account. You must connect your account before adding this tool.
+                                            </div>
+                                            {onConnectApp && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onConnectApp(selectedAppKey)}
+                                                    style={{
+                                                        alignSelf: 'flex-start',
+                                                        padding: '6px 12px',
+                                                        borderRadius: '4px',
+                                                        background: 'var(--accent-primary)',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                    }}
+                                                >
+                                                    <HiPlus size={13} /> Connect {selectedAppDetail?.name || selectedAppKey} Account
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : appConnections.length > 0 ? (
                                         <select
                                             value={selectedConnectionId}
                                             onChange={(e) => setSelectedConnectionId(e.target.value)}
@@ -1936,7 +2185,7 @@ function AgentToolsSection({
                                                 fontSize: '0.8rem',
                                             }}
                                         >
-                                            <option value="">Platform Key / Default</option>
+                                            {hasPlatformKey && <option value="">Platform Key / Default</option>}
                                             {appConnections.map((c) => (
                                                 <option key={c.id} value={c.id}>
                                                     {c.name || `${c.appKey} connection`} ({c.id.slice(0, 8)})
@@ -1944,10 +2193,160 @@ function AgentToolsSection({
                                             ))}
                                         </select>
                                     ) : (
-                                        <div style={{ fontSize: '0.75rem', color: selectedAppDetail?.hasPlatformKey ? '#4ade80' : '#f59e0b', padding: '6px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
-                                            {selectedAppDetail?.hasPlatformKey ? 'Uses Crescendo Platform Key' : 'No personal connection found. Uses platform key fallback if available.'}
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '6px 8px', borderRadius: '4px', background: 'var(--bg-elevated)', border: '1px solid var(--border-secondary)' }}>
+                                            Uses Crescendo Platform Key
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Dual-Mode Action Parameter Configuration */}
+                            {selectedActionKey && actionSchema.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            Action Parameters
+                                        </label>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                            Pre-set fixed values or delegate to AI
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto', paddingRight: '2px' }}>
+                                        {actionSchema.map((field) => {
+                                            const mode = paramModes[field.key] || 'dynamic';
+                                            return (
+                                                <div
+                                                    key={field.key}
+                                                    style={{
+                                                        padding: '8px 10px',
+                                                        borderRadius: '6px',
+                                                        background: 'var(--bg-primary)',
+                                                        border: '1px solid var(--border-secondary)',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '6px',
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                                {field.label || field.key}
+                                                                {field.required && <span style={{ color: '#ef4444', marginLeft: '3px' }}>*</span>}
+                                                            </span>
+                                                            {field.helpText && (
+                                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginTop: '1px', lineHeight: 1.3 }}>
+                                                                    {field.helpText}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Mode toggle */}
+                                                        <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-elevated)', padding: '2px', borderRadius: '4px', border: '1px solid var(--border-secondary)', flexShrink: 0 }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setParamModes((prev) => ({ ...prev, [field.key]: 'fixed' }))}
+                                                                style={{
+                                                                    fontSize: '0.66rem',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    border: 'none',
+                                                                    background: mode === 'fixed' ? 'var(--text-primary)' : 'transparent',
+                                                                    color: mode === 'fixed' ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                                                                    cursor: 'pointer',
+                                                                    fontWeight: mode === 'fixed' ? 600 : 400,
+                                                                }}
+                                                            >
+                                                                Fixed
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setParamModes((prev) => ({ ...prev, [field.key]: 'dynamic' }))}
+                                                                style={{
+                                                                    fontSize: '0.66rem',
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: '3px',
+                                                                    border: 'none',
+                                                                    background: mode === 'dynamic' ? 'var(--text-primary)' : 'transparent',
+                                                                    color: mode === 'dynamic' ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                                                                    cursor: 'pointer',
+                                                                    fontWeight: mode === 'dynamic' ? 600 : 400,
+                                                                }}
+                                                            >
+                                                                Dynamic (AI)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {mode === 'fixed' ? (
+                                                        <div>
+                                                            {Array.isArray(field.options) && field.options.length > 0 ? (
+                                                                <select
+                                                                    value={fixedParameters[field.key] ?? ''}
+                                                                    onChange={(e) => setFixedParameters((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '6px 8px',
+                                                                        borderRadius: '4px',
+                                                                        background: 'var(--bg-secondary)',
+                                                                        border: '1px solid var(--border-secondary)',
+                                                                        color: 'var(--text-primary)',
+                                                                        fontSize: '0.76rem',
+                                                                    }}
+                                                                >
+                                                                    <option value="">Select a fixed option...</option>
+                                                                    {field.options.map((opt) => {
+                                                                        const val = typeof opt === 'object' ? (opt.value ?? opt.id) : opt;
+                                                                        const lbl = typeof opt === 'object' ? (opt.label ?? opt.name ?? val) : opt;
+                                                                        return <option key={val} value={val}>{lbl}</option>;
+                                                                    })}
+                                                                </select>
+                                                            ) : field.type === 'textarea' ? (
+                                                                <textarea
+                                                                    rows={2}
+                                                                    value={fixedParameters[field.key] ?? ''}
+                                                                    onChange={(e) => setFixedParameters((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                                                    placeholder={field.placeholder || `Enter fixed ${field.label || field.key}...`}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '6px 8px',
+                                                                        borderRadius: '4px',
+                                                                        background: 'var(--bg-secondary)',
+                                                                        border: '1px solid var(--border-secondary)',
+                                                                        color: 'var(--text-primary)',
+                                                                        fontSize: '0.76rem',
+                                                                        resize: 'vertical',
+                                                                        boxSizing: 'border-box',
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <input
+                                                                    type={field.type === 'number' ? 'number' : 'text'}
+                                                                    value={fixedParameters[field.key] ?? ''}
+                                                                    onChange={(e) => setFixedParameters((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                                                                    placeholder={field.placeholder || `Enter fixed ${field.label || field.key}...`}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '6px 8px',
+                                                                        borderRadius: '4px',
+                                                                        background: 'var(--bg-secondary)',
+                                                                        border: '1px solid var(--border-secondary)',
+                                                                        color: 'var(--text-primary)',
+                                                                        fontSize: '0.76rem',
+                                                                        boxSizing: 'border-box',
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                            Determined dynamically by the AI Agent during reasoning.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
                         </>
@@ -1980,7 +2379,7 @@ function AgentToolsSection({
                                     ))}
                                 </select>
                             ) : (
-                                <div style={{ fontSize: '0.75rem', color: '#f59e0b', padding: '6px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '6px 8px', borderRadius: '4px', background: 'var(--bg-elevated)', border: '1px solid var(--border-secondary)' }}>
                                     No other workflows available in this workspace. Create another workflow first to call it as a tool.
                                 </div>
                             )}
@@ -2009,11 +2408,11 @@ function AgentToolsSection({
                         />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                         <button
                             type="button"
-                            onClick={handleAddTool}
-                            disabled={toolType === 'catalog' ? (!selectedAppKey || !selectedActionKey) : !selectedSubWorkflowId}
+                            onClick={handleSaveTool}
+                            disabled={isSaveDisabled}
                             style={{
                                 flex: 1,
                                 padding: '8px',
@@ -2024,14 +2423,14 @@ function AgentToolsSection({
                                 fontSize: '0.8rem',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                opacity: (toolType === 'catalog' ? (!selectedAppKey || !selectedActionKey) : !selectedSubWorkflowId) ? 0.5 : 1,
+                                opacity: isSaveDisabled ? 0.5 : 1,
                             }}
                         >
-                            Add Tool
+                            {editingIndex !== null ? 'Update Tool' : 'Add Tool'}
                         </button>
                         <button
                             type="button"
-                            onClick={() => setIsAdding(false)}
+                            onClick={handleCancel}
                             style={{
                                 padding: '8px 14px',
                                 borderRadius: '6px',
@@ -2471,11 +2870,13 @@ export default function ConfigPanelBody({
     };
 
     // Handle OAuth connect inline or open connection modal for API key apps
-    const handleNewConnection = async (reconnectConnectionId) => {
-        if (!data.appKey) return;
-        if (appDetail?.authType === 'OAUTH2' || appDetail?.altAuthType === 'OAUTH2') {
+    const handleConnectApp = async (targetAppKey, reconnectConnectionId) => {
+        const appKeyToUse = targetAppKey || data.appKey;
+        if (!appKeyToUse) return;
+        const targetDetail = appKeyToUse === data.appKey ? appDetail : (appDetailsByKey ? appDetailsByKey[appKeyToUse] : null);
+        if (targetDetail?.authType === 'OAUTH2' || targetDetail?.altAuthType === 'OAUTH2') {
             try {
-                const { authorizationUrl } = await appCatalogApi.getOAuthUrl(data.appKey, reconnectConnectionId ? { connectionId: reconnectConnectionId } : {});
+                const { authorizationUrl } = await appCatalogApi.getOAuthUrl(appKeyToUse, reconnectConnectionId ? { connectionId: reconnectConnectionId } : {});
                 if (authorizationUrl) {
                     if (isTauri()) {
                         await openExternalBrowser(authorizationUrl);
@@ -2494,9 +2895,11 @@ export default function ConfigPanelBody({
             }
         }
         if (onOpenAppBrowser) {
-            onOpenAppBrowser(data.appKey);
+            onOpenAppBrowser(appKeyToUse);
         }
     };
+
+    const handleNewConnection = (reconnectConnectionId) => handleConnectApp(data.appKey, reconnectConnectionId);
 
     // Listen for desktop OAuth deep-link completion to auto-select newly connected account
     useEffect(() => {
@@ -3005,6 +3408,7 @@ export default function ConfigPanelBody({
                                 ensureAppDetail={ensureAppDetail}
                                 allConnections={allConnections}
                                 workflowId={workflowId}
+                                onConnectApp={handleConnectApp}
                             />
                         )}
 
