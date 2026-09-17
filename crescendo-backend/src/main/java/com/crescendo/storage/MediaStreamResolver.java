@@ -148,7 +148,13 @@ public class MediaStreamResolver {
                     "media_data"
             );
         } catch (IllegalArgumentException e) {
-            throw new IOException("Unable to resolve media source: Invalid URL, storage key, or Base64 content", e);
+            byte[] bytes = str.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            return new MediaSource(
+                    new ByteArrayInputStream(bytes),
+                    bytes.length,
+                    (detectedMime != null && !detectedMime.equals("application/octet-stream")) ? detectedMime : "text/plain",
+                    "text_data"
+            );
         }
     }
 
