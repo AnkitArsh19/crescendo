@@ -51,4 +51,21 @@ class ScheduleTriggerPollerTest {
         assertEquals("interval", event.get("_type"));
         assertEquals("5 minutes", event.get("_rule"));
     }
+
+    @Test
+    @DisplayName("ScheduleTriggerPoller runs a future one-time schedule once in its selected time zone")
+    void poll_runsOneTimeScheduleOnlyInsideItsWindow() {
+        Instant scheduledAt = Instant.now().minus(30, ChronoUnit.SECONDS);
+        Map<String, Object> config = Map.of(
+                "scheduledAt", scheduledAt.toString(),
+                "timezone", "Asia/Kolkata");
+
+        List<Map<String, Object>> first = poller.poll(Map.of(), config, scheduledAt.minus(1, ChronoUnit.MINUTES));
+        List<Map<String, Object>> second = poller.poll(Map.of(), config, scheduledAt);
+
+        assertEquals(1, first.size());
+        assertEquals("once", first.getFirst().get("_type"));
+        assertTrue(String.valueOf(first.getFirst().get("Timezone")).startsWith("Asia/Kolkata"));
+        assertTrue(second.isEmpty());
+    }
 }

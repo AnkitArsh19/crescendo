@@ -1,15 +1,12 @@
 .passkey-nudge-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    right: 24px;
+    bottom: 24px;
+    width: min(400px, calc(100vw - 32px));
     display: flex;
-    align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     z-index: 1000;
+    pointer-events: none;
 }
 
 .passkey-nudge-card {
@@ -18,10 +15,11 @@
     border-radius: 12px;
     padding: 32px;
     max-width: 400px;
-    width: 90%;
+    width: 100%;
     position: relative;
-    text-align: center;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    text-align: left;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.24), 0 10px 10px -5px rgba(0, 0, 0, 0.12);
+    pointer-events: auto;
 }
 
 .passkey-nudge-close {
@@ -48,7 +46,7 @@
 .passkey-nudge-icon {
     width: 64px;
     height: 64px;
-    margin: 0 auto 20px;
+    margin: 0 0 16px;
     background: var(--bg-secondary);
     border-radius: 50%;
     display: flex;
@@ -74,7 +72,7 @@
 
 .passkey-nudge-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row-reverse;
     gap: 12px;
 }
 
@@ -96,7 +94,7 @@
 }
 
 .passkey-nudge-secondary {
-    width: 100%;
+    width: auto;
     padding: 12px;
     background: none;
     color: var(--text-tertiary);

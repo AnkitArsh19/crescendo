@@ -36,12 +36,13 @@ public class ScheduleTriggerPoller implements TriggerPoller {
         if (configuration == null) return events;
 
         try {
+            ZoneId zone = resolveZone(configuration);
             if (configuration.containsKey("cronExpression")) {
                 String cronStr = String.valueOf(configuration.get("cronExpression"));
                 CronExpression cron = CronExpression.parse(cronStr);
                 
                 // Determine if the cron should have fired between lastPollTime and now
-                ZonedDateTime lastPollZoned = lastPollTime.atZone(ZoneId.of("UTC"));
+                ZonedDateTime lastPollZoned = lastPollTime.atZone(zone);
                 ZonedDateTime nextExecution = cron.next(lastPollZoned);
                 
                 if (nextExecution != null && !nextExecution.toInstant().isAfter(now)) {
@@ -57,7 +58,7 @@ public class ScheduleTriggerPoller implements TriggerPoller {
                 
                 String unit = String.valueOf(configuration.getOrDefault("unit", "minutes")).toLowerCase();
                 
-                ZonedDateTime lastPollZoned = lastPollTime.atZone(ZoneId.of("UTC"));
+                ZonedDateTime lastPollZoned = lastPollTime.atZone(zone);
                 ZonedDateTime nextExecution = switch (unit) {
                     case "seconds" -> lastPollZoned.plusSeconds(intervalValue);
                     case "hours" -> lastPollZoned.plusHours(intervalValue);
@@ -68,8 +69,14 @@ public class ScheduleTriggerPoller implements TriggerPoller {
                 };
                 
                 if (!nextExecution.toInstant().isAfter(now)) {
-                    events.add(buildN8nPayload(ZonedDateTime.now(ZoneId.of("UTC")), intervalValue + " " + unit, "interval"));
+                    events.add(buildN8nPayload(ZonedDateTime.now(zone), intervalValue + " " + unit, "interval"));
                     logger.info("[schedule-poller] Interval {} {} fired", intervalValue, unit);
+                }
+            } else if (configuration.containsKey("scheduledAt")) {
+                Instant scheduledAt = parseScheduledAt(String.valueOf(configuration.get("scheduledAt")), zone);
+                if (scheduledAt.isAfter(lastPollTime) && !scheduledAt.isAfter(now)) {
+                    events.add(buildN8nPayload(scheduledAt.atZone(zone), scheduledAt.toString(), "once"));
+                    logger.info("[schedule-poller] One-time schedule fired at {}", scheduledAt);
                 }
             }
         } catch (Exception e) {
@@ -77,6 +84,21 @@ public class ScheduleTriggerPoller implements TriggerPoller {
         }
 
         return events;
+    }
+
+    private ZoneId resolveZone(Map<String, Object> configuration) {
+        Object configured = configuration.get("timezone");
+        return configured == null || String.valueOf(configured).isBlank()
+                ? ZoneId.of("UTC")
+                : ZoneId.of(String.valueOf(configured));
+    }
+
+    private Instant parseScheduledAt(String value, ZoneId zone) {
+        try {
+            return Instant.parse(value);
+        } catch (Exception ignored) {
+            return java.time.LocalDateTime.parse(value).atZone(zone).toInstant();
+        }
     }
 
     private Map<String, Object> buildN8nPayload(ZonedDateTime time, String rule, String type) {

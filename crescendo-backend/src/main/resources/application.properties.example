@@ -354,7 +354,7 @@ crescendo.integrations.oauth.providers.figma.client-id=${FIGMA_CLIENT_ID:}
 crescendo.integrations.oauth.providers.figma.client-secret=${FIGMA_CLIENT_SECRET:}
 crescendo.integrations.oauth.providers.figma.authorize-url=https://www.figma.com/oauth
 crescendo.integrations.oauth.providers.figma.token-url=https://api.figma.com/v1/oauth/token
-crescendo.integrations.oauth.providers.figma.scopes=webhooks:read webhooks:write file_content:read file_comments:read file_comments:write file_metadata:read file_versions:read
+crescendo.integrations.oauth.providers.figma.scopes=${FIGMA_SCOPES:current_user:read file_content:read file_comments:read file_comments:write file_metadata:read file_versions:read}
 
 # ─── LinkedIn ─────────────────────────────────────────────────────────────────
 # App registration: https://www.linkedin.com/developers/apps → Create app
@@ -417,6 +417,16 @@ crescendo.integrations.oauth.providers.calendly.client-secret=${CALENDLY_CLIENT_
 crescendo.integrations.oauth.providers.calendly.authorize-url=https://auth.calendly.com/oauth/authorize
 crescendo.integrations.oauth.providers.calendly.token-url=https://auth.calendly.com/oauth/token
 crescendo.integrations.oauth.providers.calendly.scopes=users:read organizations:read event_types:read scheduled_events:read scheduled_events:write webhooks:read webhooks:write scheduling_links:write shares:write availability:read
+crescendo.integrations.oauth.providers.calendly.pkce=true
+
+# ─── Cal.com ──────────────────────────────────────────────────────────────────
+# App registration: https://app.cal.com/settings/developer/oauth
+# Redirect URI: https://api.crescendo.run/connections/oauth/calcom/callback
+crescendo.integrations.oauth.providers.calcom.client-id=${CALCOM_CLIENT_ID:}
+crescendo.integrations.oauth.providers.calcom.client-secret=${CALCOM_CLIENT_SECRET:}
+crescendo.integrations.oauth.providers.calcom.authorize-url=https://app.cal.com/auth/oauth2/authorize
+crescendo.integrations.oauth.providers.calcom.token-url=https://api.cal.com/v2/auth/oauth2/token
+crescendo.integrations.oauth.providers.calcom.scopes=${CALCOM_SCOPES:user:read booking:read booking:write event_type:read schedule:read webhook:read webhook:write}
 
 # ─── Typeform ─────────────────────────────────────────────────────────────────
 # App registration: https://admin.typeform.com/account#/section/tokens → Create new application
@@ -426,7 +436,7 @@ crescendo.integrations.oauth.providers.typeform.client-id=${TYPEFORM_CLIENT_ID:}
 crescendo.integrations.oauth.providers.typeform.client-secret=${TYPEFORM_CLIENT_SECRET:}
 crescendo.integrations.oauth.providers.typeform.authorize-url=https://api.typeform.com/oauth/authorize
 crescendo.integrations.oauth.providers.typeform.token-url=https://api.typeform.com/oauth/token
-crescendo.integrations.oauth.providers.typeform.scopes=webhooks:write webhooks:read forms:read responses:read
+crescendo.integrations.oauth.providers.typeform.scopes=offline webhooks:write webhooks:read forms:read responses:read
 
 # ─── Salesforce ───────────────────────────────────────────────────────────────
 # App registration: Setup → App Manager → New Connected App

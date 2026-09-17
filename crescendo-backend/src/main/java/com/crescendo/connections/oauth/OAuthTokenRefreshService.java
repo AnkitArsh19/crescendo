@@ -278,7 +278,8 @@ public class OAuthTokenRefreshService {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-        boolean useBasicAuth = isBasicAuthProvider(providerKey) && clientSecret != null && !clientSecret.isBlank();
+        boolean useBasicAuth = OAuthProviderTransportPolicy
+                .usesBasicClientAuthentication(providerKey, clientSecret);
 
         // Providers that require HTTP Basic auth for token exchange (Twitter/X, Notion, Airtable, Reddit, Spotify)
         if (useBasicAuth) {
@@ -401,15 +402,6 @@ public class OAuthTokenRefreshService {
             logger.warn("[token-refresh] Could not parse tokenExpiresAt: {}", expiresAtObj);
             return false;
         }
-    }
-
-    private boolean isBasicAuthProvider(String providerKey) {
-        return "notion".equals(providerKey)
-                || "airtable".equals(providerKey)
-                || "twitter".equals(providerKey)
-                || "x".equals(providerKey)
-                || "reddit".equals(providerKey)
-                || "spotify".equals(providerKey);
     }
 
     /**

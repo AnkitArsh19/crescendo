@@ -32,6 +32,12 @@ public class CalComWebhookHandlers {
         return "2".equals(version) ? "/webhooks" : "/hooks";
     }
 
+    private String getAuthToken(ActionContext context) {
+        String token = context.getCredential("accessToken");
+        if (token != null && !token.isBlank()) return token;
+        return context.getCredential("apiKey");
+    }
+
     @ActionMapping(appKey = "calcom", actionKey = "calcom:webhook:subscribe")
     public Object subscribeWebhook(ActionContext context) throws Exception {
         String subscriberUrl = context.getString("subscriberUrl");
@@ -49,7 +55,7 @@ public class CalComWebhookHandlers {
 
         return RestClient.builder()
                 .url(getBaseUrl() + getHooksPath(context))
-                .header("Authorization", "Bearer " + context.getCredential("apiKey"))
+                .header("Authorization", "Bearer " + getAuthToken(context))
                 .header("Content-Type", "application/json")
                 .post(body)
                 .execute();
@@ -59,7 +65,7 @@ public class CalComWebhookHandlers {
     public Object listWebhooks(ActionContext context) throws Exception {
         return RestClient.builder()
                 .url(getBaseUrl() + getHooksPath(context))
-                .header("Authorization", "Bearer " + context.getCredential("apiKey"))
+                .header("Authorization", "Bearer " + getAuthToken(context))
                 .get()
                 .execute();
     }
@@ -69,7 +75,7 @@ public class CalComWebhookHandlers {
         String webhookId = context.getString("webhookId");
         return RestClient.builder()
                 .url(getBaseUrl() + getHooksPath(context) + "/" + webhookId)
-                .header("Authorization", "Bearer " + context.getCredential("apiKey"))
+                .header("Authorization", "Bearer " + getAuthToken(context))
                 .delete()
                 .execute();
     }
@@ -79,7 +85,7 @@ public class CalComWebhookHandlers {
         // Used to populate event type options in the trigger config
         return RestClient.builder()
                 .url(getBaseUrl() + "/event-types")
-                .header("Authorization", "Bearer " + context.getCredential("apiKey"))
+                .header("Authorization", "Bearer " + getAuthToken(context))
                 .get()
                 .execute();
     }

@@ -13,10 +13,7 @@ export async function downloadFile(filename, content, mimeType = 'application/js
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const savedPath = await invoke('save_download_file', { filename, content: text });
-      useToastStore.getState().addToast({
-        type: 'success',
-        message: `Saved to Downloads: ${filename}`,
-      });
+      useToastStore.getState().addToast(`Saved to Downloads: ${filename}`, 'success');
       return { success: true, path: savedPath };
     } catch (err) {
       console.warn('Tauri save_download_file failed, falling back to browser download:', err);
@@ -34,17 +31,11 @@ export async function downloadFile(filename, content, mimeType = 'application/js
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    useToastStore.getState().addToast({
-      type: 'success',
-      message: `Downloaded: ${filename}`,
-    });
+    useToastStore.getState().addToast(`Downloaded: ${filename}`, 'success');
     return { success: true };
   } catch (err) {
     console.error('Download failed:', err);
-    useToastStore.getState().addToast({
-      type: 'error',
-      message: `Failed to download ${filename}`,
-    });
+    useToastStore.getState().addToast(`Failed to download ${filename}`, 'error');
     return { success: false, error: err };
   }
 }

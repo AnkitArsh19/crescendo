@@ -7,6 +7,7 @@ import com.crescendo.execution.action.ActionHandler;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.resource.ResourceProvider;
 import com.crescendo.execution.test.OperationTestContractFactory;
+import com.crescendo.enums.AuthType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -164,6 +166,25 @@ class CatalogContractTest {
                 assertSafeTestContract(factory.create(app.getAppKey(), action, false), app.getAppKey(), action);
             }
         }
+    }
+
+    @Test
+    @DisplayName("Every OAuth-capable catalog app has a deployment configuration entry")
+    void oauthCapableAppsAreDeclaredInTheDeploymentTemplate() throws Exception {
+        Properties properties = new Properties();
+        try (var stream = CatalogContractTest.class.getResourceAsStream("/application.properties.example")) {
+            assertTrue(stream != null, "application.properties.example must be included with the backend");
+            properties.load(stream);
+        }
+
+        List<String> missing = appsByKey.values().stream()
+                .filter(app -> app.getAuthType() == AuthType.OAUTH2 || app.getAltAuthType() == AuthType.OAUTH2)
+                .map(App::getAppKey)
+                .filter(appKey -> !properties.containsKey("crescendo.integrations.oauth.providers." + appKey + ".client-id"))
+                .sorted()
+                .toList();
+
+        assertTrue(missing.isEmpty(), () -> "OAuth-capable apps missing a provider entry: " + String.join(", ", missing));
     }
 
     private static void assertSafeTestContract(Map<String, Object> contract, String appKey, Map<String, Object> operation) {

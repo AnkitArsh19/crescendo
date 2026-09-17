@@ -643,6 +643,22 @@ public class IntegrationOAuthService {
             identity.put("email", asStr(info.get("email")));
             identity.put("displayName", asStr(info.get("handle")));
 
+        } else if ("calcom".equals(providerKey)) {
+            try {
+                Map<String, Object> info = callUserInfoApi(
+                        "https://api.cal.com/v2/me", accessToken, null);
+                Object dataObj = info.get("data");
+                Map<?, ?> target = (dataObj instanceof Map<?, ?> dataMap) ? dataMap : info;
+                Object userObj = target.get("user");
+                if (userObj instanceof Map<?, ?> userMap) {
+                    target = userMap;
+                }
+                identity.put("email", asStr(target.get("email")));
+                identity.put("displayName", asStr(target.get("name") != null ? target.get("name") : target.get("username")));
+            } catch (Exception e) {
+                logger.warn("Failed to fetch Cal.com identity: {}", e.getMessage());
+            }
+
         } else if ("facebook-graph".equals(providerKey)) {
             try {
                 // Facebook Graph API works more reliably with access_token as query param
@@ -735,6 +751,14 @@ public class IntegrationOAuthService {
                     "OAuth is not configured for provider: " + providerKey);
         }
         return oauthConfig.getProvider(providerKey);
+    }
+
+    /**
+     * Sends a failed provider callback back to Crescendo's trusted popup origin.
+     * Provider error payloads are intentionally not forwarded to the browser.
+     */
+    public String failureRedirect(String providerKey) {
+        return frontendUrl + "/oauth-complete?error=connection_failed&provider=" + encode(providerKey);
     }
 
     /**
