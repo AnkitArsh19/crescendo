@@ -112,6 +112,10 @@ export default function AppBrowserModal({
                 const hasExisting = connections.some(c => c.appKey === found.appKey);
                 if (found.appKey === 'telegram' && !hasExisting) {
                     setActiveConnectMode('TELEGRAM_LINK');
+                } else if (found.authType === 'OAUTH2' || found.altAuthType === 'OAUTH2') {
+                    setActiveConnectMode('OAUTH2');
+                } else if (found.authType === 'APIKEY') {
+                    setActiveConnectMode('APIKEY');
                 }
             }
         }

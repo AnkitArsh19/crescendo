@@ -47,14 +47,18 @@ export default function Login() {
     const destination = fromDesktop
         ? '/auth/desktop-success'
         : (location.state?.from
-            ? `${location.state.from.pathname}${location.state.from.search || ''}`
+            ? `${location.state.from.pathname || location.state.from}${location.state.from.search || ''}`
             : '/dashboard');
+
+    const redirectedPath = location.state?.from?.pathname || (typeof location.state?.from === 'string' ? location.state.from : '');
+    const isStudioRedirect = redirectedPath.startsWith('/dashboard');
 
     const loginFn = useAuthStore((state) => state.login);
     const verifyMfaFn = useAuthStore((state) => state.verifyMfa);
     const verifyBackupCode = useAuthStore((state) => state.useBackupCode);
     const currentUser = useAuthStore((state) => state.user);
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const isLoading = useAuthStore((state) => state.isLoading);
     const currentAccessToken = useAuthStore((state) => state.accessToken);
     const currentRefreshToken = useAuthStore((state) => state.refreshToken);
     const currentExpiresAt = useAuthStore((state) => state.accessExpiresAt);
@@ -87,6 +91,12 @@ export default function Login() {
     const { register: registerBackup, handleSubmit: handleBackupSubmit, formState: { errors: backupErrors, isSubmitting: isUsingBackup } } = useForm({
         resolver: zodResolver(backupSchema),
     });
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && !fromDesktop) {
+            navigate(destination, { replace: true });
+        }
+    }, [isAuthenticated, isLoading, fromDesktop, destination, navigate]);
 
     useEffect(() => {
         let active = true;
@@ -343,7 +353,9 @@ export default function Login() {
                                 ? 'Enter the 6-digit code from your authenticator app'
                                 : fromDesktop
                                     ? 'Sign in to connect your Crescendo desktop app'
-                                    : 'Sign in to your account to continue'}
+                                    : isStudioRedirect
+                                        ? 'Sign in to open your Workflow Studio'
+                                        : 'Sign in to your account to continue'}
                         </p>
                     </div>
 

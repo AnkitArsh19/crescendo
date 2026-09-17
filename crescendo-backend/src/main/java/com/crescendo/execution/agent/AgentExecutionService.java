@@ -398,7 +398,7 @@ public class AgentExecutionService {
                                         if (action.get("configSchema") instanceof List<?> rawSchema) {
                                             @SuppressWarnings("unchecked")
                                             List<Map<String, Object>> typedSchema = (List<Map<String, Object>>) rawSchema;
-                                            schema = buildJsonSchemaForAction(typedSchema);
+                                            schema = buildJsonSchemaForAction(typedSchema, tc.fixedParameters());
                                         }
                                         break;
                                     }
@@ -443,7 +443,7 @@ public class AgentExecutionService {
                                                     if (action.get("configSchema") instanceof List<?> rawSchema) {
                                                         @SuppressWarnings("unchecked")
                                                         List<Map<String, Object>> typedSchema = (List<Map<String, Object>>) rawSchema;
-                                                        schema = buildJsonSchemaForAction(typedSchema);
+                                                        schema = buildJsonSchemaForAction(typedSchema, step.getConfiguration());
                                                     }
                                                     break;
                                                 }
@@ -468,6 +468,10 @@ public class AgentExecutionService {
     }
 
     private Map<String, Object> buildJsonSchemaForAction(List<Map<String, Object>> configSchema) {
+        return buildJsonSchemaForAction(configSchema, Map.of());
+    }
+
+    private Map<String, Object> buildJsonSchemaForAction(List<Map<String, Object>> configSchema, Map<String, Object> fixedParams) {
         Map<String, Object> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
 
@@ -475,6 +479,9 @@ public class AgentExecutionService {
             for (Map<String, Object> field : configSchema) {
                 String key = String.valueOf(field.getOrDefault("key", ""));
                 if (key.isBlank()) continue;
+
+                boolean isFixed = fixedParams != null && fixedParams.containsKey(key) && fixedParams.get(key) != null
+                        && !String.valueOf(fixedParams.get(key)).isBlank();
 
                 String label = String.valueOf(field.getOrDefault("label", key));
                 String type = String.valueOf(field.getOrDefault("type", "text")).toLowerCase();
@@ -492,12 +499,18 @@ public class AgentExecutionService {
                 propDef.put("type", jsonType);
                 String helpText = field.get("helpText") != null ? String.valueOf(field.get("helpText")) : null;
                 String desc = (helpText != null && !helpText.isBlank()) ? (label + " (" + helpText + ")") : label;
-                propDef.put("description", desc);
+
+                if (isFixed) {
+                    propDef.put("description", desc + " [Pre-configured: " + fixedParams.get(key) + "]. Omit to use pre-configured value.");
+                    // Fixed parameters are omitted from the required list for the LLM
+                } else {
+                    propDef.put("description", desc);
+                    if (isRequired) {
+                        required.add(key);
+                    }
+                }
 
                 properties.put(key, propDef);
-                if (isRequired) {
-                    required.add(key);
-                }
             }
         }
 
@@ -904,6 +917,21 @@ public class AgentExecutionService {
             } catch (Exception e) {
                 log.warn("Credential resolution failed for tool appKey={} connectionId={}: {}", appKey, connectionId, e.getMessage());
             }
+        }
+
+        if (credentials.isEmpty() && appRepo != null) {
+            try {
+                var appOpt = appRepo.findById(AppKey.of(appKey));
+                if (appOpt.isPresent() && appOpt.get().getAuthType() != null && appOpt.get().getAuthType() != com.crescendo.enums.AuthType.NONE) {
+                    if (!appOpt.get().isHasPlatformKey()) {
+                        log.warn("Tool execution blocked: no credentials found for appKey={} (tool={})", appKey, actionKey);
+                        return Map.of(
+                                "error", "Tool authentication failed: No connected account found for '" + appKey + "'. Please connect an account in the workflow canvas.",
+                                "status", "AUTH_REQUIRED"
+                        );
+                    }
+                }
+            } catch (Exception ignored) {}
         }
 
         // Merge fixed parameters with tool call arguments

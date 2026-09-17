@@ -416,7 +416,7 @@ crescendo.integrations.oauth.providers.calendly.client-id=${CALENDLY_CLIENT_ID:}
 crescendo.integrations.oauth.providers.calendly.client-secret=${CALENDLY_CLIENT_SECRET:}
 crescendo.integrations.oauth.providers.calendly.authorize-url=https://auth.calendly.com/oauth/authorize
 crescendo.integrations.oauth.providers.calendly.token-url=https://auth.calendly.com/oauth/token
-crescendo.integrations.oauth.providers.calendly.scopes=default
+crescendo.integrations.oauth.providers.calendly.scopes=users:read organizations:read event_types:read scheduled_events:read scheduled_events:write webhooks:read webhooks:write scheduling_links:write shares:write availability:read
 
 # ─── Typeform ─────────────────────────────────────────────────────────────────
 # App registration: https://admin.typeform.com/account#/section/tokens → Create new application
@@ -438,6 +438,7 @@ crescendo.integrations.oauth.providers.salesforce.client-secret=${SALESFORCE_CLI
 crescendo.integrations.oauth.providers.salesforce.authorize-url=https://login.salesforce.com/services/oauth2/authorize
 crescendo.integrations.oauth.providers.salesforce.token-url=https://login.salesforce.com/services/oauth2/token
 crescendo.integrations.oauth.providers.salesforce.scopes=full refresh_token
+crescendo.integrations.oauth.providers.salesforce.pkce=true
 
 # ─── Facebook Graph ───────────────────────────────────────────────────────────
 # App registration: https://developers.facebook.com/apps
@@ -466,7 +467,7 @@ crescendo.integrations.oauth.providers.jira.client-id=${JIRA_CLIENT_ID:}
 crescendo.integrations.oauth.providers.jira.client-secret=${JIRA_CLIENT_SECRET:}
 crescendo.integrations.oauth.providers.jira.authorize-url=https://auth.atlassian.com/authorize
 crescendo.integrations.oauth.providers.jira.token-url=https://auth.atlassian.com/oauth/token
-crescendo.integrations.oauth.providers.jira.scopes=read:jira-user read:jira-work write:jira-work manage:jira-webhook manage:jira-user offline_access
+crescendo.integrations.oauth.providers.jira.scopes=offline_access read:issue:jira write:issue:jira delete:issue:jira read:issue-meta:jira read:issue-details:jira read:issue.changelog:jira send:notification:jira read:comment:jira write:comment:jira delete:comment:jira read:attachment:jira write:attachment:jira delete:attachment:jira read:user:jira write:user:jira read:project:jira read:issue-type:jira read:field:jira read:status:jira read:priority:jira read:jql:jira validate:jql:jira read:webhook:jira write:webhook:jira delete:webhook:jira read:board-scope:jira-software read:issue:jira-software read:sprint:jira-software
 
 # ─── ClickUp ──────────────────────────────────────────────────────────────────
 # App registration: https://app.clickup.com/settings/integrations → API Keys
@@ -488,36 +489,6 @@ crescendo.integrations.oauth.providers.mailchimp.authorize-url=https://login.mai
 crescendo.integrations.oauth.providers.mailchimp.token-url=https://login.mailchimp.com/oauth2/token
 crescendo.integrations.oauth.providers.mailchimp.scopes=
 
-# ─── Freshdesk ────────────────────────────────────────────────────────────────
-# App registration: https://developers.freshdesk.com/
-# Redirect URI: https://api.crescendo.run/connections/oauth/freshdesk/callback
-# Note: Freshdesk primarily uses API key auth. OAuth is for marketplace-published apps.
-crescendo.integrations.oauth.providers.freshdesk.client-id=${FRESHDESK_CLIENT_ID:}
-crescendo.integrations.oauth.providers.freshdesk.client-secret=${FRESHDESK_CLIENT_SECRET:}
-crescendo.integrations.oauth.providers.freshdesk.authorize-url=https://www.freshworks.com/api/oauth/authorize
-crescendo.integrations.oauth.providers.freshdesk.token-url=https://www.freshworks.com/api/oauth/token
-crescendo.integrations.oauth.providers.freshdesk.scopes=
-
-# ─── Zendesk ──────────────────────────────────────────────────────────────────
-# App registration: https://developer.zendesk.com/api-reference/ticketing/oauth/oauth_clients/
-# Redirect URI: https://api.crescendo.run/connections/oauth/zendesk/callback
-# Note: Replace {subdomain} with your actual Zendesk subdomain in the URLs below.
-# Scopes: read (tickets/users), write (create/update tickets)
-crescendo.integrations.oauth.providers.zendesk.client-id=${ZENDESK_CLIENT_ID:}
-crescendo.integrations.oauth.providers.zendesk.client-secret=${ZENDESK_CLIENT_SECRET:}
-crescendo.integrations.oauth.providers.zendesk.authorize-url=https://{subdomain}.zendesk.com/oauth/authorizations/new
-crescendo.integrations.oauth.providers.zendesk.token-url=https://{subdomain}.zendesk.com/oauth/tokens
-crescendo.integrations.oauth.providers.zendesk.scopes=read write
-
-# ─── Brevo (formerly Sendinblue) ──────────────────────────────────────────────
-# API keys: https://app.brevo.com/settings/keys/api
-# Note: Brevo does not offer a standard OAuth2 user-authorization flow.
-# Users should connect via API key. This section is a placeholder for potential future support.
-crescendo.integrations.oauth.providers.brevo.client-id=${BREVO_OAUTH_CLIENT_ID:}
-crescendo.integrations.oauth.providers.brevo.client-secret=${BREVO_OAUTH_CLIENT_SECRET:}
-crescendo.integrations.oauth.providers.brevo.authorize-url=https://account.brevo.com/oauth2/authorize
-crescendo.integrations.oauth.providers.brevo.token-url=https://account.brevo.com/oauth2/token
-crescendo.integrations.oauth.providers.brevo.scopes=
 
 # ─── Todoist ──────────────────────────────────────────────────────────────────
 # App registration: https://developer.todoist.com/appconsole.html
@@ -539,6 +510,7 @@ crescendo.platform.weather-api-key=${WEATHER_API_KEY:}
 crescendo.platform.giphy-api-key=${GIPHY_API_KEY:}
 crescendo.platform.nasa-api-key=${NASA_API_KEY:}
 crescendo.platform.brandfetch-api-key=${BRANDFETCH_API_KEY:}
+crescendo.platform.brandfetch-client-id=${BRANDFETCH_CLIENT_ID:1idpV51hVNVnpZYeWf4}
 crescendo.platform.coingecko-api-key=${COINGECKO_API_KEY:}
 crescendo.platform.marketstack-api-key=${MARKETSTACK_API_KEY:}
 

@@ -58,7 +58,23 @@ public class CalendlyApp implements AppDefinition {
                                 )
                         )
                 ),
-                List.of()
+                List.of(
+                        Map.of(
+                                "actionKey", "calendly:event:getMany",
+                                "name", "Get Scheduled Events",
+                                "description", "Retrieve scheduled events from Calendly",
+                                "configSchema", List.of()
+                        ),
+                        Map.of(
+                                "actionKey", "calendly:eventInvitee:getMany",
+                                "name", "Get Event Invitees",
+                                "description", "Retrieve invitees for a specific scheduled event",
+                                "configSchema", List.of(
+                                        Map.of("key", "eventUuid", "label", "Event UUID", "type", "text", "required", true,
+                                                "placeholder", "e.g. AAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE", "helpText", "The UUID of the scheduled event")
+                                )
+                        )
+                )
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true,
                         "placeholder", "calendly_pat_...", "helpText", "Generate in Calendly -> Integrations -> API and Webhooks")

@@ -77,7 +77,24 @@ public record ActionContext(
     // ── Credential helpers ────────────────────────────────────────────
 
     public String getCredential(String key) {
-        return credentials != null && credentials.containsKey(key) ? String.valueOf(credentials.get(key)) : null;
+        if (credentials != null && credentials.containsKey(key)) {
+            Object val = credentials.get(key);
+            if (val != null && !String.valueOf(val).isBlank()) {
+                return String.valueOf(val);
+            }
+        }
+        // Fallback for equivalent authentication token keys (OAuth accessToken <-> apiKey <-> token)
+        if (credentials != null && ("apiKey".equals(key) || "accessToken".equals(key) || "token".equals(key) || "apiToken".equals(key) || "personalToken".equals(key))) {
+            for (String fallbackKey : new String[]{"accessToken", "apiKey", "token", "apiToken", "personalToken"}) {
+                if (credentials.containsKey(fallbackKey)) {
+                    Object val = credentials.get(fallbackKey);
+                    if (val != null && !String.valueOf(val).isBlank()) {
+                        return String.valueOf(val);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     // ── Input data helpers ────────────────────────────────────────────
