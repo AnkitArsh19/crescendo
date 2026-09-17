@@ -226,7 +226,11 @@ const useAuthStore = create((set, get) => ({
             tokenToUse = localStorage.getItem('crescendo_refresh_token');
           } catch { /* ignore */ }
         }
-        await api.post('/auth/logout', tokenToUse ? { refreshToken: tokenToUse } : {});
+        if (tokenToUse) {
+          await api.post('/auth/logout', { refreshToken: tokenToUse });
+        } else {
+          await api.post('/auth/logout');
+        }
       } catch (error) {
         console.error('Logout error against server', error);
       }
