@@ -79,6 +79,8 @@ services:
     # Security: No public host port publishing. Routed via cloudflared / crescendo-network.
     expose:
       - "8080"
+    volumes:
+      - crescendo_uploads_data:/root/.crescendo/uploads
     env_file:
       - .env
     environment:
@@ -252,6 +254,7 @@ volumes:
   crescendo_postgres_data:
   crescendo_redis_data:
   crescendo_prometheus_data:
+  crescendo_uploads_data:
 
 # ------------------------------------------------------------------------------
 # Isolated Bridge Network

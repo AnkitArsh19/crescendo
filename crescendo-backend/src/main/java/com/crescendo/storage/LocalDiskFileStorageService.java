@@ -17,12 +17,20 @@ import java.util.List;
 public class LocalDiskFileStorageService implements FileStorageService {
     private static final Logger log = LoggerFactory.getLogger(LocalDiskFileStorageService.class);
 
-    // Primary persistent directory in user home (.crescendo/uploads)
-    private static final Path PRIMARY_STORAGE_PATH = Paths.get(
-            System.getProperty("user.home"),
-            ".crescendo",
-            "uploads"
-    );
+    // Primary persistent directory in user home (.crescendo/uploads) or configured env var
+    private static final Path PRIMARY_STORAGE_PATH = resolvePrimaryStoragePath();
+
+    private static Path resolvePrimaryStoragePath() {
+        String envPath = System.getenv("CRESCENDO_STORAGE_LOCAL_PATH");
+        if (envPath != null && !envPath.isBlank()) {
+            return Paths.get(envPath);
+        }
+        return Paths.get(
+                System.getProperty("user.home"),
+                ".crescendo",
+                "uploads"
+        );
+    }
 
     // Fallback directories for backward compatibility across platforms / drives
     private static final List<Path> FALLBACK_PATHS = List.of(

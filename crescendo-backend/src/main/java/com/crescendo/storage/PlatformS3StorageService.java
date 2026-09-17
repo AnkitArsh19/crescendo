@@ -121,11 +121,16 @@ public class PlatformS3StorageService implements FileStorageService {
             // Not on local disk, attempt S3
         }
 
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
-        try (var in = s3Client.getObject(getObjectRequest)) {
-            in.transferTo(out);
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucket).key(storageKey).build();
+            try (var in = s3Client.getObject(getObjectRequest)) {
+                in.transferTo(out);
+                return;
+            }
         } catch (Exception e) {
-            throw new IOException("Failed to read from S3 or local disk: " + storageKey, e);
+            log.warn("S3 streamContent failed for key '{}' in bucket '{}': {}", storageKey, bucket, e.getMessage());
         }
+
+        throw new IOException("File '" + storageKey + "' not found in storage. If this file was uploaded before server update/restart, please re-upload the file in the step configuration.");
     }
 }
