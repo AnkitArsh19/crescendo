@@ -36,7 +36,9 @@ public class CalendlyApp implements AppDefinition {
                 
                 Configure scope to trigger on events for the current user or the entire organization.
                 
-                Authenticate using OAuth2 (Calendly OAuth2 API credentials).
+                Connect your Calendly account with OAuth. A Personal Access Token is
+                only needed for a private/internal integration and is never shared
+                between Crescendo users.
                 """,
                 "https://www.google.com/s2/favicons?domain=calendly.com&sz=128",
                 AuthType.OAUTH2,
@@ -78,6 +80,7 @@ public class CalendlyApp implements AppDefinition {
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true,
                         "placeholder", "calendly_pat_...", "helpText", "Generate in Calendly -> Integrations -> API and Webhooks")
-        )).altAuthType(AuthType.APIKEY).category("productivity");
+        )).altAuthType(AuthType.APIKEY).category("productivity")
+                .helpUrl("https://developer.calendly.com/docs/authentication/creating-an-oauth-app");
     }
 }

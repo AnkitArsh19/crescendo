@@ -33,6 +33,9 @@ export default function OAuthComplete() {
     const redirectedRef = useRef(false);
 
     const hash = window.location.hash.substring(1); // remove #
+    const searchParams = new URLSearchParams(window.location.search);
+    const oauthError = searchParams.get('error');
+    const errorProvider = searchParams.get('provider');
 
     const deepLinkUrl = useMemo(() => {
         return `crescendo://connections/callback?data=${encodeURIComponent(hash || '')}`;
@@ -50,7 +53,6 @@ export default function OAuthComplete() {
             console.warn('OAuth complete: failed to parse result', e);
         }
 
-        const searchParams = new URLSearchParams(window.location.search);
         const fromDesktop = !window.opener || 
                             searchParams.get('from') === 'desktop' || 
                             sessionStorage.getItem('crescendo_from_desktop_oauth') === 'true';
@@ -58,7 +60,12 @@ export default function OAuthComplete() {
         // Standard web popup flow
         if (window.opener) {
             try {
-                window.opener.postMessage(data || { type: 'oauth-connected' }, window.location.origin);
+                window.opener.postMessage(
+                    oauthError
+                        ? { type: 'oauth-error', appKey: errorProvider, error: 'Crescendo could not finish this connection. Please try again.' }
+                        : (data || { type: 'oauth-connected' }),
+                    window.location.origin
+                );
             } catch (e) {
                 console.warn('Failed to postMessage to opener:', e);
             }
@@ -93,7 +100,7 @@ export default function OAuthComplete() {
                 return () => clearTimeout(timer);
             }
         }
-    }, [hash, deepLinkUrl]);
+    }, [hash, deepLinkUrl, oauthError, errorProvider]);
 
     const handleCopyLink = async () => {
         try {

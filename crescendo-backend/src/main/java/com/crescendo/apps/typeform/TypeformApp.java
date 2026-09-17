@@ -19,7 +19,8 @@ public class TypeformApp implements AppDefinition {
                 - **Get Responses**: Retrieve responses for a specific form
                 - **Trigger on Submission**: Get notified instantly when a form is submitted (Webhook)
                 
-                Authenticate using a Personal Access Token or OAuth2.
+                Connect with OAuth for a normal multi-user setup. A Personal Access
+                Token is an optional alternative for an internal/private integration.
                 """,
                 "https://www.google.com/s2/favicons?domain=typeform.com&sz=128",
                 AuthType.OAUTH2,
@@ -51,6 +52,7 @@ public class TypeformApp implements AppDefinition {
                 )
         ).credentialSchema(List.of(
                 Map.of("key", "accessToken", "label", "Personal Access Token", "type", "password", "required", true)
-        )).altAuthType(AuthType.APIKEY).category("marketing");
+        )).altAuthType(AuthType.APIKEY).category("marketing")
+                .helpUrl("https://developer.typeform.com/developers/get-started/scopes/");
     }
 }

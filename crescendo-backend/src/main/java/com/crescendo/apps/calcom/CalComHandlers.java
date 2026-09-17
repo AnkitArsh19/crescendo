@@ -12,14 +12,18 @@ public class CalComHandlers {
         return "https://api.cal.com/v1";
     }
 
-    private String getApiKey(ActionContext context) {
+    private String getAuthToken(ActionContext context) {
+        String token = context.getCredential("accessToken");
+        if (token != null && !token.isBlank()) return token;
         return context.getCredential("apiKey");
     }
 
     @ActionMapping(appKey = "calcom", actionKey = "calcom:booking:get")
     public Object getBookings(ActionContext context) throws Exception {
+        String token = getAuthToken(context);
         return RestClient.builder()
-                .url(getBaseUrl() + "/bookings?apiKey=" + getApiKey(context))
+                .url(getBaseUrl() + "/bookings?apiKey=" + token)
+                .header("Authorization", "Bearer " + token)
                 .get()
                 .execute();
     }
@@ -27,8 +31,10 @@ public class CalComHandlers {
     @ActionMapping(appKey = "calcom", actionKey = "calcom:booking:cancel")
     public Object cancelBooking(ActionContext context) throws Exception {
         String bookingId = context.getString("bookingId");
+        String token = getAuthToken(context);
         return RestClient.builder()
-                .url(getBaseUrl() + "/bookings/" + bookingId + "/cancel?apiKey=" + getApiKey(context))
+                .url(getBaseUrl() + "/bookings/" + bookingId + "/cancel?apiKey=" + token)
+                .header("Authorization", "Bearer " + token)
                 .delete()
                 .execute();
     }

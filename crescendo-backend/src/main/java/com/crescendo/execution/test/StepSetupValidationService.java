@@ -18,6 +18,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
+import java.time.ZoneId;
+import org.springframework.scheduling.support.CronExpression;
 
 /** Non-mutating setup checks shared by every workflow operation. */
 @Service
@@ -77,6 +80,7 @@ public class StepSetupValidationService {
         Connections_command connection = validateConnection(app, appKey, connectionId, userId, checks);
         if (connection != null) validateRequiredScopes(operation, connection, checks);
         validateRequiredFields(operation, config, checks);
+        validateScheduleConfiguration(appKey, operationKey, config, checks);
         if (connection != null) validateResources(appKey, operation, connection.getId(), userId, config, checks);
         Map<String, Object> dataIn = validateInputPreview(input, config, checks);
 
@@ -208,6 +212,40 @@ public class StepSetupValidationService {
             checks.add(pass("input-preview", "Data in preview", "Configuration is static and ready to be used."));
         }
         return dataIn;
+    }
+
+    private void validateScheduleConfiguration(String appKey, String operationKey, Map<String, Object> config,
+                                               List<SetupCheck> checks) {
+        if (!"schedule".equals(appKey)) return;
+        if (config.containsKey("timezone")) {
+            try {
+                String timezone = String.valueOf(config.get("timezone"));
+                ZoneId.of(timezone);
+                checks.add(pass("schedule-timezone", "Time zone", "Schedule uses " + timezone + "."));
+            } catch (Exception exception) {
+                checks.add(fail("schedule-timezone", "Time zone", "Choose a valid IANA time zone, such as Asia/Kolkata."));
+                return;
+            }
+        }
+        if ("cron".equals(operationKey)) {
+            try {
+                CronExpression.parse(String.valueOf(config.get("cronExpression")));
+                checks.add(pass("schedule-cron", "Cron expression", "This is a valid six-field Spring cron expression."));
+            } catch (Exception exception) {
+                checks.add(fail("schedule-cron", "Cron expression", "Use six fields: second minute hour day-of-month month day-of-week."));
+            }
+        } else if ("once".equals(operationKey)) {
+            try {
+                Instant time = Instant.parse(String.valueOf(config.get("scheduledAt")));
+                if (time.isAfter(Instant.now())) {
+                    checks.add(pass("schedule-once", "Scheduled time", "This workflow will run once at the selected future time."));
+                } else {
+                    checks.add(fail("schedule-once", "Scheduled time", "Choose a date and time in the future."));
+                }
+            } catch (Exception exception) {
+                checks.add(fail("schedule-once", "Scheduled time", "Choose a valid future date and time."));
+            }
+        }
     }
 
     private boolean containsExpression(Object val) {

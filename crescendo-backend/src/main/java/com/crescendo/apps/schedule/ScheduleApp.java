@@ -23,8 +23,8 @@ public class ScheduleApp implements AppDefinition {
 
                 **Triggers available:**
                 - Interval — trigger the workflow repeatedly (e.g., every X minutes/hours/days)
-                - Cron — trigger the workflow based on a complex cron expression (e.g., `0 9 * * 1-5`)
-                - Specific Time — trigger the workflow once at an exact UTC timestamp
+                - Cron — trigger the workflow based on a six-field cron expression (e.g., `0 0 9 * * MON-FRI`)
+                - Run Once — trigger the workflow once at a chosen date and time
 
                 **Who should use this:** Everyone building recurring, automated tasks instead of relying on real-time webhooks.
 
@@ -36,22 +36,32 @@ public class ScheduleApp implements AppDefinition {
                         "description", "Triggers based on a Cron expression",
                         "configSchema", List.of(
                             Map.of("key", "cronExpression", "label", "Cron Expression", "type", "text", "required", true,
-                                   "placeholder", "0 0 * * * *", "helpText", "Standard 6-field Spring Cron expression (sec min hour day month weekday)")
+                                   "placeholder", "0 30 9 * * MON-FRI", "helpText", "Six fields: second minute hour day-of-month month day-of-week. Example: 0 30 9 * * MON-FRI runs at 9:30 AM on weekdays."),
+                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", true,
+                                   "helpText", "Use the time zone in which the cron time should be interpreted, for example Asia/Kolkata or America/New_York.")
                         )),
                     Map.of("triggerKey", "interval", "name", "Interval",
                         "description", "Triggers repeatedly at a fixed interval",
                         "configSchema", List.of(
                             Map.of("key", "interval", "label", "Interval Value", "type", "number", "required", true,
-                                   "placeholder", "15", "helpText", "Trigger every X units (min: 1)"),
+                                   "placeholder", "15", "helpText", "Trigger every X units. Schedules are checked about every two minutes, so use minutes or larger units for reliable timing."),
                             Map.of("key", "unit", "label", "Interval Unit", "type", "select", "required", true,
                                    "options", List.of(
-                                       Map.of("value", "seconds", "label", "Seconds"),
                                        Map.of("value", "minutes", "label", "Minutes"),
                                        Map.of("value", "hours", "label", "Hours"),
                                        Map.of("value", "days", "label", "Days"),
                                        Map.of("value", "weeks", "label", "Weeks"),
                                        Map.of("value", "months", "label", "Months")
-                                   ), "helpText", "Unit of time")
+                                   ), "helpText", "Unit of time"),
+                            Map.of("key", "timezone", "label", "Time zone", "type", "timezone", "required", true,
+                                   "helpText", "Used in the run payload and for consistent date-based intervals.")
+                        )),
+                    Map.of("triggerKey", "once", "name", "Run Once",
+                        "description", "Triggers the workflow once at a specific future date and time",
+                        "configSchema", List.of(
+                            Map.of("key", "scheduledAt", "label", "Date and time", "type", "datetime", "required", true,
+                                   "requiresFutureTime", true,
+                                   "helpText", "Choose a future date and time in your browser's local time zone. Crescendo stores the exact resulting instant and runs this workflow once.")
                         ))
                 ),
                 List.of()

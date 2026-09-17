@@ -110,8 +110,13 @@ export default function AppBrowserModal({
                 setDetailApp(found);
                 setDetailSection('connection');
                 const hasExisting = connections.some(c => c.appKey === found.appKey);
+                const isDual = (found.authType === 'APIKEY' && found.altAuthType === 'OAUTH2')
+                    || (found.authType === 'OAUTH2' && found.altAuthType === 'APIKEY')
+                    || (found.credentialSchema?.length > 0 && (found.authType === 'OAUTH2' || found.altAuthType === 'OAUTH2'));
                 if (found.appKey === 'telegram' && !hasExisting) {
                     setActiveConnectMode('TELEGRAM_LINK');
+                } else if (isDual) {
+                    setActiveConnectMode(null);
                 } else if (found.authType === 'OAUTH2' || found.altAuthType === 'OAUTH2') {
                     setActiveConnectMode('OAUTH2');
                 } else if (found.authType === 'APIKEY') {
@@ -125,6 +130,7 @@ export default function AppBrowserModal({
     const [isWaitingDesktopOAuth, setIsWaitingDesktopOAuth] = useState(false);
     const [lastAuthUrl, setLastAuthUrl] = useState(null);
     const searchRef = useRef(null);
+    const oauthAttemptRef = useRef(0);
     const { createConnection } = useConnectionStore();
 
     // ── Telegram Deep-Linking State ──────────────────────────────────────────
@@ -476,6 +482,13 @@ export default function AppBrowserModal({
     };
 
     const startOAuth = async (app, opts = {}) => {
+        // A named popup is reused by browsers. A provider-specific, unique name
+        // prevents an unfinished/error page for one provider from being navigated
+        // to the next provider's authorization URL.
+        const popupName = `crescendo_oauth_${app.appKey}_${Date.now()}_${++oauthAttemptRef.current}`;
+        const popup = !isTauri()
+            ? window.open('', popupName, 'width=600,height=700,scrollbars=yes')
+            : null;
         try {
             const providerKey = app.appKey;
             const { authorizationUrl } = await appCatalogApi.getOAuthUrl(providerKey, opts);
@@ -487,10 +500,13 @@ export default function AppBrowserModal({
                 return;
             }
 
-            const popup = window.open(authorizationUrl, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
             if (popup) {
+                popup.location.replace(authorizationUrl);
                 const messageHandler = (event) => {
-                    if (event.data?.type === 'oauth-connected') {
+                    if (event.origin !== window.location.origin) return;
+                    // A callback can only complete the specific connect flow that
+                    // opened this popup; never attach another app's connection.
+                    if (event.data?.type === 'oauth-connected' && event.data?.appKey === app.appKey) {
                         window.removeEventListener('message', messageHandler);
                         const connData = event.data;
                         onConnected?.(connData);
@@ -499,6 +515,9 @@ export default function AppBrowserModal({
                             onClose?.();
                         }
                         setDetailApp(null);
+                    }
+                    if (event.data?.type === 'oauth-error' && event.data?.appKey === app.appKey) {
+                        setConnectError(event.data.error || `Could not connect ${app.name}. Please try again.`);
                     }
                 };
                 window.addEventListener('message', messageHandler);
@@ -516,9 +535,12 @@ export default function AppBrowserModal({
                         setDetailApp(null);
                     }
                 }, 1000);
+            } else {
+                setConnectError('Your browser blocked the authorization window. Allow popups for Crescendo and try again.');
             }
         } catch {
-            if (app.altAuthType === 'APIKEY') {
+            try { popup?.close(); } catch { /* popup was already closed */ }
+            if (app.altAuthType === 'APIKEY' || app.authType === 'APIKEY' || (app.credentialSchema && app.credentialSchema.length > 0)) {
                 setActiveConnectMode('APIKEY');
             } else {
                 setConnectError(`OAuth authorization could not be started for ${app.name}. You can also use Custom OAuth with your developer credentials.`);
@@ -1301,6 +1323,18 @@ export default function AppBrowserModal({
                                         >
                                             Advanced: Bring Your Own OAuth App (Client ID &amp; Secret)
                                         </button>
+
+                                        {hasApiKey && (
+                                            <button
+                                                type="button"
+                                                className="abm-byok-toggle"
+                                                style={{ marginTop: '8px', color: 'var(--accent, #6366f1)' }}
+                                                onClick={() => setActiveConnectMode('APIKEY')}
+                                                title="Connect using API Key or Token instead"
+                                            >
+                                                Or connect using API Key / Token instead
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     /* Credential Forms (Custom OAuth / API Key) */

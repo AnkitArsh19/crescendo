@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.net.URI;
@@ -28,6 +30,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/connections/oauth")
 public class IntegrationOAuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(IntegrationOAuthController.class);
 
     private final IntegrationOAuthService oauthService;
     private final UserOAuthAppService userOAuthAppService;
@@ -107,7 +111,15 @@ public class IntegrationOAuthController {
             @RequestParam("code") String code,
             @RequestParam("state") String state) {
 
-        String redirectUrl = oauthService.handleCallback(provider, code, state);
+        String redirectUrl;
+        try {
+            redirectUrl = oauthService.handleCallback(provider, code, state);
+        } catch (Exception exception) {
+            // Do not leave users on an unstyled backend error page or expose a
+            // provider response. The popup reports a clear generic failure.
+            logger.warn("OAuth callback failed for provider {}: {}", provider, exception.getMessage());
+            redirectUrl = oauthService.failureRedirect(provider);
+        }
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(redirectUrl))
                 .build();

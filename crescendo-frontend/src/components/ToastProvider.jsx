@@ -42,7 +42,11 @@ export default function ToastProvider() {
             >
               {iconMap[toast.type] || iconMap.info}
             </motion.span>
-            <span className="toast-message">{toast.message}</span>
+            <span className="toast-message">
+              {typeof toast.message === 'string'
+                ? toast.message
+                : (toast.message?.message || JSON.stringify(toast.message))}
+            </span>
             <button className="toast-dismiss" onClick={(e) => { e.stopPropagation(); removeToast(toast.id); }}>
               <HiX />
             </button>

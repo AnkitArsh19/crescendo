@@ -20,7 +20,7 @@ const DAYS_OF_WEEK = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
  * Custom Dark-Themed Calendar & Time Picker for Crescendo.
  * Zero browser-default popovers, zero emojis, seamless theme integration.
  */
-function CustomCalendarTimePicker({ value, onChange }) {
+function CustomCalendarTimePicker({ value, onChange, requiresFutureTime = false }) {
     // Parse current value or default to today
     const parsedDate = useMemo(() => {
         if (!value || value.startsWith('{{')) return new Date();
@@ -205,9 +205,9 @@ function CustomCalendarTimePicker({ value, onChange }) {
                 <button
                     type="button"
                     className="custom-dt-now-btn"
-                    onClick={() => onChange(new Date().toISOString())}
+                    onClick={() => onChange(new Date(Date.now() + (requiresFutureTime ? 60 * 60 * 1000 : 0)).toISOString())}
                 >
-                    Now
+                    {requiresFutureTime ? 'In 1 hour' : 'Now'}
                 </button>
             </div>
 
@@ -233,6 +233,7 @@ export function DateTimePickerField({
     availableVariables,
 }) {
     const [mode, setMode] = useState(() => {
+        if (field?.requiresFutureTime) return 'picker';
         if (!value) return 'dynamic';
         if (value.startsWith('{{now') || value === '{{today}}' || value.startsWith('{{$now')) return 'dynamic';
         if (value.startsWith('{{steps.')) return 'variable';
@@ -250,7 +251,7 @@ export function DateTimePickerField({
     ];
 
     React.useEffect(() => {
-        if (!value && field?.required) {
+        if (!value && field?.required && !field?.requiresFutureTime) {
             onChange?.(field?.default || '{{now}}');
         }
     }, []);
@@ -259,6 +260,7 @@ export function DateTimePickerField({
         <div className="dt-picker-container">
             {/* Mode Switcher Tabs */}
             <div className="dt-picker-tabs">
+                {!field?.requiresFutureTime && (
                 <button
                     type="button"
                     className={`dt-picker-tab ${mode === 'dynamic' ? 'active' : ''}`}
@@ -267,6 +269,7 @@ export function DateTimePickerField({
                     <HiLightningBolt />
                     <span>Dynamic Time</span>
                 </button>
+                )}
                 <button
                     type="button"
                     className={`dt-picker-tab ${mode === 'picker' ? 'active' : ''}`}
@@ -286,7 +289,7 @@ export function DateTimePickerField({
             </div>
 
             {/* Mode 1: Dynamic Execution Presets */}
-            {mode === 'dynamic' && (
+            {!field?.requiresFutureTime && mode === 'dynamic' && (
                 <div className="dt-picker-dynamic-box">
                     <div className="dt-picker-chips">
                         {dynamicPresets.map((preset) => {
@@ -316,6 +319,7 @@ export function DateTimePickerField({
                 <CustomCalendarTimePicker
                     value={value}
                     onChange={onChange}
+                    requiresFutureTime={Boolean(field?.requiresFutureTime)}
                 />
             )}
 

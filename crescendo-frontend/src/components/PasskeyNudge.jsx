@@ -5,6 +5,8 @@ import useAuthStore from '../store/authStore';
 import api from '../api/axios';
 import './PasskeyNudge.css'; // We will create this or use inline styles, let's use inline or standard classes
 
+const NUDGE_DELAY_MS = 5 * 60 * 1000;
+
 export default function PasskeyNudge() {
     const { user, isGuest } = useAuthStore();
     const navigate = useNavigate();
@@ -18,7 +20,8 @@ export default function PasskeyNudge() {
         async function evaluateNudge() {
             if (!user || isGuest) return;
 
-            // Condition 1: Must be immediately after login
+            // Condition 1: only consider a freshly signed-in session. The nudge
+            // itself is deliberately delayed so it never interrupts first use.
             const justLoggedIn = location.state?.justLoggedIn;
             if (!justLoggedIn) return;
 
@@ -58,10 +61,11 @@ export default function PasskeyNudge() {
             setIsVisible(true);
         }
 
-        evaluateNudge();
+        const timer = window.setTimeout(evaluateNudge, NUDGE_DELAY_MS);
 
         return () => {
             isMounted = false;
+            window.clearTimeout(timer);
         };
     }, [user, isGuest, location]);
 
@@ -98,8 +102,8 @@ export default function PasskeyNudge() {
         : 'Set up a passkey to sign in safely with your fingerprint, face, or screen lock.';
 
     return (
-        <div className="passkey-nudge-overlay">
-            <div className="passkey-nudge-card">
+        <div className="passkey-nudge-overlay" aria-live="polite">
+            <div className="passkey-nudge-card" role="dialog" aria-label="Passkey suggestion">
                 <button className="passkey-nudge-close" onClick={() => handleDismiss(false)} title="Dismiss">
                     <HiX />
                 </button>
