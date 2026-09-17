@@ -3,6 +3,7 @@ package com.crescendo.apps.microsoftoutlook;
 import com.crescendo.execution.action.ActionContext;
 import com.crescendo.execution.action.ActionMapping;
 import com.crescendo.execution.action.ActionResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 // import java.util.Base64;
@@ -22,7 +23,8 @@ public class MicrosoftOutlookAttachmentHandlers {
         this(new com.crescendo.storage.MediaStreamResolver());
     }
 
-    public MicrosoftOutlookAttachmentHandlers(@org.springframework.beans.factory.annotation.Autowired com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
+    @Autowired
+    public MicrosoftOutlookAttachmentHandlers(com.crescendo.storage.MediaStreamResolver mediaStreamResolver) {
         this.mediaStreamResolver = mediaStreamResolver;
     }
 

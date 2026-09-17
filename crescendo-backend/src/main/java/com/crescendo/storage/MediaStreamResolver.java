@@ -26,15 +26,16 @@ public class MediaStreamResolver {
     private final com.crescendo.storage.security.UrlSecurityValidator urlSecurityValidator;
 
     public MediaStreamResolver() {
-        this.fileStorageService = null;
-        this.urlSecurityValidator = new com.crescendo.storage.security.UrlSecurityValidator();
+        this(new LocalDiskFileStorageService(), new com.crescendo.storage.security.UrlSecurityValidator());
     }
 
     @Autowired
     public MediaStreamResolver(
             @Autowired(required = false) FileStorageService fileStorageService,
             @Autowired(required = false) com.crescendo.storage.security.UrlSecurityValidator urlSecurityValidator) {
-        this.fileStorageService = fileStorageService;
+        this.fileStorageService = fileStorageService != null
+                ? fileStorageService
+                : new LocalDiskFileStorageService();
         this.urlSecurityValidator = urlSecurityValidator != null
                 ? urlSecurityValidator
                 : new com.crescendo.storage.security.UrlSecurityValidator();
@@ -152,11 +153,9 @@ public class MediaStreamResolver {
     }
 
     private MediaSource resolveStorageKey(String storageKey, String filename, String contentType, long sizeBytes) throws IOException {
-        if (fileStorageService == null) {
-            throw new IOException("FileStorageService is not configured for storageKey resolution");
-        }
+        FileStorageService storage = this.fileStorageService != null ? this.fileStorageService : new LocalDiskFileStorageService();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        fileStorageService.streamContent(storageKey, baos);
+        storage.streamContent(storageKey, baos);
         byte[] bytes = baos.toByteArray();
         return new MediaSource(
                 new ByteArrayInputStream(bytes),
