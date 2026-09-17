@@ -217,9 +217,9 @@ public class StepSetupValidationService {
     private void validateScheduleConfiguration(String appKey, String operationKey, Map<String, Object> config,
                                                List<SetupCheck> checks) {
         if (!"schedule".equals(appKey)) return;
-        if (config.containsKey("timezone")) {
+        if (config.containsKey("timezone") && config.get("timezone") != null && !String.valueOf(config.get("timezone")).trim().isEmpty()) {
             try {
-                String timezone = String.valueOf(config.get("timezone"));
+                String timezone = String.valueOf(config.get("timezone")).trim();
                 ZoneId.of(timezone);
                 checks.add(pass("schedule-timezone", "Time zone", "Schedule uses " + timezone + "."));
             } catch (Exception exception) {

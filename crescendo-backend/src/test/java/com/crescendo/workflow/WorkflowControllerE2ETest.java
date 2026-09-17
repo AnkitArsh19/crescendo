@@ -101,7 +101,7 @@ class WorkflowControllerE2ETest extends BaseIntegrationTest {
                         "name": "Schedule Trigger",
                         "appKey": "schedule",
                         "actionKey": "cron",
-                        "configuration": { "cronExpression": "0 0 * * * *" }
+                        "configuration": { "cronExpression": "0 0 * * * *", "timezone": "UTC" }
                     },
                     {
                         "clientId": "action-1",

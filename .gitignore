@@ -38,6 +38,7 @@ yarn-error.log*
 docs_archive/
 demo/
 geo-data/
+.VSCodeCounter/
 
 # Domain Connect Temp Files
 private_key.pem
