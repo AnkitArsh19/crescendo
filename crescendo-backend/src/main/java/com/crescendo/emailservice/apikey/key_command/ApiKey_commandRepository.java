@@ -19,4 +19,6 @@ public interface ApiKey_commandRepository extends JpaRepository<ApiKey_command, 
     Optional<ApiKey_command> findByIdAndUserId(UUID id, UUID userId);
 
     long countByUserIdAndRevokedAtIsNull(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

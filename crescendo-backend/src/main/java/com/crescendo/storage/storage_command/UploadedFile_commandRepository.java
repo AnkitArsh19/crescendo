@@ -16,4 +16,8 @@ public interface UploadedFile_commandRepository extends JpaRepository<UploadedFi
 
     @Query("SELECT COALESCE(SUM(f.sizeBytes), 0) FROM UploadedFile_command f WHERE f.userId = :userId AND f.status != :status")
     Long sumBytesByUserIdAndStatusNot(java.util.UUID userId, FileStatus status);
+
+    List<UploadedFile_command> findAllByUserId(java.util.UUID userId);
+
+    void deleteAllByUserId(java.util.UUID userId);
 }

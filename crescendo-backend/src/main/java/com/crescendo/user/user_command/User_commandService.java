@@ -1,6 +1,17 @@
 package com.crescendo.user.user_command;
 
+import com.crescendo.connections.connections_command.Connections_commandService;
+import com.crescendo.emailservice.apikey.key_command.ApiKey_commandRepository;
+import com.crescendo.emailservice.audience.ContactRepository;
+import com.crescendo.emailservice.broadcast.BroadcastRepository;
+import com.crescendo.emailservice.domain.DomainRepository;
+import com.crescendo.emailservice.emailtemplate.template_command.EmailTemplate_commandRepository;
+import com.crescendo.security.crypto.CryptoShreddingService;
+import com.crescendo.security.mfa.UserMFABackupCodeRepository;
+import com.crescendo.security.mfa.UserMFASettingRepository;
 import com.crescendo.shared.domain.event.DomainEventPublisher;
+import com.crescendo.storage.FileStorageService;
+import com.crescendo.storage.storage_command.UploadedFile_commandRepository;
 import com.crescendo.user.UserDto;
 import com.crescendo.user.domain_event.OAuthProviderUnlinkedEvent;
 import com.crescendo.user.domain_event.UserAccountDeletedEvent;
@@ -12,9 +23,11 @@ import com.crescendo.user.user_command.user_identity.UserIdentity;
 import com.crescendo.user.user_command.user_identity.UserIdentityRepository;
 import com.crescendo.user.user_command.user_session.UserSession;
 import com.crescendo.user.user_command.user_session.UserSessionRepository;
-import com.crescendo.security.mfa.UserMFABackupCodeRepository;
-import com.crescendo.security.mfa.UserMFASettingRepository;
+import com.crescendo.user.user_command.webauthn.PasskeyCredential_commandRepository;
+import com.crescendo.workflow.workflow_command.Workflow_commandService;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,11 +48,13 @@ import java.util.UUID;
  * - Set password (for OAuth-only users adding local login)
  * - Unlink an OAuth provider (Google / GitHub)
  * - Revoke individual or all sessions
- * - Delete account (cascade: credential, identities, MFA, sessions)
+ * - Delete account (full cascade: workflows, triggers, connections, storage files, domains, passkeys, credentials, crypto-shredding)
  */
 @Service
 @Transactional
 public class User_commandService {
+
+    private static final Logger log = LoggerFactory.getLogger(User_commandService.class);
 
     private final User_commandRepository userRepo;
     private final UserCredentialRepository credentialRepo;
@@ -47,6 +62,17 @@ public class User_commandService {
     private final UserSessionRepository sessionRepo;
     private final UserMFASettingRepository mfaSettingRepo;
     private final UserMFABackupCodeRepository mfaBackupRepo;
+    private final Workflow_commandService workflowCommandService;
+    private final Connections_commandService connectionsCommandService;
+    private final UploadedFile_commandRepository uploadedFileRepo;
+    private final FileStorageService fileStorageService;
+    private final PasskeyCredential_commandRepository passkeyRepo;
+    private final DomainRepository domainRepo;
+    private final ApiKey_commandRepository apiKeyRepo;
+    private final EmailTemplate_commandRepository emailTemplateRepo;
+    private final ContactRepository contactRepo;
+    private final BroadcastRepository broadcastRepo;
+    private final CryptoShreddingService cryptoShreddingService;
     private final BCryptPasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
 
@@ -56,6 +82,17 @@ public class User_commandService {
             UserSessionRepository sessionRepo,
             UserMFASettingRepository mfaSettingRepo,
             UserMFABackupCodeRepository mfaBackupRepo,
+            Workflow_commandService workflowCommandService,
+            Connections_commandService connectionsCommandService,
+            UploadedFile_commandRepository uploadedFileRepo,
+            FileStorageService fileStorageService,
+            PasskeyCredential_commandRepository passkeyRepo,
+            DomainRepository domainRepo,
+            ApiKey_commandRepository apiKeyRepo,
+            EmailTemplate_commandRepository emailTemplateRepo,
+            ContactRepository contactRepo,
+            BroadcastRepository broadcastRepo,
+            CryptoShreddingService cryptoShreddingService,
             BCryptPasswordEncoder passwordEncoder,
             DomainEventPublisher eventPublisher) {
         this.userRepo = userRepo;
@@ -64,6 +101,17 @@ public class User_commandService {
         this.sessionRepo = sessionRepo;
         this.mfaSettingRepo = mfaSettingRepo;
         this.mfaBackupRepo = mfaBackupRepo;
+        this.workflowCommandService = workflowCommandService;
+        this.connectionsCommandService = connectionsCommandService;
+        this.uploadedFileRepo = uploadedFileRepo;
+        this.fileStorageService = fileStorageService;
+        this.passkeyRepo = passkeyRepo;
+        this.domainRepo = domainRepo;
+        this.apiKeyRepo = apiKeyRepo;
+        this.emailTemplateRepo = emailTemplateRepo;
+        this.contactRepo = contactRepo;
+        this.broadcastRepo = broadcastRepo;
+        this.cryptoShreddingService = cryptoShreddingService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
     }
@@ -167,24 +215,86 @@ public class User_commandService {
     // ACCOUNT DELETION
 
     /**
-     * Hard-deletes the user and all related data:
-     * UserMFABackupCode → UserMFASetting → UserSession → UserCredential →
-     * UserIdentity → User_command
-     *
-     * In production, you'd typically soft-delete + schedule purge, but for an MVP
-     * this is fine.
-     * Order matters because of foreign key constraints.
+     * Hard-deletes the user and all related data across both CQRS command and query stores:
+     * 1. Workflows: Deactivates workflows, stops background polling triggers, clears steps/edges/projections/workflows
+     * 2. Connections: Purges query projections, credentials, and command connections
+     * 3. Uploaded Files: Deletes physical objects from S3/disk storage, then deletes metadata records
+     * 4. Email Service: Purges API keys, templates, broadcasts, contacts, and custom domains
+     * 5. WebAuthn: Purges passkey credentials
+     * 6. Crypto-shredding: Destroys per-user Data Encryption Key (DEK)
+     * 7. MFA: Purges backup codes and MFA settings
+     * 8. Auth: Revokes and purges sessions, credentials, and identities
+     * 9. User Record: Deletes user row and publishes UserAccountDeletedEvent
      */
     public void deleteAccount(UUID userId) {
-        // Wipe MFA backup codes first (FK → user_mfa_setting via user_id, and FK →
-        // user_command)
+        log.info("[account-deletion] Initiating comprehensive cascade deletion for user {}", userId);
+
+        // 1. Purge workflows and stop polling triggers
+        try {
+            workflowCommandService.purgeAllWorkflowsForUser(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error purging workflows for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 2. Purge connections and projections
+        try {
+            connectionsCommandService.purgeAllConnectionsForUser(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error purging connections for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 3. Purge uploaded files from S3/storage and database
+        try {
+            uploadedFileRepo.findAllByUserId(userId).forEach(file -> {
+                try {
+                    fileStorageService.delete(file.getStorageKey());
+                } catch (Exception ex) {
+                    log.warn("[account-deletion] Failed to delete file storage key {} from storage: {}", file.getStorageKey(), ex.getMessage());
+                }
+            });
+            uploadedFileRepo.deleteAllByUserId(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error purging files for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 4. Purge email service resources
+        try {
+            apiKeyRepo.deleteAllByUserId(userId);
+            emailTemplateRepo.deleteAllByUserId(userId);
+            broadcastRepo.deleteAllByUserId(userId);
+            contactRepo.deleteAllByUserId(userId);
+            domainRepo.deleteAllByUser_Id(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error purging email resources for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 5. Purge passkeys
+        try {
+            passkeyRepo.deleteAllByUserId(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error purging passkeys for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 6. Cryptographic Erasure: Shred per-user Data Encryption Key (DEK)
+        try {
+            cryptoShreddingService.shredUserKey(userId);
+        } catch (Exception e) {
+            log.error("[account-deletion] Error shredding encryption key for user {}: {}", userId, e.getMessage(), e);
+            throw e;
+        }
+
+        // 7. Wipe MFA backup codes first (FK → user_mfa_setting via user_id, and FK → user_command)
         mfaBackupRepo.deleteAllByUserId(userId);
         mfaSettingRepo.findByUser_Id(userId).ifPresent(mfaSettingRepo::delete);
 
-        // Wipe sessions, credential, identities
+        // 8. Wipe sessions, credential, identities
         sessionRepo.findAllActiveByUserId(userId, Instant.now())
                 .forEach(s -> s.setRevokedAt(Instant.now()));
-        // Delete all sessions (active + revoked + expired)
         sessionRepo.deleteAll(sessionRepo.findAll().stream()
                 .filter(s -> s.getUser().getId().equals(userId))
                 .toList());
@@ -192,9 +302,10 @@ public class User_commandService {
         credentialRepo.findByUser_Id(userId).ifPresent(credentialRepo::delete);
         identityRepo.deleteAll(identityRepo.findAllByUser_Id(userId));
 
-        // Finally delete the user row itself.
+        // 9. Finally delete the user row itself and publish event
         userRepo.deleteById(userId);
         eventPublisher.publish(new UserAccountDeletedEvent(userId));
+        log.info("[account-deletion] Successfully completed account deletion for user {}", userId);
     }
 
     // PASSKEY NUDGE

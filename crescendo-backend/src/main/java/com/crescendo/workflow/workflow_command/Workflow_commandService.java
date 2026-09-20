@@ -286,6 +286,24 @@ public class Workflow_commandService {
     }
 
     /**
+     * Completely purges all workflows (active and soft-deleted) owned by a user.
+     * Called during account deletion to unregister triggers, wipe steps/edges/projections,
+     * and hard-delete the workflow rows so foreign key constraints on user_command are cleared.
+     */
+    public void purgeAllWorkflowsForUser(UUID userId) {
+        List<Workflow_command> workflows = workflowRepo.findAllByUser_Id(userId);
+        for (Workflow_command workflow : workflows) {
+            UUID workflowId = workflow.getId();
+            workflow.setActive(false);
+            eventPublisher.publish(new WorkflowDeletedEvent(workflowId));
+            edgeService.deleteAllEdgesForWorkflow(workflowId);
+            stepsCommandService.softDeleteAllForWorkflow(workflowId);
+            workflowQueryRepo.deleteById(workflowId);
+            workflowRepo.delete(workflow);
+        }
+    }
+
+    /**
      * Activates a workflow so it can be triggered.
      * Requires STANDARD or ADMIN tier — GUEST and UNVERIFIED cannot activate.
      */

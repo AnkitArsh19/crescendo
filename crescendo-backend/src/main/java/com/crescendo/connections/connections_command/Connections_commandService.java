@@ -179,6 +179,20 @@ public class Connections_commandService {
     }
 
     /**
+     * Completely purges all connections for a user during account deletion.
+     * Deletes command rows, query projections, and publishes ConnectionDeletedEvent.
+     */
+    public void purgeAllConnectionsForUser(UUID userId) {
+        List<Connections_command> connections = connectionRepo.findByUser_IdOrderByCreatedAtDesc(userId);
+        for (Connections_command connection : connections) {
+            UUID connectionId = connection.getId();
+            connectionRepo.delete(connection);
+            connectionQueryRepo.deleteById(connectionId);
+            eventPublisher.publish(new ConnectionDeletedEvent(connectionId));
+        }
+    }
+
+    /**
      * Tests a connection by making a lightweight API call to the provider.
      * Returns a map with {success: bool, message: string, provider: string}.
      */
