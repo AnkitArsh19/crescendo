@@ -23,4 +23,6 @@ public interface ContactRepository extends JpaRepository<Contact, UUID> {
     long countByUserId(UUID userId);
 
     long countByUserIdAndSubscribedTrue(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

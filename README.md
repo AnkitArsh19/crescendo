@@ -384,6 +384,21 @@ Crescendo intentionally uses production-style patterns instead of simple request
 - **Per-Workflow Alert Granularity & Noise Control**: Prevents notification fatigue for high-frequency or batch workflows with per-workflow alert rules (`ALWAYS`, `FAILURE_ONLY`, `NEVER`) alongside per-category event opt-ins.
 - **Automated Retention Management**: A nightly `@Scheduled` background worker purges notification records older than the configured retention horizon (default 90 days), maintaining bounded storage growth.
 
+### 21. Cryptographic Erasure (Crypto-Shredding) & The 9-Phase Purge Cascade
+
+- **The Write-Ahead Log (WAL) & Immutable Backup Paradox**: In relational databases (PostgreSQL), executing SQL `DELETE` or soft deletes (`is_deleted=true`) marks rows as dead in heap pages and appends `DELETE` records to the Write-Ahead Log (`pg_wal/`). WAL segments are streamed to cold object storage (S3) for Point-In-Time-Recovery (PITR), and daily compressed database dumps are immutable (WORM storage). Standard deletes cannot scrub historical backups, leaving user plaintext credentials and OAuth tokens exposed in backups for 30–90 days in direct violation of GDPR Article 17 ("Right to Erasure").
+- **Two-Tier Envelope Crypto-Shredding**: Sensitive user credentials and integration tokens are encrypted using a per-user Data Encryption Key (DEK). Each DEK is encrypted under a Master Key Encryption Key (KEK) and stored in `user_encryption_key`. On account deletion, `CryptoShreddingService.shredUserKey(userId)` permanently purges the user's DEK. Without the 256-bit AES key, all residual ciphertext across active tables, historical WAL segments, and cold S3 backups instantly becomes pure cryptographic entropy ($2^{256}$ keyspace), achieving permanent, irreversible compliance across immutable backup chains in $O(1)$ time without modifying backups.
+- **Strict 9-Phase Deletion Cascade**: To prevent foreign key constraint violations (`fk_workflow_user`, `fk_connection_user`), active poller race conditions, and orphaned cloud storage blobs, `User_commandService.deleteUserAccount()` executes in strict reverse-dependency order:
+  1. *Poller Deactivation*: Cancels in-memory `ScheduledFuture` tasks in `PollingTriggerScheduler`.
+  2. *Workflow Purge*: Traverses and purges step execution logs $\to$ step runs $\to$ steps $\to$ parent workflows.
+  3. *Connections Purge*: Removes third-party OAuth credentials and integration secrets.
+  4. *Physical Blob Storage Erasure*: Physically deletes files from MinIO / S3 / local disk to prevent storage leaks, then deletes `uploaded_files` metadata rows.
+  5. *Authentication & Passkeys*: Cleans up WebAuthn / FIDO2 public keys (`PasskeyCredential_commandRepository`).
+  6. *Developer Infrastructure*: Revokes programmatic API keys and custom domains.
+  7. *Marketing & Audience*: Purges email templates, audience contacts, and broadcasts.
+  8. *Cryptographic Shredding*: Permanently destroys the per-user DEK from `user_encryption_key`.
+  9. *Principal Record Purge*: Deletes the root `User_command` account entity safely without constraint deadlocks.
+
 ## Reliability and production-style concerns addressed
 
 - Duplicate publish/race prevention with pessimistic locking on outbox reads
@@ -428,7 +443,7 @@ A common challenge in integration platforms is testing hundreds of third-party a
 
 Crescendo utilizes a **4-Layer Zero-Credential Verification Strategy**:
 
-1. **Universal Catalog Contracts (`CatalogContractTest`, `OperationTestContractFactoryTest`)**: All 114 application integrations and 868 action mappings are loaded into memory and audited automatically in ~100ms. Asserts unique app/action keys, parameter schema types, test policy assignments (`READ_TARGET`, `READ_SAMPLE`, `LOCAL_SIMULATION`), handler registration parity, and valid JSON payload formatting without network connectivity or API tokens.
+1. **Universal Catalog Contracts (`CatalogContractTest`, `OperationTestContractFactoryTest`)**: All 114 application integrations and 868 action mappings are scanned and audited in-memory in ~5.4 seconds (with pure assertion execution taking ~225ms across all 6 test cases once reflection classes are loaded in `@BeforeAll`). Asserts structural catalog integrity: unique app/action keys, parameter schema types, test policy assignments (`READ_TARGET`, `READ_SAMPLE`, `LOCAL_SIMULATION`), Java `@ActionMapping` handler registration parity, and valid JSON schema formatting without network connectivity or API tokens. *(Note: Runtime third-party HTTP URL routing and remote payload exchange are verified separately via Layer 3 HTTP mock seams).*
 2. **Step Setup & Non-Mutating Validation Suite (`StepSetupValidationServiceTest`, `StepTestControllerTest`)**: Verifies that step testing routes never fall back to admin credentials, execute local logic simulations safely, and resolve expression templates against sample input data.
 3. **Local HTTP Mock Seams (`ResourceProviderHttpContractTest`, `TriggerSampleServiceTest`)**: Verifies dynamic resource fetching (Gmail inboxes, Spotify playlists, Slack channels) and trigger sample generation by spinning up lightweight embedded local web servers. By feeding dummy tokens (`"test-token-123"`) to the Java providers, tests assert precise OAuth Bearer token headers and UI dropdown serialization without calling external servers.
 4. **Native Email Pipeline Testing**: Transactional HTML template rendering (`EmailTemplateRendererTest`) and cryptographic DNS authentication strings for SPF, DKIM, and DMARC (`DnsVerificationServiceTest`) run completely in-memory in CI, while physical inbox placement and bounce webhooks are validated against a dedicated test subdomain.

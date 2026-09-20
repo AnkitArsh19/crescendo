@@ -55,7 +55,8 @@ import java.util.HashMap;
                 "com.crescendo.emailservice.dmarc",
                 "com.crescendo.emailservice.outboundwebhook",
                 "com.crescendo.notification",
-                "com.crescendo.apps.telegram.repository"
+                "com.crescendo.apps.telegram.repository",
+                "com.crescendo.security.crypto"
         },
         entityManagerFactoryRef = "commandEntityManagerFactory",
         transactionManagerRef = "commandTransactionManager"
@@ -151,7 +152,8 @@ public class CommandDBConfig {
                                 "com.crescendo.emailservice.dmarc",
                                 "com.crescendo.emailservice.outboundwebhook",
                                 "com.crescendo.notification",
-                                "com.crescendo.apps.telegram.entity"
+                                "com.crescendo.apps.telegram.entity",
+                                "com.crescendo.security.crypto"
                         )
                         .properties(props)
                         .build();

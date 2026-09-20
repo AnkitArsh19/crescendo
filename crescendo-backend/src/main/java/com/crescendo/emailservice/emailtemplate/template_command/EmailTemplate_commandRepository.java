@@ -13,4 +13,6 @@ public interface EmailTemplate_commandRepository extends JpaRepository<EmailTemp
     List<EmailTemplate_command> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     Optional<EmailTemplate_command> findByIdAndUserId(UUID id, UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }

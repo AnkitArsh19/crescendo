@@ -26,4 +26,7 @@ public interface Workflow_commandRepository extends JpaRepository<Workflow_comma
 
     /// All non-deleted workflows for a guest session, newest first.
     List<Workflow_command> findAllByGuestSessionId_ValueAndDeletedAtIsNullOrderByCreatedAtDesc(String guestSessionId);
+
+    /// All workflows (including soft-deleted) for a registered user.
+    List<Workflow_command> findAllByUser_Id(UUID userId);
 }

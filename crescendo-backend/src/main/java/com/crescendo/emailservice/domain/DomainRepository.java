@@ -29,4 +29,6 @@ public interface DomainRepository extends JpaRepository<Domain, UUID> {
     List<Domain> findBySendReadiness(DomainSendReadiness readiness);
 
     boolean existsByEmailProviderConnectionId(UUID emailProviderConnectionId);
+
+    void deleteAllByUser_Id(UUID userId);
 }

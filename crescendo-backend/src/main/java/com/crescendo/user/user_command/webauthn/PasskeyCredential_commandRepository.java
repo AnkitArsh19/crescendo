@@ -12,4 +12,5 @@ public interface PasskeyCredential_commandRepository extends JpaRepository<Passk
     Optional<PasskeyCredential_command> findByCredentialId(byte[] credentialId);
     List<PasskeyCredential_command> findByUserId(UUID userId);
     long countByUserId(UUID userId);
+    void deleteAllByUserId(UUID userId);
 }

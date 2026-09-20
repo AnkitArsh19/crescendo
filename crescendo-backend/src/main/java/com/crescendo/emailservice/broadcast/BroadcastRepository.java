@@ -13,4 +13,6 @@ public interface BroadcastRepository extends JpaRepository<Broadcast, UUID> {
     List<Broadcast> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     Optional<Broadcast> findByIdAndUserId(UUID id, UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }
