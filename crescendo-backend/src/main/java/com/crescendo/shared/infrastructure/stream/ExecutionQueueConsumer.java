@@ -33,7 +33,7 @@ import java.util.UUID;
  * (registered via {@code container.receive()} in {@link StreamConsumerRegistrar}).
  * Messages are ACK'd only after successful processing. If the consumer cannot acquire
  * the execution lock (another run in progress), the message is NOT acknowledged,
- * leaving it as a pending entry for automatic redelivery on the next poll.</p>
+ * leaving it as a pending entry in the PEL to be reclaimed by {@link ExecutionQueuePendingReaper}.</p>
  *
  * The actual step-by-step execution engine is a separate concern — this consumer
  * serves as the entry point that dequeues work items and dispatches them.
@@ -83,10 +83,10 @@ public class ExecutionQueueConsumer implements StreamListener<String, MapRecord<
         Optional<String> lockToken = lockService.tryLock(lockKey, 300_000); // 5 min TTL
 
         if (lockToken.isEmpty()) {
-            // Do NOT acknowledge — the message stays as a pending entry and will be
-            // redelivered automatically on the next poll cycle. This prevents message
-            // loss when another run of the same workflow is in progress.
-            logger.warn("[execution] Could not acquire lock for workflow {}, run {} will be redelivered",
+            // Do NOT acknowledge — the message stays as a pending entry in the PEL.
+            // Note: Because consumers read with '>', this message will NOT be re-read on normal polls;
+            // it remains in the PEL until ExecutionQueuePendingReaper claims it after 5 min idle.
+            logger.warn("[execution] Could not acquire lock for workflow {}, run {} will be reclaimed by reaper",
                     workflowId, workflowRunId);
             return;
         }

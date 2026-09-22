@@ -83,7 +83,7 @@ public class StreamConsumerRegistrar {
 
         // Execution queue: manual ACK — message stays pending until processing succeeds.
         // If the consumer fails to process (e.g., lock contention, crash), the message
-        // is automatically redelivered on the next poll via the pending entries list.
+        // remains in the PEL and is reclaimed after 5 minutes by ExecutionQueuePendingReaper.
         container.receive(consumer,
                 StreamOffset.create(RedisStreamConfig.STREAM_EXECUTION_QUEUE, ReadOffset.lastConsumed()),
                 executionConsumer);

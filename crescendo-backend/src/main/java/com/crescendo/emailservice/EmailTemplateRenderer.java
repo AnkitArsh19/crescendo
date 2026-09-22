@@ -756,9 +756,9 @@ public class EmailTemplateRenderer {
     }
 
     public static String renderSmartLoginAlert(String device, String location, String country, String revokeUrl) {
-        String locationDisplay = location;
-        if (country != null && !country.isBlank() && !location.contains(country)) {
-            locationDisplay = location + " (" + country + ")";
+        String locationDisplay = (location != null && !location.isBlank()) ? location : "Unknown Location";
+        if (country != null && !country.isBlank() && !locationDisplay.contains(country) && locationDisplay.startsWith("IP: ")) {
+            locationDisplay = locationDisplay + " (" + country + ")";
         }
         String content = """
             <div class="badge"><span class="badge-dot"></span>Security Alert</div>

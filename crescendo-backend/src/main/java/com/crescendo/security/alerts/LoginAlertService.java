@@ -110,9 +110,15 @@ public class LoginAlertService {
             String revokeUrl = frontendUrl + "/auth/revoke-session?token=" + revokeToken;
 
             String device = current.getDeviceLabel() != null ? current.getDeviceLabel() : "Unknown Device";
-            String location = currentIp != null ? "IP: " + currentIp : "Unknown Location";
-            if (currentCountry != null) {
-                location += " (" + currentCountry + ")";
+            var resolvedLocation = geoIpService.lookupLocation(currentIp);
+            String location = resolvedLocation
+                    .map(GeoIpService.GeoLocation::toDisplayString)
+                    .orElse(null);
+
+            if (location == null || location.isBlank()) {
+                location = currentIp != null ? "IP: " + currentIp : "Unknown Location";
+            } else if (currentIp != null && !currentIp.equals("127.0.0.1") && !currentIp.equals("localhost")) {
+                location += " (IP: " + currentIp + ")";
             }
 
             notificationService.sendSmartLoginAlertEmail(email, device, location, currentCountry, revokeUrl);
