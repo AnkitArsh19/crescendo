@@ -75,6 +75,8 @@ public class UserDto {
             String sessionId,
             String userAgent,
             String clientIp,
+            String location,
+            String country,
             String deviceLabel,
             boolean current,
             Instant createdAt,

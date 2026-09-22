@@ -2,6 +2,7 @@ package com.crescendo.security.alerts;
 
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
+import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.model.CountryResponse;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -23,6 +24,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,13 +33,23 @@ import java.util.concurrent.atomic.AtomicReference;
 public class GeoIpService {
     private static final Logger log = LoggerFactory.getLogger(GeoIpService.class);
 
+    public record GeoLocation(String city, String region, String country, String countryCode) {
+        public String toDisplayString() {
+            List<String> parts = new ArrayList<>();
+            if (city != null && !city.isBlank()) parts.add(city);
+            if (region != null && !region.isBlank()) parts.add(region);
+            if (country != null && !country.isBlank()) parts.add(country);
+            return parts.isEmpty() ? null : String.join(", ", parts);
+        }
+    }
+
     private final String dbPath;
     private final String licenseKey;
     private final boolean autoUpdateEnabled;
     private final AtomicReference<DatabaseReader> reader = new AtomicReference<>();
 
     public GeoIpService(
-            @Value("${app.geoip.db-path:}") String dbPath,
+            @Value("${app.geoip.db-path:geo-data/GeoLite2-City.mmdb}") String dbPath,
             @Value("${app.geoip.license-key:}") String licenseKey,
             @Value("${app.geoip.auto-update.enabled:false}") boolean autoUpdateEnabled) {
         this.dbPath = dbPath;
@@ -47,7 +60,7 @@ public class GeoIpService {
     @PostConstruct
     public void init() {
         if (dbPath == null || dbPath.isBlank()) {
-            log.info("GeoIP database path not configured. Country-level login alerts will be disabled.");
+            log.info("GeoIP database path not configured. Geolocation login alerts will be disabled.");
             return;
         }
 
@@ -55,7 +68,7 @@ public class GeoIpService {
 
         // Auto-download on startup if missing and key is provided
         if (!dbFile.exists() && autoUpdateEnabled && licenseKey != null && !licenseKey.isBlank() && !licenseKey.equals("REPLACE_ME")) {
-            log.info("GeoIP database missing on startup. Attempting initial download...");
+            log.info("GeoIP database missing at '{}' on startup. Attempting initial download...", dbPath);
             downloadAndExtractDatabase();
         }
 
@@ -65,7 +78,7 @@ public class GeoIpService {
     private void loadDatabase() {
         File dbFile = new File(dbPath);
         if (!dbFile.exists() || !dbFile.canRead()) {
-            log.warn("GeoIP database file not found or unreadable at '{}'. Country-level alerts disabled.", dbPath);
+            log.warn("GeoIP database file not found or unreadable at '{}'. Geolocation alerts disabled.", dbPath);
             return;
         }
 
@@ -96,7 +109,7 @@ public class GeoIpService {
     }
 
     private boolean downloadAndExtractDatabase() {
-        String downloadUrl = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=" + licenseKey + "&suffix=tar.gz";
+        String downloadUrl = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=" + licenseKey + "&suffix=tar.gz";
         File targetFile = new File(dbPath);
         File parentDir = targetFile.getParentFile();
 
@@ -145,26 +158,59 @@ public class GeoIpService {
     }
 
     /**
-     * Looks up the country ISO code for an IP address.
-     * Returns Optional.empty() if the IP is internal, unresolvable, or if the database is disabled.
+     * Resolves the high-resolution location (City, State/Region, Country) for an IP address.
+     * Returns Optional.empty() if unresolvable, or a local representation for private/loopback IPs.
      */
     @SuppressWarnings({"deprecation", "removal"})
-    public Optional<String> lookupCountry(String ipAddress) {
-        DatabaseReader currentReader = reader.get();
-        if (currentReader == null || ipAddress == null || ipAddress.isBlank()) {
+    public Optional<GeoLocation> lookupLocation(String ipAddress) {
+        if (ipAddress == null || ipAddress.isBlank()) {
             return Optional.empty();
         }
 
         try {
             InetAddress ip = InetAddress.getByName(ipAddress);
-            CountryResponse response = currentReader.country(ip);
-            if (response != null && response.getCountry() != null) {
-                return Optional.ofNullable(response.getCountry().getIsoCode());
+            if (ip.isLoopbackAddress() || ip.isSiteLocalAddress()) {
+                return Optional.of(new GeoLocation("Localhost", null, "Local Network", null));
+            }
+
+            DatabaseReader currentReader = reader.get();
+            if (currentReader == null) {
+                return Optional.empty();
+            }
+
+            try {
+                CityResponse response = currentReader.city(ip);
+                if (response != null) {
+                    String city = response.getCity() != null ? response.getCity().getName() : null;
+                    String region = response.getMostSpecificSubdivision() != null ? response.getMostSpecificSubdivision().getName() : null;
+                    String country = response.getCountry() != null ? response.getCountry().getName() : null;
+                    String isoCode = response.getCountry() != null ? response.getCountry().getIsoCode() : null;
+                    return Optional.of(new GeoLocation(city, region, country, isoCode));
+                }
+            } catch (UnsupportedOperationException notCityDb) {
+                // Fallback if reader was opened with a Country-only database
+                CountryResponse response = currentReader.country(ip);
+                if (response != null && response.getCountry() != null) {
+                    String country = response.getCountry().getName();
+                    String isoCode = response.getCountry().getIsoCode();
+                    return Optional.of(new GeoLocation(null, null, country, isoCode));
+                }
             }
         } catch (IOException | GeoIp2Exception e) {
-            // Address not found in database or invalid format. Normal for private IPs.
             log.debug("GeoIP lookup failed for IP: {}", ipAddress, e);
+        } catch (Exception e) {
+            log.warn("Unexpected error resolving GeoIP for IP: {}", ipAddress, e);
         }
         return Optional.empty();
+    }
+
+    /**
+     * Looks up the country ISO code for an IP address.
+     * Returns Optional.empty() if the IP is internal, unresolvable, or if the database is disabled.
+     */
+    public Optional<String> lookupCountry(String ipAddress) {
+        return lookupLocation(ipAddress)
+                .map(GeoLocation::countryCode)
+                .filter(code -> !code.isBlank());
     }
 }

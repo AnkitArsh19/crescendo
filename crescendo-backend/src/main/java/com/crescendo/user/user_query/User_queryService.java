@@ -9,6 +9,7 @@ import com.crescendo.user.user_command.user_identity.UserIdentity;
 import com.crescendo.user.user_command.user_identity.UserIdentityRepository;
 import com.crescendo.user.user_command.user_session.UserSession;
 import com.crescendo.user.user_command.user_session.UserSessionRepository;
+import com.crescendo.security.alerts.GeoIpService;
 import com.crescendo.security.mfa.UserMFASettingRepository;
 import com.crescendo.user.user_command.webauthn.PasskeyCredential_commandRepository;
 import org.springframework.http.HttpStatus;
@@ -39,19 +40,22 @@ public class User_queryService {
     private final UserSessionRepository sessionRepo;
     private final UserMFASettingRepository mfaSettingRepo;
     private final PasskeyCredential_commandRepository passkeyRepo;
+    private final GeoIpService geoIpService;
 
     public User_queryService(User_commandRepository userRepo,
                              UserCredentialRepository credentialRepo,
                              UserIdentityRepository identityRepo,
                              UserSessionRepository sessionRepo,
                              UserMFASettingRepository mfaSettingRepo,
-                             PasskeyCredential_commandRepository passkeyRepo) {
+                             PasskeyCredential_commandRepository passkeyRepo,
+                             GeoIpService geoIpService) {
         this.userRepo = userRepo;
         this.credentialRepo = credentialRepo;
         this.identityRepo = identityRepo;
         this.sessionRepo = sessionRepo;
         this.mfaSettingRepo = mfaSettingRepo;
         this.passkeyRepo = passkeyRepo;
+        this.geoIpService = geoIpService;
     }
     /**
      * Builds the complete account profile for GET /users/me.
@@ -123,10 +127,24 @@ public class User_queryService {
     }
 
     private UserDto.ActiveSessionResponse toActiveSession(UserSession session, UUID currentSessionId) {
+        String clientIp = session.getClientIp() != null ? session.getClientIp().value() : null;
+        String location = null;
+        String country = null;
+
+        if (clientIp != null && !clientIp.isBlank()) {
+            var geo = geoIpService.lookupLocation(clientIp).orElse(null);
+            if (geo != null) {
+                location = geo.toDisplayString();
+                country = geo.country();
+            }
+        }
+
         return new UserDto.ActiveSessionResponse(
                 session.getId().toString(),
                 session.getUserAgent() != null ? session.getUserAgent().value() : null,
-                session.getClientIp() != null ? session.getClientIp().value() : null,
+                clientIp,
+                location,
+                country,
                 session.getDeviceLabel(),
                 session.getId().equals(currentSessionId),
                 session.getCreatedAt(),

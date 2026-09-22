@@ -603,8 +603,8 @@ export default function SecuritySettings() {
                                     <div className="session-card-meta">
                                         <span className="session-card-meta-item">
                                             <HiOutlineLocationMarker />
-                                            {session.country
-                                                ? `${session.country}${session.clientIp ? ` · ${session.clientIp}` : ''}`
+                                            {(session.location || session.country)
+                                                ? `${session.location || session.country}${session.clientIp ? ` · ${session.clientIp}` : ''}`
                                                 : session.clientIp || 'Unknown Location'}
                                         </span>
                                         <span className="session-card-meta-item">
