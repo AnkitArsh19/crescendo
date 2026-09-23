@@ -283,6 +283,22 @@ public class UserSession {
         this.deviceLabel = deviceLabel;
     }
 
+    /**
+     * Rotates the refresh token in-place on this existing session row.
+     * The session identity (id, createdAt, deviceId, deviceLabel, clientIp) is preserved,
+     * so the user's session list does not grow on every page load.
+     *
+     * @param newHash        SHA-256 hash of the newly generated refresh token
+     * @param newExpiry      when the new refresh token expires
+     * @param predecessorHash hash of the token that was just rotated out (for reuse detection)
+     */
+    public void rotateToken(String newHash, Instant newExpiry, String predecessorHash) {
+        this.predecessorTokenHash = predecessorHash;
+        this.refreshTokenHash = newHash;
+        this.expiresAt = newExpiry;
+        this.lastUsedAt = Instant.now();
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

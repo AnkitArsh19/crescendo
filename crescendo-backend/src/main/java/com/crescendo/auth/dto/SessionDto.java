@@ -8,6 +8,7 @@ public record SessionDto(
         String deviceLabel,
         String clientIp,
         String country,
+        String location,
         Instant createdAt,
         Instant lastUsedAt,
         boolean isCurrent
