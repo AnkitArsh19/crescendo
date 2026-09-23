@@ -48,7 +48,9 @@ public class SessionController {
 
         return activeSessions.stream().map(s -> {
             String ip = s.getClientIp() != null ? s.getClientIp().value() : null;
-            String country = geoIpService.lookupCountry(ip).orElse(null);
+            var geo = geoIpService.lookupLocation(ip);
+            String country = geo.map(GeoIpService.GeoLocation::countryCode).orElse(null);
+            String location = geo.map(GeoIpService.GeoLocation::toDisplayString).orElse(null);
             boolean isCurrent = s.getId().equals(currentSid);
 
             return new SessionDto(
@@ -56,6 +58,7 @@ public class SessionController {
                     s.getDeviceLabel(),
                     ip,
                     country,
+                    location,
                     s.getCreatedAt(),
                     s.getLastUsedAt(),
                     isCurrent
