@@ -141,14 +141,52 @@ public class LoginAlertService {
         userQueryRepo.findById(event.aggregateId()).ifPresent(user -> {
             String revokeToken = jwtService.issueSessionRevokeToken(user.getId(), event.getSessionId());
             String revokeUrl = frontendUrl + "/auth/revoke-session?token=" + revokeToken;
-            notificationService.sendSuspiciousActivityEmail(user.getEmailId(), event.getOriginalIp(), event.getNewIp(), revokeUrl);
+
+            // Resolve location for original and new IP
+            var origGeo = geoIpService.lookupLocation(event.getOriginalIp());
+            var newGeo = geoIpService.lookupLocation(event.getNewIp());
+            String origLocation = origGeo.map(GeoIpService.GeoLocation::toDisplayString).orElse("Unknown Location");
+            String newLocation = newGeo.map(GeoIpService.GeoLocation::toDisplayString).orElse("Unknown Location");
+
+            String origCountry = origGeo.map(GeoIpService.GeoLocation::countryCode).orElse(null);
+            String newCountry = newGeo.map(GeoIpService.GeoLocation::countryCode).orElse(null);
+            boolean countryChanged = origCountry != null && newCountry != null && !origCountry.equalsIgnoreCase(newCountry);
+            boolean locationChanged = !origLocation.equals("Unknown Location") 
+                    && !newLocation.equals("Unknown Location") 
+                    && !origLocation.equalsIgnoreCase(newLocation);
+            String activityType = (countryChanged || locationChanged) ? "Rapid Geo-IP Shift" : "IP Network Shift";
+
+            notificationService.sendSuspiciousActivityEmail(
+                    user.getEmailId(),
+                    origLocation,
+                    event.getOriginalIp(),
+                    newLocation,
+                    event.getNewIp(),
+                    activityType,
+                    revokeUrl
+            );
+
             try {
+                String notifBody;
+                if (!origLocation.equals("Unknown Location") && !newLocation.equals("Unknown Location")) {
+                    notifBody = "IP address changed from " + origLocation + " to " + newLocation;
+                } else {
+                    notifBody = "IP address changed during active session from " + event.getOriginalIp() + " to " + event.getNewIp();
+                }
+
                 userNotificationService.create(
                         user.getId(),
                         NotificationType.LOGIN_SUSPICIOUS,
                         "Suspicious login activity detected",
-                        "IP address changed during active session from " + event.getOriginalIp() + " to " + event.getNewIp(),
-                        Map.of("sessionId", event.getSessionId().toString(), "originalIp", event.getOriginalIp(), "newIp", event.getNewIp())
+                        notifBody,
+                        Map.of(
+                                "sessionId", event.getSessionId().toString(),
+                                "originalIp", event.getOriginalIp(),
+                                "newIp", event.getNewIp(),
+                                "originalLocation", origLocation,
+                                "newLocation", newLocation,
+                                "activity", activityType
+                        )
                 );
             } catch (Exception e) {
                 log.warn("Failed to create in-app notification for suspicious login: {}", e.getMessage());

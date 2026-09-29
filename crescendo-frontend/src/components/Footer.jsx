@@ -46,6 +46,8 @@ export default function Footer() {
                             <li><Link to="/docs" className="footer-link">Documentation</Link></li>
                             <li><Link to="/docs/authentication" className="footer-link">Authentication</Link></li>
                             <li><Link to="/docs/api/workflows" className="footer-link">API Reference</Link></li>
+                            <li><Link to="/security" className="footer-link">Security &amp; Trust</Link></li>
+                            <li><Link to="/about" className="footer-link">About &amp; Story</Link></li>
                             <li><a href="https://github.com/AnkitArsh19/crescendo-sdk" className="footer-link" target="_blank" rel="noreferrer">SDKs</a></li>
                         </ul>
                     </div>
@@ -110,6 +112,11 @@ export default function Footer() {
                     <div className="footer-legal">
                         <Link to="/privacy">Privacy Policy</Link>
                         <Link to="/terms">Terms of Service</Link>
+                        <Link to="/cookies">Cookie Policy</Link>
+                        <Link to="/security">Security</Link>
+                        <Link to="/dpa">DPA</Link>
+                        <Link to="/subprocessors">Sub-processors</Link>
+                        <Link to="/acceptable-use">Acceptable Use</Link>
                     </div>
                 </div>
             </div>

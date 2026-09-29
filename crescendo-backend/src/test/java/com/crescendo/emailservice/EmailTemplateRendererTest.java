@@ -93,4 +93,41 @@ class EmailTemplateRendererTest {
         assertTrue(html.contains("https://app.crescendo.run/privacy"), "Footer should link to privacy policy");
         assertTrue(html.contains("https://app.crescendo.run/terms"), "Footer should link to terms of service");
     }
+
+    @Test
+    @DisplayName("Suspicious activity email contains original/new locations, IPs, and mobile-safe fixed table layout")
+    void suspiciousActivityTemplate() {
+        String origLoc = "New Delhi, Delhi, India";
+        String origIp = "2401:4900:7160:f461:5823:d42d:e784";
+        String newLoc = "Bengaluru, Karnataka, India";
+        String newIp = "2401:4900:3e80:f430:ed81:afed:d138";
+        String revokeUrl = "https://app.crescendo.run/auth/revoke-session?token=test-token";
+
+        String html = EmailTemplateRenderer.renderSuspiciousActivity(origLoc, origIp, newLoc, newIp, "Rapid Geo-IP Shift", revokeUrl);
+
+        assertNotNull(html);
+        assertTrue(html.contains(origLoc), "HTML should contain original location");
+        assertTrue(html.contains(origIp), "HTML should contain original IP");
+        assertTrue(html.contains(newLoc), "HTML should contain new location");
+        assertTrue(html.contains(newIp), "HTML should contain new IP");
+        assertTrue(html.contains("Rapid Geo-IP Shift"), "HTML should contain activity type");
+        assertTrue(html.contains(revokeUrl), "HTML should contain revoke URL");
+        assertTrue(html.contains("table-layout: fixed"), "HTML table must enforce fixed layout to prevent mobile overflow");
+        assertTrue(html.contains("word-break: break-all"), "Monospace IP must have word-break: break-all for IPv6 wrapping");
+    }
+
+    @Test
+    @DisplayName("Smart login alert email cleanly splits location and IP address and applies mobile-safe styling")
+    void smartLoginAlertTemplate() {
+        String locWithIp = "New Delhi, Delhi, India (IP: 2401:4900:7160:f461:5823:d42d:e784)";
+        String revokeUrl = "https://app.crescendo.run/auth/revoke-session?token=test-token";
+
+        String html = EmailTemplateRenderer.renderSmartLoginAlert("Chrome on Windows", locWithIp, "IN", revokeUrl);
+
+        assertNotNull(html);
+        assertTrue(html.contains("Chrome on Windows"), "HTML should contain device");
+        assertTrue(html.contains("New Delhi, Delhi, India"), "HTML should contain location");
+        assertTrue(html.contains("2401:4900:7160:f461:5823:d42d:e784"), "HTML should contain IP address");
+        assertTrue(html.contains("table-layout: fixed"), "HTML table must enforce fixed layout");
+    }
 }

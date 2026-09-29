@@ -101,7 +101,7 @@ public class EmailTemplateRenderer {
                     color: #71717a;
                 }
                 .email-body {
-                    padding: 36px 40px 40px;
+                    padding: 32px 28px 36px;
                 }
 
                 /* ── Landing Page Micro-Badge ── */
@@ -155,7 +155,9 @@ public class EmailTemplateRenderer {
 
                 /* ── Metadata Spec Grid (replaces plain <ul>) ── */
                 .meta-table {
-                    width: 100%;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    table-layout: fixed !important;
                     border: 1px solid #e4e4e7;
                     border-radius: 10px;
                     background-color: #fafafa;
@@ -165,9 +167,11 @@ public class EmailTemplateRenderer {
                     overflow: hidden;
                 }
                 .meta-table tr td {
-                    padding: 12px 16px;
+                    padding: 12px 14px;
                     border-bottom: 1px solid #e4e4e7;
                     font-size: 13px;
+                    word-break: break-word;
+                    overflow-wrap: anywhere;
                 }
                 .meta-table tr:last-child td {
                     border-bottom: none;
@@ -178,20 +182,25 @@ public class EmailTemplateRenderer {
                     letter-spacing: 0.6px;
                     text-transform: uppercase;
                     color: #71717a;
-                    width: 30%;
+                    width: 34%;
                     vertical-align: middle;
                 }
                 .meta-val {
                     font-weight: 500;
                     color: #09090b;
                     vertical-align: middle;
+                    word-break: break-word;
+                    overflow-wrap: anywhere;
                 }
                 .meta-val-mono {
                     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-                    font-size: 12px;
+                    font-size: 11.5px;
                     font-weight: 600;
                     color: #18181b;
                     vertical-align: middle;
+                    word-break: break-all;
+                    overflow-wrap: anywhere;
+                    line-height: 1.45;
                 }
 
                 /* ── Landing Page Full-Pill CTA Button ── */
@@ -461,13 +470,19 @@ public class EmailTemplateRenderer {
 
                 /* ── Responsive ── */
                 @media only screen and (max-width: 620px) {
-                    .email-wrapper { padding: 24px 12px !important; }
-                    .email-header { padding: 24px 20px 20px !important; }
-                    .email-body { padding: 28px 20px 32px !important; }
-                    .email-footer { padding: 24px 20px !important; }
-                    .email-body h2 { font-size: 21px !important; }
-                    .btn { padding: 12px 26px !important; font-size: 13px !important; }
-                    .code-block { font-size: 26px !important; letter-spacing: 6px !important; }
+                    .email-wrapper { padding: 16px 8px !important; }
+                    .email-card { border-radius: 12px !important; }
+                    .email-header { padding: 20px 16px 16px !important; }
+                    .email-body { padding: 20px 16px 24px !important; }
+                    .email-footer { padding: 20px 16px !important; }
+                    .email-body h2 { font-size: 20px !important; }
+                    .meta-table { width: 100% !important; table-layout: fixed !important; margin: 18px 0 !important; }
+                    .meta-table tr td { padding: 10px 12px !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+                    .meta-key { width: 36% !important; font-size: 10px !important; letter-spacing: 0.4px !important; }
+                    .meta-val { font-size: 12px !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+                    .meta-val-mono { font-size: 11px !important; word-break: break-all !important; overflow-wrap: anywhere !important; line-height: 1.4 !important; }
+                    .btn { padding: 12px 24px !important; font-size: 13px !important; width: 100% !important; display: block !important; }
+                    .code-block { font-size: 24px !important; letter-spacing: 4px !important; }
                 }
             </style>
         </head>
@@ -706,22 +721,24 @@ public class EmailTemplateRenderer {
     }
 
     public static String renderLoginAlert(String device, String location) {
+        String safeDevice = (device != null && !device.isBlank()) ? device : "Unknown Device";
+        String safeLoc = (location != null && !location.isBlank()) ? location : "Unknown Location";
         String content = """
             <div class="badge"><span class="badge-dot"></span>New Sign-In</div>
             <h2>New sign-in detected</h2>
             <p>We noticed a new sign-in to your Crescendo account from an unrecognized device or location.</p>
-            <table class="meta-table" width="100%%" cellpadding="0" cellspacing="0">
+            <table class="meta-table" width="100%%" cellpadding="0" cellspacing="0" style="width: 100%%; max-width: 100%%; table-layout: fixed; border-collapse: separate;">
                 <tr>
-                    <td class="meta-key">Device</td>
-                    <td class="meta-val">%s</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Device</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">%s</td>
                 </tr>
                 <tr>
-                    <td class="meta-key">Location</td>
-                    <td class="meta-val">%s</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Location</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">%s</td>
                 </tr>
                 <tr>
-                    <td class="meta-key">Time</td>
-                    <td class="meta-val">Just now</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Time</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">Just now</td>
                 </tr>
             </table>
             <div class="info-box">
@@ -732,7 +749,7 @@ public class EmailTemplateRenderer {
                 <p>If you don't recognise this sign-in, please change your password immediately and contact
                    us at <a href="mailto:support@crescendo.run">support@crescendo.run</a>.</p>
             </div>
-            """.formatted(device, location);
+            """.formatted(safeDevice, safeLoc);
         return render(content);
     }
 
@@ -760,23 +777,52 @@ public class EmailTemplateRenderer {
         if (country != null && !country.isBlank() && !locationDisplay.contains(country) && locationDisplay.startsWith("IP: ")) {
             locationDisplay = locationDisplay + " (" + country + ")";
         }
+
+        String displayLoc = locationDisplay;
+        String ipDisplay = null;
+        if (locationDisplay.contains(" (IP: ")) {
+            int idx = locationDisplay.indexOf(" (IP: ");
+            displayLoc = locationDisplay.substring(0, idx);
+            ipDisplay = locationDisplay.substring(idx + 6).replace(")", "").trim();
+        }
+
+        StringBuilder rows = new StringBuilder();
+        rows.append("""
+                <tr>
+                    <td class="meta-key" style="width: 34%; vertical-align: middle;">Device</td>
+                    <td class="meta-val" style="width: 66%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">{{device}}</td>
+                </tr>
+                <tr>
+                    <td class="meta-key" style="width: 34%; vertical-align: middle;">Location</td>
+                    <td class="meta-val" style="width: 66%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">{{location}}</td>
+                </tr>
+                """
+                .replace("{{device}}", device != null ? device : "Unknown Device")
+                .replace("{{location}}", displayLoc));
+
+        if (ipDisplay != null && !ipDisplay.isBlank()) {
+            rows.append("""
+                <tr>
+                    <td class="meta-key" style="width: 34%; vertical-align: middle;">IP Address</td>
+                    <td class="meta-val-mono" style="width: 66%; word-break: break-all; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; vertical-align: middle;">{{ip}}</td>
+                </tr>
+                """
+                .replace("{{ip}}", ipDisplay));
+        }
+
+        rows.append("""
+                <tr>
+                    <td class="meta-key" style="width: 34%; vertical-align: middle;">Status</td>
+                    <td class="meta-val" style="width: 66%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">Active Session</td>
+                </tr>
+                """);
+
         String content = """
             <div class="badge"><span class="badge-dot"></span>Security Alert</div>
             <h2>New sign-in detected</h2>
             <p>We noticed a new sign-in to your Crescendo account from an unrecognized device or location.</p>
-            <table class="meta-table" width="100%%" cellpadding="0" cellspacing="0">
-                <tr>
-                    <td class="meta-key">Device</td>
-                    <td class="meta-val">%s</td>
-                </tr>
-                <tr>
-                    <td class="meta-key">Location</td>
-                    <td class="meta-val">%s</td>
-                </tr>
-                <tr>
-                    <td class="meta-key">Status</td>
-                    <td class="meta-val">Active Session</td>
-                </tr>
+            <table class="meta-table" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: separate;">
+            """ + rows.toString() + """
             </table>
             <div class="info-box">
                 <p>If this was you, you can safely ignore this email.</p>
@@ -786,29 +832,50 @@ public class EmailTemplateRenderer {
                 <p>If you don't recognise this sign-in, revoke access immediately using the button below, then change your password.</p>
             </div>
             <div class="btn-container" style="margin-top: 28px;">
-                <a href="%s" class="btn btn-danger">Revoke Access &rarr;</a>
+                <a href="{{revokeUrl}}" class="btn btn-danger">Revoke Access &rarr;</a>
             </div>
-            """.formatted(device, locationDisplay, revokeUrl);
+            """
+            .replace("{{revokeUrl}}", revokeUrl != null ? revokeUrl : "#");
         return render(content);
     }
 
-    public static String renderSuspiciousActivity(String originalIp, String newIp, String revokeUrl) {
+    public static String renderSuspiciousActivity(
+            String originalLocation,
+            String originalIp,
+            String newLocation,
+            String newIp,
+            String activityType,
+            String revokeUrl) {
+        String safeOrigLoc = (originalLocation != null && !originalLocation.isBlank()) ? originalLocation : "Unknown Location";
+        String safeNewLoc = (newLocation != null && !newLocation.isBlank()) ? newLocation : "Unknown Location";
+        String safeOrigIp = (originalIp != null && !originalIp.isBlank()) ? originalIp : "Unknown IP";
+        String safeNewIp = (newIp != null && !newIp.isBlank()) ? newIp : "Unknown IP";
+        String safeActivity = (activityType != null && !activityType.isBlank()) ? activityType : "Rapid Geo-IP Shift";
+
         String content = """
             <div class="badge"><span class="badge-dot"></span>Security Incident</div>
             <h2>Suspicious session activity detected</h2>
-            <p>We detected that one of your active sessions suddenly changed IP addresses across a large geographic distance.</p>
-            <table class="meta-table" width="100%%" cellpadding="0" cellspacing="0">
+            <p>We detected that one of your active sessions suddenly changed IP addresses or geographic networks.</p>
+            <table class="meta-table" width="100%%" cellpadding="0" cellspacing="0" style="width: 100%%; max-width: 100%%; table-layout: fixed; border-collapse: separate;">
                 <tr>
-                    <td class="meta-key">Original IP</td>
-                    <td class="meta-val-mono">%s</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Original Location</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">%s</td>
                 </tr>
                 <tr>
-                    <td class="meta-key">New IP</td>
-                    <td class="meta-val-mono">%s</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Original IP</td>
+                    <td class="meta-val-mono" style="width: 66%%; word-break: break-all; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; vertical-align: middle;">%s</td>
                 </tr>
                 <tr>
-                    <td class="meta-key">Activity</td>
-                    <td class="meta-val">Rapid Geo-IP Shift</td>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">New Location</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">%s</td>
+                </tr>
+                <tr>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">New IP</td>
+                    <td class="meta-val-mono" style="width: 66%%; word-break: break-all; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; vertical-align: middle;">%s</td>
+                </tr>
+                <tr>
+                    <td class="meta-key" style="width: 34%%; vertical-align: middle;">Activity</td>
+                    <td class="meta-val" style="width: 66%%; word-break: break-word; overflow-wrap: anywhere; vertical-align: middle;">%s</td>
                 </tr>
             </table>
             <p>While this can sometimes happen if you switch from Wi-Fi to cellular data or use a VPN, it can also indicate that your session was hijacked.</p>
@@ -822,7 +889,11 @@ public class EmailTemplateRenderer {
             <div class="btn-container" style="margin-top: 28px;">
                 <a href="%s" class="btn btn-danger">Revoke Session &rarr;</a>
             </div>
-            """.formatted(originalIp, newIp, revokeUrl);
+            """.formatted(safeOrigLoc, safeOrigIp, safeNewLoc, safeNewIp, safeActivity, revokeUrl);
         return render(content);
+    }
+
+    public static String renderSuspiciousActivity(String originalIp, String newIp, String revokeUrl) {
+        return renderSuspiciousActivity("Unknown Location", originalIp, "Unknown Location", newIp, "Rapid Geo-IP Shift", revokeUrl);
     }
 }

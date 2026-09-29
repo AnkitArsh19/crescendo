@@ -1,127 +1,39 @@
 # Crescendo Platform: Complete System Architecture & Engineering Blueprint
 
-This document provides a comprehensive, component-by-component architectural specification of the **Crescendo** workflow automation platform, illustrating all subsystems, data structures, event pipelines, queues, workers, and failover topologies using structural boxes and arrows complying with Crescendo's actual implementation.
+This document provides the authoritative, component-by-component architectural specification of the **Crescendo** workflow automation platform. It reflects the exact multi-tier distributed topology, cryptographic protocols, token bucket rate limiting, ReAct AI execution loops, transactional email pipelines, and fault-tolerant execution state machines validated by our Archify architecture models.
+
+> **Architecture Suite**: High-resolution visual diagrams and formal declarative specifications are maintained under:  
+> **[architecture/README.md](file:///e:/crescendo-backend/architecture/README.md)**
 
 ---
 
-## 1. Master System Design Diagram (Boxes & Arrows Layout)
+## Architecture Navigation Index
 
-```mermaid
-graph LR
-    %% Column 1: Clients
-    subgraph CLIENTS ["CLIENTS"]
-        direction TB
-        WEB["🖥️ Web App<br/>(React 19 SPA)"]
-        DESKTOP["💻 Desktop App<br/>(Tauri v2 Rust)"]
-        SDKS["📦 Universal SDKs<br/>(Node, Python, Go)"]
-        CDN["☁️ Cloudflare CDN<br/>(Edge Cache)"]
-    end
-
-    %% Ingress Gateway
-    subgraph GATEWAY ["API GATEWAY"]
-        CF_TUNNEL["🔒 Cloudflare Tunnel<br/>(Zero-Trust Ingress)"]
-        AUTH_GATEWAY["🛡️ Security Gateway<br/>(JWT, WebAuthn, Idempotency)"]
-    end
-
-    %% Column 2: Core Services
-    subgraph SERVICES ["SERVICES (Java 25 Spring Boot)"]
-        direction TB
-        WF_SVC["⚙️ Workflow Execution<br/>Engine (DAG Router)"]
-        EMAIL_SVC["✉️ Email Notification<br/>Service (5-Layer ESP)"]
-        AI_GATEWAY["⏱️ AI Rate Limiter &<br/>Queue (14 RPM / 480 RPD)"]
-        CATALOG_SVC["📚 Dynamic App Catalog<br/>Registry (111+ Apps)"]
-        WH_SVC["🪝 Webhook Ingestion<br/>Service (HMAC Check)"]
-        SCHED_SVC["⏰ Schedulers & Outbox<br/>(Virtual Threads)"]
-    end
-
-    %% Column 3: Messaging
-    subgraph MESSAGING ["MESSAGING (Redis Streams)"]
-        direction TB
-        EXEC_STREAM["📨 Execution Queue<br/>crescendo:queue:execution<br/>(Manual ACK)"]
-        EMAIL_STREAM["📬 Email Queue<br/>crescendo:queue:email"]
-        EVENT_STREAM["📡 Domain Events<br/>crescendo:events:*"]
-        DLQ_STREAM["⚠️ Dead Letter Queue<br/>crescendo:dlq"]
-    end
-
-    %% Column 4: AI Microservice
-    subgraph AI_MICROSERVICE ["AI MICROSERVICE (FastAPI)"]
-        direction TB
-        REACT_AGENT["🤖 ReAct AI Node<br/>Reason → Act → Observe"]
-        DAG_BUILDER["🪄 NL Workflow Builder<br/>(LangGraph DAG Gen)"]
-        CHECKPOINTER["🧠 Redis Checkpointer<br/>(Stateful Memory)"]
-    end
-
-    %% Column 5: Data Stores
-    subgraph DATA_STORES ["DATA STORES (CQRS)"]
-        direction TB
-        CMD_DB[("🗄️ Command DB (Postgres)<br/>crescendo_command<br/>Write Models, Outbox, DEK")]
-        QRY_DB[("📊 Query DB (Postgres)<br/>crescendo_query<br/>Read Projections, Metrics")]
-        REDIS_CACHE[("⚡ Redis 7 Cache<br/>Distributed Lua Locks,<br/>Rate Limit Holding Queue")]
-        S3_STORAGE[("📦 Object Storage<br/>Local NVMe / S3 / R2")]
-    end
-
-    %% External Systems
-    subgraph EXTERNAL ["EXTERNAL PROVIDERS"]
-        direction TB
-        EXT_APPS["🌐 111+ Catalog APIs<br/>Slack, GitHub, Notion, Jira"]
-        LLM_APIS["🧠 LLM Providers<br/>Gemini 3.5 Flash Lite / GPT-OSS"]
-        EMAIL_APIS["📧 Email Gateways<br/>Brevo (300/d), SendGrid BYOK"]
-    end
-
-    %% Flow connections: Clients -> Gateway
-    WEB --> CDN
-    CDN --> CF_TUNNEL
-    DESKTOP --> CF_TUNNEL
-    SDKS --> CF_TUNNEL
-    CF_TUNNEL --> AUTH_GATEWAY
-
-    %% Gateway -> Services
-    AUTH_GATEWAY --> WF_SVC
-    AUTH_GATEWAY --> WH_SVC
-    AUTH_GATEWAY --> EMAIL_SVC
-
-    %% Services -> Messaging (Enqueue)
-    WH_SVC -- "1. Enqueue Event" --> SCHED_SVC
-    SCHED_SVC -- "2. Commit Outbox" --> CMD_DB
-    SCHED_SVC -- "3. Publish to Stream" --> EXEC_STREAM
-    SCHED_SVC -- "Dispatch Email" --> EMAIL_STREAM
-    WF_SVC -- "Domain Events" --> EVENT_STREAM
-
-    %% Messaging -> Services (Consume)
-    EXEC_STREAM -- "Consume (Manual ACK)" --> WF_SVC
-    EMAIL_STREAM --> EMAIL_SVC
-    EXEC_STREAM -. "Poison Message" .-> DLQ_STREAM
-
-    %% Services -> AI Microservice
-    WF_SVC -- "Agent Step Invocation" --> AI_GATEWAY
-    AI_GATEWAY -- "Within 14 RPM Cap" --> REACT_AGENT
-    REACT_AGENT <--> CHECKPOINTER
-    DAG_BUILDER <--> CHECKPOINTER
-
-    %% Services -> Data Stores
-    WF_SVC -- "Write Execution State" --> CMD_DB
-    WF_SVC -- "Project Denormalized Read" --> QRY_DB
-    WF_SVC -- "Acquire / Extend Lua Lock" --> REDIS_CACHE
-    EMAIL_SVC -- "Log Delivery & Metrics" --> CMD_DB
-    EMAIL_SVC -- "Check 24h Idempotency" --> REDIS_CACHE
-    AUTH_GATEWAY -- "Save Uploaded Files" --> S3_STORAGE
-
-    %% Services / AI -> External
-    WF_SVC -- "Execute Action" --> CATALOG_SVC
-    CATALOG_SVC -- "REST / OAuth API Call" --> EXT_APPS
-    REACT_AGENT -- "Synthesize Tool Call" --> LLM_APIS
-    DAG_BUILDER -- "Prompt Intent" --> LLM_APIS
-    EMAIL_SVC -- "Send MimeMessage" --> EMAIL_APIS
-```
+1. [Master Platform Distributed Architecture](#1-master-platform-distributed-architecture)
+2. [Perimeter Admission Control: Redis Lua Token Bucket Rate Limiter](#2-perimeter-admission-control-redis-lua-token-bucket-rate-limiter)
+3. [Authentication & Session Security: OAuth 2.0 PKCE & Refresh Token Rotation](#3-authentication--session-security-oauth-20-pkce--refresh-token-rotation)
+4. [AI Microservice: Autonomous AI ReAct Agent Loop](#4-ai-microservice-autonomous-ai-react-agent-loop)
+5. [Transactional Messaging: Email Delivery Engine & Telemetry Feedback Loop](#5-transactional-messaging-email-delivery-engine--telemetry-feedback-loop)
+6. [Fault-Tolerant Execution: Workflow Engine State Machine Lifecycle](#6-fault-tolerant-execution-workflow-engine-state-machine-lifecycle)
+7. [Subsystem Deep Dives & Operational Lifecycles](#7-subsystem-deep-dives--operational-lifecycles)
+8. [Hardware & Resource Budget (4 GiB Single-VPS Profile)](#8-hardware--resource-budget-4-gib-single-vps-profile)
 
 ---
 
-## 2. Structural ASCII System Map (Detailed Wire Layout)
+## 1. Master Platform Distributed Architecture
+
+The Crescendo platform architecture establishes strict security perimeters, multi-tenant isolation, and zero-trust communication across five tiers:
+
+![Crescendo Platform Distributed Architecture](architecture/assets/dark/platform.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/platform.png) · [Light Mode](architecture/assets/light/platform.png) | *JSON Specification*: [platform.architecture.json](architecture/specs/platform.architecture.json)
+
+### System Tier Breakdown
 
 ```
 +-----------------------------------------------------------------------------------------------------------------------------------------+
 |                                                      CLIENTS & INGRESS TIER                                                             |
-|  [ Web Browser SPA ]      [ Tauri Native Desktop ]      [ SDK Ecosystem ]      [ Webhook Emitters ]                                     |
+|  [ Web Browser SPA ]      [ Tauri Native Desktop ]      [ Universal SDKs ]      [ Webhook Emitters ]                                    |
 |   (React 19 / Vite)        (Rust / RFC 8252 Handoff)     (Node/Python/Go)       (GitHub, Stripe, etc.)                                  |
 |           |                           |                         |                        |                                              |
 |           +---------------------------+-------------------------+------------------------+                                              |
@@ -137,14 +49,14 @@ graph LR
 |  +---------------------------+   +---------------------------+   +---------------------------+   +-------------------------------+  |
 |  |    Ingress Controllers    |   | Workflow Execution Engine |   | Transactional Email Engine|   |   AI Rate Limiter & Queue     |  |
 |  |  - Auth & WebAuthn / Pass |   |  - DAG Edge-State Router  |   |  - 5-Layer ESP Pipeline   |   |  - 14 RPM / 480 RPD Gate      |  |
-|  |  - Public API (/api/v1/*) |   |  - Catalog Registry (111+)|   |  - Daily Warming Engine   |   |  - 30s Redis Holding Queue    |  |
+|  |  - Public API (/api/v1/*) |   |  - Catalog Registry (114+)|   |  - Daily Warming Engine   |   |  - 30s Redis Holding Queue    |  |
 |  |  - Webhook Ingest (HMAC)  |   |  - Native REST Fallback   |   |  - RFC 8058 Unsubscribe   |   |  - 3s Downstream 429 Backoff  |  |
 |  +-------------+-------------+   +-------------+-------------+   +-------------+-------------+   +---------------+---------------+  |
 |                |                               |                               |                                 |                      |
 |                | Write Intent & Events         | Dequeue Step & Lock           | Send Tasks                      | Evaluate Quota       |
 |                v                               v                               v                                 v                      |
 |  +-----------------------------------------------------------------------------------------------------------------------------------+  |
-|  | Schedulers & Daemons (Virtual Threads): OutboxPublisher (500ms) | PollingTriggerScheduler | PEL Reaper (>60s) | WarmupScheduler   |  |
+|  | Schedulers & Daemons (Virtual Threads): OutboxPublisher (5s) | PollingScheduler (120s) | PEL Reaper (>60s) | DomainWarming (Daily)   |  |
 |  +---------------------------------------------+-----------------------------------------------------------------+-------------------+  |
 +------------------------------------------------|-----------------------------------------------------------------|----------------------+
                                                  |                                                                 |
@@ -179,299 +91,272 @@ graph LR
 +-----------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
-```
-===================================================================================================================
-                                                  CLIENT TIER
-===================================================================================================================
-  [ React 19 Web SPA ]      [ Tauri v2 Native Desktop ]        [ Universal SDKs ]       [ Webhook Emitters ]
-   app.crescendo.run          Rust / Deep Links RFC 8252       Node, Python, Go, etc.    GitHub, Stripe, Slack
-           │                            │                               │                         │
-           └────────────────────────────┼───────────────────────────────┴─────────────────────────┘
-                                        │ HTTPS / TLS (Ports 443/80)
-                                        ▼
-===================================================================================================================
-                                        INGRESS & PERIMETER SECURITY
-===================================================================================================================
-                        [ Cloudflare Edge Network / CDN ]
-                          - DDoS Protection & SSL Offloading
-                          - Edge Caching (Static Vite Bundles)
-                                        │
-                                        ▼ (Zero Public Ports Exposed)
-                        [ Cloudflare Tunnel (cloudflared) ]
-                          - Outbound-only tunnel connection
-                          - Direct proxy to internal bridge network
-                                        │
-                                        ▼
-===================================================================================================================
-                          INTERNAL DOCKER NETWORK (crescendo-network: Bridge)
-===================================================================================================================
-  ┌─────────────────────────────────────┬────────────────────────────────────────────────────────────────────────┐
-  │ FRONTEND STATIC CONTAINER           │ CORE BACKEND ENGINE (Java 25 Spring Boot 4)                            │
-  │ [ crescendo-frontend: Nginx ]       │ [ crescendo-backend: Internal Port 8080 ]                              │
-  │ Serves compiled React 19 SPA        │                                                                        │
-  └─────────────────────────────────────┘ ┌────────────────────────────────────────────────────────────────────┐ │
-                                          │ 1. INGRESS CONTROLLER GATEWAYS                                     │ │
-                                          │  - AuthenticationController (JWT, Passkeys/WebAuthn)               │ │
-                                          │  - DesktopHandoffController (RFC 8252 60s single-use tokens)       │ │
-                                          │  - PublicApiController (/api/v1/*, IdempotencyFilter, Keyset Page) │ │
-                                          │  - WebhookIngestController (HMAC Verification, Rate Limiting)      │ │
-                                          └─────────────────────────────────┬──────────────────────────────────┘ │
-                                                                            │                                    │
-                                          ┌─────────────────────────────────▼──────────────────────────────────┐ │
-                                          │ 2. WRITE SIDE PERSISTENCE & OUTBOX                                 │ │
-                                          │  - User_commandService, Workflow_commandService                    │ │
-                                          │  - Transactional Outbox (logbook_outbox table)                     │ │
-                                          │  - Cryptographic Erasure (CryptoShreddingService, per-user DEK)    │ │
-                                          │  - Envelope Crypto (AES-256-GCM Credential Encryption)             │ │
-                                          └─────────────────────────────────┬──────────────────────────────────┘ │
-                                                                            │                                    │
-                                          ┌─────────────────────────────────▼──────────────────────────────────┐ │
-                                          │ 3. SCHEDULED DAEMONS & REAPERS (Virtual Threads)                   │ │
-                                          │  - OutboxPublisher Loop (Polls outbox every 500ms -> Redis Stream) │ │
-                                          │  - PollingTriggerScheduler (Dynamic HTTP trigger polling)          │ │
-                                          │  - PendingEntryList (PEL) Reaper (Reclaims stalled messages >60s)  │ │
-                                          │  - EmailDomainWarmupScheduler (Evaluates rolling 48h bounce gates) │ │
-                                          └─────────────────────────────────┬──────────────────────────────────┘ │
-                                                                            │                                    │
-                                          ┌─────────────────────────────────▼──────────────────────────────────┐ │
-                                          │ 4. EXECUTION ENGINE & REGISTRY                                     │ │
-                                          │  - WorkflowExecutionEngine (DAG Edge-State Router)                 │ │
-                                          │  - Dynamic App Catalog Registry (111+ App Handlers)                │ │
-                                          │  - Distributed Lock Manager (Redis Lua Atomic Token Locks)         │ │
-                                          │  - Native Java REST Fallback Client (Direct Gemini/OpenAI caller)  │ │
-                                          └────────────────────────────────────────────────────────────────────┘ │
-                                                                            ▲
-                                                                            │
-      ┌─────────────────────────────────────────────────────────────────────┴────────────────────────────────┐
-      ▼                                                                                                      ▼
-===================================================                                ===================================================
-        MESSAGING & STREAM QUEUES (Redis 7)                                                 AI / ML MICROSERVICE (FastAPI)
-===================================================                                ===================================================
-  [ Redis Streams (AOF Enabled) ]                                                    [ crescendo-aiml: Python 3.12 + LangGraph ]
-  │                                                                                  │
-  ├──► crescendo:queue:execution                                                     ├──► Autonomous ReAct Agent (/v1/agent/next-step)
-  │      - Step execution queue                                                      │      - Multi-turn Reason → Act → Observe loop
-  │      - Consumer Group: crescendo-backend                                         │      - 111+ App Catalog Tool Synthesizer
-  │      - Manual ACK on completion                                                  │      - XML Boundary Defense (<tool_output_content>)
-  │                                                                                  │
-  ├──► crescendo:queue:email                                                         ├──► Natural Language DAG Workflow Generator
-  │      - Transactional email send tasks                                            │      - Intent classification & ambiguity gates
-  │                                                                                  │      - Conditional DAG synthesis
-  │  ├──► crescendo:events:workflow / user / auth                                    │
-  │      - Domain event fanout stream                                                └──► Redis Conversational Checkpointer
-  │                                                                                         - Multi-turn stateful conversational memory
-  └──► crescendo:dlq (Dead Letter Queue)                                                                     │
-         - Max retries exceeded poisoned events                                                              ▼
-                                                                                   [ External LLM APIs: Gemini, Groq, OpenAI ]
-                                      │
-                                      ▼
-===================================================================================================================
-                                      PERSISTENCE & CQRS STORAGE TIER
-===================================================================================================================
-  ┌────────────────────────────────────────────────────────┐ ┌──────────────────────────────────────────────────┐
-  │ COMMAND DATABASE: crescendo_command (PostgreSQL 16)    │ │ QUERY DATABASE: crescendo_query (PostgreSQL 16)  │
-  │  - Write-side relational schema                        │ │  - Denormalized read projections                 │
-  │  - Strict foreign keys (fk_workflow_user, etc.)        │ │  - user_query, workflow_query, connections_query │
-  │  - Transactional Outbox (logbook_outbox)               │ │  - Fast index-only scans for dashboard UI        │
-  │  - Per-user encryption keys (user_encryption_key)      │ │  - Completely isolated from command write locks  │
-  │  - Write-Ahead Log (WAL) sequential disk persistence   │ └──────────────────────────────────────────────────┘
-  │  - Hikari Pool: 8 connections                          │   - Hikari Pool: 8 connections
-  └────────────────────────────────────────────────────────┘
-  ┌────────────────────────────────────────────────────────┐ ┌──────────────────────────────────────────────────┐
-  │ FILE STORAGE (NVMe Disk / AWS S3 / Cloudflare R2)      │ │ TELEMETRY & METRICS (Prometheus TSDB)            │
-  │  - Direct presigned uploads & local storage keys       │ │  - Scrapes Spring Boot /actuator/prometheus      │
-  │  - Managed by FileStorageService                       │ │  - 15-day time-series retention                  │
-  └────────────────────────────────────────────────────────┘ └──────────────────────────────────────────────────┘
-===================================================================================================================
-```
+1. **Client & Ingress Perimeter**:
+   - Web application built with React 19 / Vite.
+   - Native desktop application compiled with Tauri v2 (Rust), supporting deep-link authorization handoffs ([RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252)).
+   - Public APIs fronted by Cloudflare edge caching, DDoS mitigation, and Cloudflare Tunnel zero-trust origin cloaking.
+2. **Security & Admission Control Tier**:
+   - Edge security enforced at [`RateLimitFilter.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/RateLimitFilter.java) via Redis Lua token buckets.
+   - Stateless JWT authentication ([`JwtService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/JwtService.java)) paired with stateful refresh token cookie verification ([`RefreshTokenCookieService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/RefreshTokenCookieService.java)).
+3. **Core Backend Application Tier**:
+   - CQRS write-side services ([`Workflow_commandService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/workflow/workflow_command/Workflow_commandService.java), [`User_commandService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/user/user_command/User_commandService.java)) execute transactional writes and write domain events to the outbox.
+   - Read-side services ([`Workflow_queryService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/workflow/workflow_query/Workflow_queryService.java)) query denormalized PostgreSQL read projections with zero write-lock contention.
+   - DAG workflow execution orchestrated by [`WorkflowExecutionEngine.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/engine/WorkflowExecutionEngine.java).
+4. **Data & Polyglot Persistence Tier**:
+   - **PostgreSQL 16**: Relational schema, ACID transactions, row-level tenant security, and transactional outbox.
+   - **Redis 7 Cluster**: Stream queues (`crescendo:queue:execution`, `crescendo:queue:email`), distributed lock leases with background heartbeats, and token buckets.
+   - **NVMe / S3 / Cloudflare R2**: Presigned file uploads managed by [`FileStorageService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/FileStorageService.java).
+5. **AI Microservice Tier**:
+   - Standalone Python 3.12 FastAPI microservice (`crescendo-aiml`) running LangGraph and autonomous ReAct agents.
 
 ---
 
-## 2. Core Execution Lifecycles (Step-by-Step Flow)
+## 2. Perimeter Admission Control: Redis Lua Token Bucket Rate Limiter
 
-### A. The Life of a Polling Trigger
+Crescendo shields internal controllers and background workers from request bursts and tenant quota exhaustion through an in-memory token bucket rate limiter evaluated directly in Redis:
+
+![Redis Lua Token Bucket Rate Limiter](architecture/assets/dark/rate-limiter.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/rate-limiter.png) · [Light Mode](architecture/assets/light/rate-limiter.png) | *JSON Specification*: [rate-limiter.sequence.json](architecture/specs/rate-limiter.sequence.json)
+
+### Mathematical Invariants & Lua Script Mechanics
+- **Source**: [`RateLimitingService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/RateLimitingService.java)
+- **Perimeter Filter**: [`RateLimitFilter.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/RateLimitFilter.java)
+- **Configuration**: [`RateLimitConfig.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/config/RateLimitConfig.java)
+
+1. **Atomic Server-Side Evaluation**:
+   The rate limit check executes inside a single Redis script preloaded via `EVALSHA`. Redis's single-threaded event loop guarantees zero race conditions without distributed lock overhead.
+2. **Clock Skew Prevention**:
+   The script invokes Redis's native `TIME` command to obtain `[seconds, microseconds]`. Elapsed time is calculated purely against Redis server time, eliminating clock skew across multi-node backend instances.
+3. **Integer Millitoken Precision**:
+   Token math is represented in integer millitokens ($1\text{ token} = 1{,}000\text{ millitokens}$). This eliminates IEEE 754 floating-point rounding errors during continuous fractional token refill:
+   $$\text{refill} = \min\left(\text{burst} \times 1000, \text{current} + \Delta t \times \text{rate}\right)$$
+4. **Admission & Standard Headers**:
+   When $\text{current} \ge 1{,}000\text{ millitokens}$, 1,000 millitokens are deducted and the HTTP request proceeds with RFC-standard headers:
+   - `X-RateLimit-Limit`: Maximum bucket capacity.
+   - `X-RateLimit-Remaining`: Floor integer tokens remaining.
+   - `X-RateLimit-Reset`: UNIX timestamp in seconds when the bucket completely refills.
+5. **Perimeter Short-Circuit on Burst Rejection**:
+   When $\text{current} < 1{,}000\text{ millitokens}$, the request is rejected immediately at the filter with HTTP `429 Too Many Requests` and a computed `Retry-After: <seconds>` header, preventing resource consumption by downstream Spring controllers.
+
+---
+
+## 3. Authentication & Session Security: OAuth 2.0 PKCE & Refresh Token Rotation
+
+Crescendo implements zero-trust session management using Proof Key for Code Exchange ([RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)), stateful token families, single-use refresh token rotation, and automated compromise containment:
+
+![OAuth 2.0 PKCE & Refresh Token Rotation](architecture/assets/dark/oauth-pkce-reuse.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/oauth-pkce-reuse.png) · [Light Mode](architecture/assets/light/oauth-pkce-reuse.png) | *JSON Specification*: [oauth-pkce-reuse.sequence.json](architecture/specs/oauth-pkce-reuse.sequence.json)
+
+### Cryptographic Protocols & Security Invariants
+- **Session Controller**: [`SessionController.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/SessionController.java)
+- **Token Cryptography**: [`JwtService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/JwtService.java)
+- **Cookie Security**: [`RefreshTokenCookieService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/RefreshTokenCookieService.java)
+
+1. **SHA-256 Code Challenge Verification**:
+   The client creates a high-entropy `code_verifier` ($[43..128]$ unreserved characters) and computes `code_challenge = BASE64URL-ENCODE(SHA256(code_verifier))`. Upon code exchange, the backend verifies the SHA-256 hash before issuing tokens, defending against authorization code interception in public clients.
+2. **Dual-Token Architecture**:
+   - **Access Token**: Stateless, short-lived (15 minutes) JWT containing user permissions and tenant UUIDs.
+   - **Refresh Token**: Stateful, cryptographically random token stored in an `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` cookie, inaccessible to browser JavaScript.
+3. **Atomic Single-Use Token Rotation**:
+   Every call to `POST /api/v1/auth/refresh` invalidates the submitted refresh token and generates a new token linked to the existing session family, updating `last_used_at` and incrementing the family generation counter.
+4. **Token Family Compromise Detection & Revocation**:
+   If a compromised refresh token ($R_1$) is replayed after it has already been rotated ($R_2$ active), [`SessionController.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/security/SessionController.java) flags an active token theft event. The engine executes cascading revocation, destroying the entire session family tree in the database and revoking active sessions across both the legitimate user and the attacker.
+
+---
+
+## 4. AI Microservice: Autonomous AI ReAct Agent Loop
+
+The autonomous agent subsystem in `crescendo-aiml` implements a LangGraph-based ReAct (Reason $\rightarrow$ Act $\rightarrow$ Observe) loop connecting LLM reasoning to Crescendo's 50+ third-party catalog integrations:
+
+![Autonomous AI ReAct Agent Loop](architecture/assets/dark/react-agent.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/react-agent.png) · [Light Mode](architecture/assets/light/react-agent.png) | *JSON Specification*: [react-agent.workflow.json](architecture/specs/react-agent.workflow.json)
+
+### Agent Orchestration & Execution Flow
+- **FastAPI Agent Service**: [`agent_service.py`](file:///e:/crescendo-backend/crescendo-aiml/app/services/agent_service.py)
+- **Spring AI Bridge**: [`AgentExecutionService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/agent/AgentExecutionService.java)
+- **Sub-Workflow Tool Runner**: [`SubWorkflowToolRunner.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/agent/SubWorkflowToolRunner.java)
+
+1. **System Prompt & Tool Schema Assembly**:
+   The prompt formulation stage injects conversational state, user permissions, and strict JSON schemas derived from Crescendo's dynamic app catalog (`Slack`, `GitHub`, `Notion`, `Jira`, `Gmail`, etc.).
+2. **Multi-Model Inference & Reasoning**:
+   The agent queries foundational models (Google Gemini 1.5/2.0, Anthropic Claude 3.5, or OpenAI GPT-4o) using native function-calling formats, extracting structured thought reasoning and tool call payloads.
+3. **Connector Execution & Three-Tier Credentials**:
+   When a tool call is emitted, [`AgentExecutionService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/agent/AgentExecutionService.java) resolves authentication credentials using a three-tier hierarchy:
+   $$\text{Personal OAuth/API Key} \longrightarrow \text{Platform Admin Key} \longrightarrow \text{Execution Abort}$$
+4. **Observation Feedback & XML Boundary Protection**:
+   Tool outputs are captured, wrapped in structured XML boundary markers (`<tool_output_content>`), and appended to the context window to prevent prompt injection from untrusted external APIs.
+5. **Iteration Cap & Termination Safeguards**:
+   To prevent infinite execution loops and unbounded LLM costs, the agent loop enforces a hard ceiling of 10 iterations per task. If the budget is exhausted without reaching a final answer, the loop cleanly terminates with an escalation report.
+
+---
+
+## 5. Transactional Messaging: Email Delivery Engine & Telemetry Feedback Loop
+
+Crescendo incorporates an enterprise-grade transactional email delivery engine designed for high deliverability, cryptographic domain reputation governance, and automated bounce quarantine feedback:
+
+![Transactional Email Delivery Engine](architecture/assets/dark/email-engine.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/email-engine.png) · [Light Mode](architecture/assets/light/email-engine.png) | *JSON Specification*: [email-engine.dataflow.json](architecture/specs/email-engine.dataflow.json)
+
+### Pipeline Stages & Feedback Architecture
+- **Email Send Service**: [`EmailSendService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailSendService.java)
+- **Stream Queue Consumer**: [`EmailQueueConsumer.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailQueueConsumer.java)
+- **Template Rendering**: [`TemplateInterpolator.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/TemplateInterpolator.java)
+- **DNS & Cryptographic Verification**: [`DnsVerificationService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/DnsVerificationService.java)
+- **Webhook Ingestion**: [`EmailEventWebhookController.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/controller/EmailEventWebhookController.java)
+- **Suppression Management**: [`EmailSuppressionService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailSuppressionService.java)
+
+1. **Ingest & Template Rendering**:
+   [`EmailSendService`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailSendService.java) receives transactional send events, interpolates dynamic Mustache/Thymeleaf variables via [`TemplateInterpolator`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/TemplateInterpolator.java), sanitizes HTML content against script injection, and generates a `PENDING` audit log.
+2. **Cryptographic Signing & Pre-Send Policy**:
+   - Evaluates recipient eligibility against the suppression list.
+   - [`DnsVerificationService`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/DnsVerificationService.java) conducts JNDI DNS TXT record lookups verifying SPF (`v=spf1`), DKIM (`<selector>._domainkey.<domain>`), and DMARC (`v=DMARC1`), injecting RSA-SHA256 DKIM cryptographic signatures into message headers.
+3. **Stream Buffering & SMTP Relay**:
+   Jobs are enqueued to Redis Stream `crescendo:queue:email`. [`EmailQueueConsumer`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailQueueConsumer.java) claims batches under distributed locks, injects RFC 8058 `List-Unsubscribe` one-click headers, and relays Jakarta Mail `MimeMessage` payloads via Amazon SES, SendGrid, or native SMTP relays.
+4. **Webhook Ingestion & HMAC Verification**:
+   External ESPs deliver asynchronous delivery telemetry to `/webhooks/email-events`. [`EmailEventWebhookController`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/controller/EmailEventWebhookController.java) validates the HMAC-SHA256 `X-Webhook-Signature` before parsing payload events (`delivered`, `hard_bounce`, `soft_bounce`, `complaint`).
+5. **Suppression Quarantine Feedback Loop**:
+   Hard bounces and spam complaints trigger [`EmailSuppressionService`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/service/EmailSuppressionService.java), permanently quarantining the recipient address in [`EmailSuppressionRepository`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/repository/EmailSuppressionRepository.java). Subsequent outbound dispatches check this table and abort immediately, protecting sender domain reputation.
+
+---
+
+## 6. Fault-Tolerant Execution: Workflow Engine State Machine Lifecycle
+
+Crescendo's DAG workflow execution engine coordinates resilient, multi-step asynchronous business processes, incorporating distributed lock leases, asynchronous suspension, automatic exponential backoff, dead-letter routing, and state-preserving retries:
+
+![Workflow Execution Engine Lifecycle](architecture/assets/dark/workflow-lifecycle.png)
+
+*Visual Diagram*: [Dark Mode](architecture/assets/dark/workflow-lifecycle.png) · [Light Mode](architecture/assets/light/workflow-lifecycle.png) | *JSON Specification*: [workflow-lifecycle.lifecycle.json](architecture/specs/workflow-lifecycle.lifecycle.json)
+
+### State Machine Lifecycle Bands
+- **Execution Engine**: [`WorkflowExecutionEngine.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/engine/WorkflowExecutionEngine.java)
+- **Queue Consumer**: [`ExecutionQueueConsumer.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/shared/infrastructure/stream/ExecutionQueueConsumer.java)
+- **Suspension Coordination**: [`WorkflowSuspensionService.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/suspension/WorkflowSuspensionService.java)
+- **Crash Recovery Reaper**: [`WorkflowRunReaper.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/queue/WorkflowRunReaper.java)
+- **Resume Sweeper**: [`WorkflowResumeReaper.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/queue/WorkflowResumeReaper.java)
+- **Status Enumeration**: [`WorkflowRunStatus.java`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/enums/WorkflowRunStatus.java)
+
+```
+[01 / Execution Phases]
+  [01 Pending] ======> [02 Dispatched] ======> [03 Running] ======> [04 Evaluating] ======> [05 Completed]
+      ^                                          │     ▲               │
+      │                                          │     │ (Resume)      ▼ (Transient Error)
+[02 / Suspension & Recovery]                     ▼     │         [Retry Backoff] ───► [Dead-Lettered]
+      │                                    [Suspended]─┘               │ (Exhausted / Poison)
+      │                                          │ (Cancel)            ▼
+[03 / Terminal Outcomes]                         ▼                  [Failed]
+      │                                     [Cancelled]                │
+      │                                                                │
+      └─────────────────────── (Manual Retry Loop) ────────────────────┘
+```
+
+1. **Band 01: Execution Phases (`main`)**:
+   - `01 Pending`: Run enqueued via outbox pattern to Redis Stream `crescendo:queue:execution`.
+   - `02 Dispatched`: [`ExecutionQueueConsumer`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/shared/infrastructure/stream/ExecutionQueueConsumer.java) claims the message, acquires a distributed lock lease (`crescendo:lock:workflow-execution:{id}`) with a 3-minute TTL, and launches a background thread extending the lock lease every 3 minutes.
+   - `03 Running`: [`WorkflowExecutionEngine`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/engine/WorkflowExecutionEngine.java) traverses the step DAG, executing [`ActionHandler`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/action/ActionHandler.java) instances and chaining output data into `executionState`.
+   - `04 Evaluating`: Branch condition evaluators route execution along active edges (`logic:if`, `logic:switch`), skipping unselected branches and checking step success status.
+   - `05 Completed`: Reached when all active DAG steps succeed; status transitions to `SUCCESS` and publishes [`WorkflowRunCompletedEvent`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/logbook/domain_event/WorkflowRunCompletedEvent.java).
+2. **Band 02: Suspension & Recovery (`interruptions`)**:
+   - `Suspended`: Thrown when a step raises [`SuspendExecutionException`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/action/SuspendExecutionException.java) (e.g., [`WaitHandlers`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/apps/wait/WaitHandlers.java) delay, approval requests, or webhook correlation). The worker releases its thread and distributed lock.
+   - `Resume Event`: Webhook events or [`WorkflowResumeReaper`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/queue/WorkflowResumeReaper.java) (sweeping ready-to-resume timeouts every 10 seconds) inject the payload and transition the run back to `Running`.
+   - `Retry Backoff`: Transient step errors leave the Redis stream message unacknowledged (`XACK` withheld), triggering exponential backoff redelivery.
+3. **Band 03: Terminal Outcomes (`terminal`)**:
+   - `Cancelled`: User requests cancellation via [`WorkflowRunService.cancelRun()`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/logbook/workflow_run/WorkflowRunService.java).
+   - `Failed`: Unrecoverable errors, exhausted retries, or hanging runs swept by [`WorkflowRunReaper`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/execution/queue/WorkflowRunReaper.java) (15-minute hanging timeout).
+   - `Dead-Lettered`: Poison messages failing 3 consecutive attempts are acknowledged to halt redelivery and pushed to `crescendo:dlq`.
+   - **State-Preserving Manual Retry**: Users can invoke [`WorkflowRunService.retryRun()`](file:///e:/crescendo-backend/crescendo-backend/src/main/java/com/crescendo/logbook/workflow_run/WorkflowRunService.java) from `Failed`, which resets status to `Pending` while preserving accumulated `executionState`—allowing execution to skip previously completed steps and resume directly from the point of failure.
+
+---
+
+## 7. Subsystem Deep Dives & Operational Lifecycles
+
+### A. The Lifecycle of a Polling Trigger
 ```
 [ PollingTriggerScheduler ]
-        │  (Triggers at scheduled cron / interval, e.g. every 5 min)
+        │  (Runs every 120s / 2 min default: crescendo.polling.interval-ms)
         ▼
 [ Fetch Credentials & Decrypt ] ──► ConnectionCredentialsCryptoService (AES-256-GCM)
         │
         ▼
 [ Outbound HTTP Call to Third Party ] (e.g. GitHub: GET /repos/{owner}/{repo}/issues)
         │
-        ├── No new items found ──► (Sleep until next poll interval)
+        ├── No new items found ──► Advance safe cursor (now - 1m buffer) & sleep
         │
         └── New items found!
                  │
                  ▼
+[ Redis SETNX Message Deduplication ] ──► Key: polling:seen:{step}:{msgId} (7-day TTL)
+        │  (Skipped if already processed by another cluster node)
+        ▼
 [ Transaction Boundary: Command DB ]
-   ├── Insert Workflow Run record (status: RUNNING)
+   ├── Insert Workflow Run record (status: PENDING)
    └── Insert event to `logbook_outbox` table
                  │
                  ▼ (Commit)
-[ OutboxPublisher Loop (500ms) ]
-   └── Reads outbox ──► Appends to `crescendo:queue:execution` Redis Stream
+[ OutboxPublisher Loop (5s / 5,000ms) ]
+   └── Reads outbox batch ──► Appends to `crescendo:queue:execution` Redis Stream
 ```
 
 ---
 
-### B. The Life of a Stream Execution Step
-```
-[ Redis Stream: crescendo:queue:execution ]
-        │
-        ▼ (XREADGROUP - Consumer Group: crescendo-backend)
-[ StreamExecutionConsumer (Virtual Thread) ]
-        │
-        ├── 1. Acquire Distributed Lock (Redis Key: workflow-execution:{id})
-        │      └── Atomic Lua script with UUID token + Background Heartbeat Renewal
-        │
-        ├── 2. Resolve Step Handler via Dynamic App Catalog Registry
-        │      └── e.g., SlackSendMessageHandler, GoogleDriveUploadHandler, AgentNode
-        │
-        ├── 3. Execute Step Action
-        │      ├── Success: Store Step Run Output JSON
-        │      └── Failure: Increment retry count (if retries exhausted ──► send to crescendo:dlq)
-        │
-        ├── 4. Evaluate Downstream Edge Conditions (DAG Router)
-        │      └── If condition matches: Push next steps to `logbook_outbox`
-        │
-        ├── 5. Write Execution State to `crescendo_command` & Project to `crescendo_query`
-        │
-        ├── 6. Release Distributed Lock (Atomic Lua script with ownership token verification)
-        │
-        └── 7. Send XACK to Redis Stream (Acknowledge message processing complete)
-```
-
----
-
-### C. The Life of an Autonomous AI Agent Step (`agent:ai_agent`)
-```
-[ WorkflowExecutionEngine ]
-        │
-        ▼
-[ Agent Step Encountered ]
-        │
-        ▼
-[ Dynamic Tool Synthesis ]
-   ├── Reads catalog configSchemas for enabled apps (e.g., Jira, Slack, Notion)
-   └── Converts schemas to OpenAI / Gemini function_declarations JSON
-        │
-        ▼
-[ Route to crescendo-aiml (Python FastAPI) ] ──(If unavailable)──► [ Native Java REST Fallback ]
-        │                                                                 │
-        ▼                                                                 ▼
-[ Multi-turn ReAct Loop ]                                         [ Direct Gemini / Groq API ]
-   │
-   ├── Turn 1: LLM analyzes input + prompt ──► Decides to call tool: `slack__send_message`
-   │
-   ├── Tool Execution: Dispatches internally to `SlackActionHandler` with decrypted user tokens
-   │
-   ├── XML Boundary Protection: Wraps output in `<tool_output_content>{...}</tool_output_content>`
-   │
-   └── Turn 2: LLM evaluates observation ──► Emits final synthesized answer JSON
-        │
-        ▼
-[ Write Agent Run History & ReAct Timeline ] ──► Available for inspection in UI drawer
-```
-
----
-
-### D. The Life of Account Deletion & Cryptographic Erasure
+### B. The Lifecycle of Account Deletion & Cryptographic Shredding
 ```
 [ User issues DELETE /users/me ]
         │
         ▼
 [ User_commandService.deleteAccount(userId) ] (Strict Cascading Order)
         │
-        ├─► 1. Workflow_commandService.purgeAllWorkflowsForUser(userId)
+        ├─► 1. Purge Workflows & Stop Polling Triggers (Workflow_commandService)
         │      ├── Deactivate workflows
         │      ├── Publish WorkflowDeletedEvent ──► PollingTriggerScheduler halts polling immediately
         │      └── Hard delete steps, edges, query projections, and command workflows
         │
-        ├─► 2. Connections_commandService.purgeAllConnectionsForUser(userId)
+        ├─► 2. Purge Connections & Credentials (Connections_commandService)
         │      └── Delete command credentials & query projections
         │
-        ├─► 3. Storage Cleanup
-        │      ├── Iterate user's uploaded files ──► FileStorageService.delete() from S3/disk
+        ├─► 3. Purge Uploaded Files (FileStorageService)
+        │      ├── Delete physical objects from S3 / disk storage key
         │      └── Delete uploaded_file_command rows
         │
-        ├─► 4. Email Resources Cleanup
+        ├─► 4. Purge Email Service Resources
         │      └── Delete contacts, broadcasts, email templates, API keys, and custom domains
         │
-        ├─► 5. WebAuthn Passkeys Cleanup
-        │      └── Delete passkey credentials
+        ├─► 5. Purge WebAuthn Passkeys
+        │      └── Delete passkey credentials from passkey repository
         │
-        ├─► 6. Cryptographic Shredding (CryptoShreddingService)
+        ├─► 6. Cryptographic Erasure & Shredding (CryptoShreddingService)
         │      └── DELETE FROM user_encryption_key WHERE user_id = userId
         │          (Destroys user's 256-bit AES DEK; historic backups & WAL logs become unrecoverable)
         │
-        ├─► 7. Auth & Session Cleanup
-        │      ├── Delete MFA backup codes and settings
-        │      ├── Revoke and purge all user sessions
-        │      └── Delete credentials and identity records
+        ├─► 7. Purge MFA Security Settings & Backup Codes
+        │      └── Delete user_mfa_backup_code rows first (FK constraint), then user_mfa_setting
         │
-        └─► 8. Hard delete user row from user_command
+        ├─► 8. Wipe Active Sessions, Credentials & Identities
+        │      ├── Revoke all active sessions (setRevokedAt = now) & delete user_session records
+        │      └── Delete user_credential (password hash) and user_identity rows
+        │
+        └─► 9. Hard Delete User & Emit Terminal Audit Event
+               ├── DELETE FROM user_command WHERE id = userId
                └── Publish UserAccountDeletedEvent
 ```
 
 ---
 
-## 3. Subsystem Breakdown & Design Patterns
+## 8. Hardware & Resource Budget (4 GiB Single-VPS Profile)
 
-### 1. CQRS (Command Query Responsibility Segregation)
-| Database | Role | Data Models | Properties |
+Crescendo is engineered to run reliably in resource-constrained containerized environments, operating on a single 4 GiB VPS:
+
+| Subsystem / Container | Allocated RAM | Share | Architectural Purpose |
 | :--- | :--- | :--- | :--- |
-| **`crescendo_command`** | Write-side | `user_command`, `workflow_command`, `connections_command`, `logbook_outbox`, `user_encryption_key` | Enforces foreign keys, atomic transactions, ACID consistency, strict business invariants. |
-| **`crescendo_query`** | Read-side | `user_query`, `workflow_query`, `connections_query`, `email_metrics` | Denormalized projections, index-only scans, zero write locks, serves fast UI queries. |
-
-### 2. Transactional Outbox Pattern
-- **Problem Avoided**: Dual-write hazard (saving to Postgres and publishing to Redis separately can leave state inconsistent if Redis fails or DB rolls back).
-- **Solution**: Events are written to the `logbook_outbox` table in the *same* database transaction as the business entity. A lightweight `OutboxPublisher` polls every 500ms, pushes to Redis Streams, and marks outbox rows processed.
-
-### 3. Redis Streams with Consumer Groups & PEL Reaper
-- **Consumer Group**: `crescendo-backend` distributes step execution across worker threads.
-- **Manual ACK**: Messages are only acknowledged (`XACK`) once the step output is committed to the database.
-- **PEL Reaper (Pending Entry List)**: Detects messages that were delivered to a worker that crashed or timed out ($>60\text{s}$), reclaims ownership, and re-executes them.
-- **Dead Letter Queue (DLQ)**: Poison messages exceeding retry thresholds are pushed to `crescendo:dlq` to prevent queue head-of-line blocking.
-
-### 4. Distributed Lock with Token Ownership
-- **Lock Key**: `crescendo:lock:workflow-execution:{subWorkflowId}`
-- **Atomic Lua Unlock**: Verifies that the lock token matches the executing thread’s UUID before deleting the key, preventing a thread from releasing another thread's lock after an expiration.
-- **Heartbeat Daemon**: Automatically extends lock TTL every 10 seconds for long-running steps.
-
-### 5. Native Desktop Handoff Authentication (RFC 8252)
-- **Tauri v2 (Rust)**: Bypasses embedded webviews; opens the user's system browser for secure biometric authentication (WebAuthn Passkeys).
-- **60s Ephemeral Handoff Code**: Web app issues a short-lived random code, redirects via `crescendo://auth/callback?code=...`.
-- **Single-Instance Interception**: `tauri-plugin-single-instance` catches the deep link on the primary window, exchanges the code for dual JWT tokens over HTTPS, leaving zero credentials in browser history or OS logs.
-
-### 6. Transactional Email Platform (5-Layer Architecture)
-1. **Identity & Usage-Type Binding**: Strict SPF/DKIM/DMARC verification; separates transactional from marketing domains.
-2. **BYOK (Bring Your Own Key)**: Users can use SendGrid/SES credentials or fallback to platform Brevo routing.
-3. **Automated Warming Engine**: Exponential doubling schedule (50 $\to$ 100 $\to$ 200 ... up to 50k/day) gated by a rolling 48-hour bounce rate ($<5\%$) and complaint rate ($<0.1\%$).
-4. **RFC 8058 Compliance**: Automatically injects one-click `List-Unsubscribe` headers to prevent spam flags.
-5. **Suppression Portability**: Handles bounces, spam complaints, and CSV/JSON bulk suppression lists.
-
----
-
-## 4. Hardware & Resource Budget (Single 4 GiB VPS)
-
-```
-┌────────────────────────────────────────────────────────┐
-│               Host Physical RAM: 4,096 MiB             │
-├───────────────────────────────┬────────────────────────┤
-│ Subsystem / Container         │ Allocated RAM          │
-├───────────────────────────────┼────────────────────────┤
-│ JVM Backend (Java 25)         │ 1,018 MiB (~25%)       │
-│ PostgreSQL 16 (Command+Query) │ 440 MiB (~11%)         │
-│ Redis 7 (In-Memory Streams)   │ 256 MiB (~6%)          │
-│ Python AI/ML (LangGraph)      │ 350 MiB (~8%)          │
-│ Frontend SPA (Nginx)          │ 25 MiB (<1%)           │
-│ Prometheus Telemetry          │ 200 MiB (~5%)          │
-│ Cloudflare Tunnel Daemon      │ 35 MiB (<1%)           │
-│ Linux OS & File Page Cache    │ 1,772 MiB (~43%)       │
-├───────────────────────────────┼────────────────────────┤
-│ TOTAL ALLOCATED               │ 4,096 MiB (100%)       │
-└───────────────────────────────┴────────────────────────┘
-```
-
-> **For complete quantitative Little's Law throughput derivations, token cost equations, webhook burst calculations, and disk growth formulas, refer to [`capacity_calculations.md`](file:///e:/crescendo-backend/capacity_calculations.md).**
+| **JVM Backend (Java 25)** | 1,018 MiB | ~25% | Spring Boot, Virtual Threads, Hikari connection pool, execution engine |
+| **PostgreSQL 16 (CQRS)** | 440 MiB | ~11% | Dual-database schemas (`crescendo_command`, `crescendo_query`), WAL segments |
+| **Redis 7 (Streams & Locks)** | 256 MiB | ~6% | AOF-enabled stream queues, atomic Lua token buckets, distributed locks |
+| **Python AI/ML Microservice** | 350 MiB | ~8% | FastAPI, LangGraph ReAct agent loop, tool function mapping |
+| **Frontend SPA (Nginx)** | 25 MiB | <1% | Serving pre-compiled React 19 / Vite bundles with gzip/brotli |
+| **Prometheus TSDB** | 200 MiB | ~5% | Metrics scraping from Spring Boot `/actuator/prometheus` |
+| **Cloudflare Tunnel Daemon** | 35 MiB | <1% | Outbound encrypted tunnel cloaking public ports |
+| **Linux OS & Page Cache** | 1,772 MiB | ~43% | Kernel memory, disk page caching, TCP socket buffers |
+| **TOTAL ALLOCATED** | **4,096 MiB** | **100%** | Production VPS Hardware Envelope |

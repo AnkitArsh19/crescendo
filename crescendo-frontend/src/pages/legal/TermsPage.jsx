@@ -97,7 +97,7 @@ export default function TermsPage() {
                             </li>
                             <li>
                                 You must notify us immediately of any unauthorized use of your
-                                account at <a href="mailto:support@crescendo.app">support@crescendo.app</a>.
+                                account at <a href="mailto:support@crescendo.run">support@crescendo.run</a>.
                             </li>
                             <li>
                                 You may not share your account credentials with third parties or
@@ -310,7 +310,10 @@ export default function TermsPage() {
                                 <strong>Deliverability &amp; Reputation Protections:</strong> Crescendo actively monitors domain bounce rates,
                                 spam complaints, and suppression lists. To safeguard overall system deliverability, we reserve the right to
                                 automatically throttle, quarantine, or suspend email sending privileges for accounts exceeding allowable bounce
-                                or complaint thresholds without prior notification.
+                                or complaint thresholds without prior notification. For detailed bounce rate ceilings and prohibited activities, review our{' '}
+                                <Link to="/acceptable-use" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                    Acceptable Use &amp; Anti-Spam Policy
+                                </Link>.
                             </li>
                         </ul>
                     </div>
@@ -360,7 +363,11 @@ export default function TermsPage() {
                                 <strong>Artificial Intelligence &amp; Automated Decisions (EU AI Act):</strong> When integrating generative artificial intelligence nodes (e.g., Google Gemini, OpenAI, Anthropic) within automation pathways, users acknowledge that AI outputs may occasionally exhibit inaccuracies, hallucinations, or unverified assertions. You assume full operational responsibility for human verification and transparency disclosures required by law prior to deploying AI outputs for consumer decision-making, financial underwriting, or automated public broadcasts.
                             </li>
                             <li>
-                                <strong>Data Processing Addendum (DPA):</strong> For commercial organizations processing Personal Data of European Economic Area (EEA), UK, or California consumers, Crescendo&rsquo;s standard Data Processing Addendum incorporating European Standard Contractual Clauses (SCCs) forms an enforceable, binding component of these Terms by reference.
+                                <strong>Data Processing Addendum (DPA):</strong> For commercial organizations processing Personal Data of European Economic Area (EEA), UK, or California consumers, Crescendo&rsquo;s standard{' '}
+                                <Link to="/dpa" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                    Data Processing Addendum
+                                </Link>{' '}
+                                incorporating European Standard Contractual Clauses (SCCs) forms an enforceable, binding component of these Terms by reference.
                             </li>
                         </ul>
                     </div>
@@ -390,9 +397,9 @@ export default function TermsPage() {
                         <p>If you have any questions about these Terms, please contact us:</p>
                         <div className="legal-contact-box">
                             <span className="contact-label">Email</span>
-                            <a href="mailto:legal@crescendo.app">legal@crescendo.app</a>
+                            <a href="mailto:legal@crescendo.run">legal@crescendo.run</a>
                             <span className="contact-label" style={{ marginTop: 8 }}>Support</span>
-                            <a href="mailto:support@crescendo.app">support@crescendo.app</a>
+                            <a href="mailto:support@crescendo.run">support@crescendo.run</a>
                         </div>
                     </div>
                 </div>
@@ -402,6 +409,11 @@ export default function TermsPage() {
                     <div className="legal-footer-links">
                         <Link to="/privacy">Privacy Policy</Link>
                         <Link to="/terms">Terms of Service</Link>
+                        <Link to="/cookies">Cookie Policy</Link>
+                        <Link to="/dpa">DPA</Link>
+                        <Link to="/security">Security</Link>
+                        <Link to="/subprocessors">Sub-processors</Link>
+                        <Link to="/acceptable-use">Acceptable Use</Link>
                         <Link to="/">Home</Link>
                     </div>
                 </div>

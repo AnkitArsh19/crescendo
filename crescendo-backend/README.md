@@ -27,6 +27,16 @@ Crescendo hosts a self-contained, native application catalog featuring **114 bui
 - **Expression Evaluation Pipeline**: The core variable resolver engine (`WorkflowExpressionResolver`) replaces upstream data reference placeholders (`{{steps.step_order.field_name}}`) in real time, supporting safe fallback handling for missing array keys or null properties during multi-step execution chains.
 - **Resilient Retry Mechanics**: Incorporates automated backoff calculation algorithms and circuit breaking to gracefully handle rate-limit rejections or network latency when connecting to external third-party API servers.
 
+## Distributed Redis Lua Token Bucket Rate Limiting
+
+The backend protects public APIs, authentication routes, and background AI queues using an atomic **Token Bucket** algorithm implemented in Redis Lua (`src/main/resources/scripts/rate_limiter.lua`), orchestrated by `RateLimitingService.java`:
+- **Atomic Script Execution**: Token consumption and continuous mathematical replenishment (`(now - last_refreshed) * fill_rate`) execute atomically on Redis, preventing concurrency race conditions across clustered Spring Boot nodes without acquiring heavy distributed locks.
+- **Why Token Bucket Won**: Fixed-window counters were rejected due to boundary double-burst vulnerabilities; sliding-window logs were rejected due to linear $O(N)$ Redis memory bloat; leaky bucket was rejected due to artificial latency injection. Token Bucket maintains strictly $O(1)$ memory while supporting legitimate developer traffic bursts.
+- **Dynamic Tiering**:
+  - `auth`: 5 requests/min anti-brute-force defense.
+  - `public-api`: 60 requests/min burstable developer quota.
+  - `ai-generation`: Priority queue backpressure throttling.
+
 ## Integrated Email & DNS Verification Service
 
 The backend incorporates an independent email marketing and transactional delivery system under `com.crescendo.emailservice`:
@@ -88,6 +98,7 @@ crescendo-backend/src/main/java/com/crescendo/
 │   └── workflow/                # Per-workflow notification noise rules (ALWAYS, FAILURE_ONLY, NEVER)
 ├── publicapi/                   # Publicly accessible Developer REST API endpoints, automated OpenAPI specification generator, and external SDK execution routing controllers
 ├── security/                    # Tenant perimeter defense, request sanitization, and cryptographic identity verification boundaries:
+│   ├── RateLimitingService.java # Atomic Distributed Token Bucket rate limiting via Redis Lua scripts (rate_limiter.lua)
 │   ├── access/, oauth/          # OAuth Bearer token authorization filters, token reuse detection defenses, and fine-grained access permissions
 │   ├── alerts/, error/          # Real-time Geo-IP access anomaly detection services and centralized security exception response formatting
 │   └── mfa/, webauthn/          # Biometric WebAuthn passkey registration endpoints, passwordless authentication routines, and Multi-Factor Authentication verifiers

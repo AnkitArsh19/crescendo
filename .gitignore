@@ -3,6 +3,7 @@
 .DS_Store
 .agent/
 .agents/
+skills-lock.json
 .ui-ux-pro-max-skill/
 graphify-out/
 /Test/
@@ -49,3 +50,8 @@ benchmark
 
 # Standalone Repositories
 crescendo-sdk/
+
+# Architecture Generated HTML Bundles
+architecture/**/*.html
+
+architecture/specs/

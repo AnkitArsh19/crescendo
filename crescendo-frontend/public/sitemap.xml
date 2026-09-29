@@ -34,8 +34,14 @@
         <priority>0.8</priority>
     </url>
     <url>
+        <loc>https://app.crescendo.run/about</loc>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
         <loc>https://app.crescendo.run/developer</loc>
-        <lastmod>2026-09-15</lastmod>
+        <lastmod>2026-09-27</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
@@ -53,13 +59,43 @@
     </url>
     <url>
         <loc>https://app.crescendo.run/terms</loc>
-        <lastmod>2026-09-15</lastmod>
+        <lastmod>2026-09-27</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
     </url>
     <url>
         <loc>https://app.crescendo.run/privacy</loc>
-        <lastmod>2026-09-15</lastmod>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>https://app.crescendo.run/cookies</loc>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>https://app.crescendo.run/security</loc>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    <url>
+        <loc>https://app.crescendo.run/dpa</loc>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>https://app.crescendo.run/subprocessors</loc>
+        <lastmod>2026-09-27</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>https://app.crescendo.run/acceptable-use</loc>
+        <lastmod>2026-09-27</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
     </url>

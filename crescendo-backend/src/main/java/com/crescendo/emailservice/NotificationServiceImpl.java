@@ -134,8 +134,14 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public void sendSuspiciousActivityEmail(String email, String originalLocation, String originalIp, String newLocation, String newIp, String activityType, String revokeUrl) {
+        sendAsync(email, "noreply@crescendo.run", "Security Alert: Suspicious session activity",
+                EmailTemplateRenderer.renderSuspiciousActivity(originalLocation, originalIp, newLocation, newIp, activityType, revokeUrl));
+    }
+
+    @Override
     public void sendSuspiciousActivityEmail(String email, String originalIp, String newIp, String revokeUrl) {
-        sendAsync(email, "noreply@crescendo.run", "Security Alert: Suspicious session activity", EmailTemplateRenderer.renderSuspiciousActivity(originalIp, newIp, revokeUrl));
+        sendSuspiciousActivityEmail(email, "Unknown Location", originalIp, "Unknown Location", newIp, "Rapid Geo-IP Shift", revokeUrl);
     }
 
     @Override

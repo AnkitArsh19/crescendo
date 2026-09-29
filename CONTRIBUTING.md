@@ -42,7 +42,13 @@ cd crescendo-aiml
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8001
+uvicorn app.main:app --reload --port 8000
+```
+
+### 4. Concurrent Windows Development (`dev.ps1`)
+On Windows workstations with Windows Terminal installed, you can launch all three services concurrently in managed tabs:
+```powershell
+.\dev.ps1
 ```
 
 ## Pull Request Lifecycle & Review Rules

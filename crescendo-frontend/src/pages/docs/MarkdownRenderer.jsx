@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -33,6 +33,15 @@ function CopyButton({ text }) {
 
 export default function MarkdownRenderer({ content, prevItem, nextItem }) {
     const { theme } = useTheme();
+
+    useLayoutEffect(() => {
+        if (!window.location.hash) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+    }, [content]);
+
     return (
         <motion.div 
             className="docs-markdown-body"

@@ -32,4 +32,4 @@ This Code of Conduct applies within all community repository spaces, issue track
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported directly to the project leadership by opening a direct administrative communication or reporting the issue to maintainers. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported directly to the project leadership at [community@crescendo.run](mailto:community@crescendo.run). All complaints will be reviewed and investigated promptly and fairly.

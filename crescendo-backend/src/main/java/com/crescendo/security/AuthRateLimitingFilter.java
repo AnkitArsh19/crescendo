@@ -16,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 
@@ -117,21 +116,27 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
         String clientIp = resolveClientIp(cachedRequest);
 
         // ── LAYER 1: IP-based rate limit ──────────────────────────────────────
-        if (rateLimiter.isRateLimited(NS_IP, clientIp, ipMaxRequests, Duration.ofMinutes(ipWindowMinutes))) {
-            sendTooManyRequests(response,
+        // Bucket: capacity = ipMaxRequests, refill = ipMaxRequests per minute.
+        // (A burst equal to the per-minute cap, no 2x window-edge exploit.)
+        RateLimitingService.TokenBucketResult ipResult =
+                rateLimiter.tryConsume(NS_IP, clientIp, ipMaxRequests, ipMaxRequests);
+        if (!ipResult.allowed()) {
+            sendTooManyRequests(response, ipResult,
                     "Too many requests from your IP address. Please wait before retrying.");
             return;
         }
 
         // ── LAYER 2: Identity-keyed rate limit (login only) ───────────────────
-        // We extract the email from the cached request body. This only applies to
-        // /auth/login because that's where credential stuffing attacks happen.
+        // Extracts the email from the cached request body — only for paths where
+        // credential-stuffing attacks against a specific account are the threat.
         if (isIdentityLimitedPath(path) && "POST".equalsIgnoreCase(cachedRequest.getMethod())) {
             String email = extractEmailFromBody(cachedRequest);
             if (email != null && !email.isBlank()) {
-                if (rateLimiter.isRateLimited(NS_EMAIL, email.toLowerCase(),
-                        emailMaxRequests, Duration.ofMinutes(emailWindowMinutes))) {
-                    sendTooManyRequests(response,
+                RateLimitingService.TokenBucketResult emailResult =
+                        rateLimiter.tryConsume(NS_EMAIL, email.toLowerCase(),
+                                emailMaxRequests, emailMaxRequests);
+                if (!emailResult.allowed()) {
+                    sendTooManyRequests(response, emailResult,
                             "Too many login attempts for this account. Please wait before retrying.");
                     return;
                 }
@@ -214,11 +219,33 @@ public class AuthRateLimitingFilter extends OncePerRequestFilter {
         }
     }
 
-    private void sendTooManyRequests(HttpServletResponse response, String message) throws IOException {
+    /**
+     * Writes a 429 response with standard rate-limit headers.
+     *
+     * <ul>
+     *   <li>{@code Retry-After}         — seconds until the bucket refills (RFC 6585)</li>
+     *   <li>{@code X-RateLimit-Limit}   — bucket capacity (requests per minute)</li>
+     *   <li>{@code X-RateLimit-Remaining} — tokens remaining (always 0 here)</li>
+     *   <li>{@code X-RateLimit-Reset}   — epoch second when next token arrives</li>
+     * </ul>
+     */
+    private void sendTooManyRequests(HttpServletResponse response,
+                                     RateLimitingService.TokenBucketResult result,
+                                     String message) throws IOException {
+        long retryAfterSeconds = result.retryAfterSeconds();
+        long resetEpochSecond  = (System.currentTimeMillis() + result.retryAfterMs()) / 1000;
+
         response.setStatus(429);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setHeader("Retry-After",           String.valueOf(retryAfterSeconds));
+        response.setHeader("X-RateLimit-Limit",     String.valueOf(result.limit()));
+        response.setHeader("X-RateLimit-Remaining", "0");
+        response.setHeader("X-RateLimit-Reset",     String.valueOf(resetEpochSecond));
         response.getWriter().write(
-                "{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"" + message + "\"}"
+                "{\"status\":429," +
+                "\"error\":\"Too Many Requests\"," +
+                "\"message\":\"" + message + "\"," +
+                "\"retryAfterSeconds\":" + retryAfterSeconds + "}"
         );
     }
 }

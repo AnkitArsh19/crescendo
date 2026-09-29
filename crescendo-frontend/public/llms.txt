@@ -1,0 +1,34 @@
+# Crescendo
+
+> High-throughput workflow automation platform built on Java 25 Virtual Threads, Redis Streams, and PostgreSQL. Features 114+ native app integrations, a visual node canvas, Bring-Your-Own-Key (BYOK) AES-256-GCM envelope encryption, transactional email orchestration, and an Agentic AI ReAct runtime.
+
+## Core URLs
+- Web Platform: https://app.crescendo.run
+- Documentation: https://app.crescendo.run/docs
+- Full LLM Knowledge Base: https://app.crescendo.run/llms-full.txt
+- GitHub Monorepo: https://github.com/AnkitArsh19/crescendo
+- SDK Ecosystem: https://github.com/AnkitArsh19/crescendo-sdk
+
+## Architecture Highlights
+- **Engine**: Spring Boot 4 + Java 25 (`spring.threads.virtual.enabled=true`) for non-blocking I/O.
+- **Queueing & Pub/Sub**: Redis Streams (`ExecutionQueueConsumer`) with manual ACK for idempotent processing and zero-loss reliability under traffic spikes.
+- **Database**: CQRS pattern isolating write transactions (`crescendo_command`) from analytics and dashboard reads (`crescendo_query`).
+- **Distributed Rate Limiting**: Atomic Redis Lua Token Bucket algorithm mitigating brute-force and DDoS without lock contention.
+- **Secrets Management**: Authenticated AES-256-GCM envelope encryption at rest. Decrypted API keys reside strictly in volatile heap memory during live step execution handshakes. Plaintext secrets are never committed to disk or logged.
+- **Authentication**: Modern identity architecture supporting FIDO2 / WebAuthn Passkeys, TOTP MFA, OAuth 2.0 PKCE, and refresh token rotation with automated reuse detection.
+- **Transactional Email**: Embedded email service with DKIM, SPF, DMARC DNS verification, open/click telemetry tracking, and bounce suppression lists.
+- **AI / ML Runtime**: FastAPI Python microservice with Google Gemini, Groq, and OpenAI tool-calling for natural language workflow generation.
+
+## Legal, Trust & Compliance
+- **GDPR (EU 2016/679) & UK GDPR**: Fully compliant Data Processing Addendum (DPA) incorporating European Standard Contractual Clauses (SCCs).
+- **India DPDP Act (2023)**: Full compliance with data principal rights, notice requirements, and designated Grievance Redressal Officer.
+- **California CCPA/CPRA**: Zero sale or sharing of user personal data.
+- **Zero AI Model Training Guarantee**: Proprietary workflow definitions, prompt instructions, and audience subscriber data are never used to train foundation models.
+- **Security Policy (RFC 9116)**: https://app.crescendo.run/.well-known/security.txt
+
+## Key Documentation Links
+- [API Reference](https://app.crescendo.run/docs/api/workflows): REST endpoints for workflow CRUD, executions, and logs.
+- [App Catalog](https://app.crescendo.run/docs/api/apps): 114+ built-in triggers and actions.
+- [Authentication Guide](https://app.crescendo.run/docs/authentication): Passkeys, JWT Bearer tokens, and API key authorization.
+- [Security & Trust](https://app.crescendo.run/security): Cryptographic specifications and vulnerability disclosure.
+- [Cookie Policy](https://app.crescendo.run/cookies): Audit of strictly necessary session cookies.

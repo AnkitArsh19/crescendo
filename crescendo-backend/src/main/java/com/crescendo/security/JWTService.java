@@ -101,13 +101,15 @@ public class JWTService {
         Optional<TokenPair> active = userSessionRepository.findActiveByHash(hash, now).map(session -> {
             session.setLastUsedAt(now);
             
-            // Anomaly Detection: Compare original clientIp with new clientIp
+            // Anomaly Detection: Compare previous seen IP with new clientIp
             IpAddress newIp = IpAddress.of(clientIp);
-            if (session.getClientIp() != null && session.getClientIp().isSuspiciouslyDifferentFrom(newIp)) {
+            IpAddress previousIp = session.getLastIp() != null ? session.getLastIp() : session.getClientIp();
+            if (previousIp != null && previousIp.isSuspiciouslyDifferentFrom(newIp)) {
+                log.warn("[AUTH] Session IP changed from {} to {} for session={}", previousIp.value(), newIp.value(), session.getId());
                 eventPublisher.publish(new SuspiciousSessionIpEvent(
                         session.getUser().getId(),
                         session.getId(),
-                        session.getClientIp().value(),
+                        previousIp.value(),
                         newIp != null ? newIp.value() : "unknown"
                 ));
             }
