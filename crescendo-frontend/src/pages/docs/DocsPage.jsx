@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
     HiOutlineBookOpen, 
@@ -201,9 +201,26 @@ export default function DocsPage() {
     const location = useLocation();
     const { theme, toggleTheme } = useTheme();
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         setSidebarOpen(false);
-    }, [location.pathname]);
+        if (location.hash) {
+            const targetId = decodeURIComponent(location.hash.replace('#', ''));
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+            const timer = setTimeout(() => {
+                const el = document.getElementById(targetId);
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 80);
+            return () => clearTimeout(timer);
+        } else {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+    }, [location.pathname, location.hash]);
 
     // Determine current content for TOC
     let currentToc = [];
@@ -283,7 +300,7 @@ export default function DocsPage() {
                             <ul>
                                 {currentToc.map((item, idx) => (
                                     <li key={idx} style={{ paddingLeft: item.level === 3 ? '1rem' : '0' }}>
-                                        <a href={`#${item.text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                                        <a href={`#${item.text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}>
                                             {item.text}
                                         </a>
                                     </li>

@@ -71,7 +71,8 @@ Crescendo is organized as a full-stack monorepo:
 - `crescendo-frontend`: React + Vite workflow builder, management UI ([app.crescendo.run](https://app.crescendo.run)), and Tauri native desktop client
 - `crescendo-aiml`: FastAPI Python service powering the Natural Language Workflow Builder and Agentic AI ReAct Runtime (Google Gemini, Groq, OpenAI)
 - `domain-connect`: Domain Connect JSON templates for automatic DNS configuration
-- Root docs and references: interactive documentation portal at [app.crescendo.run/docs](https://app.crescendo.run/docs), architecture notes, and integration guides
+- `architecture`: Complete systems architecture suite ([`architecture/README.md`](file:///e:/crescendo-backend/architecture/README.md)), visual diagram assets (dark/light PNGs), and declarative JSON models
+- Root docs and references: authoritative engineering blueprint in [`SYSTEM_ARCHITECTURE.md`](file:///e:/crescendo-backend/SYSTEM_ARCHITECTURE.md), interactive documentation portal at [app.crescendo.run/docs](https://app.crescendo.run/docs), and integration guides
 
 Execution flow (simplified):
 
@@ -88,6 +89,33 @@ Engineering focus areas:
 - Consistency and failure recovery
 - Idempotent/defensive processing in queue consumers
 - Clear separation of command/write and query/read responsibilities
+
+## Distributed Redis Lua Token Bucket Rate Limiting
+
+Crescendo enforces enterprise perimeter defense through an atomic **Distributed Token Bucket** algorithm implemented directly via Redis Lua scripts (`rate_limiter.lua`), managed by `RateLimitingService.java`.
+
+### Architectural Evolution & Strategy Selection
+
+During architecture evaluation, traditional rate-limiting models were evaluated and discarded:
+- **Fixed Window Counter (Rejected):** Highly vulnerable to boundary double-burst traffic. An attacker sending max requests at second 59 and another burst at second 0 effectively doubled the allowed quota.
+- **Sliding Window Log (Rejected):** Stored a Redis sorted set of request timestamps per key. Under heavy load, memory overhead ballooned linearly with traffic volume ($O(N)$ memory), creating unbounded Redis memory pressure.
+- **Leaky Bucket (Rejected):** Processed requests at an artificially fixed egress cadence, penalizing legitimate bursty developer API behavior with unwanted latency.
+- **Token Bucket via Atomic Redis Lua (Selected):** Maintains $O(1)$ constant memory overhead per bucket. Tokens replenish continuously based on elapsed time (`(now - last_refreshed) * fill_rate`), accommodating legitimate developer bursts while enforcing hard rate caps. Because the replenishment and deduction logic executes inside an atomic Redis Lua script, distributed nodes operate with zero concurrency race conditions and zero distributed lock overhead.
+
+### Tiered Protection Limits
+- **Authentication Endpoints (`/api/auth/*`):** 5 requests/minute strict anti-brute-force threshold.
+- **Public Developer API (`/api/v1/*`):** 60 requests/minute burstable quota.
+- **AI Inference Queue (`/api/v1/ai/*`):** Dynamic token allocation with priority backpressure.
+
+## Legal, Compliance & Trust Center
+
+Crescendo adheres to rigorous international and domestic data protection frameworks:
+- **General Data Protection Regulation (GDPR & UK GDPR):** Comprehensive Data Processing Addendum (DPA) incorporating EU Standard Contractual Clauses (SCCs Module 2) for European business customers.
+- **India Digital Personal Data Protection Act, 2023 (DPDP Act):** Full compliance with data principal rights, clear notice, consent withdrawal, and designated Indian Grievance Redressal Officer (`grievance@crescendo.run`).
+- **California Consumer Privacy Act (CCPA/CPRA):** Zero sale or rental of customer personal data.
+- **CAN-SPAM & M3AAWG:** Strict anti-spam enforcement with automated deliverability circuit breakers (<5% bounce, <0.1% complaint thresholds).
+- **Responsible Security Disclosure (RFC 9116):** Standardized security researcher reporting channel at `/.well-known/security.txt`.
+- **Zero AI Model Training Guarantee:** Workspace schemas, prompts, and audience data are never mined or used to train third-party foundation models.
 
 ## Technologies, frameworks, and tools used
 

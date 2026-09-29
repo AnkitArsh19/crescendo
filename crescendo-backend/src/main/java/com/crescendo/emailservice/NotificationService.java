@@ -32,6 +32,8 @@ public interface NotificationService {
 
     void sendSmartLoginAlertEmail(String email, String device, String location, String country, String revokeUrl);
 
+    void sendSuspiciousActivityEmail(String email, String originalLocation, String originalIp, String newLocation, String newIp, String activityType, String revokeUrl);
+
     void sendSuspiciousActivityEmail(String email, String originalIp, String newIp, String revokeUrl);
 
     void sendPasskeyAddedEmail(String email, String passkeyName);

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientResponseException;
@@ -13,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -38,6 +40,49 @@ import java.util.function.Supplier;
 public class AiRateLimiterQueueService {
 
     private static final Logger log = LoggerFactory.getLogger(AiRateLimiterQueueService.class);
+
+    // ── Atomic RPM slot claim ────────────────────────────────────────────────────
+    //
+    // KEYS[1] = global RPM key
+    // KEYS[2] = user RPM key (empty string "" if userId is null)
+    // ARGV[1] = platform RPM limit
+    // ARGV[2] = user RPM limit
+    // ARGV[3] = TTL in seconds for both keys
+    //
+    // Returns 1 if BOTH global AND user slots were successfully claimed, 0 otherwise.
+    // Because all reads and writes happen inside a single EVAL call, no two concurrent
+    // callers can both observe "room available" and both increment — the classic
+    // check-then-act (GET … INCR) TOCTOU race is eliminated.
+    private static final RedisScript<Long> CLAIM_RPM_SLOT_SCRIPT = RedisScript.of(
+            "local gLimit  = tonumber(ARGV[1]) " +
+            "local uLimit  = tonumber(ARGV[2]) " +
+            "local ttlSecs = tonumber(ARGV[3]) " +
+            "local gVal    = tonumber(redis.call('GET', KEYS[1]) or '0') " +
+            "local uKey    = KEYS[2] " +
+            "local uVal    = (uKey ~= '') and tonumber(redis.call('GET', uKey) or '0') or 0 " +
+            "if gVal >= gLimit then return 0 end " +
+            "if uKey ~= '' and uVal >= uLimit then return 0 end " +
+            "local newG = redis.call('INCR', KEYS[1]) " +
+            "if newG == 1 then redis.call('EXPIRE', KEYS[1], ttlSecs) end " +
+            "if uKey ~= '' then " +
+            "  local newU = redis.call('INCR', uKey) " +
+            "  if newU == 1 then redis.call('EXPIRE', uKey, ttlSecs) end " +
+            "end " +
+            "return 1",
+            Long.class
+    );
+
+    // ── Atomic INCR + EXPIRE (fixes the immortal-key bug in daily counters) ─────
+    //
+    // KEYS[1] = counter key
+    // ARGV[1] = TTL in seconds
+    // Returns the new counter value after increment.
+    private static final RedisScript<Long> INCR_WITH_EXPIRE_SCRIPT = RedisScript.of(
+            "local v = redis.call('INCR', KEYS[1]) " +
+            "if v == 1 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])) end " +
+            "return v",
+            Long.class
+    );
 
     private final StringRedisTemplate redisTemplate;
 
@@ -144,34 +189,41 @@ public class AiRateLimiterQueueService {
 
     /**
      * Increments the daily counter for user and platform upon successful dispatch.
+     *
+     * <p>Uses an atomic Lua {@code INCR + EXPIRE} script so the counter key can never
+     * be left without a TTL (the old two-step INCR / EXPIRE approach could produce
+     * a permanent "zombie" key if the JVM crashed between the two commands).
      */
     private void incrementDailyCount(UUID userId) {
         if (redisTemplate == null) return;
 
         String today = LocalDate.now(ZoneOffset.UTC).toString();
-        Duration ttl = Duration.ofHours(36); // Keep past UTC midnight for rolling overlap
+        long   ttlSeconds = Duration.ofHours(36).toSeconds(); // Keep past UTC midnight
         try {
             if (userId != null) {
                 String userKey = "crescendo:ratelimit:ai:rpd:user:" + userId + ":" + today;
-                Long count = redisTemplate.opsForValue().increment(userKey);
-                if (count != null && count == 1) {
-                    redisTemplate.expire(userKey, ttl);
-                }
+                redisTemplate.execute(INCR_WITH_EXPIRE_SCRIPT,
+                        List.of(userKey), String.valueOf(ttlSeconds));
             }
 
             String platformKey = "crescendo:ratelimit:ai:rpd:global:" + today;
-            Long pCount = redisTemplate.opsForValue().increment(platformKey);
-            if (pCount != null && pCount == 1) {
-                redisTemplate.expire(platformKey, ttl);
-            }
+            redisTemplate.execute(INCR_WITH_EXPIRE_SCRIPT,
+                    List.of(platformKey), String.valueOf(ttlSeconds));
         } catch (Exception ex) {
             log.warn("Redis daily rate limit increment failed: {}", ex.getMessage());
         }
     }
 
     /**
-     * Acquires an RPM slot for the request.
-     * If limits are exceeded, holds the thread in a queue and polls until capacity frees up.
+     * Acquires an RPM slot for the request using an atomic Lua script.
+     *
+     * <p>If capacity is available the script atomically increments both the global
+     * and per-user counters in a single {@code EVAL} call, making it impossible for
+     * two concurrent callers to both read "slot available" and both increment —
+     * the TOCTOU race present in the previous GET / INCR implementation is gone.
+     *
+     * <p>If capacity is saturated the calling thread parks in a retry loop, polling
+     * every ~1.75 s until a slot opens or the queue timeout is reached.
      */
     private void acquireRpmSlotWithQueue(UUID userId) {
         if (redisTemplate == null) return;
@@ -180,48 +232,34 @@ public class AiRateLimiterQueueService {
         boolean queued = false;
 
         while (true) {
-            long currentMinute = Instant.now().getEpochSecond() / 60;
-            String globalRpmKey = "crescendo:ratelimit:ai:rpm:global:" + currentMinute;
-            String userRpmKey = userId != null ? "crescendo:ratelimit:ai:rpm:user:" + userId + ":" + currentMinute : null;
+            long   currentMinute = Instant.now().getEpochSecond() / 60;
+            String globalRpmKey  = "crescendo:ratelimit:ai:rpm:global:" + currentMinute;
+            String userRpmKey    = userId != null
+                    ? "crescendo:ratelimit:ai:rpm:user:" + userId + ":" + currentMinute
+                    : "";
 
             try {
-                // Read current values without incrementing
-                String globalVal = redisTemplate.opsForValue().get(globalRpmKey);
-                long currentGlobal = globalVal != null ? Long.parseLong(globalVal) : 0L;
+                // Attempt to claim a slot atomically.
+                // TTL = 75 s so keys auto-expire even if the minute boundary shifts.
+                Long claimed = redisTemplate.execute(
+                        CLAIM_RPM_SLOT_SCRIPT,
+                        List.of(globalRpmKey, userRpmKey),
+                        String.valueOf(platformRpmLimit),
+                        String.valueOf(userRpmLimit),
+                        "75"
+                );
 
-                long currentUser = 0L;
-                if (userRpmKey != null) {
-                    String userVal = redisTemplate.opsForValue().get(userRpmKey);
-                    currentUser = userVal != null ? Long.parseLong(userVal) : 0L;
-                }
-
-                boolean globalHasRoom = currentGlobal < platformRpmLimit;
-                boolean userHasRoom = userId == null || currentUser < userRpmLimit;
-
-                if (globalHasRoom && userHasRoom) {
-                    // Claim slot
-                    Long newGlobal = redisTemplate.opsForValue().increment(globalRpmKey);
-                    if (newGlobal != null && newGlobal == 1) {
-                        redisTemplate.expire(globalRpmKey, Duration.ofSeconds(75));
-                    }
-
-                    if (userRpmKey != null) {
-                        Long newUser = redisTemplate.opsForValue().increment(userRpmKey);
-                        if (newUser != null && newUser == 1) {
-                            redisTemplate.expire(userRpmKey, Duration.ofSeconds(75));
-                        }
-                    }
-
+                if (Long.valueOf(1L).equals(claimed)) {
                     if (queued) {
-                        log.info("RPM slot acquired after {}ms in queue for user={}", System.currentTimeMillis() - startTime, userId);
+                        log.info("RPM slot acquired after {}ms in queue for user={}",
+                                System.currentTimeMillis() - startTime, userId);
                     }
-                    return; // Successfully acquired slot!
+                    return; // Slot successfully claimed — proceed to execution
                 }
 
-                // Capacity saturated -> Queue the request
+                // No slot available — enter / remain in the holding queue
                 if (!queued) {
-                    log.info("AI request for user={} queued due to RPM limit (global={}/{}, user={}/{}). Holding...",
-                            userId, currentGlobal, platformRpmLimit, currentUser, userRpmLimit);
+                    log.info("AI request for user={} queued (RPM capacity saturated). Holding...", userId);
                     queued = true;
                 }
 
@@ -234,17 +272,18 @@ public class AiRateLimiterQueueService {
                     );
                 }
 
-                // Poll wait between 1500ms and 2000ms
+                // Poll wait ~1.75 s before re-trying
                 Thread.sleep(1750);
 
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "AI request queued was interrupted.");
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "AI request queue was interrupted.");
             } catch (ResponseStatusException rse) {
                 throw rse;
             } catch (Exception ex) {
-                log.warn("Redis RPM queue operation failed (failing open): {}", ex.getMessage());
-                return; // Fail open on redis errors
+                log.warn("Redis RPM claim failed (failing open): {}", ex.getMessage());
+                return; // Fail open on Redis errors
             }
         }
     }

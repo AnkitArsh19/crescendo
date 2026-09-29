@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight, vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -260,6 +260,14 @@ export default function OpenApiRenderer({ targetTag }) {
     const [error, setError] = useState(null);
     const [referenceBaseUrl, setReferenceBaseUrl] = useState(null);
     const [reloadToken, setReloadToken] = useState(0);
+
+    useLayoutEffect(() => {
+        if (!window.location.hash) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        }
+    }, [targetTag]);
 
     useEffect(() => {
         const controller = new AbortController();

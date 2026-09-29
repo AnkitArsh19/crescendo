@@ -11,7 +11,7 @@ import com.crescendo.security.RateLimitingService;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+
 
 import static com.crescendo.security.AuthenticatedUser.userId;
 
@@ -78,7 +78,7 @@ public class SuppressionController {
         UUID uId = userId(auth);
 
         // 1. Rate Limit (2 requests per minute)
-        if (rateLimitingService.isRateLimited("suppressions:import", uId.toString(), 2, Duration.ofMinutes(1))) {
+        if (rateLimitingService.isRateLimited("suppressions:import", uId.toString(), 2)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded for CSV import");
         }
 

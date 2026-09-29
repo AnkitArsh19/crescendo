@@ -26,7 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
+
 import java.util.UUID;
 import java.util.HexFormat;
 
@@ -78,7 +78,7 @@ public class FileUploadController {
         }
 
         // 1. Rate Limiting (30 requests per minute)
-        if (rateLimitingService.isRateLimited("upload", userId.toString(), 30, Duration.ofMinutes(1))) {
+        if (rateLimitingService.isRateLimited("upload", userId.toString(), 30)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Rate limit exceeded for uploads");
         }
 

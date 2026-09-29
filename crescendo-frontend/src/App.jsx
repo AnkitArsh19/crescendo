@@ -8,6 +8,7 @@ import usePageMeta from './hooks/usePageMeta';
 import DesktopTitlebar from './components/DesktopTitlebar';
 import useDesktopAuth from './hooks/useDesktopAuth';
 import { isTauri } from './utils/platform';
+import ScrollToTop from './components/ScrollToTop';
 import './App.css';
 
 // Landing
@@ -60,7 +61,14 @@ import OAuthAuthorizePage from './pages/auth/OAuthAuthorizePage';
 // Legal
 import TermsPage from './pages/legal/TermsPage';
 import PrivacyPage from './pages/legal/PrivacyPage';
+import CookiePolicyPage from './pages/legal/CookiePolicyPage';
+import DpaPage from './pages/legal/DpaPage';
+import SecurityPage from './pages/legal/SecurityPage';
+import SubprocessorsPage from './pages/legal/SubprocessorsPage';
+import AcceptableUsePage from './pages/legal/AcceptableUsePage';
 import DeveloperProfile from './pages/DeveloperProfile';
+import AboutPage from './pages/AboutPage';
+import CookieConsent from './components/CookieConsent';
 
 // Email Service (dashboard feature)
 import EmailService from './pages/dashboard/EmailService';
@@ -163,24 +171,37 @@ function App() {
   const isDocsSubdomain = window.location.hostname.startsWith('docs.');
   if (isDocsSubdomain) {
     return (
-      <Routes>
-        <Route path="/*" element={<DocsPage />} />
-      </Routes>
+      <>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/*" element={<DocsPage />} />
+        </Routes>
+      </>
     );
   }
 
   return (
     <>
+    <ScrollToTop />
     <DesktopTitlebar />
     <ToastProvider />
+    <CookieConsent />
     <Routes>
       {/* Landing */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/about" element={<AboutPage />} />
       <Route path="/developer" element={<DeveloperProfile />} />
 
       {/* Legal & Docs */}
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/cookies" element={<CookiePolicyPage />} />
+      <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+      <Route path="/dpa" element={<DpaPage />} />
+      <Route path="/security" element={<SecurityPage />} />
+      <Route path="/subprocessors" element={<SubprocessorsPage />} />
+      <Route path="/acceptable-use" element={<AcceptableUsePage />} />
+      <Route path="/anti-spam" element={<AcceptableUsePage />} />
       <Route path="/docs/*" element={<DocsPage />} />
 
       {/* Custom Error & Easter Egg Routes */}

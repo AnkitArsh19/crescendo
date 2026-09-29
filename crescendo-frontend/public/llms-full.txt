@@ -1,0 +1,38 @@
+# Crescendo — Full Technical Specification & Knowledge Base
+
+## 1. System Overview
+Crescendo is an open, high-performance workflow automation and orchestration platform developed by Ankit Arsh and Rishika Sarma. It provides an intuitive node graph builder, asynchronous distributed queue execution, transactional email delivery with custom DNS verification, and an autonomous Agentic AI loop.
+
+## 2. Monorepo Structure
+- `crescendo-backend`: Core Java 25 / Spring Boot 4 automation engine.
+- `crescendo-frontend`: React 19 + Vite + XYFlow web application and Tauri v2 native desktop application.
+- `crescendo-aiml`: FastAPI Python microservice with LangGraph and multi-provider tool-calling (Gemini, Groq, OpenAI).
+- `crescendo-sdk`: Official client SDKs in Go, Java, Python, .NET, PHP, Ruby, and Rust.
+- `domain-connect`: Domain Connect service provider templates for DNS automation.
+
+## 3. Distributed Rate Limiting Architecture
+Crescendo implements a distributed Token Bucket rate limiter powered by Redis Lua scripts (`RateLimitingService.java`):
+- **Why Token Bucket was chosen**: Unlike fixed-window counters (which suffer from double-burst boundary attacks) or sliding-window logs (which consume excessive memory), the Token Bucket algorithm provides smooth continuous replenishment with burst tolerance.
+- **Atomicity**: The replenishment and consumption logic is encapsulated entirely within a single atomic Redis Lua script. This eliminates distributed concurrency race conditions without acquiring slow Redis locks.
+- **Tiers & Quotas**:
+  - Auth Endpoints: 5 tokens/min strict anti-brute-force.
+  - Public Developer API: 60 tokens/min burstable.
+  - AI Generation Queue: Dynamically throttled with priority worker backpressure.
+
+## 4. Cryptographic Security & Envelope Encryption
+- **At Rest**: AES-256-GCM envelope encryption protects third-party OAuth access/refresh tokens and BYOK API keys.
+- **In Transit**: Enforced TLS 1.3 with Perfect Forward Secrecy and HSTS.
+- **Runtime Scoping**: Decrypted credentials reside in volatile JVM memory only during active external HTTP socket transmissions. Credentials are zeroed out and sanitized from execution logs and APM traces.
+- **Identity & Passkeys**: WebAuthn / FIDO2 Passkeys (Touch ID, Windows Hello, YubiKey) and TOTP MFA.
+- **Refresh Token Rotation**: Refresh tokens are single-use. If token reuse is detected, the entire session family is revoked immediately.
+
+## 5. Transactional Email & Deliverability Service
+- **Authentication**: Built-in cryptographic DNS verification for SPF, DKIM (RSA 2048-bit), and DMARC.
+- **Telemetry**: Automated HTML pixel injection (`/t/o/{emailId}`) and link click attribution wrapping.
+- **Compliance**: Adheres to CAN-SPAM, CASL, and M3AAWG standards. Automatically throttles accounts exceeding 5% hard bounce rate or 0.1% spam complaint rate.
+
+## 6. Global Regulatory Compliance Matrix
+- **European Union / UK**: General Data Protection Regulation (GDPR Article 28 DPA with Standard Contractual Clauses Module 2).
+- **India**: Digital Personal Data Protection Act, 2023 (DPDP Act). Notice, consent manager, and designated Grievance Redressal Officer (`grievance@crescendo.run`).
+- **United States**: California Consumer Privacy Act (CCPA/CPRA). Zero sale or sharing of user personal data.
+- **Security Vulnerability Reporting**: RFC 9116 compliant (`/.well-known/security.txt`).

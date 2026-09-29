@@ -52,8 +52,8 @@ export default function PrivacyPage() {
                         </p>
                         <p>
                             For questions about this policy, contact us at{' '}
-                            <a href="mailto:privacy@crescendo.app" style={{ color: 'var(--text-accent, #fafafa)' }}>
-                                privacy@crescendo.app
+                            <a href="mailto:privacy@crescendo.run" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                privacy@crescendo.run
                             </a>.
                         </p>
                     </div>
@@ -167,7 +167,11 @@ export default function PrivacyPage() {
                         </ul>
                         <p>
                             We do not sell, rent, or trade your personal information to third
-                            parties for their own marketing purposes.
+                            parties for their own marketing purposes. For a complete itemized list of our third-party data processors and infrastructure vendors, please visit our{' '}
+                            <Link to="/subprocessors" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                Authorized Sub-processors
+                            </Link>{' '}
+                            directory.
                         </p>
                     </div>
 
@@ -235,8 +239,8 @@ export default function PrivacyPage() {
                         <p>
                             No method of transmission or storage is 100% secure. If you believe
                             your account has been compromised, contact us immediately at{' '}
-                            <a href="mailto:security@crescendo.app" style={{ color: 'var(--text-accent, #fafafa)' }}>
-                                security@crescendo.app
+                            <a href="mailto:security@crescendo.run" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                security@crescendo.run
                             </a>.
                         </p>
                     </div>
@@ -255,7 +259,10 @@ export default function PrivacyPage() {
                         </p>
                         <p>
                             You can clear cookies and local storage through your browser settings,
-                            but doing so will log you out of the Service.
+                            but doing so will log you out of the Service. For an itemized audit table of all first-party cookies, their lifespans, and technical functions, please review our dedicated{' '}
+                            <Link to="/cookies" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                Cookie Policy
+                            </Link>.
                         </p>
                     </div>
 
@@ -298,8 +305,8 @@ export default function PrivacyPage() {
                         </ul>
                         <p>
                             To exercise any of these rights, email us at{' '}
-                            <a href="mailto:privacy@crescendo.app" style={{ color: 'var(--text-accent, #fafafa)' }}>
-                                privacy@crescendo.app
+                            <a href="mailto:privacy@crescendo.run" style={{ color: 'var(--text-accent, #fafafa)' }}>
+                                privacy@crescendo.run
                             </a>.
                             We will respond within 30 days.
                         </p>
@@ -402,7 +409,7 @@ export default function PrivacyPage() {
                                 <strong>Zero AI Model Training Disclosure:</strong> Crescendo unequivocally guarantees that your workspace workflow schemas, automation prompt instructions, step execution payloads, BYOK API secrets, and Audience recipient lists are <strong>never</strong> mined, scraped, or utilized to train, fine-tune, or prompt-reinforce internal or third-party artificial intelligence foundation models (including Google, OpenAI, Anthropic, or proprietary models).
                             </li>
                             <li>
-                                <strong>GDPR Right to Erasure (Right to Be Forgotten):</strong> Under Article 17 of the General Data Protection Regulation (GDPR) and equivalent CCPA/CPRA California privacy mandates, you maintain an unconditional Right to Erasure. Upon invoking account deletion via your settings dashboard or contacting privacy@crescendo.app, Crescendo initiates an immediate hard-deletion cascade purging your user identity, MFA backup tokens, connection credentials, active sessions, and stored file attachments from all primary databases within 30 calendar days.
+                                <strong>GDPR Right to Erasure (Right to Be Forgotten):</strong> Under Article 17 of the General Data Protection Regulation (GDPR) and equivalent CCPA/CPRA California privacy mandates, you maintain an unconditional Right to Erasure. Upon invoking account deletion via your settings dashboard or contacting privacy@crescendo.run, Crescendo initiates an immediate hard-deletion cascade purging your user identity, MFA backup tokens, connection credentials, active sessions, and stored file attachments from all primary databases within 30 calendar days.
                             </li>
                             <li>
                                 <strong>Data Portability &amp; Access Rights:</strong> You maintain absolute ownership of your automation schemas and operational logs, with the guaranteed ability to export your complete workspace configuration and execution logbooks in industry-standard JSON and CSV formats at any time without restriction.
@@ -415,18 +422,60 @@ export default function PrivacyPage() {
                     <div className="legal-section">
                         <h2 className="legal-section-heading">
                             <span className="legal-section-number">15</span>
+                            India Digital Personal Data Protection Act (DPDP Act 2023) Compliance
+                        </h2>
+                        <p>
+                            For users and organizations residing in India, Crescendo complies with the <strong>Digital Personal Data Protection Act, 2023 (DPDP Act)</strong>.
+                            Under the DPDP Act, you are recognized as a <em>Data Principal</em> with statutory rights:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Notice and Consent:</strong> We collect personal data strictly for lawful, explicitly stated purposes
+                                (authenticating user access, executing automation steps, and sending opted-in email broadcasts).
+                            </li>
+                            <li>
+                                <strong>Right to Access &amp; Summary:</strong> You may request a complete summary of your personal data processed by Crescendo,
+                                alongside the identities of any data fiduciaries or processors with whom data has been shared.
+                            </li>
+                            <li>
+                                <strong>Right to Correction &amp; Erasure:</strong> You may update outdated account information or request permanent erasure
+                                of personal data that is no longer necessary for the initial purpose of collection.
+                            </li>
+                            <li>
+                                <strong>Right of Grievance Redressal:</strong> In accordance with Section 8(10) of the DPDP Act, Crescendo has designated a
+                                <strong>Grievance Redressal Officer</strong>. If you have an inquiry, grievance, or complaint regarding the processing of your personal data,
+                                you may submit it directly to our Grievance Officer:
+                                <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))' }}>
+                                    <div><strong>Grievance Officer:</strong> Ankit Arsh</div>
+                                    <div><strong>Designation:</strong> Data Protection &amp; Grievance Redressal Lead</div>
+                                    <div><strong>Email:</strong> <a href="mailto:grievance@crescendo.run" style={{ color: 'var(--text-accent, #fafafa)' }}>grievance@crescendo.run</a> (or <a href="mailto:privacy@crescendo.run" style={{ color: 'var(--text-accent, #fafafa)' }}>privacy@crescendo.run</a>)</div>
+                                    <div><strong>Jurisdiction:</strong> India</div>
+                                    <div><strong>Response Timeframe:</strong> Within 30 calendar days as stipulated under DPDP regulations.</div>
+                                </div>
+                            </li>
+                            <li>
+                                <strong>Right to Nominate:</strong> You have the right to designate an authorized representative who may exercise your data principal rights in the event of death or incapacity.
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div className="legal-divider" />
+
+                    <div className="legal-section">
+                        <h2 className="legal-section-heading">
+                            <span className="legal-section-number">16</span>
                             Contact Us
                         </h2>
                         <p>
                             For privacy-related questions, data requests, or to report a concern:
                         </p>
                         <div className="legal-contact-box">
-                            <span className="contact-label">Privacy inquiries</span>
-                            <a href="mailto:privacy@crescendo.app">privacy@crescendo.app</a>
-                            <span className="contact-label" style={{ marginTop: 8 }}>Security issues</span>
-                            <a href="mailto:security@crescendo.app">security@crescendo.app</a>
+                            <span className="contact-label">Privacy &amp; DPDP Grievance Inquiries</span>
+                            <a href="mailto:privacy@crescendo.run">privacy@crescendo.run</a>
+                            <span className="contact-label" style={{ marginTop: 8 }}>Security &amp; CERT-In Incident Reports</span>
+                            <a href="mailto:security@crescendo.run">security@crescendo.run</a>
                             <span className="contact-label" style={{ marginTop: 8 }}>General support</span>
-                            <a href="mailto:support@crescendo.app">support@crescendo.app</a>
+                            <a href="mailto:support@crescendo.run">support@crescendo.run</a>
                         </div>
                     </div>
                 </div>
@@ -436,6 +485,11 @@ export default function PrivacyPage() {
                     <div className="legal-footer-links">
                         <Link to="/privacy">Privacy Policy</Link>
                         <Link to="/terms">Terms of Service</Link>
+                        <Link to="/cookies">Cookie Policy</Link>
+                        <Link to="/dpa">DPA</Link>
+                        <Link to="/security">Security</Link>
+                        <Link to="/subprocessors">Sub-processors</Link>
+                        <Link to="/acceptable-use">Acceptable Use</Link>
                         <Link to="/">Home</Link>
                     </div>
                 </div>

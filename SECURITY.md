@@ -17,7 +17,7 @@ Only the current active release line published on the `main` branch receives act
 If you discover a potential security vulnerability, cryptographic weakness, OAuth token storage flaw, or unauthorized access vector within any Crescendo component, please report it following these instructions:
 
 1. **Do Not Open a Public Issue**: Do not report security flaws or potential exploit payloads in public GitHub issues, discussions, or pull requests.
-2. **Private Communication Channel**: Submit your advisory privately to repository maintainers via GitHub's built-in private vulnerability reporting tool or direct maintainer communication channels.
+2. **Private Communication Channel**: Submit your advisory privately to repository maintainers via GitHub's built-in private vulnerability reporting tool or via our RFC 9116 security reporting channel at [security@crescendo.run](mailto:security@crescendo.run). Our canonical security disclosure policy is available at [https://app.crescendo.run/.well-known/security.txt](https://app.crescendo.run/.well-known/security.txt).
 3. **Required Information**:
    - A descriptive title and detailed summary of the suspected vulnerability.
    - Specific source code file paths, API endpoints, or third-party connector packages involved.

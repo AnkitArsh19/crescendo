@@ -24,7 +24,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -124,10 +123,20 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Rate limit per API key via the shared RateLimitingService
-        if (rateLimitingService.isRateLimited(RATE_LIMIT_NAMESPACE, apiKey.getId().toString(),
-                apiKey.getRateLimitPerMinute(), Duration.ofMinutes(1))) {
-            sendError(response, 429, "Rate limit exceeded");
+        // Rate limit per API key using the Token Bucket algorithm.
+        // The bucket capacity and refill rate both equal the key's per-minute allowance,
+        // giving a smooth limit without the fixed-window double-burst exploit.
+        RateLimitingService.TokenBucketResult rlResult = rateLimitingService.tryConsume(
+                RATE_LIMIT_NAMESPACE, apiKey.getId().toString(),
+                apiKey.getRateLimitPerMinute(), apiKey.getRateLimitPerMinute());
+        if (!rlResult.allowed()) {
+            long retryAfterSeconds = rlResult.retryAfterSeconds();
+            long resetEpochSecond  = (System.currentTimeMillis() + rlResult.retryAfterMs()) / 1000;
+            response.setHeader("Retry-After",           String.valueOf(retryAfterSeconds));
+            response.setHeader("X-RateLimit-Limit",     String.valueOf(rlResult.limit()));
+            response.setHeader("X-RateLimit-Remaining", "0");
+            response.setHeader("X-RateLimit-Reset",     String.valueOf(resetEpochSecond));
+            sendError(response, 429, "Rate limit exceeded. Retry after " + retryAfterSeconds + "s.");
             return;
         }
 

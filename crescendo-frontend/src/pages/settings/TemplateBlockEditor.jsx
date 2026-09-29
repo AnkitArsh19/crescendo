@@ -1023,7 +1023,7 @@ export default function TemplateBlockEditor({ template, onClose, onSaved }) {
   const [testVariablesMock, setTestVariablesMock] = useState({
     FIRST_NAME: 'Sarah',
     LAST_NAME: 'Connor',
-    EMAIL: 'sarah@crescendo.app',
+    EMAIL: 'sarah@crescendo.run',
     COMPANY_NAME: 'Crescendo AI',
     CRESCENDO_UNSUBSCRIBE_URL: 'https://crescendo.app/unsubscribe?token=preview_123',
     CURRENT_YEAR: '2026'
