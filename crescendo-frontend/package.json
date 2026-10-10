@@ -22,7 +22,7 @@
     "@tauri-apps/plugin-deep-link": "^2.4.10",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@xyflow/react": "^12.11.2",
-    "axios": "^1.18.1",
+    "axios": "^1.20.0",
     "framer-motion": "^12.42.2",
     "fuse.js": "^7.5.0",
     "react": "^19.2.7",
