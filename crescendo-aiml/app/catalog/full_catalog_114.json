@@ -1,0 +1,4700 @@
+[
+  {
+    "appKey": "agent",
+    "name": "AI Agent",
+    "description": "Autonomous Agentic AI node for dynamic runtime decision making and tool orchestration.\n                \n                Attaches tools, language models, memory, and output parsers as sub-nodes on the canvas.\n                Operates during active workflow execution to classify, route, and execute ac",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "agent:ai_agent",
+        "name": "AI Agent",
+        "description": "Autonomous agent that dynamically chooses tools and routes items during workflow execution."
+      }
+    ]
+  },
+  {
+    "appKey": "airtable",
+    "name": "Airtable",
+    "description": "Airtable is a cloud collaboration service that provides the features of a database applied to a spreadsheet.\n                \n                This integration provides operations for:\n                - **Base**: Get Many, Get Schema\n                - **Record**: Create, Delete, Get, Search, Update, ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "airtable:base:getMany",
+        "name": "Get Many Bases",
+        "description": "List bases"
+      },
+      {
+        "key": "airtable:base:getSchema",
+        "name": "Get Schema",
+        "description": "Get base schema"
+      },
+      {
+        "key": "airtable:record:create",
+        "name": "Create Record",
+        "description": "Create a record"
+      },
+      {
+        "key": "airtable:record:delete",
+        "name": "Delete Record",
+        "description": "Delete a record"
+      },
+      {
+        "key": "airtable:record:get",
+        "name": "Get Record",
+        "description": "Get a record"
+      },
+      {
+        "key": "airtable:record:search",
+        "name": "Search Records",
+        "description": "Search for records"
+      },
+      {
+        "key": "airtable:record:update",
+        "name": "Update Record",
+        "description": "Update a record"
+      },
+      {
+        "key": "airtable:record:upsert",
+        "name": "Upsert Record",
+        "description": "Create or update a record"
+      }
+    ]
+  },
+  {
+    "appKey": "approval",
+    "name": "Approval",
+    "description": "The Crescendo Approval app is a built-in utility that allows you to pause a workflow mid-execution until a human provides explicit approval.\n\n                **What you can do with Approval in Crescendo:**\n                - Pause a CI/CD deployment pipeline until an engineering manager clicks \"Appro",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "request-approval",
+        "name": "Request Approval",
+        "description": "Create a public approval response link and pause until it is submitted"
+      }
+    ]
+  },
+  {
+    "appKey": "asana",
+    "name": "Asana",
+    "description": "Asana is a web and mobile work management platform designed to help teams organize, track, and manage their work.\n                \n                This integration mirrors n8n's Asana node and provides:\n                - **Project**: Create, Get All\n                - **Subtask**: Create, Get All\n   ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "asana:project:create",
+        "name": "Create Project",
+        "description": "Create a project"
+      },
+      {
+        "key": "asana:project:getAll",
+        "name": "Get All Projects",
+        "description": "Get all projects"
+      },
+      {
+        "key": "asana:subtask:create",
+        "name": "Create Subtask",
+        "description": "Create a subtask"
+      },
+      {
+        "key": "asana:subtask:getAll",
+        "name": "Get All Subtasks",
+        "description": "Get all subtasks"
+      },
+      {
+        "key": "asana:task:create",
+        "name": "Create Task",
+        "description": "Create a task"
+      },
+      {
+        "key": "asana:task:delete",
+        "name": "Delete Task",
+        "description": "Delete a task"
+      },
+      {
+        "key": "asana:task:get",
+        "name": "Get Task",
+        "description": "Get a task"
+      },
+      {
+        "key": "asana:task:getAll",
+        "name": "Get All Tasks",
+        "description": "Get all tasks"
+      },
+      {
+        "key": "asana:task:move",
+        "name": "Move Task",
+        "description": "Move a task between sections"
+      },
+      {
+        "key": "asana:task:search",
+        "name": "Search Tasks",
+        "description": "Search for tasks in a workspace"
+      },
+      {
+        "key": "asana:task:update",
+        "name": "Update Task",
+        "description": "Update a task"
+      },
+      {
+        "key": "asana:taskComment:add",
+        "name": "Add Comment to Task",
+        "description": "Add a comment to a task"
+      },
+      {
+        "key": "asana:taskComment:remove",
+        "name": "Remove Comment from Task",
+        "description": "Remove a comment from a task"
+      },
+      {
+        "key": "asana:taskProject:add",
+        "name": "Add Task to Project",
+        "description": "Add a task to a project"
+      },
+      {
+        "key": "asana:taskProject:remove",
+        "name": "Remove Task from Project",
+        "description": "Remove a task from a project"
+      },
+      {
+        "key": "asana:taskTag:add",
+        "name": "Add Tag to Task",
+        "description": "Add a tag to a task"
+      },
+      {
+        "key": "asana:taskTag:remove",
+        "name": "Remove Tag from Task",
+        "description": "Remove a tag from a task"
+      },
+      {
+        "key": "asana:user:get",
+        "name": "Get User",
+        "description": "Get a user"
+      },
+      {
+        "key": "asana:user:getAll",
+        "name": "Get All Users",
+        "description": "Get all users in a workspace"
+      }
+    ]
+  },
+  {
+    "appKey": "awss3",
+    "name": "AWS S3",
+    "description": "Amazon Simple Storage Service (S3) is an object storage service offering industry-leading scalability and security. The Crescendo AWS S3 app allows you to automate file management across your buckets.\n\n                **What you can do with AWS S3 in Crescendo:**\n                - Automatically back",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "list-objects",
+        "name": "List Objects",
+        "description": "List objects in a bucket"
+      },
+      {
+        "key": "put-object",
+        "name": "Put Object",
+        "description": "Upload Base64 data"
+      },
+      {
+        "key": "get-object",
+        "name": "Get Object",
+        "description": "Download object as Base64"
+      },
+      {
+        "key": "copy-object",
+        "name": "Copy Object",
+        "description": "Copy an object between S3 keys or buckets"
+      },
+      {
+        "key": "delete-object",
+        "name": "Delete Object",
+        "description": "Delete an object"
+      },
+      {
+        "key": "presign-get-object",
+        "name": "Create Download URL",
+        "description": "Create a temporary presigned download URL"
+      },
+      {
+        "key": "presign-put-object",
+        "name": "Create Upload URL",
+        "description": "Create a temporary presigned upload URL"
+      }
+    ]
+  },
+  {
+    "appKey": "brandfetch",
+    "name": "Brandfetch",
+    "description": "Brandfetch is the global brand registry and Logo API provider. The Crescendo Brandfetch app allows you to instantly retrieve accurate, high-resolution company logos and brand assets into your workflows.\n\n                **What you can do with Brandfetch in Crescendo:**\n                - Fetch high-r",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-logo",
+        "name": "Get Logo",
+        "description": "Retrieve direct CDN logo URL for any company domain via Brandfetch Logo API"
+      },
+      {
+        "key": "search-brand",
+        "name": "Search Brands",
+        "description": "Search companies by name to retrieve domains and logos"
+      },
+      {
+        "key": "get-brand",
+        "name": "Get Brand Profile",
+        "description": "Fetch brand profile and logo assets by domain"
+      }
+    ]
+  },
+  {
+    "appKey": "brevo",
+    "name": "Brevo",
+    "description": "Brevo (formerly Sendinblue) is a SaaS solution for relationship marketing.\n                \n                This integration provides:\n                - **Attribute**: Create, Update, Delete, Get All\n                - **Contact**: Create, Upsert, Delete, Get, Get All, Update\n                - **Emai",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "brevo:attribute:create",
+        "name": "Create Attribute",
+        "description": "Create a contact attribute"
+      },
+      {
+        "key": "brevo:attribute:update",
+        "name": "Update Attribute",
+        "description": "Update a contact attribute"
+      },
+      {
+        "key": "brevo:attribute:delete",
+        "name": "Delete Attribute",
+        "description": "Delete a contact attribute"
+      },
+      {
+        "key": "brevo:attribute:getAll",
+        "name": "Get All Attributes",
+        "description": "Get all contact attributes"
+      },
+      {
+        "key": "brevo:contact:create",
+        "name": "Create Contact",
+        "description": "Create a contact"
+      },
+      {
+        "key": "brevo:contact:upsert",
+        "name": "Upsert Contact",
+        "description": "Upsert a contact"
+      },
+      {
+        "key": "brevo:contact:delete",
+        "name": "Delete Contact",
+        "description": "Delete a contact"
+      },
+      {
+        "key": "brevo:contact:get",
+        "name": "Get Contact",
+        "description": "Get a contact"
+      },
+      {
+        "key": "brevo:contact:getAll",
+        "name": "Get All Contacts",
+        "description": "Get all contacts"
+      },
+      {
+        "key": "brevo:contact:update",
+        "name": "Update Contact",
+        "description": "Update a contact"
+      },
+      {
+        "key": "brevo:email:send",
+        "name": "Send Email",
+        "description": "Send a transactional email"
+      },
+      {
+        "key": "brevo:email:sendTemplate",
+        "name": "Send Template Email",
+        "description": "Send a transactional email via template"
+      },
+      {
+        "key": "brevo:sender:create",
+        "name": "Create Sender",
+        "description": "Create a sender"
+      },
+      {
+        "key": "brevo:sender:delete",
+        "name": "Delete Sender",
+        "description": "Delete a sender"
+      },
+      {
+        "key": "brevo:sender:getAll",
+        "name": "Get All Senders",
+        "description": "Get all senders"
+      }
+    ]
+  },
+  {
+    "appKey": "calcom",
+    "name": "Cal.com",
+    "description": "Cal.com is an open-source scheduling platform that helps individuals and teams manage their bookings and availability.\n                \n                This integration supports event-based triggers via Cal.com's webhook system:\n                - **Booking Created** (BOOKING_CREATED): Triggered when",
+    "triggers": [
+      {
+        "key": "calcom:booking:created",
+        "name": "Booking Created",
+        "description": "Receive notifications when a new Cal.com booking is created"
+      },
+      {
+        "key": "calcom:booking:cancelled",
+        "name": "Booking Cancelled",
+        "description": "Receive notifications when a Cal.com booking is cancelled"
+      },
+      {
+        "key": "calcom:booking:rescheduled",
+        "name": "Booking Rescheduled",
+        "description": "Receive notifications when a Cal.com booking is rescheduled"
+      },
+      {
+        "key": "calcom:meeting:ended",
+        "name": "Meeting Ended",
+        "description": "Receive notifications when a Cal.com meeting has ended"
+      }
+    ],
+    "actions": []
+  },
+  {
+    "appKey": "calendly",
+    "name": "Calendly",
+    "description": "Calendly is an automated scheduling platform that removes the back-and-forth of scheduling meetings.\n                \n                This integration supports event-based triggers via Calendly's webhook subscriptions API:\n                - **Event Created** (invitee.created): Triggered when a new C",
+    "triggers": [
+      {
+        "key": "calendly:invitee:created",
+        "name": "Event Created",
+        "description": "Receive notifications when a new Calendly event is created"
+      },
+      {
+        "key": "calendly:invitee:canceled",
+        "name": "Event Canceled",
+        "description": "Receive notifications when a Calendly event is canceled"
+      }
+    ],
+    "actions": [
+      {
+        "key": "calendly:event:getMany",
+        "name": "Get Scheduled Events",
+        "description": "Retrieve scheduled events from Calendly"
+      },
+      {
+        "key": "calendly:eventInvitee:getMany",
+        "name": "Get Event Invitees",
+        "description": "Retrieve invitees for a specific scheduled event"
+      }
+    ]
+  },
+  {
+    "appKey": "cat-facts",
+    "name": "Cat Facts",
+    "description": "The Cat Facts app is a fun, lightweight utility that connects to the popular public Cat Facts API, retrieving random trivia about felines.\n\n                **What you can do with Cat Facts in Crescendo:**\n                - Send a random cat fact to a Discord channel every morning at 9 AM\n           ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-fact",
+        "name": "Get Random Cat Fact",
+        "description": "Retrieve a single random cat fact"
+      },
+      {
+        "key": "get-multiple-facts",
+        "name": "Get Multiple Facts",
+        "description": "Retrieve multiple cat facts at once"
+      }
+    ]
+  },
+  {
+    "appKey": "clickup",
+    "name": "ClickUp",
+    "description": "ClickUp is a cloud-based collaboration and project management tool suitable for businesses of all sizes and industries.\n                \n                This integration provides comprehensive operations for:\n                - **Task**: Create, Delete, Get, Get All, Update\n                - **Task D",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "clickup:task:create",
+        "name": "Create Task",
+        "description": "Create a task"
+      },
+      {
+        "key": "clickup:task:delete",
+        "name": "Delete Task",
+        "description": "Delete a task"
+      },
+      {
+        "key": "clickup:task:get",
+        "name": "Get Task",
+        "description": "Get a task"
+      },
+      {
+        "key": "clickup:task:getAll",
+        "name": "Get All Tasks",
+        "description": "Get all tasks"
+      },
+      {
+        "key": "clickup:task:update",
+        "name": "Update Task",
+        "description": "Update a task"
+      },
+      {
+        "key": "clickup:taskDependency:create",
+        "name": "Create Dependency",
+        "description": "Create a task dependency"
+      },
+      {
+        "key": "clickup:taskDependency:delete",
+        "name": "Delete Dependency",
+        "description": "Delete a task dependency"
+      },
+      {
+        "key": "clickup:taskList:remove",
+        "name": "Remove Task from List",
+        "description": "Remove task from a list"
+      },
+      {
+        "key": "clickup:taskTag:remove",
+        "name": "Remove Tag from Task",
+        "description": "Remove tag from task"
+      },
+      {
+        "key": "clickup:list:create",
+        "name": "Create List",
+        "description": "Create a list"
+      },
+      {
+        "key": "clickup:list:delete",
+        "name": "Delete List",
+        "description": "Delete a list"
+      },
+      {
+        "key": "clickup:list:get",
+        "name": "Get List",
+        "description": "Get a list"
+      },
+      {
+        "key": "clickup:list:getAll",
+        "name": "Get All Lists",
+        "description": "Get all lists in a folder"
+      },
+      {
+        "key": "clickup:list:update",
+        "name": "Update List",
+        "description": "Update a list"
+      },
+      {
+        "key": "clickup:folder:create",
+        "name": "Create Folder",
+        "description": "Create a folder"
+      },
+      {
+        "key": "clickup:folder:delete",
+        "name": "Delete Folder",
+        "description": "Delete a folder"
+      },
+      {
+        "key": "clickup:folder:get",
+        "name": "Get Folder",
+        "description": "Get a folder"
+      },
+      {
+        "key": "clickup:folder:getAll",
+        "name": "Get All Folders",
+        "description": "Get all folders in a space"
+      },
+      {
+        "key": "clickup:folder:update",
+        "name": "Update Folder",
+        "description": "Update a folder"
+      },
+      {
+        "key": "clickup:goal:create",
+        "name": "Create Goal",
+        "description": "Create a goal"
+      },
+      {
+        "key": "clickup:goal:delete",
+        "name": "Delete Goal",
+        "description": "Delete a goal"
+      },
+      {
+        "key": "clickup:goal:get",
+        "name": "Get Goal",
+        "description": "Get a goal"
+      },
+      {
+        "key": "clickup:goal:getAll",
+        "name": "Get All Goals",
+        "description": "Get all goals"
+      },
+      {
+        "key": "clickup:goal:update",
+        "name": "Update Goal",
+        "description": "Update a goal"
+      },
+      {
+        "key": "clickup:goalKeyResult:create",
+        "name": "Create Key Result",
+        "description": "Create a key result"
+      },
+      {
+        "key": "clickup:goalKeyResult:delete",
+        "name": "Delete Key Result",
+        "description": "Delete a key result"
+      },
+      {
+        "key": "clickup:goalKeyResult:update",
+        "name": "Update Key Result",
+        "description": "Update a key result"
+      },
+      {
+        "key": "clickup:guest:create",
+        "name": "Invite Guest",
+        "description": "Invite guest to workspace"
+      },
+      {
+        "key": "clickup:guest:delete",
+        "name": "Remove Guest",
+        "description": "Remove guest from workspace"
+      },
+      {
+        "key": "clickup:guest:get",
+        "name": "Get Guest",
+        "description": "Get guest"
+      },
+      {
+        "key": "clickup:guest:update",
+        "name": "Update Guest",
+        "description": "Update guest"
+      },
+      {
+        "key": "clickup:comment:create",
+        "name": "Create Comment",
+        "description": "Create a comment"
+      },
+      {
+        "key": "clickup:comment:delete",
+        "name": "Delete Comment",
+        "description": "Delete a comment"
+      },
+      {
+        "key": "clickup:comment:getAll",
+        "name": "Get All Comments",
+        "description": "Get all comments"
+      },
+      {
+        "key": "clickup:comment:update",
+        "name": "Update Comment",
+        "description": "Update a comment"
+      },
+      {
+        "key": "clickup:checklist:create",
+        "name": "Create Checklist",
+        "description": "Create a checklist"
+      },
+      {
+        "key": "clickup:checklist:delete",
+        "name": "Delete Checklist",
+        "description": "Delete a checklist"
+      },
+      {
+        "key": "clickup:checklist:update",
+        "name": "Update Checklist",
+        "description": "Update a checklist"
+      },
+      {
+        "key": "clickup:checklistItem:create",
+        "name": "Create Item",
+        "description": "Create checklist item"
+      },
+      {
+        "key": "clickup:checklistItem:delete",
+        "name": "Delete Item",
+        "description": "Delete checklist item"
+      },
+      {
+        "key": "clickup:checklistItem:update",
+        "name": "Update Item",
+        "description": "Update checklist item"
+      },
+      {
+        "key": "clickup:spaceTag:create",
+        "name": "Create Tag",
+        "description": "Create a space tag"
+      },
+      {
+        "key": "clickup:spaceTag:delete",
+        "name": "Delete Tag",
+        "description": "Delete a space tag"
+      },
+      {
+        "key": "clickup:spaceTag:getAll",
+        "name": "Get All Tags",
+        "description": "Get all space tags"
+      },
+      {
+        "key": "clickup:spaceTag:update",
+        "name": "Update Tag",
+        "description": "Update a space tag"
+      },
+      {
+        "key": "clickup:timeEntry:create",
+        "name": "Create Time Entry",
+        "description": "Create time entry"
+      },
+      {
+        "key": "clickup:timeEntry:delete",
+        "name": "Delete Time Entry",
+        "description": "Delete time entry"
+      },
+      {
+        "key": "clickup:timeEntry:get",
+        "name": "Get Time Entry",
+        "description": "Get time entry"
+      },
+      {
+        "key": "clickup:timeEntry:getAll",
+        "name": "Get All Time Entries",
+        "description": "Get all time entries"
+      },
+      {
+        "key": "clickup:timeEntry:update",
+        "name": "Update Time Entry",
+        "description": "Update time entry"
+      },
+      {
+        "key": "clickup:timeEntryTag:getAll",
+        "name": "Get Time Entry Tags",
+        "description": "Get time entry tags"
+      },
+      {
+        "key": "clickup:timeEntryTag:remove",
+        "name": "Remove Time Entry Tag",
+        "description": "Remove time entry tag"
+      }
+    ]
+  },
+  {
+    "appKey": "coingecko",
+    "name": "CoinGecko",
+    "description": "CoinGecko is the world's largest independent cryptocurrency data aggregator. The Crescendo CoinGecko app allows you to pull real-time crypto prices, volumes, and market data into your workflows.\n\n                **What you can do with CoinGecko in Crescendo:**\n                - Track Bitcoin prices ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "simple-price",
+        "name": "Get Simple Price",
+        "description": "Get current prices for one or more coins"
+      },
+      {
+        "key": "coin-market",
+        "name": "Get Coin Market",
+        "description": "Get market data for a coin"
+      },
+      {
+        "key": "search",
+        "name": "Search Coins",
+        "description": "Search CoinGecko coins by text"
+      }
+    ]
+  },
+  {
+    "appKey": "compression",
+    "name": "Compression",
+    "description": "Compress and decompress files.\n                \n                This integration provides operations for:\n                - **Compress**: Compress files into a zip or gzip archive\n                - **Decompress**: Decompress zip or gzip archives",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "compression:compress",
+        "name": "Compress",
+        "description": "Compress files into a zip or gzip archive"
+      },
+      {
+        "key": "compression:decompress",
+        "name": "Decompress",
+        "description": "Decompress zip or gzip archives"
+      }
+    ]
+  },
+  {
+    "appKey": "crescendomail",
+    "name": "CrescendoMail",
+    "description": "CrescendoMail is Crescendo's built-in email platform for sending transactional and marketing emails.\n                Unlike Gmail or SMTP integrations (which use your personal mailbox), CrescendoMail uses Crescendo's\n                own verified sending infrastructure \u2014 giving you deliverability met",
+    "triggers": [
+      {
+        "key": "email.delivered",
+        "name": "Email Delivered",
+        "description": "Triggers when an email sent via CrescendoMail is successfully delivered"
+      },
+      {
+        "key": "email.opened",
+        "name": "Email Opened",
+        "description": "Triggers when a recipient opens an email sent via CrescendoMail"
+      },
+      {
+        "key": "email.clicked",
+        "name": "Email Clicked",
+        "description": "Triggers when a recipient clicks a tracked link in an email"
+      },
+      {
+        "key": "email.bounced",
+        "name": "Email Bounced",
+        "description": "Triggers when an email bounces (hard or soft bounce)"
+      },
+      {
+        "key": "email.complained",
+        "name": "Spam Complaint",
+        "description": "Triggers when a recipient flags an email as spam"
+      },
+      {
+        "key": "contact.created",
+        "name": "Contact Created",
+        "description": "Triggers when a new contact is added to an audience"
+      },
+      {
+        "key": "contact.unsubscribed",
+        "name": "Contact Unsubscribed",
+        "description": "Triggers when a contact unsubscribes from marketing communications"
+      }
+    ],
+    "actions": [
+      {
+        "key": "send",
+        "name": "Send Email",
+        "description": "Send a transactional or marketing email via CrescendoMail with custom HTML/text"
+      },
+      {
+        "key": "send-templated",
+        "name": "Send Templated Email",
+        "description": "Send an email using a published CrescendoMail template with variable substitution"
+      },
+      {
+        "key": "send-batch",
+        "name": "Send Batch Email",
+        "description": "Send up to 100 emails in a single step with shared or per-recipient variables"
+      },
+      {
+        "key": "create-broadcast",
+        "name": "Create Broadcast",
+        "description": "Create a draft broadcast targeting your audience with a template"
+      },
+      {
+        "key": "send-broadcast",
+        "name": "Send Broadcast",
+        "description": "Send or schedule an existing draft broadcast to all subscribed contacts"
+      },
+      {
+        "key": "upsert-contact",
+        "name": "Upsert Contact",
+        "description": "Create or update a contact in your audience by email"
+      },
+      {
+        "key": "set-contact-property",
+        "name": "Set Contact Property",
+        "description": "Update a single property (firstName, lastName, subscribed) on an existing contact"
+      },
+      {
+        "key": "add-to-audience",
+        "name": "Add Contact to Audience",
+        "description": "Add a contact and mark them as subscribed in your audience"
+      },
+      {
+        "key": "remove-from-audience",
+        "name": "Remove Contact from Audience",
+        "description": "Unsubscribe a contact from marketing broadcasts"
+      },
+      {
+        "key": "suppress",
+        "name": "Suppress Recipient",
+        "description": "Manually add a recipient to the suppression list to block future sends"
+      },
+      {
+        "key": "unsuppress",
+        "name": "Remove from Suppression List",
+        "description": "Remove a recipient from suppression list to resume sending"
+      },
+      {
+        "key": "get-status",
+        "name": "Get Email Status",
+        "description": "Fetch the delivery and engagement status (open count, click count) for a send"
+      },
+      {
+        "key": "wait-for-event",
+        "name": "Wait for Email Event",
+        "description": "Pause workflow execution until an email event (delivered, opened, clicked, bounced) occurs"
+      },
+      {
+        "key": "verify-domain",
+        "name": "Verify Domain",
+        "description": "Trigger an on-demand DNS verification check for a sending domain"
+      }
+    ]
+  },
+  {
+    "appKey": "crypto",
+    "name": "Crypto",
+    "description": "Provide cryptographic utilities.\n                \n                This integration provides operations for:\n                - **Decrypt**: Decrypt a string with a passphrase or private key\n                - **Encrypt**: Encrypt a string with a passphrase or public key\n                - **Generate**:",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "crypto:hash",
+        "name": "Hash",
+        "description": "Hash a text or file in a specified format"
+      },
+      {
+        "key": "crypto:hmac",
+        "name": "HMAC",
+        "description": "HMAC a text or file in a specified format"
+      },
+      {
+        "key": "crypto:sign",
+        "name": "Sign",
+        "description": "Sign a string using a private key"
+      },
+      {
+        "key": "crypto:generate",
+        "name": "Generate",
+        "description": "Generate random string"
+      },
+      {
+        "key": "crypto:encrypt",
+        "name": "Encrypt",
+        "description": "Encrypt a string with a passphrase or public key"
+      },
+      {
+        "key": "crypto:decrypt",
+        "name": "Decrypt",
+        "description": "Decrypt a string with a passphrase or private key"
+      }
+    ]
+  },
+  {
+    "appKey": "dateTime",
+    "name": "Date & Time",
+    "description": "Manipulate date and time values.\n                \n                This integration provides operations for:\n                - **Get Current Date**: Get the current date and time\n                - **Add to a Date**: Add a specific amount of time to a date\n                - **Subtract From a Date**: S",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "dateTime:getCurrentDate",
+        "name": "Get Current Date",
+        "description": "Get the current date and time"
+      },
+      {
+        "key": "dateTime:addToDate",
+        "name": "Add to a Date",
+        "description": "Add a specific amount of time to a date"
+      },
+      {
+        "key": "dateTime:subtractFromDate",
+        "name": "Subtract From a Date",
+        "description": "Subtract a specific amount of time from a date"
+      },
+      {
+        "key": "dateTime:formatDate",
+        "name": "Format a Date",
+        "description": "Format a date into a specific format string"
+      },
+      {
+        "key": "dateTime:roundDate",
+        "name": "Round a Date",
+        "description": "Round a date up or down"
+      },
+      {
+        "key": "dateTime:getTimeBetweenDates",
+        "name": "Get Time Between Dates",
+        "description": "Calculate the difference between two dates"
+      },
+      {
+        "key": "dateTime:extractDate",
+        "name": "Extract Part of a Date",
+        "description": "Extract a specific part (e.g., year, month) from a date"
+      }
+    ]
+  },
+  {
+    "appKey": "discord",
+    "name": "Discord",
+    "description": "Discord is the easiest way to talk over voice, video, and text. The Crescendo Discord app connects your servers to external workflows.\n\n                **What you can do with Discord in Crescendo:**\n                - Send messages and rich embeds to channels automatically\n                - Notify yo",
+    "triggers": [
+      {
+        "key": "new-message",
+        "name": "New Message in Channel",
+        "description": "Triggers when a new message is posted in a channel"
+      },
+      {
+        "key": "new-member",
+        "name": "New Member Joined",
+        "description": "Triggers when a new member joins the server"
+      },
+      {
+        "key": "new-reaction",
+        "name": "New Reaction Added",
+        "description": "Triggers when a reaction is added to a message"
+      },
+      {
+        "key": "member-role-changed",
+        "name": "Member Role Changed",
+        "description": "Triggers when a member's roles are updated"
+      }
+    ],
+    "actions": [
+      {
+        "key": "sendMessage",
+        "name": "Send Channel Message",
+        "description": "Post a message to a Discord channel"
+      },
+      {
+        "key": "sendEmbed",
+        "name": "Send Embed Message",
+        "description": "Send a rich embed message to a channel"
+      },
+      {
+        "key": "sendDirectMessage",
+        "name": "Send Direct Message",
+        "description": "Send a private message to a user"
+      },
+      {
+        "key": "deleteMessage",
+        "name": "Delete Message",
+        "description": "Delete a message in a channel"
+      },
+      {
+        "key": "addReaction",
+        "name": "Add Reaction",
+        "description": "Add an emoji reaction to a message"
+      },
+      {
+        "key": "createChannel",
+        "name": "Create Channel",
+        "description": "Create a new text channel in a server"
+      },
+      {
+        "key": "addRole",
+        "name": "Add Role to Member",
+        "description": "Assign a role to a server member"
+      },
+      {
+        "key": "removeRole",
+        "name": "Remove Role from Member",
+        "description": "Remove a role from a server member"
+      }
+    ]
+  },
+  {
+    "appKey": "dropbox",
+    "name": "Dropbox",
+    "description": "Dropbox is a file hosting service that offers cloud storage and file synchronization. The Crescendo Dropbox app lets you list, upload, download, share, and manage your files automatically.\n\n                **What you can do with Dropbox in Crescendo:**\n                - Back up website databases or ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "list-folder",
+        "name": "List Folder",
+        "description": "List Dropbox folder contents"
+      },
+      {
+        "key": "search",
+        "name": "Search Files",
+        "description": "Search files and folders"
+      },
+      {
+        "key": "upload-text",
+        "name": "Upload File / Text",
+        "description": "Upload a file or text content to Dropbox"
+      },
+      {
+        "key": "download",
+        "name": "Download File",
+        "description": "Download file as Base64"
+      },
+      {
+        "key": "delete",
+        "name": "Delete File/Folder",
+        "description": "Delete a Dropbox path"
+      },
+      {
+        "key": "create-folder",
+        "name": "Create Folder",
+        "description": "Create a Dropbox folder"
+      },
+      {
+        "key": "create-shared-link",
+        "name": "Create Shared Link",
+        "description": "Create or return a shared file/folder link"
+      },
+      {
+        "key": "list-revisions",
+        "name": "List Revisions",
+        "description": "List file revisions"
+      },
+      {
+        "key": "restore-revision",
+        "name": "Restore Revision",
+        "description": "Restore a file to a specific revision"
+      }
+    ]
+  },
+  {
+    "appKey": "errorhandling",
+    "name": "Error Handling",
+    "description": "Handle workflow errors and trigger errors.\n                \n                This integration provides operations for:\n                - **Stop and Error**: Throw an error in the workflow\n                - **Error Trigger**: Triggers the workflow when another workflow has an error",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "errorhandling:stopAndError",
+        "name": "Stop and Error",
+        "description": "Throw an error in the workflow"
+      },
+      {
+        "key": "errorhandling:errorTrigger",
+        "name": "Error Trigger",
+        "description": "Triggers the workflow when another workflow has an error"
+      }
+    ]
+  },
+  {
+    "appKey": "facebook-graph",
+    "name": "Facebook Graph API",
+    "description": "The Graph API is the primary way to get data into and out of the Facebook platform. The Crescendo Facebook Graph app lets you automate Page interactions and post content programmatically.\n\n                **What you can do with Facebook in Crescendo:**\n                - Automatically post a new blog",
+    "triggers": [
+      {
+        "key": "page-post-created",
+        "name": "New Page Post",
+        "description": "Triggers when a new post is published on your Facebook Page"
+      },
+      {
+        "key": "page-comment-received",
+        "name": "New Post Comment",
+        "description": "Triggers when someone comments on a Facebook Page post"
+      },
+      {
+        "key": "page-event",
+        "name": "Page Event (Webhook)",
+        "description": "Triggers from any Facebook Page webhook delivery"
+      }
+    ],
+    "actions": [
+      {
+        "key": "create-page-post",
+        "name": "Create Page Post",
+        "description": "Create a Facebook Page post (text, link preview, or photo)"
+      },
+      {
+        "key": "create-page-photo",
+        "name": "Upload Page Photo",
+        "description": "Upload and publish a photo to a Facebook Page"
+      },
+      {
+        "key": "create-post-comment",
+        "name": "Comment on Post",
+        "description": "Add a comment to an existing Facebook Page post"
+      },
+      {
+        "key": "get-page-posts",
+        "name": "Get Page Posts",
+        "description": "List recent posts published by the Facebook Page"
+      },
+      {
+        "key": "get-page-insights",
+        "name": "Get Page Insights",
+        "description": "Retrieve impressions, page views, and engagement metrics"
+      },
+      {
+        "key": "get-node",
+        "name": "Get Custom Node",
+        "description": "Query any Graph API node (e.g., a Page, User, or Post ID) for specific fields"
+      }
+    ]
+  },
+  {
+    "appKey": "figma",
+    "name": "Figma",
+    "description": "Figma is a collaborative web application for interface design. The Crescendo Figma app allows you to monitor files, export assets, and track design changes in real-time.\n\n                **What you can do with Figma in Crescendo:**\n                - Notify Slack when a Figma file is updated\n        ",
+    "triggers": [
+      {
+        "key": "file-updated",
+        "name": "File Updated",
+        "description": "Triggers when a Figma file is modified"
+      },
+      {
+        "key": "new-comment",
+        "name": "New Comment",
+        "description": "Triggers when a comment is added to a file"
+      },
+      {
+        "key": "new-component",
+        "name": "New Component",
+        "description": "Triggers when a new component is created"
+      }
+    ],
+    "actions": [
+      {
+        "key": "get-file",
+        "name": "Get File",
+        "description": "Retrieve file metadata and structure"
+      },
+      {
+        "key": "post-comment",
+        "name": "Post Comment",
+        "description": "Add a comment to a Figma file"
+      },
+      {
+        "key": "list-comments",
+        "name": "List Comments",
+        "description": "List all comments on a file"
+      },
+      {
+        "key": "export-file",
+        "name": "Export File",
+        "description": "Export file pages as images"
+      }
+    ]
+  },
+  {
+    "appKey": "freshdesk",
+    "name": "Freshdesk",
+    "description": "Freshdesk is a cloud-based customer support software that helps businesses provide effortless customer service. \n                \n                This integration supports managing:\n                - **Contact**: Create, Delete, Get, Get All, Update\n                - **Ticket**: Create, Delete, Get,",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "freshdesk:contact:create",
+        "name": "Create Contact",
+        "description": "Create a contact in Freshdesk"
+      },
+      {
+        "key": "freshdesk:contact:delete",
+        "name": "Delete Contact",
+        "description": "Delete a contact in Freshdesk"
+      },
+      {
+        "key": "freshdesk:contact:get",
+        "name": "Get Contact",
+        "description": "Get a contact from Freshdesk"
+      },
+      {
+        "key": "freshdesk:contact:getAll",
+        "name": "Get All Contacts",
+        "description": "Get all contacts from Freshdesk"
+      },
+      {
+        "key": "freshdesk:contact:update",
+        "name": "Update Contact",
+        "description": "Update a contact in Freshdesk"
+      },
+      {
+        "key": "freshdesk:ticket:create",
+        "name": "Create Ticket",
+        "description": "Create a ticket in Freshdesk"
+      },
+      {
+        "key": "freshdesk:ticket:delete",
+        "name": "Delete Ticket",
+        "description": "Delete a ticket in Freshdesk"
+      },
+      {
+        "key": "freshdesk:ticket:get",
+        "name": "Get Ticket",
+        "description": "Get a ticket from Freshdesk"
+      },
+      {
+        "key": "freshdesk:ticket:getAll",
+        "name": "Get All Tickets",
+        "description": "Get all tickets from Freshdesk"
+      },
+      {
+        "key": "freshdesk:ticket:update",
+        "name": "Update Ticket",
+        "description": "Update a ticket in Freshdesk"
+      }
+    ]
+  },
+  {
+    "appKey": "ftp-sftp",
+    "name": "FTP / SFTP",
+    "description": "The FTP / SFTP app allows Crescendo to connect securely to remote file servers, enabling automated file transfers and directory management.\n\n                **What you can do with FTP/SFTP in Crescendo:**\n                - Automatically download daily CSV reports from a legacy vendor's FTP server\n  ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "list",
+        "name": "List Directory",
+        "description": "List remote files"
+      },
+      {
+        "key": "download",
+        "name": "Download File",
+        "description": "Download file as Base64"
+      },
+      {
+        "key": "upload",
+        "name": "Upload File",
+        "description": "Upload Base64 data"
+      },
+      {
+        "key": "delete",
+        "name": "Delete File",
+        "description": "Delete a file on the remote server"
+      },
+      {
+        "key": "rename",
+        "name": "Rename File",
+        "description": "Rename a file on the remote server"
+      }
+    ]
+  },
+  {
+    "appKey": "gemini",
+    "name": "Google AI Studio (Gemini)",
+    "description": "Google Gemini is a powerful multimodal AI model. The Crescendo Gemini app lets you generate text, answer questions, summarize content, and analyze images using Google's generative AI.\n\n                **What you can do with Gemini in Crescendo:**\n                - Generate text responses for chatbot",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "text-message",
+        "name": "Text - Message",
+        "description": "Generate text using a prompt"
+      },
+      {
+        "key": "image-analyze",
+        "name": "Image - Analyze",
+        "description": "Analyze an image using a prompt"
+      }
+    ]
+  },
+  {
+    "appKey": "giphy",
+    "name": "Giphy",
+    "description": "Giphy is an online database and search engine that allows users to search for and share short looping videos. The Crescendo Giphy app brings fun and expression into your automated messaging.\n\n                **What you can do with Giphy in Crescendo:**\n                - Automatically reply to new te",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "search-gifs",
+        "name": "Search GIFs",
+        "description": "Search the Giphy library"
+      },
+      {
+        "key": "random-gif",
+        "name": "Random GIF",
+        "description": "Get a random GIF"
+      },
+      {
+        "key": "trending-gifs",
+        "name": "Trending GIFs",
+        "description": "Get currently trending GIFs"
+      }
+    ]
+  },
+  {
+    "appKey": "git",
+    "name": "Git",
+    "description": "Git is the world's most popular distributed version control system. The Crescendo Git app allows you to safely run local repository commands to automate development workflows.\n\n                **What you can do with Git in Crescendo:**\n                - Automatically run `git pull` on a production s",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "status",
+        "name": "Status",
+        "description": "Run git status"
+      },
+      {
+        "key": "pull",
+        "name": "Pull",
+        "description": "Run git pull"
+      },
+      {
+        "key": "log",
+        "name": "Log",
+        "description": "Show recent commits"
+      }
+    ]
+  },
+  {
+    "appKey": "github",
+    "name": "GitHub",
+    "description": "GitHub is the world's leading platform for software development and version control. The Crescendo GitHub app connects your repositories to automated workflows.\n\n                **What you can do with GitHub in Crescendo:**\n                - Automate issue triage (create, update, close, and label)\n ",
+    "triggers": [
+      {
+        "key": "new-issue",
+        "name": "New Issue",
+        "description": "Triggers when a new issue is created"
+      },
+      {
+        "key": "new-pr",
+        "name": "New Pull Request",
+        "description": "Triggers when a new PR is opened"
+      },
+      {
+        "key": "push",
+        "name": "New Commit/Push",
+        "description": "Triggers on push to repository"
+      },
+      {
+        "key": "new-release",
+        "name": "New Release",
+        "description": "Triggers when a release is published"
+      },
+      {
+        "key": "new-star",
+        "name": "New Star",
+        "description": "Triggers when someone stars the repository"
+      }
+    ],
+    "actions": [
+      {
+        "key": "github:issue:create",
+        "name": "Create Issue",
+        "description": "Open a new issue"
+      },
+      {
+        "key": "github:issue:update",
+        "name": "Update Issue",
+        "description": "Modify an existing issue"
+      },
+      {
+        "key": "github:pullRequest:create",
+        "name": "Create Pull Request",
+        "description": "Open a new pull request"
+      },
+      {
+        "key": "github:issue:addComment",
+        "name": "Add Comment",
+        "description": "Comment on an issue or PR"
+      },
+      {
+        "key": "github:issue:close",
+        "name": "Close Issue",
+        "description": "Close an open issue"
+      },
+      {
+        "key": "github:release:create",
+        "name": "Create Release",
+        "description": "Publish a new release"
+      }
+    ]
+  },
+  {
+    "appKey": "github-stats",
+    "name": "GitHub Profile Stats",
+    "description": "The GitHub Profile Stats app provides a simple way to fetch aggregate public statistics for GitHub users, perfect for building dynamic portfolios or tracking developer activity.\n\n                **What you can do with GitHub Profile Stats in Crescendo:**\n                - Fetch a candidate's public ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-profile-stats",
+        "name": "Get Profile Stats",
+        "description": "Retrieve public profile stats (repos, followers, contributions)"
+      },
+      {
+        "key": "get-repos",
+        "name": "List Public Repos",
+        "description": "List public repositories for a GitHub user"
+      }
+    ]
+  },
+  {
+    "appKey": "gitlab",
+    "name": "GitLab",
+    "description": "GitLab is a web-based Git repository that provides open-source DevOps and issue tracking. The Crescendo GitLab app allows you to manage issues, merge requests, and pipelines automatically.\n\n                **What you can do with GitLab in Crescendo:**\n                - Automatically close GitLab iss",
+    "triggers": [
+      {
+        "key": "new-issue",
+        "name": "New Issue",
+        "description": "Triggers when a new issue is created"
+      },
+      {
+        "key": "new-mr",
+        "name": "New Merge Request",
+        "description": "Triggers when a new MR is opened"
+      },
+      {
+        "key": "push",
+        "name": "New Push",
+        "description": "Triggers on code push"
+      },
+      {
+        "key": "new-comment",
+        "name": "New Comment",
+        "description": "Triggers on a new comment"
+      },
+      {
+        "key": "pipeline-status",
+        "name": "Pipeline Status Changed",
+        "description": "Triggers when a CI/CD pipeline status changes"
+      }
+    ],
+    "actions": [
+      {
+        "key": "gitlab:issue:create",
+        "name": "Create Issue",
+        "description": "Open a new GitLab issue"
+      },
+      {
+        "key": "gitlab:mergeRequest:create",
+        "name": "Create Merge Request",
+        "description": "Open a new merge request"
+      },
+      {
+        "key": "gitlab:issue:addComment",
+        "name": "Add Comment",
+        "description": "Comment on an issue or MR"
+      },
+      {
+        "key": "gitlab:issue:close",
+        "name": "Close Issue",
+        "description": "Close an existing issue"
+      }
+    ]
+  },
+  {
+    "appKey": "gmail",
+    "name": "Gmail",
+    "description": "Gmail is Google's widely used email service. The Crescendo Gmail app lets you automate your inbox, send emails on behalf of users, and build workflows that react to new incoming messages.\n\n                **What you can do with Gmail in Crescendo:**\n                - Send emails, including rich HTML",
+    "triggers": [
+      {
+        "key": "new-email",
+        "name": "New Email Received",
+        "description": "Triggers when a new email arrives"
+      }
+    ],
+    "actions": [
+      {
+        "key": "send",
+        "name": "Send Email",
+        "description": "Send an email via Gmail"
+      },
+      {
+        "key": "createDraft",
+        "name": "Create Draft",
+        "description": "Create a draft email in Gmail"
+      },
+      {
+        "key": "reply",
+        "name": "Reply to Email",
+        "description": "Reply to an existing email thread"
+      },
+      {
+        "key": "addLabels",
+        "name": "Add Label",
+        "description": "Add a label to an email message"
+      },
+      {
+        "key": "removeLabels",
+        "name": "Remove Label",
+        "description": "Remove a label from an email message"
+      },
+      {
+        "key": "search",
+        "name": "Search Emails",
+        "description": "Search for emails matching a query"
+      },
+      {
+        "key": "markAsRead",
+        "name": "Mark as Read",
+        "description": "Mark an email as read"
+      },
+      {
+        "key": "markAsUnread",
+        "name": "Mark as Unread",
+        "description": "Mark an email as unread"
+      },
+      {
+        "key": "delete",
+        "name": "Archive Email",
+        "description": "Archive an email (remove from inbox)"
+      }
+    ]
+  },
+  {
+    "appKey": "google-calendar",
+    "name": "Google Calendar",
+    "description": "Google Calendar is a time-management and scheduling calendar service. The Crescendo Google Calendar app enables you to automate event creation, updates, and schedule monitoring.\n\n                **What you can do with Google Calendar in Crescendo:**\n                - Trigger a workflow 10 minutes be",
+    "triggers": [
+      {
+        "key": "event-created",
+        "name": "Event Created",
+        "description": "Triggers when a new calendar event is created"
+      },
+      {
+        "key": "event-updated",
+        "name": "Event Updated",
+        "description": "Triggers when a calendar event is updated"
+      },
+      {
+        "key": "event-start",
+        "name": "Event Starting",
+        "description": "Triggers when a calendar event is about to start"
+      },
+      {
+        "key": "event-ended",
+        "name": "Event Ended",
+        "description": "Triggers when a calendar event has concluded"
+      },
+      {
+        "key": "event-cancelled",
+        "name": "Event Cancelled",
+        "description": "Triggers when a calendar event is cancelled or deleted"
+      }
+    ],
+    "actions": [
+      {
+        "key": "create",
+        "name": "Create Event",
+        "description": "Create a new calendar event"
+      },
+      {
+        "key": "update",
+        "name": "Update Event",
+        "description": "Modify an existing calendar event"
+      },
+      {
+        "key": "get",
+        "name": "Find Event",
+        "description": "Search for an event by title or date range"
+      },
+      {
+        "key": "delete",
+        "name": "Delete Event",
+        "description": "Delete a calendar event by its ID"
+      },
+      {
+        "key": "addAttendee",
+        "name": "Add Attendees to Event",
+        "description": "Invite people to an existing calendar event"
+      },
+      {
+        "key": "getAll",
+        "name": "List Events",
+        "description": "List upcoming calendar events"
+      }
+    ]
+  },
+  {
+    "appKey": "google-docs",
+    "name": "Google Docs",
+    "description": "Google Docs is an online word processor that lets you create and format documents. The Crescendo Google Docs app allows you to automate document creation, text appending, and content replacement.\n\n                **What you can do with Google Docs in Crescendo:**\n                - Generate customize",
+    "triggers": [
+      {
+        "key": "new-document",
+        "name": "New Document",
+        "description": "Triggers when a new Google Doc is created"
+      },
+      {
+        "key": "document-updated",
+        "name": "Document Updated",
+        "description": "Triggers when a Google Doc changes"
+      }
+    ],
+    "actions": [
+      {
+        "key": "create",
+        "name": "Create Document",
+        "description": "Create a new Google Doc"
+      },
+      {
+        "key": "appendText",
+        "name": "Append Text to Document",
+        "description": "Append text to the end of a Google Doc"
+      },
+      {
+        "key": "get",
+        "name": "Get Document",
+        "description": "Read the full text content of a Google Doc"
+      },
+      {
+        "key": "replaceText",
+        "name": "Find and Replace Text",
+        "description": "Search and replace text across the entire document"
+      }
+    ]
+  },
+  {
+    "appKey": "google-drive",
+    "name": "Google Drive",
+    "description": "Google Drive is a file storage and synchronization service. The Crescendo Google Drive app allows you to automatically upload files, manage folders, and watch for document changes.\n\n                **What you can do with Google Drive in Crescendo:**\n                - Save email attachments directly ",
+    "triggers": [
+      {
+        "key": "new-file",
+        "name": "New File",
+        "description": "Triggers when a new file is uploaded to a folder"
+      },
+      {
+        "key": "new-folder",
+        "name": "New Folder",
+        "description": "Triggers when a new subfolder is created"
+      },
+      {
+        "key": "updated-file",
+        "name": "Updated File",
+        "description": "Triggers when a file is modified"
+      }
+    ],
+    "actions": [
+      {
+        "key": "upload",
+        "name": "Upload File",
+        "description": "Upload a file to Google Drive"
+      },
+      {
+        "key": "createFolder",
+        "name": "Create Folder",
+        "description": "Create a new folder in Google Drive"
+      },
+      {
+        "key": "getAll",
+        "name": "List Files",
+        "description": "List files in a Google Drive folder"
+      },
+      {
+        "key": "move",
+        "name": "Move File",
+        "description": "Move a file to a different folder"
+      },
+      {
+        "key": "copy",
+        "name": "Copy File",
+        "description": "Create a copy of a file"
+      },
+      {
+        "key": "deleteFile",
+        "name": "Delete File",
+        "description": "Permanently delete a file from Google Drive"
+      }
+    ]
+  },
+  {
+    "appKey": "google-forms",
+    "name": "Google Forms",
+    "description": "Google Forms is a survey administration software used for collecting data. The Crescendo Google Forms app helps you automate data collection and response management.\n\n                        **What you can do with Google Forms in Crescendo:**\n                        - Send an email auto-reply whenev",
+    "triggers": [
+      {
+        "key": "new-response",
+        "name": "New Response",
+        "description": "Triggers when a new form response is submitted"
+      }
+    ],
+    "actions": [
+      {
+        "key": "createForm",
+        "name": "Create Form",
+        "description": "Create a new Google Form"
+      },
+      {
+        "key": "listResponses",
+        "name": "List Responses",
+        "description": "Retrieve responses from a form"
+      },
+      {
+        "key": "getForm",
+        "name": "Get Form",
+        "description": "Get form metadata and questions"
+      }
+    ]
+  },
+  {
+    "appKey": "google-sheets",
+    "name": "Google Sheets",
+    "description": "Google Sheets is a cloud-based spreadsheet application. The Crescendo Google Sheets app allows you to read, write, and watch your spreadsheet data automatically.\n\n                **What you can do with Google Sheets in Crescendo:**\n                - Add new rows for incoming form submissions or webh",
+    "triggers": [
+      {
+        "key": "new-row",
+        "name": "New Spreadsheet Row",
+        "description": "Triggers when a new row is added to a spreadsheet"
+      },
+      {
+        "key": "updated-row",
+        "name": "Updated Spreadsheet Row",
+        "description": "Triggers when a row is modified in a spreadsheet"
+      },
+      {
+        "key": "new-or-updated-row",
+        "name": "New or Updated Row",
+        "description": "Triggers when a row is added or an existing row is updated"
+      },
+      {
+        "key": "new-worksheet",
+        "name": "New Worksheet",
+        "description": "Triggers when a new worksheet is added to a spreadsheet"
+      },
+      {
+        "key": "new-spreadsheet",
+        "name": "New Spreadsheet",
+        "description": "Triggers when a new spreadsheet is created in Google Drive"
+      }
+    ],
+    "actions": [
+      {
+        "key": "appendRow",
+        "name": "Create Spreadsheet Row",
+        "description": "Add a new row to the end of a spreadsheet"
+      },
+      {
+        "key": "updateRow",
+        "name": "Update Spreadsheet Row",
+        "description": "Update an existing row by row number"
+      },
+      {
+        "key": "readRows",
+        "name": "Read Rows",
+        "description": "Read rows from a spreadsheet range"
+      },
+      {
+        "key": "findRow",
+        "name": "Find Spreadsheet Row",
+        "description": "Search for a row by column value"
+      },
+      {
+        "key": "deleteRow",
+        "name": "Delete Spreadsheet Row",
+        "description": "Delete a row from a worksheet by row number"
+      },
+      {
+        "key": "clearCells",
+        "name": "Clear Spreadsheet Cells",
+        "description": "Clear cell contents in a range without deleting rows"
+      },
+      {
+        "key": "create",
+        "name": "Create Spreadsheet",
+        "description": "Create a new Google Sheets spreadsheet"
+      }
+    ]
+  },
+  {
+    "appKey": "google-slides",
+    "name": "Google Slides",
+    "description": "Google Slides is a presentation program included as part of the free, web-based Google Docs Editors suite. The Crescendo Google Slides app allows you to automate the generation and modification of slide decks.\n\n                **What you can do with Google Slides in Crescendo:**\n                - Au",
+    "triggers": [
+      {
+        "key": "presentation-updated",
+        "name": "Presentation Updated",
+        "description": "Triggers when a presentation changes"
+      }
+    ],
+    "actions": [
+      {
+        "key": "create",
+        "name": "Create Presentation",
+        "description": "Create a new Google Slides presentation"
+      },
+      {
+        "key": "get",
+        "name": "Get Presentation",
+        "description": "Fetch a presentation's metadata and slides"
+      },
+      {
+        "key": "addSlide",
+        "name": "Add Slide",
+        "description": "Add a new slide to a presentation"
+      }
+    ]
+  },
+  {
+    "appKey": "google-tasks",
+    "name": "Google Tasks",
+    "description": "Google Tasks is a task management application developed by Google. The Crescendo Google Tasks app allows you to manage your to-do lists seamlessly from other tools.\n\n                **What you can do with Google Tasks in Crescendo:**\n                - Add a new task to your default list when a Slack",
+    "triggers": [
+      {
+        "key": "task-completed",
+        "name": "Task Completed",
+        "description": "Triggers when a task is marked completed"
+      },
+      {
+        "key": "new-task",
+        "name": "New Task Created",
+        "description": "Triggers when a new task is created"
+      }
+    ],
+    "actions": [
+      {
+        "key": "create",
+        "name": "Create Task",
+        "description": "Create a task in a Google Tasks list"
+      },
+      {
+        "key": "complete",
+        "name": "Complete Task",
+        "description": "Mark a task as completed"
+      },
+      {
+        "key": "delete",
+        "name": "Delete Task",
+        "description": "Delete a task from a list"
+      },
+      {
+        "key": "getAll",
+        "name": "List Tasks",
+        "description": "List tasks from a Google Tasks list"
+      },
+      {
+        "key": "update",
+        "name": "Update Task",
+        "description": "Modify a task's title, notes, due date, or status"
+      }
+    ]
+  },
+  {
+    "appKey": "googletranslate",
+    "name": "Google Translate",
+    "description": "Google Translate is a multilingual neural machine translation service developed by Google to translate text, documents and websites from one language into another.\n                \n                **What you can do with Google Translate in Crescendo:**\n                - Automatically translate incom",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "translate",
+        "name": "Language - Translate",
+        "description": "Translate a language"
+      }
+    ]
+  },
+  {
+    "appKey": "gotify",
+    "name": "Gotify",
+    "description": "Gotify is a simple server for sending and receiving messages in real-time. The Crescendo Gotify app allows you to push notifications directly to your self-hosted instance.\n\n                **What you can do with Gotify in Crescendo:**\n                - Send a high-priority push notification to your ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "send-message",
+        "name": "Send Message",
+        "description": "Send a Gotify push notification"
+      }
+    ]
+  },
+  {
+    "appKey": "graphql",
+    "name": "GraphQL",
+    "description": "GraphQL is a query language for your API, and a server-side runtime for executing queries. This integration lets you execute any GraphQL query or mutation against a remote endpoint.\n                \n                **What you can do with GraphQL in Crescendo:**\n                - Fetch specific user ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "execute",
+        "name": "Execute",
+        "description": "Execute a GraphQL query or mutation"
+      }
+    ]
+  },
+  {
+    "appKey": "hackernews",
+    "name": "Hacker News",
+    "description": "Hacker News is a social news website focusing on computer science and entrepreneurship. The Crescendo Hacker News app lets you monitor trending stories and discussions automatically.\n\n                **What you can do with Hacker News in Crescendo:**\n                - Fetch the top story every morni",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-top-stories",
+        "name": "Get Top Stories",
+        "description": "Fetch top Hacker News stories"
+      },
+      {
+        "key": "get-item",
+        "name": "Get Item",
+        "description": "Fetch a story, comment, poll, or job by item ID"
+      },
+      {
+        "key": "get-user",
+        "name": "Get User",
+        "description": "Fetch a Hacker News user profile"
+      }
+    ]
+  },
+  {
+    "appKey": "home-assistant",
+    "name": "Home Assistant",
+    "description": "Home Assistant is an open-source home automation system that puts local control and privacy first. The Crescendo Home Assistant app allows you to trigger physical devices from your digital workflows.\n\n                **What you can do with Home Assistant in Crescendo:**\n                - Flash your ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "homeassistant:state:get",
+        "name": "Get Entity State",
+        "description": "Read the state for a Home Assistant entity"
+      },
+      {
+        "key": "homeassistant:service:call",
+        "name": "Call Service",
+        "description": "Call a Home Assistant service"
+      }
+    ]
+  },
+  {
+    "appKey": "html",
+    "name": "HTML",
+    "description": "Work with HTML.\n                \n                This integration provides operations for:\n                - **Generate HTML Template**: Generate an HTML template\n                - **Extract HTML Content**: Extract data from an HTML string or binary\n                - **Convert to HTML Table**: Conve",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "html:generateHtmlTemplate",
+        "name": "Generate HTML Template",
+        "description": "Generate HTML template"
+      },
+      {
+        "key": "html:extractHtmlContent",
+        "name": "Extract HTML Content",
+        "description": "Extract HTML Content"
+      },
+      {
+        "key": "html:convertToHtmlTable",
+        "name": "Convert to HTML Table",
+        "description": "Convert to HTML Table"
+      }
+    ]
+  },
+  {
+    "appKey": "htmlExtract",
+    "name": "HTML Extract",
+    "description": "HTML Extract allows you to easily parse and extract specific data from raw HTML strings or web pages using CSS selectors.\n                \n                **What you can do with HTML Extract in Crescendo:**\n                - Scrape prices or product details from an e-commerce page\n                - ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "htmlExtract:extract",
+        "name": "Extract",
+        "description": "Extract data from HTML"
+      }
+    ]
+  },
+  {
+    "appKey": "http",
+    "name": "HTTP / API",
+    "description": "The HTTP app is a universal connector that allows Crescendo to interact with almost any web service. Make standard REST API calls and receive incoming webhooks.\n\n                **What you can do with HTTP in Crescendo:**\n                - Connect to APIs that aren't natively supported in the app ca",
+    "triggers": [
+      {
+        "key": "catch-hook",
+        "name": "Catch Webhook",
+        "description": "Receives inbound webhook payloads"
+      }
+    ],
+    "actions": [
+      {
+        "key": "request",
+        "name": "HTTP Request",
+        "description": "Send a GET, POST, PUT, PATCH, or DELETE request"
+      }
+    ]
+  },
+  {
+    "appKey": "hubspot",
+    "name": "HubSpot",
+    "description": "HubSpot is an inbound marketing and sales platform that helps companies attract visitors, convert leads, and close customers.\n                \n                This integration provides a comprehensive suite of operations mirroring the HubSpot REST API across standard objects:\n                - **Com",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "company-create",
+        "name": "Create Company",
+        "description": "Create a new company"
+      },
+      {
+        "key": "company-delete",
+        "name": "Delete Company",
+        "description": "Delete a company"
+      },
+      {
+        "key": "company-get",
+        "name": "Get Company",
+        "description": "Get a company"
+      },
+      {
+        "key": "company-getAll",
+        "name": "Get All Companies",
+        "description": "Get many companies"
+      },
+      {
+        "key": "company-getRecentlyCreatedUpdated",
+        "name": "Get Recently Created/Updated Companies",
+        "description": "Get recently created/updated companies"
+      },
+      {
+        "key": "company-searchByDomain",
+        "name": "Search Companies by Domain",
+        "description": "Search companies by domain"
+      },
+      {
+        "key": "company-update",
+        "name": "Update Company",
+        "description": "Update a company"
+      },
+      {
+        "key": "contact-upsert",
+        "name": "Create or Update Contact",
+        "description": "Create a new contact, or update the current one if it already exists (upsert)"
+      },
+      {
+        "key": "contact-delete",
+        "name": "Delete Contact",
+        "description": "Delete a contact"
+      },
+      {
+        "key": "contact-get",
+        "name": "Get Contact",
+        "description": "Get a contact"
+      },
+      {
+        "key": "contact-getAll",
+        "name": "Get All Contacts",
+        "description": "Get many contacts"
+      },
+      {
+        "key": "contact-getRecentlyCreatedUpdated",
+        "name": "Get Recently Created/Updated Contacts",
+        "description": "Get recently created/updated contacts"
+      },
+      {
+        "key": "contact-search",
+        "name": "Search Contacts",
+        "description": "Search contacts"
+      },
+      {
+        "key": "contactList-add",
+        "name": "Add Contact to List",
+        "description": "Add contact to a list"
+      },
+      {
+        "key": "contactList-remove",
+        "name": "Remove Contact from List",
+        "description": "Remove contact from a list"
+      },
+      {
+        "key": "deal-create",
+        "name": "Create Deal",
+        "description": "Create a deal"
+      },
+      {
+        "key": "deal-delete",
+        "name": "Delete Deal",
+        "description": "Delete a deal"
+      },
+      {
+        "key": "deal-get",
+        "name": "Get Deal",
+        "description": "Get a deal"
+      },
+      {
+        "key": "deal-getAll",
+        "name": "Get All Deals",
+        "description": "Get many deals"
+      },
+      {
+        "key": "deal-getRecentlyCreatedUpdated",
+        "name": "Get Recently Created/Updated Deals",
+        "description": "Get recently created/updated deals"
+      },
+      {
+        "key": "deal-search",
+        "name": "Search Deals",
+        "description": "Search deals"
+      },
+      {
+        "key": "deal-update",
+        "name": "Update Deal",
+        "description": "Update a deal"
+      },
+      {
+        "key": "engagement-create",
+        "name": "Create Engagement",
+        "description": "Create an engagement"
+      },
+      {
+        "key": "engagement-delete",
+        "name": "Delete Engagement",
+        "description": "Delete an engagement"
+      },
+      {
+        "key": "engagement-get",
+        "name": "Get Engagement",
+        "description": "Get an engagement"
+      },
+      {
+        "key": "engagement-getAll",
+        "name": "Get All Engagements",
+        "description": "Get many engagements"
+      },
+      {
+        "key": "form-getFields",
+        "name": "Get Form Fields",
+        "description": "Get all fields from a form"
+      },
+      {
+        "key": "form-submit",
+        "name": "Submit Form",
+        "description": "Submit data to a HubSpot form"
+      },
+      {
+        "key": "ticket-create",
+        "name": "Create Ticket",
+        "description": "Create a ticket"
+      },
+      {
+        "key": "ticket-delete",
+        "name": "Delete Ticket",
+        "description": "Delete a ticket"
+      },
+      {
+        "key": "ticket-get",
+        "name": "Get Ticket",
+        "description": "Get a ticket"
+      },
+      {
+        "key": "ticket-getAll",
+        "name": "Get All Tickets",
+        "description": "Get many tickets"
+      },
+      {
+        "key": "ticket-update",
+        "name": "Update Ticket",
+        "description": "Update a ticket"
+      }
+    ]
+  },
+  {
+    "appKey": "icalendar",
+    "name": "iCalendar",
+    "description": "The iCalendar app is a built-in utility that allows you to programmatically generate standard `.ics` calendar invitation files that can be imported by Google Calendar, Outlook, and Apple Calendar.\n\n                **What you can do with iCalendar in Crescendo:**\n                - Generate an `.ics` ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "create-event",
+        "name": "Create ICS Event",
+        "description": "Create iCalendar content for an event"
+      }
+    ]
+  },
+  {
+    "appKey": "imap-email",
+    "name": "Email Read (IMAP)",
+    "description": "IMAP is an Internet standard protocol used by email clients to retrieve messages from a mail server. The Crescendo IMAP app allows you to programmatically search and read your own mailbox.\n\n                **What you can do with IMAP in Crescendo:**\n                - Search for unread emails from sp",
+    "triggers": [
+      {
+        "key": "email-received",
+        "name": "Email Received",
+        "description": "Triggers when a new email is received"
+      }
+    ],
+    "actions": [
+      {
+        "key": "imap:fetchEmails",
+        "name": "Search Emails",
+        "description": "Read recent emails from an IMAP folder"
+      }
+    ]
+  },
+  {
+    "appKey": "instagram",
+    "name": "Instagram Graph API",
+    "description": "The Instagram Graph API allows you to programmatically access Instagram Business and Creator accounts. The Crescendo Instagram app enables you to automate your visual social media presence.\n\n                **What you can do with Instagram in Crescendo:**\n                - Publish Instagram photos, ",
+    "triggers": [
+      {
+        "key": "instagram-comment-received",
+        "name": "New Comment Received",
+        "description": "Triggers when someone comments on your Instagram post"
+      },
+      {
+        "key": "instagram-message-received",
+        "name": "New Direct Message",
+        "description": "Triggers when a customer sends an Instagram DM"
+      },
+      {
+        "key": "instagram-mention-received",
+        "name": "New Mention",
+        "description": "Triggers when your account is @mentioned in a comment or post caption"
+      },
+      {
+        "key": "instagram-event",
+        "name": "Instagram Event (Webhook)",
+        "description": "Triggers from any Instagram webhook event payload"
+      }
+    ],
+    "actions": [
+      {
+        "key": "publish-photo-post",
+        "name": "Publish Photo Post",
+        "description": "Directly upload and publish a photo to your Instagram feed"
+      },
+      {
+        "key": "publish-reel-post",
+        "name": "Publish Reel / Video",
+        "description": "Upload and publish a video or Reel to your Instagram feed"
+      },
+      {
+        "key": "send-direct-message",
+        "name": "Send Direct Message (DM)",
+        "description": "Send a direct message reply to an Instagram user"
+      },
+      {
+        "key": "reply-comment",
+        "name": "Reply to Specific Comment",
+        "description": "Post a reply to a specific comment on one of your Instagram posts"
+      },
+      {
+        "key": "reply-latest-comment",
+        "name": "Reply to Latest Comment on Post",
+        "description": "Reply to Latest Comment on Post"
+      },
+      {
+        "key": "get-media-comments",
+        "name": "Get Media Comments",
+        "description": "List recent comments on a specific post"
+      },
+      {
+        "key": "get-user-media",
+        "name": "Get Recent Posts",
+        "description": "Fetch published photos, reels, and videos from your account"
+      },
+      {
+        "key": "get-media-insights",
+        "name": "Get Media Insights",
+        "description": "Retrieve reach, impressions, likes, saves, and shares for a post"
+      },
+      {
+        "key": "get-account-info",
+        "name": "Get Account Profile",
+        "description": "Retrieve account statistics, follower count, and bio"
+      },
+      {
+        "key": "create-media-container",
+        "name": "Create Media Container (Staging)",
+        "description": "Create a staged image or video container for advanced multi-step workflows"
+      },
+      {
+        "key": "publish-media",
+        "name": "Publish Media Container",
+        "description": "Publish a previously staged media container"
+      }
+    ]
+  },
+  {
+    "appKey": "jenkins",
+    "name": "Jenkins",
+    "description": "Jenkins is an open-source automation server that helps build, test, and deploy software reliably. The Crescendo Jenkins app allows you to trigger CI/CD pipelines from external events.\n\n                **What you can do with Jenkins in Crescendo:**\n                - Trigger a deployment build when a ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "jenkins:build:trigger",
+        "name": "Trigger Build",
+        "description": "Trigger a Jenkins job build"
+      },
+      {
+        "key": "jenkins:build:get",
+        "name": "Get Job",
+        "description": "Fetch Jenkins job metadata"
+      }
+    ]
+  },
+  {
+    "appKey": "jira",
+    "name": "Jira Software",
+    "description": "Jira Software is an agile project management tool that supports any agile methodology, be it scrum, kanban, or your own unique flavor.\n                \n                This integration supports Jira Software Cloud and provides:\n                - **Issue**: Changelog, Create, Delete, Get, Get All, No",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "jira:issue:create",
+        "name": "Create Issue",
+        "description": "Create an issue"
+      },
+      {
+        "key": "jira:issue:update",
+        "name": "Update Issue",
+        "description": "Update an issue"
+      },
+      {
+        "key": "jira:issue:delete",
+        "name": "Delete Issue",
+        "description": "Delete an issue"
+      },
+      {
+        "key": "jira:issue:get",
+        "name": "Get Issue",
+        "description": "Get an issue"
+      },
+      {
+        "key": "jira:issue:getAll",
+        "name": "Get All Issues (Search)",
+        "description": "Search issues using JQL"
+      },
+      {
+        "key": "jira:issue:changelog",
+        "name": "Get Issue Changelog",
+        "description": "Get changelog of an issue"
+      },
+      {
+        "key": "jira:issue:notify",
+        "name": "Notify Issue",
+        "description": "Send a notification for an issue"
+      },
+      {
+        "key": "jira:issueAttachment:add",
+        "name": "Add Attachment",
+        "description": "Add attachment to an issue"
+      },
+      {
+        "key": "jira:issueAttachment:get",
+        "name": "Get Attachment",
+        "description": "Get an attachment metadata"
+      },
+      {
+        "key": "jira:issueAttachment:getAll",
+        "name": "Get All Attachments",
+        "description": "Get all attachments for an issue"
+      },
+      {
+        "key": "jira:issueAttachment:remove",
+        "name": "Remove Attachment",
+        "description": "Remove an attachment"
+      },
+      {
+        "key": "jira:issueComment:add",
+        "name": "Add Comment",
+        "description": "Add comment to an issue"
+      },
+      {
+        "key": "jira:issueComment:get",
+        "name": "Get Comment",
+        "description": "Get a comment"
+      },
+      {
+        "key": "jira:issueComment:getAll",
+        "name": "Get All Comments",
+        "description": "Get all comments for an issue"
+      },
+      {
+        "key": "jira:issueComment:update",
+        "name": "Update Comment",
+        "description": "Update an issue comment"
+      },
+      {
+        "key": "jira:issueComment:remove",
+        "name": "Remove Comment",
+        "description": "Delete an issue comment"
+      },
+      {
+        "key": "jira:user:create",
+        "name": "Create User",
+        "description": "Create a user"
+      },
+      {
+        "key": "jira:user:get",
+        "name": "Get User",
+        "description": "Get a user"
+      },
+      {
+        "key": "jira:user:delete",
+        "name": "Delete User",
+        "description": "Delete a user"
+      }
+    ]
+  },
+  {
+    "appKey": "job-search",
+    "name": "Job Search",
+    "description": "Search jobs across 11+ platforms including LinkedIn, Greenhouse, Ashby, Lever, and more. The Crescendo Job Search app is specifically optimized for both Indian tech unicorns and global Tier-1 companies, letting you automate job and internship discovery.\n\n                **What you can do with Job Se",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "search-jobs",
+        "name": "Search Jobs (India)",
+        "description": "Search Jobs (India)"
+      },
+      {
+        "key": "search-remote-jobs",
+        "name": "Search Remote Jobs",
+        "description": "Search remote-friendly jobs from Remotive, Arbeitnow, and Himalayas (no API key needed)"
+      }
+    ]
+  },
+  {
+    "appKey": "joke-api",
+    "name": "Joke API",
+    "description": "JokeAPI is a REST API that serves uniformly and well-formatted jokes. The Crescendo Joke API app is a fun utility to inject humor into your automated notifications.\n\n                **What you can do with Joke API in Crescendo:**\n                - Send a \"Programming\" category joke to your developer",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-joke",
+        "name": "Get Random Joke",
+        "description": "Retrieve a random joke"
+      }
+    ]
+  },
+  {
+    "appKey": "json",
+    "name": "JSON",
+    "description": "The JSON app is a native object utility that allows you to parse strings into JSON and stringify JSON objects back into strings.\n                \n                **What you can do with JSON in Crescendo:**\n                - Extract JSON strings hidden inside HTTP webhooks\n                - Stringify",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "parse",
+        "name": "Parse JSON",
+        "description": "Parse a string into a JSON object"
+      },
+      {
+        "key": "stringify",
+        "name": "Stringify JSON",
+        "description": "Stringify a JSON object into a string"
+      }
+    ]
+  },
+  {
+    "appKey": "jwt",
+    "name": "JWT",
+    "description": "JSON Web Token (JWT) is a standard for creating data with optional signature and/or optional encryption whose payload holds JSON that asserts some number of claims.\n                \n                This integration provides operations for:\n                - **Sign**: Create a new signed JWT\n        ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "jwt:sign",
+        "name": "Sign a JWT",
+        "description": "Sign a JWT"
+      },
+      {
+        "key": "jwt:verify",
+        "name": "Verify a JWT",
+        "description": "Verify a JWT"
+      },
+      {
+        "key": "jwt:decode",
+        "name": "Decode a JWT",
+        "description": "Decode a JWT without verifying the signature"
+      }
+    ]
+  },
+  {
+    "appKey": "kafka",
+    "name": "Kafka",
+    "description": "Apache Kafka is an open-source distributed event streaming platform used by thousands of companies for high-performance data pipelines, streaming analytics, data integration, and mission-critical applications.\n                \n                This integration provides operations for:\n               ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "publish",
+        "name": "Send Message",
+        "description": "Send a message to a Kafka topic"
+      }
+    ]
+  },
+  {
+    "appKey": "leetcode",
+    "name": "LeetCode",
+    "description": "LeetCode is a platform for enhancing coding skills and preparing for technical interviews. The Crescendo LeetCode app allows you to fetch user stats, daily challenges, and search for specific problems.\n\n                **What you can do with LeetCode in Crescendo:**\n                - Post the daily ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-user-stats",
+        "name": "Get User Stats",
+        "description": "Retrieve LeetCode profile stats"
+      },
+      {
+        "key": "get-daily-problem",
+        "name": "Get Daily Challenge",
+        "description": "Get today's daily challenge problem"
+      },
+      {
+        "key": "search-problem",
+        "name": "Search Problems",
+        "description": "Search problems by keywords and difficulty"
+      }
+    ]
+  },
+  {
+    "appKey": "linear",
+    "name": "Linear",
+    "description": "Linear is an issue tracking tool built for speed.\n                \n                This integration provides operations for:\n                - **Issue**: Create, Delete, Get, Get All, Update, Add Link\n                - **Comment**: Add Comment\n                \n                Authenticate using a Li",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "linear:issue:create",
+        "name": "Create Issue",
+        "description": "Create an issue"
+      },
+      {
+        "key": "linear:issue:delete",
+        "name": "Delete Issue",
+        "description": "Delete an issue"
+      },
+      {
+        "key": "linear:issue:get",
+        "name": "Get Issue",
+        "description": "Get an issue"
+      },
+      {
+        "key": "linear:issue:getAll",
+        "name": "Get All Issues",
+        "description": "Get all issues"
+      },
+      {
+        "key": "linear:issue:update",
+        "name": "Update Issue",
+        "description": "Update an issue"
+      },
+      {
+        "key": "linear:issue:addLink",
+        "name": "Add Link",
+        "description": "Add a link to an issue"
+      },
+      {
+        "key": "linear:comment:addComment",
+        "name": "Add Comment",
+        "description": "Add a comment to an issue"
+      }
+    ]
+  },
+  {
+    "appKey": "linkedin",
+    "name": "LinkedIn",
+    "description": "LinkedIn is the world's largest professional network. The Crescendo LinkedIn app allows you to manage your professional presence and automate content sharing.\n\n                **What you can do with LinkedIn in Crescendo:**\n                - Automatically share a new blog post to your personal Linke",
+    "triggers": [
+      {
+        "key": "new-follower",
+        "name": "New Follower",
+        "description": "Triggers when a new person follows you"
+      },
+      {
+        "key": "profile-viewed",
+        "name": "Profile Viewed",
+        "description": "Triggers when someone views your profile"
+      }
+    ],
+    "actions": [
+      {
+        "key": "share-post",
+        "name": "Share Post",
+        "description": "Share a text post on LinkedIn"
+      },
+      {
+        "key": "share-link",
+        "name": "Share Link/Article",
+        "description": "Share a post with a link attachment"
+      },
+      {
+        "key": "get-profile",
+        "name": "Get My Profile",
+        "description": "Retrieve your LinkedIn profile information"
+      }
+    ]
+  },
+  {
+    "appKey": "crescendo-log",
+    "name": "Internal Debug Log",
+    "description": "The Internal Debug Log is a special-purpose app used strictly by workflow administrators and developers to print diagnostic information directly to the backend server's console.\n\n                **What you can do with Debug Log in Crescendo:**\n                - Print the raw JSON payload of an incom",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "print",
+        "name": "Print to Log",
+        "description": "Log the step's input data to the server console"
+      }
+    ]
+  },
+  {
+    "appKey": "logic",
+    "name": "Logic",
+    "description": "Core logic nodes like If, Switch, etc.\n                \n                This integration provides operations for:\n                - **If**: Route items to different branches (true/false)\n                - **Switch**: Route items depending on defined expression or rules",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "logic:if",
+        "name": "If",
+        "description": "Route items to different branches (true/false)"
+      },
+      {
+        "key": "logic:switch",
+        "name": "Switch",
+        "description": "Route items depending on defined expression or rules"
+      },
+      {
+        "key": "logic:merge",
+        "name": "Merge",
+        "description": "Combine branches after an If or Switch"
+      }
+    ]
+  },
+  {
+    "appKey": "mailchimp",
+    "name": "Mailchimp",
+    "description": "Mailchimp is an email marketing service provider. It allows you to build audiences, design campaigns, and automate your email marketing.\n                \n                This integration mirrors n8n's Mailchimp node and provides:\n                - **Campaign**: Create, Delete, Get, Get All, Replicat",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "mailchimp:campaign:create",
+        "name": "Create Campaign",
+        "description": "Create a campaign"
+      },
+      {
+        "key": "mailchimp:campaign:delete",
+        "name": "Delete Campaign",
+        "description": "Delete a campaign"
+      },
+      {
+        "key": "mailchimp:campaign:get",
+        "name": "Get Campaign",
+        "description": "Get a campaign"
+      },
+      {
+        "key": "mailchimp:campaign:getAll",
+        "name": "Get All Campaigns",
+        "description": "Get all campaigns"
+      },
+      {
+        "key": "mailchimp:campaign:replicate",
+        "name": "Replicate Campaign",
+        "description": "Replicate a campaign in saved or send status"
+      },
+      {
+        "key": "mailchimp:campaign:resend",
+        "name": "Resend Campaign",
+        "description": "Creates a Resend to Non-Openers version of this campaign"
+      },
+      {
+        "key": "mailchimp:campaign:send",
+        "name": "Send Campaign",
+        "description": "Send a Mailchimp campaign"
+      },
+      {
+        "key": "mailchimp:listGroup:create",
+        "name": "Create List Group",
+        "description": "Create a list group for a list"
+      },
+      {
+        "key": "mailchimp:listGroup:delete",
+        "name": "Delete List Group",
+        "description": "Delete a list group"
+      },
+      {
+        "key": "mailchimp:listGroup:getAll",
+        "name": "Get All List Groups",
+        "description": "Get all groups for a list"
+      },
+      {
+        "key": "mailchimp:member:createOrUpdate",
+        "name": "Create or Update Member",
+        "description": "Create a new member, or update the current one if it already exists (upsert)"
+      },
+      {
+        "key": "mailchimp:member:delete",
+        "name": "Delete Member",
+        "description": "Delete a member from a list"
+      },
+      {
+        "key": "mailchimp:member:get",
+        "name": "Get Member",
+        "description": "Get information about a specific list member"
+      },
+      {
+        "key": "mailchimp:member:getAll",
+        "name": "Get All Members",
+        "description": "Get information about members in a list"
+      },
+      {
+        "key": "mailchimp:member:update",
+        "name": "Update Member",
+        "description": "Update a member of a list"
+      },
+      {
+        "key": "mailchimp:memberTag:add",
+        "name": "Add Tags to Member",
+        "description": "Add tags to a list member"
+      },
+      {
+        "key": "mailchimp:memberTag:remove",
+        "name": "Remove Tags from Member",
+        "description": "Remove tags from a list member"
+      }
+    ]
+  },
+  {
+    "appKey": "markdown",
+    "name": "Markdown",
+    "description": "Convert data between Markdown and HTML.\n                \n                This integration provides operations for:\n                - **HTML to Markdown**: Convert HTML to Markdown format\n                - **Markdown to HTML**: Convert Markdown to HTML format",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "markdown:convert",
+        "name": "Convert HTML/Markdown",
+        "description": "Convert data between Markdown and HTML"
+      }
+    ]
+  },
+  {
+    "appKey": "marketstack",
+    "name": "Marketstack",
+    "description": "Marketstack provides an easy-to-use REST API offering global stock market data. The Crescendo Marketstack app allows you to retrieve real-time and historical stock data effortlessly.\n\n                **What you can do with Marketstack in Crescendo:**\n                - Check the closing price of spec",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "marketstack:eod:getLatest",
+        "name": "Latest EOD",
+        "description": "Fetch latest end-of-day prices for stock symbols"
+      }
+    ]
+  },
+  {
+    "appKey": "matrix",
+    "name": "Matrix",
+    "description": "Matrix is an open standard for interoperable, decentralized, real-time communication. The Crescendo Matrix app allows you to send automated messages to specific Matrix rooms securely.\n                \n                **What you can do with Matrix in Crescendo:**\n                - Broadcast announcem",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "sendMessage",
+        "name": "Send Message",
+        "description": "Send a message to a Matrix room"
+      },
+      {
+        "key": "deleteMessage",
+        "name": "Delete Message",
+        "description": "Redact (delete) a message in a Matrix room"
+      },
+      {
+        "key": "createRoom",
+        "name": "Create Room",
+        "description": "Create a new Matrix room"
+      }
+    ]
+  },
+  {
+    "appKey": "mattermost",
+    "name": "Mattermost",
+    "description": "Mattermost is an open-source, self-hostable online chat service with file sharing, search, and integrations.\n\n                                                **What you can do with Mattermost in Crescendo:**\n                                                - Send automated alerts to specific channels",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "create-post",
+        "name": "Create Post",
+        "description": "Post a message to a channel"
+      },
+      {
+        "key": "delete-post",
+        "name": "Delete Post",
+        "description": "Delete a post in Mattermost"
+      },
+      {
+        "key": "create-channel",
+        "name": "Create Channel",
+        "description": "Create a new Mattermost channel"
+      },
+      {
+        "key": "add-user-to-channel",
+        "name": "Add User to Channel",
+        "description": "Add a user to a channel"
+      }
+    ]
+  },
+  {
+    "appKey": "medium",
+    "name": "Medium",
+    "description": "Medium is an open platform where readers find dynamic thinking, and where expert and undiscovered voices can share their writing on any topic. The Crescendo Medium app automates content publishing.\n\n                **What you can do with Medium in Crescendo:**\n                - Automatically publish",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "createPost",
+        "name": "Create Post",
+        "description": "Publish a Medium post"
+      }
+    ]
+  },
+  {
+    "appKey": "microsoft-excel",
+    "name": "Microsoft Excel",
+    "description": "Microsoft Excel is a spreadsheet developed by Microsoft. The Crescendo Excel app connects to workbooks in your OneDrive, allowing you to read rows, append data, and watch for changes automatically.\n\n                **What you can do with Excel in Crescendo:**\n                - Append new rows for in",
+    "triggers": [
+      {
+        "key": "new-row",
+        "name": "New Row",
+        "description": "Triggers when a new row is added to a worksheet"
+      },
+      {
+        "key": "updated-row",
+        "name": "New or Updated Row",
+        "description": "Triggers when a row is added or an existing row is updated"
+      },
+      {
+        "key": "new-worksheet",
+        "name": "New Worksheet",
+        "description": "Triggers when a new worksheet is added to a workbook"
+      }
+    ],
+    "actions": [
+      {
+        "key": "appendRow",
+        "name": "Add Row",
+        "description": "Append a new row to the end of a worksheet"
+      },
+      {
+        "key": "updateRow",
+        "name": "Update Row",
+        "description": "Update an existing row in a worksheet by row number"
+      },
+      {
+        "key": "findRow",
+        "name": "Find Row",
+        "description": "Find a row by searching a column for a value"
+      },
+      {
+        "key": "createWorkbook",
+        "name": "Create Workbook",
+        "description": "Create a new empty Excel workbook in OneDrive"
+      },
+      {
+        "key": "createWorksheet",
+        "name": "Create Worksheet",
+        "description": "Add a new worksheet to an existing workbook"
+      },
+      {
+        "key": "deleteRow",
+        "name": "Delete Row",
+        "description": "Delete a row from a worksheet by row number"
+      },
+      {
+        "key": "readRows",
+        "name": "Read Rows",
+        "description": "Read data from a worksheet or a specific range"
+      }
+    ]
+  },
+  {
+    "appKey": "microsoft-outlook",
+    "name": "Microsoft Outlook",
+    "description": "Microsoft Outlook is a personal information manager used primarily as an email application. The Crescendo Outlook app lets you send emails, manage drafts, and automate your inbox using Microsoft Graph.\n\n                **What you can do with Outlook in Crescendo:**\n                - Automatically re",
+    "triggers": [
+      {
+        "key": "new-email",
+        "name": "New Email",
+        "description": "Triggers when a new email arrives in your inbox or a specific folder"
+      }
+    ],
+    "actions": [
+      {
+        "key": "sendEmail",
+        "name": "Send Email",
+        "description": "Send an email from your Outlook account"
+      },
+      {
+        "key": "createDraft",
+        "name": "Create Draft",
+        "description": "Create a draft email in your Outlook drafts folder"
+      },
+      {
+        "key": "replyMessage",
+        "name": "Reply to Email",
+        "description": "Reply to an existing email message"
+      },
+      {
+        "key": "moveMessage",
+        "name": "Move Email to Folder",
+        "description": "Move an email message to a different folder"
+      },
+      {
+        "key": "createEvent",
+        "name": "Create Calendar Event",
+        "description": "Create a new event on your Outlook calendar"
+      },
+      {
+        "key": "getAllMessages",
+        "name": "List Emails",
+        "description": "Retrieve recent emails from a mail folder"
+      },
+      {
+        "key": "addAttachment",
+        "name": "Add Attachment to Email",
+        "description": "Add a file attachment to an email message"
+      }
+    ]
+  },
+  {
+    "appKey": "microsoft-teams",
+    "name": "Microsoft Teams",
+    "description": "Microsoft Teams is a proprietary business communication platform. The Crescendo Teams app allows you to send messages, watch channels, and manage teams automatically via Microsoft Graph.\n\n                **What you can do with Teams in Crescendo:**\n                - Post an alert in a channel when a",
+    "triggers": [
+      {
+        "key": "new-channel-message",
+        "name": "New Channel Message",
+        "description": "Triggers when a new message is posted in a Teams channel"
+      }
+    ],
+    "actions": [
+      {
+        "key": "sendChannelMessage",
+        "name": "Send Channel Message",
+        "description": "Post a message to a Microsoft Teams channel"
+      },
+      {
+        "key": "sendChatMessage",
+        "name": "Send Chat Message",
+        "description": "Send a direct message to a user"
+      },
+      {
+        "key": "createChannel",
+        "name": "Create Channel",
+        "description": "Create a new channel in a team"
+      }
+    ]
+  },
+  {
+    "appKey": "mongoDb",
+    "name": "MongoDB",
+    "description": "Find, insert and update documents in MongoDB.\n                \n                This integration provides operations for:\n                - **Aggregate**: Aggregate documents\n                - **Delete**: Delete documents\n                - **Find**: Find documents\n                - **Insert**: Insert",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "mongoDb:aggregate",
+        "name": "Aggregate",
+        "description": "Aggregate documents"
+      },
+      {
+        "key": "mongoDb:delete",
+        "name": "Delete",
+        "description": "Delete documents"
+      },
+      {
+        "key": "mongoDb:find",
+        "name": "Find",
+        "description": "Find documents"
+      },
+      {
+        "key": "mongoDb:insert",
+        "name": "Insert",
+        "description": "Insert documents"
+      },
+      {
+        "key": "mongoDb:update",
+        "name": "Update",
+        "description": "Update documents"
+      }
+    ]
+  },
+  {
+    "appKey": "mqtt",
+    "name": "MQTT",
+    "description": "MQTT is a machine-to-machine (M2M)/\"Internet of Things\" connectivity protocol.\n                \n                This integration provides operations for:\n                - **Publish**: Publish a message to an MQTT topic\n                \n                Authenticate using MQTT broker credentials.",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "publish",
+        "name": "Publish Message",
+        "description": "Push a message to an MQTT topic"
+      }
+    ]
+  },
+  {
+    "appKey": "mysql",
+    "name": "MySQL",
+    "description": "MySQL is an open-source relational database management system. This integration allows you to run SQL queries securely from your Crescendo workflows.\n                \n                **What you can do with MySQL in Crescendo:**\n                - Fetch user data to enrich incoming support tickets\n   ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "executeQuery",
+        "name": "Execute Query",
+        "description": "Execute a SQL query"
+      }
+    ]
+  },
+  {
+    "appKey": "nasa",
+    "name": "NASA",
+    "description": "The National Aeronautics and Space Administration (NASA) provides open APIs to access space data and imagery. The Crescendo NASA app gives you access to the Astronomy Picture of the Day and Mars Rover photos.\n\n                **What you can do with NASA in Crescendo:**\n                - Post the dai",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "nasa:apod:get",
+        "name": "Get Astronomy Picture",
+        "description": "Get NASA's Astronomy Picture of the Day"
+      },
+      {
+        "key": "nasa:mars:getPhotos",
+        "name": "Get Mars Rover Photos",
+        "description": "Get photos from Mars rovers"
+      }
+    ]
+  },
+  {
+    "appKey": "native-form",
+    "name": "Form Trigger",
+    "description": "Native Form is Crescendo's built-in, no-code form builder. The Crescendo Native Form app lets you generate public-facing forms instantly and trigger workflows the moment they are submitted.\n\n                **What you can do with Native Form in Crescendo:**\n                - Create a quick \"Contact ",
+    "triggers": [
+      {
+        "key": "form-submit",
+        "name": "Form Submitted",
+        "description": "Triggers when a public Crescendo form receives a submission"
+      }
+    ],
+    "actions": []
+  },
+  {
+    "appKey": "notion",
+    "name": "Notion",
+    "description": "Notion is an all-in-one workspace for your notes, tasks, wikis, and databases.\n                \n                This integration provides operations for:\n                - **Block**: Append, Get All\n                - **Database**: Get, Get All, Search\n                - **Database Page**: Create, Get",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "notion:block:append",
+        "name": "Append Block",
+        "description": "Append a block to a parent"
+      },
+      {
+        "key": "notion:block:getAll",
+        "name": "Get All Blocks",
+        "description": "Get all children blocks"
+      },
+      {
+        "key": "notion:database:get",
+        "name": "Get Database",
+        "description": "Get a database"
+      },
+      {
+        "key": "notion:database:getAll",
+        "name": "Get All Databases",
+        "description": "Get all databases"
+      },
+      {
+        "key": "notion:database:search",
+        "name": "Search Database",
+        "description": "Search for a database"
+      },
+      {
+        "key": "notion:databasePage:create",
+        "name": "Create Database Page",
+        "description": "Create a page within a database"
+      },
+      {
+        "key": "notion:databasePage:get",
+        "name": "Get Database Page",
+        "description": "Get a page within a database"
+      },
+      {
+        "key": "notion:databasePage:getAll",
+        "name": "Get All Database Pages",
+        "description": "Get all pages within a database (query)"
+      },
+      {
+        "key": "notion:databasePage:update",
+        "name": "Update Database Page",
+        "description": "Update properties of a database page"
+      },
+      {
+        "key": "notion:page:archive",
+        "name": "Archive Page",
+        "description": "Archive a page"
+      },
+      {
+        "key": "notion:page:create",
+        "name": "Create Page",
+        "description": "Create a page"
+      },
+      {
+        "key": "notion:page:get",
+        "name": "Get Page",
+        "description": "Get a page"
+      },
+      {
+        "key": "notion:page:search",
+        "name": "Search Page",
+        "description": "Search for a page"
+      },
+      {
+        "key": "notion:page:update",
+        "name": "Update Page",
+        "description": "Update properties of a page"
+      },
+      {
+        "key": "notion:user:get",
+        "name": "Get User",
+        "description": "Get a user"
+      },
+      {
+        "key": "notion:user:getAll",
+        "name": "Get All Users",
+        "description": "Get all users"
+      }
+    ]
+  },
+  {
+    "appKey": "openai",
+    "name": "OpenAI",
+    "description": "OpenAI provides industry-leading AI models including GPT-4 and DALL-E. The Crescendo OpenAI app lets you integrate advanced natural language processing and image generation into your workflows.\n\n                **What you can do with OpenAI in Crescendo:**\n                - Generate human-like text ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "chat-complete",
+        "name": "Chat - Complete",
+        "description": "Create one or more completions for a given text"
+      },
+      {
+        "key": "image-create",
+        "name": "Image - Create",
+        "description": "Create an image for a given text"
+      },
+      {
+        "key": "text-complete",
+        "name": "Text - Complete",
+        "description": "Create one or more completions for a given text"
+      },
+      {
+        "key": "text-edit",
+        "name": "Text - Edit",
+        "description": "Edit or rewrite text based on an instruction (uses GPT chat API)"
+      },
+      {
+        "key": "text-moderate",
+        "name": "Text - Moderate",
+        "description": "Classify if a text violates OpenAI's content policy (uses /v1/moderations)"
+      }
+    ]
+  },
+  {
+    "appKey": "paypal",
+    "name": "PayPal",
+    "description": "PayPal is a global leader in online payments. The Crescendo PayPal app lets you automate invoicing and track checkout orders seamlessly within your workflows.\n\n                **What you can do with PayPal in Crescendo:**\n                - Automatically generate a PayPal checkout link when a user cl",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "paypal:order:create",
+        "name": "Create Order",
+        "description": "Create a PayPal checkout order"
+      },
+      {
+        "key": "paypal:order:get",
+        "name": "Fetch Order",
+        "description": "Fetch a PayPal order"
+      }
+    ]
+  },
+  {
+    "appKey": "pomodoro",
+    "name": "Pomodoro Timer",
+    "description": "The Pomodoro Technique is a time management method that uses a timer to break work into intervals. The Crescendo Pomodoro app allows you to create focus timers, log work sessions, and calculate productivity metrics.\n\n                **What you can do with Pomodoro in Crescendo:**\n                - S",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "create-timer",
+        "name": "Start Focus Timer",
+        "description": "Start a Pomodoro focus session"
+      },
+      {
+        "key": "log-work-time",
+        "name": "Log Work Time",
+        "description": "Record a completed work session"
+      },
+      {
+        "key": "calculate-end-time",
+        "name": "Calculate End Time",
+        "description": "Calculate when a timer will end"
+      }
+    ]
+  },
+  {
+    "appKey": "postgres",
+    "name": "Postgres",
+    "description": "Get, add and update data in Postgres.\n                \n                This integration provides operations for:\n                - **Delete**: Delete an entire table or rows in a table\n                - **Execute Query**: Execute an SQL query\n                - **Insert**: Insert rows in a table\n    ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "postgres:deleteTable",
+        "name": "Delete",
+        "description": "Delete an entire table or rows in a table"
+      },
+      {
+        "key": "postgres:executeQuery",
+        "name": "Execute Query",
+        "description": "Execute an SQL query"
+      },
+      {
+        "key": "postgres:insert",
+        "name": "Insert",
+        "description": "Insert rows in a table"
+      },
+      {
+        "key": "postgres:upsert",
+        "name": "Insert or Update",
+        "description": "Insert or update rows in a table"
+      },
+      {
+        "key": "postgres:select",
+        "name": "Select",
+        "description": "Select rows from a table"
+      },
+      {
+        "key": "postgres:update",
+        "name": "Update",
+        "description": "Update rows in a table"
+      }
+    ]
+  },
+  {
+    "appKey": "postgresql",
+    "name": "PostgreSQL",
+    "description": "PostgreSQL is a powerful, open-source object-relational database system. The Crescendo PostgreSQL app allows you to run SQL queries securely against your own database.\n\n                **What you can do with PostgreSQL in Crescendo:**\n                - Insert new rows into your database when a webho",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "execute-query",
+        "name": "Execute Query",
+        "description": "Run a SELECT/INSERT/UPDATE/DELETE statement"
+      }
+    ]
+  },
+  {
+    "appKey": "pushbullet",
+    "name": "Pushbullet",
+    "description": "Pushbullet bridges the gap between your phone, tablet, and computer, allowing them to share notifications and files. The Crescendo Pushbullet app lets you send instant alerts to your devices.\n\n                **What you can do with Pushbullet in Crescendo:**\n                - Send a push notificatio",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "send-note",
+        "name": "Send Note",
+        "description": "Send a Pushbullet note"
+      }
+    ]
+  },
+  {
+    "appKey": "quotes",
+    "name": "Random Quotes",
+    "description": "The Random Quotes app is a lightweight utility that connects to public quote APIs to fetch inspirational, funny, or thought-provoking sayings from historical figures and authors.\n\n                **What you can do with Quotes in Crescendo:**\n                - Post an inspirational \"Quote of the Day\"",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-random-quote",
+        "name": "Get Random Quote",
+        "description": "Retrieve a random inspirational quote"
+      },
+      {
+        "key": "get-by-category",
+        "name": "Get Quote by Category",
+        "description": "Get a quote from a specific category"
+      },
+      {
+        "key": "get-quote-of-day",
+        "name": "Quote of the Day",
+        "description": "Get the daily featured quote"
+      }
+    ]
+  },
+  {
+    "appKey": "rabbitmq",
+    "name": "RabbitMQ",
+    "description": "RabbitMQ is an open-source message-broker software that originally implemented the Advanced Message Queuing Protocol (AMQP).\n                \n                This integration provides operations for:\n                - **Send Message**: Send a message to a RabbitMQ queue or exchange\n                \n",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "publish",
+        "name": "Send Message",
+        "description": "Send a message to a RabbitMQ queue or exchange"
+      }
+    ]
+  },
+  {
+    "appKey": "razorpay",
+    "name": "Razorpay",
+    "description": "Razorpay is the only payments solution in India that allows businesses to accept, process, and disburse payments. The Crescendo Razorpay app lets you create and track payment links effortlessly.\n\n                **What you can do with Razorpay in Crescendo:**\n                - Generate a secure paym",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "create-order",
+        "name": "Create Order",
+        "description": "Create a Razorpay order"
+      },
+      {
+        "key": "create-payment-link",
+        "name": "Create Payment Link",
+        "description": "Create a Razorpay payment link"
+      },
+      {
+        "key": "fetch-payment",
+        "name": "Fetch Payment",
+        "description": "Fetch a Razorpay payment by ID"
+      }
+    ]
+  },
+  {
+    "appKey": "readpdf",
+    "name": "Read PDF",
+    "description": "The Read PDF app is a built-in utility that allows you to parse and extract text content from PDF documents, enabling you to process invoices, resumes, and reports automatically.\n\n                **What you can do with Read PDF in Crescendo:**\n                - Extract text from a candidate's resume",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "extract-text",
+        "name": "Extract Text",
+        "description": "Read PDF and extract text"
+      }
+    ]
+  },
+  {
+    "appKey": "redis",
+    "name": "Redis",
+    "description": "Get, send and update data in Redis.\n                \n                This integration provides operations for:\n                - **Delete**: Delete a key from Redis\n                - **Get**: Get the value of a key from Redis\n                - **Increment**: Atomically increment a key by 1\n         ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "redis:delete",
+        "name": "Delete",
+        "description": "Delete a key from Redis"
+      },
+      {
+        "key": "redis:get",
+        "name": "Get",
+        "description": "Get the value of a key from Redis"
+      },
+      {
+        "key": "redis:incr",
+        "name": "Increment",
+        "description": "Atomically increment a key by 1"
+      },
+      {
+        "key": "redis:info",
+        "name": "Info",
+        "description": "Return generic information about the Redis instance"
+      },
+      {
+        "key": "redis:keys",
+        "name": "Keys",
+        "description": "Return all keys matching a pattern"
+      },
+      {
+        "key": "redis:llen",
+        "name": "List Length",
+        "description": "Return the length of a list"
+      },
+      {
+        "key": "redis:pop",
+        "name": "Pop",
+        "description": "Pop data from a redis list"
+      },
+      {
+        "key": "redis:publish",
+        "name": "Publish",
+        "description": "Publish message to redis channel"
+      },
+      {
+        "key": "redis:push",
+        "name": "Push",
+        "description": "Push data to a redis list"
+      },
+      {
+        "key": "redis:set",
+        "name": "Set",
+        "description": "Set the value of a key in redis"
+      }
+    ]
+  },
+  {
+    "appKey": "renameKeys",
+    "name": "Rename Keys",
+    "description": "Rename Keys is a data-transformation utility that helps you rename fields within a JSON object dynamically.\n                \n                **What you can do with Rename Keys in Crescendo:**\n                - Reformat payload keys before sending them to a strict API endpoint\n                - Norma",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "renameKeys:rename",
+        "name": "Rename",
+        "description": "Update item field names"
+      }
+    ]
+  },
+  {
+    "appKey": "rss",
+    "name": "RSS Feed",
+    "description": "RSS (Really Simple Syndication) is a web feed that allows users and applications to access updates to websites in a standardized format. The Crescendo RSS app lets you monitor your favorite blogs, news sites, and podcasts.\n\n                **What you can do with RSS in Crescendo:**\n                -",
+    "triggers": [
+      {
+        "key": "new-item",
+        "name": "New Feed Item",
+        "description": "Triggers when a new item appears in an RSS feed"
+      }
+    ],
+    "actions": [
+      {
+        "key": "parse-feed",
+        "name": "Parse Feed",
+        "description": "Fetch and parse an RSS/Atom feed"
+      }
+    ]
+  },
+  {
+    "appKey": "salesforce",
+    "name": "Salesforce",
+    "description": "Salesforce is the world's leading cloud-based CRM software. It provides customer relationship management service and also provides a complementary suite of enterprise applications focused on customer service, marketing automation, analytics, and application development.",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "salesforce:account:addNote",
+        "name": "Addnote Account",
+        "description": "Addnote a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:create",
+        "name": "Create Account",
+        "description": "Create a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:upsert",
+        "name": "Upsert Account",
+        "description": "Upsert a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:delete",
+        "name": "Delete Account",
+        "description": "Delete a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:get",
+        "name": "Get Account",
+        "description": "Get a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:getAll",
+        "name": "Getall Account",
+        "description": "Getall a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:getSummary",
+        "name": "Getsummary Account",
+        "description": "Getsummary a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:account:update",
+        "name": "Update Account",
+        "description": "Update a Account in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:create",
+        "name": "Create Attachment",
+        "description": "Create a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:delete",
+        "name": "Delete Attachment",
+        "description": "Delete a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:get",
+        "name": "Get Attachment",
+        "description": "Get a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:getAll",
+        "name": "Getall Attachment",
+        "description": "Getall a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:getSummary",
+        "name": "Getsummary Attachment",
+        "description": "Getsummary a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:attachment:update",
+        "name": "Update Attachment",
+        "description": "Update a Attachment in Salesforce"
+      },
+      {
+        "key": "salesforce:case:addComment",
+        "name": "Addcomment Case",
+        "description": "Addcomment a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:create",
+        "name": "Create Case",
+        "description": "Create a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:delete",
+        "name": "Delete Case",
+        "description": "Delete a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:get",
+        "name": "Get Case",
+        "description": "Get a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:getAll",
+        "name": "Getall Case",
+        "description": "Getall a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:getSummary",
+        "name": "Getsummary Case",
+        "description": "Getsummary a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:case:update",
+        "name": "Update Case",
+        "description": "Update a Case in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:addToCampaign",
+        "name": "Addtocampaign Contact",
+        "description": "Addtocampaign a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:addNote",
+        "name": "Addnote Contact",
+        "description": "Addnote a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:create",
+        "name": "Create Contact",
+        "description": "Create a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:upsert",
+        "name": "Upsert Contact",
+        "description": "Upsert a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:delete",
+        "name": "Delete Contact",
+        "description": "Delete a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:get",
+        "name": "Get Contact",
+        "description": "Get a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:getAll",
+        "name": "Getall Contact",
+        "description": "Getall a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:getSummary",
+        "name": "Getsummary Contact",
+        "description": "Getsummary a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:contact:update",
+        "name": "Update Contact",
+        "description": "Update a Contact in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:create",
+        "name": "Create CustomObject",
+        "description": "Create a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:upsert",
+        "name": "Upsert CustomObject",
+        "description": "Upsert a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:delete",
+        "name": "Delete CustomObject",
+        "description": "Delete a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:get",
+        "name": "Get CustomObject",
+        "description": "Get a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:getAll",
+        "name": "Getall CustomObject",
+        "description": "Getall a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:customObject:update",
+        "name": "Update CustomObject",
+        "description": "Update a CustomObject in Salesforce"
+      },
+      {
+        "key": "salesforce:document:upload",
+        "name": "Upload Document",
+        "description": "Upload a Document in Salesforce"
+      },
+      {
+        "key": "salesforce:flow:getAll",
+        "name": "Getall Flow",
+        "description": "Getall a Flow in Salesforce"
+      },
+      {
+        "key": "salesforce:flow:invoke",
+        "name": "Invoke Flow",
+        "description": "Invoke a Flow in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:addToCampaign",
+        "name": "Addtocampaign Lead",
+        "description": "Addtocampaign a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:addNote",
+        "name": "Addnote Lead",
+        "description": "Addnote a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:create",
+        "name": "Create Lead",
+        "description": "Create a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:upsert",
+        "name": "Upsert Lead",
+        "description": "Upsert a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:delete",
+        "name": "Delete Lead",
+        "description": "Delete a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:get",
+        "name": "Get Lead",
+        "description": "Get a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:getAll",
+        "name": "Getall Lead",
+        "description": "Getall a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:getSummary",
+        "name": "Getsummary Lead",
+        "description": "Getsummary a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:lead:update",
+        "name": "Update Lead",
+        "description": "Update a Lead in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:addNote",
+        "name": "Addnote Opportunity",
+        "description": "Addnote a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:create",
+        "name": "Create Opportunity",
+        "description": "Create a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:upsert",
+        "name": "Upsert Opportunity",
+        "description": "Upsert a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:delete",
+        "name": "Delete Opportunity",
+        "description": "Delete a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:get",
+        "name": "Get Opportunity",
+        "description": "Get a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:getAll",
+        "name": "Getall Opportunity",
+        "description": "Getall a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:getSummary",
+        "name": "Getsummary Opportunity",
+        "description": "Getsummary a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:opportunity:update",
+        "name": "Update Opportunity",
+        "description": "Update a Opportunity in Salesforce"
+      },
+      {
+        "key": "salesforce:search:query",
+        "name": "Query Search",
+        "description": "Query a Search in Salesforce"
+      },
+      {
+        "key": "salesforce:task:create",
+        "name": "Create Task",
+        "description": "Create a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:task:delete",
+        "name": "Delete Task",
+        "description": "Delete a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:task:get",
+        "name": "Get Task",
+        "description": "Get a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:task:getAll",
+        "name": "Getall Task",
+        "description": "Getall a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:task:getSummary",
+        "name": "Getsummary Task",
+        "description": "Getsummary a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:task:update",
+        "name": "Update Task",
+        "description": "Update a Task in Salesforce"
+      },
+      {
+        "key": "salesforce:user:get",
+        "name": "Get User",
+        "description": "Get a User in Salesforce"
+      },
+      {
+        "key": "salesforce:user:getAll",
+        "name": "Getall User",
+        "description": "Getall a User in Salesforce"
+      }
+    ]
+  },
+  {
+    "appKey": "sarvam",
+    "name": "Sarvam AI",
+    "description": "Sarvam AI specializes in Indian language AI models. The Crescendo Sarvam app enables translation, speech-to-text, and text-to-speech across multiple Indian languages.\n\n                **What you can do with Sarvam in Crescendo:**\n                - Translate Slack messages from English to Hindi autom",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "translate",
+        "name": "Translate Text",
+        "description": "Translate text between Indian languages"
+      },
+      {
+        "key": "text-to-speech",
+        "name": "Text to Speech",
+        "description": "Convert text to speech in Indian languages"
+      },
+      {
+        "key": "chat-completion",
+        "name": "Chat Completion",
+        "description": "Generate text using Sarvam's language model"
+      }
+    ]
+  },
+  {
+    "appKey": "schedule",
+    "name": "Schedule Trigger",
+    "description": "The Schedule Trigger is a core Crescendo app that allows you to kick off workflows at specific times or regular recurring intervals using standard cron syntax.\n\n                **What you can do with Schedule Trigger in Crescendo:**\n                - Run a database backup script via SSH every night ",
+    "triggers": [
+      {
+        "key": "cron",
+        "name": "Cron Schedule",
+        "description": "Triggers based on a Cron expression"
+      },
+      {
+        "key": "interval",
+        "name": "Interval",
+        "description": "Triggers repeatedly at a fixed interval"
+      },
+      {
+        "key": "once",
+        "name": "Run Once",
+        "description": "Triggers the workflow once at a specific future date and time"
+      }
+    ],
+    "actions": []
+  },
+  {
+    "appKey": "set",
+    "name": "Set",
+    "description": "Modify, add, or remove item fields.\n                \n                This integration provides operations for:\n                - **Set**: Add or edit fields on an input item and optionally remove other fields",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "set:set",
+        "name": "Set",
+        "description": "Modify, add, or remove item fields"
+      }
+    ]
+  },
+  {
+    "appKey": "simpleapi",
+    "name": "One Simple API",
+    "description": "One Simple API provides quick endpoints for generating PDFs, parsing SEO metadata, creating QR codes, exchanging currency, scraping social profiles, and more. The Crescendo SimpleAPI app provides a seamless interface to these utilities.\n\n                **What you can do with SimpleAPI in Crescendo:",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "execute",
+        "name": "Execute Operation",
+        "description": "Run a One Simple API operation"
+      }
+    ]
+  },
+  {
+    "appKey": "slack",
+    "name": "Slack",
+    "description": "Slack is the leading team communication platform used by millions of organizations worldwide. It organizes conversations into channels, supports direct messaging, file sharing, and integrates with hundreds of apps.\n\n                **What you can do with Slack in Crescendo:**\n                - Send ",
+    "triggers": [
+      {
+        "key": "new-message",
+        "name": "New Message in Channel",
+        "description": "Triggers when a new message is posted"
+      },
+      {
+        "key": "new-mention",
+        "name": "New Mention",
+        "description": "Triggers when the bot is mentioned in a channel"
+      },
+      {
+        "key": "new-reaction",
+        "name": "New Reaction Added",
+        "description": "Triggers when a reaction is added to a message"
+      },
+      {
+        "key": "new-channel",
+        "name": "New Channel Created",
+        "description": "Triggers when a new channel is created in the workspace"
+      },
+      {
+        "key": "new-user",
+        "name": "New User Joined",
+        "description": "Triggers when a new user joins the workspace"
+      }
+    ],
+    "actions": [
+      {
+        "key": "sendMessage",
+        "name": "Send Channel Message",
+        "description": "Post a message to a Slack channel"
+      },
+      {
+        "key": "sendDirectMessage",
+        "name": "Send Direct Message",
+        "description": "Send a direct message to a user"
+      },
+      {
+        "key": "updateMessage",
+        "name": "Update Message",
+        "description": "Update an existing message in Slack"
+      },
+      {
+        "key": "deleteMessage",
+        "name": "Delete Message",
+        "description": "Delete a message in Slack"
+      },
+      {
+        "key": "createChannel",
+        "name": "Create Channel",
+        "description": "Create a new Slack channel"
+      },
+      {
+        "key": "setTopic",
+        "name": "Set Channel Topic",
+        "description": "Set or update a channel's topic"
+      },
+      {
+        "key": "addReaction",
+        "name": "Add Reaction",
+        "description": "Add an emoji reaction to a message"
+      },
+      {
+        "key": "searchMessages",
+        "name": "Find Message",
+        "description": "Search for messages matching a query"
+      },
+      {
+        "key": "inviteToChannel",
+        "name": "Invite User to Channel",
+        "description": "Invite a user to join a channel"
+      }
+    ]
+  },
+  {
+    "appKey": "smtp",
+    "name": "SMTP Email",
+    "description": "SMTP integration allows you to send emails using your own email server.\n                \n                This integration provides operations for:\n                - **Send Email**: Send an email\n                - **Send and Wait**: Send an email and wait for a reply\n                \n                ",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "smtp:send",
+        "name": "Send Email",
+        "description": "Send an email"
+      },
+      {
+        "key": "smtp:sendAndWait",
+        "name": "Send and Wait",
+        "description": "Send an email and wait for a reply"
+      }
+    ]
+  },
+  {
+    "appKey": "spotify",
+    "name": "Spotify",
+    "description": "Spotify is the world's most popular audio streaming subscription service. The Crescendo Spotify app lets you search for music, manage your playlists, and control your library automatically.\n\n                **What you can do with Spotify in Crescendo:**\n                - Search for tracks, albums, a",
+    "triggers": [
+      {
+        "key": "track-saved",
+        "name": "New Saved Track",
+        "description": "Triggers when a track is saved to your library"
+      },
+      {
+        "key": "new-playlist-track",
+        "name": "New Playlist Track",
+        "description": "Triggers when a track is added to a playlist"
+      }
+    ],
+    "actions": [
+      {
+        "key": "search",
+        "name": "Search Spotify",
+        "description": "Search for tracks, albums, artists, or playlists by keyword"
+      },
+      {
+        "key": "save-track",
+        "name": "Save Track",
+        "description": "Save a track to your Liked Songs library (Requires OAuth)"
+      },
+      {
+        "key": "add-to-playlist",
+        "name": "Add Track to Playlist",
+        "description": "Add a track to a Spotify playlist"
+      },
+      {
+        "key": "create-playlist",
+        "name": "Create Playlist",
+        "description": "Create a new Spotify playlist for your account"
+      },
+      {
+        "key": "get-playlist",
+        "name": "Get Playlist",
+        "description": "Get details of a Spotify playlist"
+      },
+      {
+        "key": "get-new-releases",
+        "name": "Get New Releases",
+        "description": "Get a list of new album releases featured in Spotify"
+      }
+    ]
+  },
+  {
+    "appKey": "spreadsheetFile",
+    "name": "Spreadsheet File",
+    "description": "Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc.\n                \n                This integration provides operations for:\n                - **Read From File**: Read data from a spreadsheet file\n                - **Write to File**: Write data to a spreadsheet file",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "spreadsheetFile:fromFile",
+        "name": "Read From File",
+        "description": "Read data from a spreadsheet file"
+      },
+      {
+        "key": "spreadsheetFile:toFile",
+        "name": "Write to File",
+        "description": "Write data to a spreadsheet file"
+      }
+    ]
+  },
+  {
+    "appKey": "ssh",
+    "name": "SSH",
+    "description": "SSH (Secure Shell) is a network protocol that provides a secure way to access a computer over an unsecured network. The Crescendo SSH app allows you to run shell commands on remote servers safely.\n\n                **What you can do with SSH in Crescendo:**\n                - Automatically restart a r",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "run-command",
+        "name": "Run Command",
+        "description": "Run a remote shell command"
+      },
+      {
+        "key": "download",
+        "name": "Download File",
+        "description": "Download a file via SFTP over SSH"
+      },
+      {
+        "key": "upload",
+        "name": "Upload File",
+        "description": "Upload a file via SFTP over SSH"
+      }
+    ]
+  },
+  {
+    "appKey": "strava",
+    "name": "Strava",
+    "description": "Strava is a social fitness network that tracks cycling and running exercises. The Crescendo Strava app lets you log activities, track workouts, and manage your athletic data automatically.\n\n                **What you can do with Strava in Crescendo:**\n                - Log completed Pomodoro session",
+    "triggers": [
+      {
+        "key": "activity-created",
+        "name": "New Activity",
+        "description": "Triggers when a new activity is recorded"
+      },
+      {
+        "key": "activity-updated",
+        "name": "Activity Updated",
+        "description": "Triggers when an activity is edited"
+      }
+    ],
+    "actions": [
+      {
+        "key": "strava:activity:create",
+        "name": "Create Activity",
+        "description": "Log a new manual activity"
+      },
+      {
+        "key": "strava:activity:update",
+        "name": "Update Activity",
+        "description": "Edit an existing activity"
+      },
+      {
+        "key": "strava:activity:getMany",
+        "name": "Get Activities",
+        "description": "Retrieve recent activities"
+      },
+      {
+        "key": "strava:athlete:get",
+        "name": "Get Athlete Profile",
+        "description": "Retrieve the authenticated athlete's profile"
+      }
+    ]
+  },
+  {
+    "appKey": "telegram",
+    "name": "Telegram",
+    "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed. The Crescendo Telegram app lets you build powerful chat bots and automated notification systems.\n\n                **What you can do with Telegram in Crescendo:**\n                - Send text messages, photo",
+    "triggers": [
+      {
+        "key": "new-message",
+        "name": "New Message",
+        "description": "Triggers when the bot receives a new message"
+      },
+      {
+        "key": "new-callback-query",
+        "name": "New Callback Query",
+        "description": "Triggers when a user presses an inline keyboard button"
+      }
+    ],
+    "actions": [
+      {
+        "key": "sendMessage",
+        "name": "Send Message",
+        "description": "Send a text message to a Telegram chat"
+      },
+      {
+        "key": "sendPhoto",
+        "name": "Send Photo",
+        "description": "Send a photo to a Telegram chat"
+      },
+      {
+        "key": "sendDocument",
+        "name": "Send Document",
+        "description": "Send a file/document to a Telegram chat"
+      },
+      {
+        "key": "sendLocation",
+        "name": "Send Location",
+        "description": "Send a GPS location to a Telegram chat"
+      },
+      {
+        "key": "sendAudio",
+        "name": "Send Audio",
+        "description": "Send an audio file to a Telegram chat"
+      },
+      {
+        "key": "sendVideo",
+        "name": "Send Video",
+        "description": "Send a video to a Telegram chat"
+      },
+      {
+        "key": "sendAnimation",
+        "name": "Send Animation",
+        "description": "Send an animation (GIF) to a Telegram chat"
+      },
+      {
+        "key": "sendSticker",
+        "name": "Send Sticker",
+        "description": "Send a sticker to a Telegram chat"
+      },
+      {
+        "key": "sendVoice",
+        "name": "Send Voice",
+        "description": "Send a voice note to a Telegram chat"
+      },
+      {
+        "key": "pinMessage",
+        "name": "Pin Message",
+        "description": "Pin a message in a Telegram chat"
+      },
+      {
+        "key": "unpinMessage",
+        "name": "Unpin Message",
+        "description": "Unpin a message in a Telegram chat"
+      },
+      {
+        "key": "deleteMessage",
+        "name": "Delete Message",
+        "description": "Delete a message in a Telegram chat"
+      },
+      {
+        "key": "editMessage",
+        "name": "Edit Message",
+        "description": "Edit an existing text message"
+      }
+    ]
+  },
+  {
+    "appKey": "todoist",
+    "name": "Todoist",
+    "description": "Todoist is a cloud-based service that lets you manage your tasks and projects.\n                \n                This integration provides:\n                - **Task**: Close, Create, Delete, Get, Get All, Move, Quick Add, Reopen, Update\n                - **Project**: Archive, Create, Delete, Get, Get",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "todoist:comment:create",
+        "name": "Create Comment",
+        "description": "Create a comment"
+      },
+      {
+        "key": "todoist:comment:delete",
+        "name": "Delete Comment",
+        "description": "Delete a comment"
+      },
+      {
+        "key": "todoist:comment:get",
+        "name": "Get Comment",
+        "description": "Get a comment"
+      },
+      {
+        "key": "todoist:comment:getAll",
+        "name": "Get All Comments",
+        "description": "Get all comments"
+      },
+      {
+        "key": "todoist:comment:update",
+        "name": "Update Comment",
+        "description": "Update a comment"
+      },
+      {
+        "key": "todoist:label:create",
+        "name": "Create Label",
+        "description": "Create a label"
+      },
+      {
+        "key": "todoist:label:delete",
+        "name": "Delete Label",
+        "description": "Delete a label"
+      },
+      {
+        "key": "todoist:label:get",
+        "name": "Get Label",
+        "description": "Get a label"
+      },
+      {
+        "key": "todoist:label:getAll",
+        "name": "Get All Labels",
+        "description": "Get all labels"
+      },
+      {
+        "key": "todoist:label:update",
+        "name": "Update Label",
+        "description": "Update a label"
+      },
+      {
+        "key": "todoist:project:archive",
+        "name": "Archive Project",
+        "description": "Archive a project (requires Sync API)"
+      },
+      {
+        "key": "todoist:project:create",
+        "name": "Create Project",
+        "description": "Create a project"
+      },
+      {
+        "key": "todoist:project:delete",
+        "name": "Delete Project",
+        "description": "Delete a project"
+      },
+      {
+        "key": "todoist:project:get",
+        "name": "Get Project",
+        "description": "Get a project"
+      },
+      {
+        "key": "todoist:project:getCollaborators",
+        "name": "Get Collaborators",
+        "description": "Get project collaborators"
+      },
+      {
+        "key": "todoist:project:getAll",
+        "name": "Get All Projects",
+        "description": "Get all projects"
+      },
+      {
+        "key": "todoist:project:unarchive",
+        "name": "Unarchive Project",
+        "description": "Unarchive a project (requires Sync API)"
+      },
+      {
+        "key": "todoist:project:update",
+        "name": "Update Project",
+        "description": "Update a project"
+      },
+      {
+        "key": "todoist:reminder:create",
+        "name": "Create Reminder",
+        "description": "Create a reminder"
+      },
+      {
+        "key": "todoist:reminder:delete",
+        "name": "Delete Reminder",
+        "description": "Delete a reminder"
+      },
+      {
+        "key": "todoist:reminder:getAll",
+        "name": "Get All Reminders",
+        "description": "Get all reminders"
+      },
+      {
+        "key": "todoist:reminder:update",
+        "name": "Update Reminder",
+        "description": "Update a reminder"
+      },
+      {
+        "key": "todoist:section:create",
+        "name": "Create Section",
+        "description": "Create a section"
+      },
+      {
+        "key": "todoist:section:delete",
+        "name": "Delete Section",
+        "description": "Delete a section"
+      },
+      {
+        "key": "todoist:section:get",
+        "name": "Get Section",
+        "description": "Get a section"
+      },
+      {
+        "key": "todoist:section:getAll",
+        "name": "Get All Sections",
+        "description": "Get all sections"
+      },
+      {
+        "key": "todoist:section:update",
+        "name": "Update Section",
+        "description": "Update a section"
+      },
+      {
+        "key": "todoist:task:close",
+        "name": "Close Task",
+        "description": "Close a task"
+      },
+      {
+        "key": "todoist:task:create",
+        "name": "Create Task",
+        "description": "Create a task"
+      },
+      {
+        "key": "todoist:task:delete",
+        "name": "Delete Task",
+        "description": "Delete a task"
+      },
+      {
+        "key": "todoist:task:get",
+        "name": "Get Task",
+        "description": "Get a task"
+      },
+      {
+        "key": "todoist:task:getAll",
+        "name": "Get All Tasks",
+        "description": "Get all tasks"
+      },
+      {
+        "key": "todoist:task:move",
+        "name": "Move Task",
+        "description": "Move a task (Sync API)"
+      },
+      {
+        "key": "todoist:task:quickAdd",
+        "name": "Quick Add Task",
+        "description": "Quick add a task"
+      },
+      {
+        "key": "todoist:task:reopen",
+        "name": "Reopen Task",
+        "description": "Reopen a task"
+      },
+      {
+        "key": "todoist:task:update",
+        "name": "Update Task",
+        "description": "Update a task"
+      }
+    ]
+  },
+  {
+    "appKey": "toggl",
+    "name": "Toggl Track",
+    "description": "Toggl Track is a time tracking app that offers online time tracking and reporting services. The Crescendo Toggl app lets you automate your personal or team time tracking.\n\n                **What you can do with Toggl Track in Crescendo:**\n                - Start a new time entry automatically when a",
+    "triggers": [
+      {
+        "key": "new-time-entry",
+        "name": "New Time Entry",
+        "description": "Triggers when a new time entry is created"
+      },
+      {
+        "key": "timer-stopped",
+        "name": "Timer Stopped",
+        "description": "Triggers when a running timer is stopped"
+      }
+    ],
+    "actions": [
+      {
+        "key": "createTimeEntry",
+        "name": "Create Time Entry",
+        "description": "Log a completed time entry"
+      },
+      {
+        "key": "startTimer",
+        "name": "Start Timer",
+        "description": "Start a new running timer"
+      },
+      {
+        "key": "stopTimer",
+        "name": "Stop Timer",
+        "description": "Stop the currently running timer"
+      },
+      {
+        "key": "getCurrentTimeEntry",
+        "name": "Get Running Timer",
+        "description": "Get the currently running time entry"
+      }
+    ]
+  },
+  {
+    "appKey": "totp",
+    "name": "TOTP",
+    "description": "TOTP (Time-Based One-Time Password) is a standard algorithm that generates a one-time password using the current time as a source of uniqueness.\n                \n                **What you can do with TOTP in Crescendo:**\n                - Generate secure two-factor authentication (2FA) tokens on th",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "totp:generateSecret",
+        "name": "Generate Secret",
+        "description": "Generate a time-based one-time password"
+      }
+    ]
+  },
+  {
+    "appKey": "trello",
+    "name": "Trello",
+    "description": "Trello is a web-based, Kanban-style, list-making application.\n                \n                This integration provides comprehensive operations for:\n                - **Attachment**: Create, Delete, Get, Get All\n                - **Board**: Create, Delete, Get, Update\n                - **Board Mem",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "trello:attachment:create",
+        "name": "Create Attachment",
+        "description": "Add attachment to a card"
+      },
+      {
+        "key": "trello:attachment:delete",
+        "name": "Delete Attachment",
+        "description": "Delete an attachment"
+      },
+      {
+        "key": "trello:attachment:get",
+        "name": "Get Attachment",
+        "description": "Get an attachment"
+      },
+      {
+        "key": "trello:attachment:getAll",
+        "name": "Get All Attachments",
+        "description": "Get all attachments on a card"
+      },
+      {
+        "key": "trello:board:create",
+        "name": "Create Board",
+        "description": "Create a board"
+      },
+      {
+        "key": "trello:board:delete",
+        "name": "Delete Board",
+        "description": "Delete a board"
+      },
+      {
+        "key": "trello:board:get",
+        "name": "Get Board",
+        "description": "Get a board"
+      },
+      {
+        "key": "trello:board:update",
+        "name": "Update Board",
+        "description": "Update a board"
+      },
+      {
+        "key": "trello:boardMember:add",
+        "name": "Add Member to Board",
+        "description": "Add a member to a board"
+      },
+      {
+        "key": "trello:boardMember:getAll",
+        "name": "Get All Board Members",
+        "description": "Get all members of a board"
+      },
+      {
+        "key": "trello:boardMember:remove",
+        "name": "Remove Member from Board",
+        "description": "Remove a member from a board"
+      },
+      {
+        "key": "trello:card:create",
+        "name": "Create Card",
+        "description": "Create a card"
+      },
+      {
+        "key": "trello:card:delete",
+        "name": "Delete Card",
+        "description": "Delete a card"
+      },
+      {
+        "key": "trello:card:get",
+        "name": "Get Card",
+        "description": "Get a card"
+      },
+      {
+        "key": "trello:card:update",
+        "name": "Update Card",
+        "description": "Update a card"
+      },
+      {
+        "key": "trello:cardComment:create",
+        "name": "Create Comment",
+        "description": "Add a comment to a card"
+      },
+      {
+        "key": "trello:cardComment:delete",
+        "name": "Delete Comment",
+        "description": "Delete a comment"
+      },
+      {
+        "key": "trello:cardComment:update",
+        "name": "Update Comment",
+        "description": "Update a comment"
+      },
+      {
+        "key": "trello:checklist:create",
+        "name": "Create Checklist",
+        "description": "Create a checklist on a card"
+      },
+      {
+        "key": "trello:checklist:delete",
+        "name": "Delete Checklist",
+        "description": "Delete a checklist"
+      },
+      {
+        "key": "trello:checklist:get",
+        "name": "Get Checklist",
+        "description": "Get a checklist"
+      },
+      {
+        "key": "trello:checklist:getAll",
+        "name": "Get All Checklists",
+        "description": "Get all checklists on a card"
+      },
+      {
+        "key": "trello:label:create",
+        "name": "Create Label",
+        "description": "Create a label on a board"
+      },
+      {
+        "key": "trello:label:delete",
+        "name": "Delete Label",
+        "description": "Delete a label"
+      },
+      {
+        "key": "trello:label:get",
+        "name": "Get Label",
+        "description": "Get a label"
+      },
+      {
+        "key": "trello:label:getAll",
+        "name": "Get All Labels",
+        "description": "Get all labels on a board"
+      },
+      {
+        "key": "trello:label:update",
+        "name": "Update Label",
+        "description": "Update a label"
+      },
+      {
+        "key": "trello:list:create",
+        "name": "Create List",
+        "description": "Create a list on a board"
+      },
+      {
+        "key": "trello:list:get",
+        "name": "Get List",
+        "description": "Get a list"
+      },
+      {
+        "key": "trello:list:getAll",
+        "name": "Get All Lists",
+        "description": "Get all lists on a board"
+      },
+      {
+        "key": "trello:list:update",
+        "name": "Update List",
+        "description": "Update a list"
+      }
+    ]
+  },
+  {
+    "appKey": "twitter",
+    "name": "X (Twitter)",
+    "description": "X (formerly Twitter) is a global microblogging and social networking service. The Crescendo X app allows you to manage your audience and automate your social broadcasting.\n\n                **What you can do with X in Crescendo:**\n                - Post an automated tweet whenever a new product is ad",
+    "triggers": [
+      {
+        "key": "new-mention",
+        "name": "New Mention",
+        "description": "Triggers when you are mentioned in a tweet"
+      },
+      {
+        "key": "new-follower",
+        "name": "New Follower",
+        "description": "Triggers when someone follows you"
+      }
+    ],
+    "actions": [
+      {
+        "key": "post-tweet",
+        "name": "Post Tweet",
+        "description": "Post a new tweet"
+      },
+      {
+        "key": "delete-tweet",
+        "name": "Delete Tweet",
+        "description": "Delete an existing tweet"
+      }
+    ]
+  },
+  {
+    "appKey": "typeform",
+    "name": "Typeform",
+    "description": "Typeform is a web-based platform for creating forms and surveys that are interactive and engaging.\n                \n                This integration supports:\n                - **Get Forms**: Retrieve a list of forms from your account\n                - **Get Responses**: Retrieve responses for a spe",
+    "triggers": [
+      {
+        "key": "typeform:webhook:subscribe",
+        "name": "Form Submitted",
+        "description": "Triggers when a specific form is submitted via Webhook"
+      }
+    ],
+    "actions": [
+      {
+        "key": "typeform:form:getAll",
+        "name": "Get Forms",
+        "description": "Retrieve a list of forms"
+      },
+      {
+        "key": "typeform:response:getAll",
+        "name": "Get Responses",
+        "description": "Retrieve responses for a specific form"
+      }
+    ]
+  },
+  {
+    "appKey": "wait",
+    "name": "Wait",
+    "description": "Wait before continue with execution.\n                \n                This integration provides operations for:\n                - **Wait**: Waits for a certain amount of time, until a specific date and time, or for a webhook call/form submission before continuing",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "wait:wait",
+        "name": "Wait",
+        "description": "Wait before continue with execution"
+      }
+    ]
+  },
+  {
+    "appKey": "weather",
+    "name": "Weather",
+    "description": "The Weather app provides access to current conditions, forecasts, and historical weather data. The Crescendo Weather app allows you to automate workflows based on meteorological conditions in any city worldwide.\n\n                **What you can do with Weather in Crescendo:**\n                - Send d",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "get-weather",
+        "name": "Get Current Weather",
+        "description": "Fetch current weather for a location"
+      },
+      {
+        "key": "get-forecast",
+        "name": "Get Forecast",
+        "description": "Get 5-day weather forecast"
+      },
+      {
+        "key": "get-air-quality",
+        "name": "Get Air Quality",
+        "description": "Get air quality by latitude and longitude"
+      },
+      {
+        "key": "get-onecall",
+        "name": "Get Hourly / Daily Forecast",
+        "description": "Get OpenWeather One Call data; this endpoint may require One Call access on the user's OpenWeather account"
+      }
+    ]
+  },
+  {
+    "appKey": "crescendo-webhook",
+    "name": "Webhook",
+    "description": "Webhooks allow you to connect external applications that aren't natively supported. The Crescendo Webhook app lets you receive incoming data payloads from any service or send POST requests outward.\n\n                **What you can do with Webhooks in Crescendo:**\n                - Trigger a workflow ",
+    "triggers": [
+      {
+        "key": "incoming",
+        "name": "Incoming Webhook",
+        "description": "Triggers when the webhook endpoint receives an HTTP request"
+      }
+    ],
+    "actions": [
+      {
+        "key": "post-webhook",
+        "name": "POST to Webhook",
+        "description": "Send a POST request to an external webhook"
+      },
+      {
+        "key": "respond",
+        "name": "Respond to Webhook",
+        "description": "Build a response payload for webhook/API workflows"
+      }
+    ]
+  },
+  {
+    "appKey": "wikipedia",
+    "name": "Wikipedia",
+    "description": "Wikipedia is a free, multilingual open-collaborative online encyclopedia. The Crescendo Wikipedia app allows you to automatically fetch article summaries and knowledge data.\n\n                **What you can do with Wikipedia in Crescendo:**\n                - Automatically reply to specific Discord qu",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "search",
+        "name": "Search Articles",
+        "description": "Search Wikipedia pages"
+      },
+      {
+        "key": "get-summary",
+        "name": "Get Article Summary",
+        "description": "Fetch a Wikipedia page summary"
+      }
+    ]
+  },
+  {
+    "appKey": "wordpress",
+    "name": "WordPress",
+    "description": "WordPress is a popular open-source content management system. The Crescendo WordPress app allows you to automate blog publishing and retrieve existing posts programmatically.\n\n                **What you can do with WordPress in Crescendo:**\n                - Publish an AI-generated meeting summary d",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "wordpress:post:create",
+        "name": "Create Post",
+        "description": "Create a WordPress post"
+      },
+      {
+        "key": "wordpress:post:getMany",
+        "name": "List Posts",
+        "description": "List recent WordPress posts"
+      }
+    ]
+  },
+  {
+    "appKey": "xml",
+    "name": "XML",
+    "description": "Convert data from and to XML format.\n                \n                This integration provides operations for:\n                - **Convert XML to JSON**: Parses an XML string into a JSON object\n                - **Convert JSON to XML**: Serializes a JSON object into an XML string",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "xml:convert",
+        "name": "Convert XML/JSON",
+        "description": "Convert data between XML and JSON formats"
+      }
+    ]
+  },
+  {
+    "appKey": "youtube",
+    "name": "YouTube",
+    "description": "YouTube is a global online video sharing and social media platform. The Crescendo YouTube app allows you to automate video publishing, metadata updates, and search.\n\n                **What you can do with YouTube in Crescendo:**\n                - Upload a daily Zoom meeting recording automatically a",
+    "triggers": [],
+    "actions": [
+      {
+        "key": "search",
+        "name": "Search Videos",
+        "description": "Search YouTube videos"
+      },
+      {
+        "key": "getAllVideos",
+        "name": "List My Videos",
+        "description": "List videos from the authenticated channel uploads playlist"
+      },
+      {
+        "key": "uploadVideo",
+        "name": "Upload Video",
+        "description": "Upload a video file or stream directly from Google Drive / Cloud URL"
+      },
+      {
+        "key": "updateVideo",
+        "name": "Update Video Metadata",
+        "description": "Update title, description, tags, category, or privacy"
+      }
+    ]
+  }
+]

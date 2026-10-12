@@ -58,7 +58,8 @@ def plan_workflow(
     }
 
     graph = get_graph()
-    config = {"configurable": {"thread_id": session_id}}
+    thread_id = f"{user_id}:{session_id}" if user_id else session_id
+    config = {"configurable": {"thread_id": thread_id}}
 
     try:
         final_state = asyncio.run(graph.ainvoke(initial_state, config=config))

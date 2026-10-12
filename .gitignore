@@ -46,7 +46,7 @@ private_key.pem
 public_key.pem
 keys-server/
 template.schema.json
-benchmark
+benchmark_archive
 
 # Standalone Repositories
 crescendo-sdk/

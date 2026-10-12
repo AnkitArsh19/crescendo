@@ -113,7 +113,8 @@ async def create_workflow_draft(
         }
 
     graph = get_graph()
-    config = {"configurable": {"thread_id": session_id}}
+    thread_id = f"{body.userId}:{session_id}" if body.userId else session_id
+    config = {"configurable": {"thread_id": thread_id}}
 
     try:
         final_state = await graph.ainvoke(initial_state, config=config)

@@ -30,3 +30,5 @@ audit.jsonl
 
 # Test
 tests/
+
+*.npz

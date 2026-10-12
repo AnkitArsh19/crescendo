@@ -541,6 +541,30 @@ public class AgentExecutionService {
         return key == null ? "" : key.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
     }
 
+    private String[] resolveToolFields(String funcName, Map<String, ResolvedTool> resolvedTools) {
+        if (resolvedTools != null && funcName != null) {
+            ResolvedTool resolved = resolvedTools.get(funcName);
+            if (resolved != null) {
+                return new String[]{resolved.appKey(), resolved.actionKey()};
+            }
+            if (funcName.contains("__")) {
+                String[] parts = funcName.split("__", 2);
+                return new String[]{parts[0], parts[1]};
+            }
+            if (funcName.contains(":")) {
+                String[] parts = funcName.split(":", 2);
+                return new String[]{parts[0], parts[1]};
+            }
+            for (ResolvedTool rt : resolvedTools.values()) {
+                if (rt.actionKey().equalsIgnoreCase(funcName) ||
+                        normalizeKey(rt.actionKey()).equalsIgnoreCase(normalizeKey(funcName))) {
+                    return new String[]{rt.appKey(), rt.actionKey()};
+                }
+            }
+        }
+        return new String[]{"unknown", funcName != null ? funcName : ""};
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Private Helpers: Remote & Native Reasoning Calls
     // ─────────────────────────────────────────────────────────────────────
@@ -706,9 +730,9 @@ public class AgentExecutionService {
                             String funcName = String.valueOf(fc.get("name"));
                             Map<String, Object> args = (Map<String, Object>) fc.getOrDefault("args", Map.of());
 
-                            ResolvedTool resolved = resolvedTools.get(funcName);
-                            String appKey = resolved != null ? resolved.appKey() : "unknown";
-                            String actionKey = resolved != null ? resolved.actionKey() : funcName;
+                            String[] toolFields = resolveToolFields(funcName, resolvedTools);
+                            String appKey = toolFields[0];
+                            String actionKey = toolFields[1];
 
                             AgentNextStepResponse.ToolCallDecision decision = new AgentNextStepResponse.ToolCallDecision(
                                     funcName, appKey, actionKey, args
@@ -832,9 +856,9 @@ public class AgentExecutionService {
                             args = objectMapper.readValue(argsStr, Map.class);
                         } catch (Exception ignored) {}
 
-                        ResolvedTool resolved = resolvedTools.get(funcName);
-                        String appKey = resolved != null ? resolved.appKey() : "unknown";
-                        String actionKey = resolved != null ? resolved.actionKey() : funcName;
+                        String[] toolFields = resolveToolFields(funcName, resolvedTools);
+                        String appKey = toolFields[0];
+                        String actionKey = toolFields[1];
 
                         AgentNextStepResponse.ToolCallDecision decision = new AgentNextStepResponse.ToolCallDecision(
                                 funcName, appKey, actionKey, args
@@ -865,11 +889,17 @@ public class AgentExecutionService {
     ) {
         ResolvedTool resolvedTool = resolvedTools.get(toolCall.toolId());
         if (resolvedTool == null) {
-            // Match by appKey and actionKey
+            String matchApp = toolCall.appKey();
+            String matchAction = toolCall.actionKey();
+            if (("unknown".equalsIgnoreCase(matchApp) || matchApp == null) && toolCall.toolId() != null) {
+                String[] resolvedFields = resolveToolFields(toolCall.toolId(), resolvedTools);
+                matchApp = resolvedFields[0];
+                matchAction = resolvedFields[1];
+            }
             for (ResolvedTool rt : resolvedTools.values()) {
-                if (rt.appKey().equalsIgnoreCase(toolCall.appKey()) &&
-                        (rt.actionKey().equalsIgnoreCase(toolCall.actionKey()) ||
-                                normalizeKey(rt.actionKey()).equalsIgnoreCase(normalizeKey(toolCall.actionKey())))) {
+                if (rt.appKey().equalsIgnoreCase(matchApp) &&
+                        (rt.actionKey().equalsIgnoreCase(matchAction) ||
+                                normalizeKey(rt.actionKey()).equalsIgnoreCase(normalizeKey(matchAction)))) {
                     resolvedTool = rt;
                     break;
                 }

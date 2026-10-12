@@ -16,6 +16,7 @@ from app.routers.agent_executor import router as agent_router
 from app.session.checkpointer import init_checkpointer, get_checkpointer
 from app.agents.graph import init_graph
 from app.templates.matcher import encode_templates_at_startup
+from app.catalog.tool_retriever import init_vector_store
 
 logging.basicConfig(
     level=logging.INFO,
@@ -46,6 +47,9 @@ async def lifespan(app: FastAPI):
         logger.warning("Template encoding timed out — fast-path will be disabled until next restart")
     except Exception as exc:
         logger.warning("Template encoding failed (%s) — fast-path disabled", exc)
+
+    # 5. Initialize Tool-RAG semantic vector store (~0.5 ms from .npz cache)
+    init_vector_store()
 
     logger.info("Crescendo AI/ML service ready")
     yield

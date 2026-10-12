@@ -61,9 +61,8 @@ def _op_text(ops: list) -> list[str]:
 
 def _filter_catalog(intent: IntentResult, catalog: list, max_apps: int = _MAX_CATALOG_APPS) -> list:
     """
-    Score each catalog app by keyword overlap with the intent descriptions.
-    Returns the top-max_apps entries.  Always includes 'logic' app when
-    has_branching=True so the resolver can use if/switch nodes.
+    Fallback: score each catalog app by keyword overlap with the intent descriptions.
+    Used when Tool-RAG semantic retrieval is uninitialized or below confidence threshold.
     """
     combined_text = " ".join([intent.trigger_description] + intent.action_descriptions)
     keywords = _extract_keywords(combined_text)
@@ -89,9 +88,31 @@ def _filter_catalog(intent: IntentResult, catalog: list, max_apps: int = _MAX_CA
     if intent.has_branching and logic_app and logic_app not in top:
         top.append(logic_app)
 
-    logger.debug("Catalog filtered: %d apps → %d selected. Top 5: %s",
+    logger.debug("Catalog filtered (keyword fallback): %d apps → %d selected. Top 5: %s",
                  len(catalog), len(top), [a.get("appKey") for a in top[:5]])
     return top
+
+
+async def _filter_catalog_semantic(intent: IntentResult, catalog: list, max_apps: int = _MAX_CATALOG_APPS) -> list:
+    """
+    Tool-RAG Semantic Candidate Filter:
+    Embeds the accumulated intent descriptions (trigger + actions) and retrieves
+    the Top-K most relevant catalog apps via cosine similarity.
+    Gracefully falls back to _filter_catalog on failure or low confidence.
+    """
+    try:
+        from app.catalog.tool_retriever import retrieve_candidate_apps
+        combined_text = " ".join([intent.trigger_description] + intent.action_descriptions)
+        candidates, score, is_fallback = await retrieve_candidate_apps(
+            prompt=combined_text,
+            catalog=catalog,
+            k=max_apps,
+            has_branching=intent.has_branching
+        )
+        return candidates
+    except Exception as exc:
+        logger.warning("Tool-RAG semantic retrieval failed (%s) — invoking keyword fallback", exc)
+        return _filter_catalog(intent, catalog, max_apps=max_apps)
 
 
 def _format_ops(ops: list) -> str:
@@ -249,7 +270,7 @@ async def resolve_steps(
     """
     client = groq_client or get_groq_client()
     catalog = app_state.get("catalog", [])
-    filtered = _filter_catalog(intent, catalog)
+    filtered = await _filter_catalog_semantic(intent, catalog)
     system_prompt = _build_resolver_prompt(intent, filtered)
 
     try:
@@ -296,7 +317,7 @@ async def resolve_steps_corrected(
     from app.agents.validator import format_correction_context  # avoid circular import
     client = groq_client or get_groq_client()
     catalog = app_state.get("catalog", [])
-    filtered = _filter_catalog(intent, catalog)
+    filtered = await _filter_catalog_semantic(intent, catalog)
     base_prompt = _build_resolver_prompt(intent, filtered)
     correction_note = format_correction_context(validation_errors)
     system_prompt = base_prompt + "\n\n" + correction_note
