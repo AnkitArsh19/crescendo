@@ -64,6 +64,9 @@ class IntentResult(BaseModel):
     action_descriptions: List[str]
     needs_clarification: bool
     clarifying_questions: List[str] = []
+    # Dynamic grounding fields (extracted product/service brands)
+    trigger_app_stated: Optional[str] = None
+    action_apps_stated: List[Optional[str]] = []
     # Phase 3 additions — branching intent
     has_branching: bool = False
     branch_description: Optional[str] = None

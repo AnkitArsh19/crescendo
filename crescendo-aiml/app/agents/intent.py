@@ -20,6 +20,7 @@ from app.agents.client import get_groq_client
 from app.agents.models import FAST_MODEL
 from app.schemas.workflow import IntentResult
 from app.audit.logger import audit_log
+from app.catalog.catalog_grounding import verify_and_ground_intent
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,8 @@ RULES:
      "action_descriptions":  ["string — what should happen (one item per action step)"],
      "needs_clarification":  true/false,
      "clarifying_questions": ["string"],  // only if needs_clarification=true, else []
+     "trigger_app_stated":   "string | null",  // exact software brand explicitly named for trigger, or null
+     "action_apps_stated":   ["string | null"], // exact software brand explicitly named for each action, or null
      "has_branching":        true/false,
      "branch_description":   "string | null"
    }
@@ -72,6 +75,10 @@ RULES:
 7. Do NOT duplicate actions that are already present in the existing workflow
    unless the user explicitly asks for a duplicate step. If the user is refining
    or extending an existing workflow, only extract the NEW or CHANGED intent.
+8. LITERAL BRAND EXTRACTION (trigger_app_stated and action_apps_stated):
+   - For trigger_app_stated: Extract the literal software brand/product name explicitly named by the user for the trigger (e.g., "GitHub", "Salesforce", "Google Sheets", "Stripe"). If only a generic functional action, data entity, or role is stated ("file is uploaded", "lead comes in", "something happens", "error occurs"), return null.
+   - For action_apps_stated: A list corresponding to each step in action_descriptions. Extract the literal software brand/product name explicitly named for that action (e.g., "Slack", "HubSpot", "Gmail", "Discord"). If only a generic functional action or category is stated ("notify team", "update database", "send a message", "alert me", "do onboarding"), return null.
+   - STRICT CONSTRAINT: Do NOT guess, infer, or hallucinate a default application (e.g., do NOT assume "Slack" for "notify team", do NOT assume "Salesforce" for "lead", do NOT assume "MySQL" for "database"). If the brand name was not explicitly stated in the text, return null!
 """
 
 
@@ -192,7 +199,20 @@ async def classify_intent(
 
     try:
         data = json.loads(raw)
-        return IntentResult(**data)
+        intent = IntentResult(**data)
+        raw_prompt = (
+            sanitized_prompt
+            .replace("<user_request>", "")
+            .replace("</user_request>", "")
+            .strip()
+        )
+        return verify_and_ground_intent(
+            intent=intent,
+            raw_prompt=raw_prompt,
+            previous_questions=previous_questions,
+            previous_spec=previous_spec,
+            previous_intent=previous_intent,
+        )
     except (json.JSONDecodeError, ValueError) as exc:
         logger.error("Stage 1 parse error for user %s: %s\nRaw: %s", user_id, exc, raw)
         raise RuntimeError(f"Intent classifier returned unparseable JSON: {exc}") from exc

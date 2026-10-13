@@ -10,6 +10,7 @@ Routing functions (conditional edges) are also defined here.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from langgraph.graph import END
 
@@ -27,6 +28,7 @@ from app.agents.validator import (
     validate_workflow,
 )
 from app.catalog_sync import app_state
+from app.catalog.catalog_grounding import get_active_catalog
 from app.schemas.workflow import (
     ActionNode,
     IntentResult,
@@ -65,7 +67,7 @@ def _unpack_lc(value: Any) -> Any:
 def _app_display_name(app_key: str) -> str:
     if not app_key:
         return "App"
-    catalog = app_state.get("catalog", [])
+    catalog = get_active_catalog()
     for a in catalog:
         if a.get("appKey") == app_key:
             return a.get("name") or app_key.replace("-", " ").title()
@@ -431,7 +433,37 @@ async def clarify_node(state: PipelineState) -> dict:
                                 "value": f"Use {suggestion['label']}"
                             })
 
-    # If no questions matched any domain, fallback to top active connections (max 6, not 25+)
+    # Dynamic catalog search for questions that did not match predefined domains
+    if not suggested_options:
+        for question in questions:
+            words = [
+                w.lower() for w in re.findall(r"[a-z0-9]+", question)
+                if len(w) > 3 and w.lower() not in {"which", "application", "service", "should", "trigger", "workflow", "used", "then", "with", "from"}
+            ]
+            if words:
+                catalog = get_active_catalog()
+                scored = []
+                for app in catalog:
+                    key = app.get("appKey", "")
+                    name = app.get("name", "")
+                    desc = (app.get("description") or "").lower()
+                    searchable = f"{key} {name} {desc}".lower()
+                    score = sum(1 for w in words if w in searchable)
+                    if score > 0:
+                        scored.append((score, key, name or _app_display_name(key)))
+                scored.sort(key=lambda x: -x[0])
+                for _, app_key, label in scored[:4]:
+                    opt_key = ("Suggested Integrations", app_key, label)
+                    if opt_key not in added_options:
+                        added_options.add(opt_key)
+                        suggested_options.append({
+                            "group": "Suggested Integrations",
+                            "appKey": app_key,
+                            "label": label,
+                            "value": f"Use {label}"
+                        })
+
+    # If still no suggested options matched, fallback to top active connections (max 6)
     if not suggested_options:
         for conn in active_connections[:6]:
             app_key = conn.get("appKey")
