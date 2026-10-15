@@ -32,3 +32,4 @@ audit.jsonl
 tests/
 
 *.npz
+!app/catalog/catalog_embeddings_114.npz

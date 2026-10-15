@@ -184,6 +184,32 @@ def validate_edges(
                     f"outgoing edges. Found handles: {sorted(handles)}"
                 )
 
+    # Validate DAG acyclicity via Kahn's algorithm (topological sort)
+    in_degree: Dict[str, int] = {step_id: 0 for step_id in all_ids}
+    adj: Dict[str, List[str]] = {step_id: [] for step_id in all_ids}
+    for edge in edges:
+        src = edge.source_step_id
+        tgt = edge.target_step_id
+        if src in all_ids and tgt in all_ids and src != tgt:
+            adj[src].append(tgt)
+            in_degree[tgt] += 1
+
+    queue = [step_id for step_id, deg in in_degree.items() if deg == 0]
+    visited_count = 0
+    while queue:
+        curr = queue.pop(0)
+        visited_count += 1
+        for neighbor in adj[curr]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if visited_count < len(all_ids):
+        errors.append(
+            f"Cycle detected in workflow graph: Kahn's algorithm resolved only {visited_count}/{len(all_ids)} steps. "
+            f"The workflow must be a strictly acyclic Directed Acyclic Graph (DAG)."
+        )
+
     if errors:
         logger.warning("Edge validation: %d error(s)", len(errors))
     return errors
